@@ -149,39 +149,40 @@ TreeSDF sd_tree_custom(float3 b_pos, float random, float3 tree_pos) {
 
     float3 p0 = tree_pos;
     float3 p1 = tree_pos;
+    float3 off;
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
-    p0 = p1;
-    p1 = p0 + (rand_vec3(p0) - 0.5) * 15 + float3(0, -12, 0);
+    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
+    p0 = p1, p1 = p0 + off;
     result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
     result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
 
