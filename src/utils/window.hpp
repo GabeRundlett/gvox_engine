@@ -7,9 +7,9 @@
 #include <Daxa.hpp>
 
 struct Window {
-    GLFWwindow *window_ptr;
+    GLFWwindow *window_ptr = nullptr;
     glm::ivec2 frame_dim{800, 800};
-    VkSurfaceKHR vulkan_surface;
+    VkSurfaceKHR vulkan_surface = VK_NULL_HANDLE;
 
     Window() {
         glfwInit();
