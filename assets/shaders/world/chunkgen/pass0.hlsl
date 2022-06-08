@@ -5,12 +5,12 @@
 
 #include "core.hlsl"
 
-#define water_level 184
+#define water_level (184 - GROUND_LEVEL)
 #define lava_level 458
 
 void biome_pass0(in out WorldgenState worldgen_state, in float3 b_pos) {
     worldgen_state.biome_id = BiomeID::Plains;
-    if (worldgen_state.b_noise < 1.2) {
+    if (worldgen_state.b_noise < 0.4) {
         worldgen_state.biome_id = BiomeID::Forest;
     } else if (worldgen_state.b_noise > 1.6) {
         worldgen_state.biome_id = BiomeID::Desert;
@@ -151,13 +151,13 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
                !surroundings.above_water) {
         switch (worldgen_state.biome_id) {
         case BiomeID::Plains:
-            // if (surroundings.depth_below == 0) {
-            //     if (worldgen_state.r < 0.10) {
-            //         worldgen_state.block_id = BlockID::TallGrass;
-            //     } else if (worldgen_state.r < 0.11) {
-            //         worldgen_state.block_id = BlockID::Leaves;
-            //     }
-            // }
+            if (surroundings.depth_below == 0) {
+                // if (worldgen_state.r < 0.10) {
+                //     worldgen_state.block_id = BlockID::TallGrass;
+                // } else if (worldgen_state.r < 0.11) {
+                //     worldgen_state.block_id = BlockID::Leaves;
+                // }
+            }
             break;
         case BiomeID::Forest:
             if (worldgen_state.r_xz < 0.01) {
@@ -167,9 +167,9 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
                         int structure_n;
                         InterlockedAdd(globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n, 1, structure_n);
                         globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].p = float4(b_pos, 0);
-                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = (int(b_pos.x + 10000) % 5 == 0) ? 2 : 1;
+                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = (int(b_pos.x + 10000) % 5 == 0) ? 1 : 1;
                     }
-                    // worldgen_state.block_id = BlockID::Log;
+                    worldgen_state.block_id = BlockID::Log;
                 }
             } else if (worldgen_state.r < 0.6 && surroundings.depth_below == 0) {
                 worldgen_state.block_id = BlockID::TallGrass;
@@ -330,5 +330,5 @@ BlockID gen_block(in float3 b_pos) {
     uint chunk_texture_id = p.output_image_i;
     RWTexture3D<uint> chunk = daxa::getRWTexture3D<uint>(chunk_texture_id);
 
-    chunk[int3(global_i)] = (uint)gen_block(block_pos);
+    chunk[int3(global_i)] = (uint)gen_block(block_pos * 1);
 }

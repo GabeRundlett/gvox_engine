@@ -19,6 +19,8 @@ struct Push {
         pick_pos = globals[0].pick_pos[0].xyz;
     else
         pick_pos = globals[0].pick_pos[1].xyz;
+    if (globals[0].inventory_index == 7)
+        pick_pos += float3(0, -27, 0);
     int3 pick_block_i = int3(pick_pos);
     int3 pick_chunk_i = pick_block_i / CHUNK_SIZE;
     int xi = pick_chunk_i.x + p.pos.x;
@@ -31,27 +33,30 @@ struct Push {
         if (chunk_id == globals[0].empty_chunk_index)
             return;
         RWTexture3D<uint> chunk = daxa::getRWTexture3D<uint>(chunk_id);
-        // if (length(int3(block_pos) - pick_block_i) <= 0.5 + BLOCKEDIT_RADIUS) {
-        //     chunk[int3(global_i)] = p.edit_mode == 0 ? 1 : (uint)inventory_palette(globals[0].inventory_index);
-        // }
 
-        TreeSDF tree_sdf = sd_tree_custom(block_pos, 0, pick_block_i);
-        if (tree_sdf.trunk_dist < 0)
-            chunk[int3(global_i)] = p.edit_mode == 0 ? 1 : (uint)BlockID::Log;
-        if (tree_sdf.leaves_dist < 0)
-            chunk[int3(global_i)] = p.edit_mode == 0 ? 1 : (uint)BlockID::Leaves;
-
-        // StructuredBuffer<ModelLoadBuffer> model = daxa::getBuffer<ModelLoadBuffer>(globals[0].model_load_index);
-        // float3 m_dim = model[0].dim.xyz;
-        // float3 m_pos = pick_pos[0] - m_dim / 2;
-        // if (block_pos.x >= m_pos.x && block_pos.x < m_pos.x + m_dim.x &&
-        //     block_pos.y >= m_pos.y && block_pos.y < m_pos.y + m_dim.y &&
-        //     block_pos.z >= m_pos.z && block_pos.z < m_pos.z + m_dim.z) {
-        //     int3 model_tile_i = int3(block_pos - m_pos);
-        //     uint model_tile_index = model_tile_i.x + model_tile_i.y * 128 + model_tile_i.z * 128 * 128;
-        //     BlockID model_tile = (BlockID)model[0].data[model_tile_index];
-        //     if (model_tile != BlockID::Air)
-        //         chunk[int3(global_i)] = p.edit_mode; // (uint)model_tile;
-        // }
+        if (globals[0].inventory_index == 6) {
+            TreeSDF tree_sdf = sd_tree_custom(block_pos, 0, pick_block_i);
+            if (tree_sdf.trunk_dist < 0)
+                chunk[int3(global_i)] = p.edit_mode == 0 ? (uint)BlockID::Air : (uint)BlockID::Log;
+            if (tree_sdf.leaves_dist < 0)
+                chunk[int3(global_i)] = p.edit_mode == 0 ? (uint)BlockID::Air : (uint)BlockID::Leaves;
+        } else if (globals[0].inventory_index == 7) {
+            StructuredBuffer<ModelLoadBuffer> model = daxa::getBuffer<ModelLoadBuffer>(globals[0].model_load_index);
+            float3 m_dim = model[0].dim.xyz;
+            float3 m_pos = pick_block_i - m_dim / 2;
+            if (block_pos.x >= m_pos.x && block_pos.x < m_pos.x + m_dim.x &&
+                block_pos.y >= m_pos.y && block_pos.y < m_pos.y + m_dim.y &&
+                block_pos.z >= m_pos.z && block_pos.z < m_pos.z + m_dim.z) {
+                int3 model_tile_i = int3(block_pos - m_pos);
+                uint model_tile_index = model_tile_i.x + model_tile_i.z * 128 + (63 - model_tile_i.y) * 128 * 128;
+                BlockID model_tile = (BlockID)model[0].data[model_tile_index];
+                if (model_tile != BlockID::Air)
+                    chunk[int3(global_i)] = p.edit_mode == 0 ? (uint)BlockID::Air : (uint)BlockID::Cobblestone;
+            }
+        } else {
+            if (length(int3(block_pos) - pick_block_i) <= 0.5 + BLOCKEDIT_RADIUS) {
+                chunk[int3(global_i)] = p.edit_mode == 0 ? 1 : (uint)inventory_palette(globals[0].inventory_index);
+            }
+        }
     }
 }

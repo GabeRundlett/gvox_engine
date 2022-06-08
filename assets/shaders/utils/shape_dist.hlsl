@@ -151,40 +151,40 @@ TreeSDF sd_tree_custom(float3 b_pos, float random, float3 tree_pos) {
     float3 p1 = tree_pos;
     float3 off;
 
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
+    for (int i = 0; i < 2; ++i) {
+        off = normalize((rand_vec3(p0) - 0.5) * 0.1 + float3(0, -0.7, 0)) * 12;
+        p0 = p1, p1 = p0 + off;
+        result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1.8 - 0.5 * i));
+    }
 
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
+    for (int i = 0; i < 4; ++i) {
+        off = normalize((rand_vec3(p0) - 0.5) * 0.1 + float3(0, -0.5, 0)) * 8;
+        p0 = p1, p1 = p0 + off;
+        result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
+        for (int j = 0; j < 2; ++j) {
+            off = normalize((rand_vec3(p1 + 1) - 0.5) * float3(1, 0.2, 1)) * 5;
+            result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p1, p1 + off, 0.8));
+            result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + off + float3(0, -1, 0), float3(2, 0.8, 2)));
+        }
+    }
 
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
-
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
-
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
-
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
-
-    off = normalize((rand_vec3(p0) - 0.5) + float3(0, -0.7, 0)) * 15;
-    p0 = p1, p1 = p0 + off;
-    result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
-    result.leaves_dist = min(result.leaves_dist, sd_sphere(b_pos, p1, 2));
+    for (int i = 0; i < 2; ++i) {
+        off = normalize((rand_vec3(p0) - 0.5) * 0.1 + float3(0, -0.5, 0)) * 8;
+        p0 = p1, p1 = p0 + off;
+        result.trunk_dist = min(result.trunk_dist, sd_capsule(b_pos, p0, p1, 1));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+0, -5.5 + 3.0, -8.0), float3(4 - random * 2, 1.1 + random * 0.5, 3.0)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+1, -4.5 + 2.0, +8.0), float3(4 - random * 2, 1.1 + random * 0.5, 3.0)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(-8, -4.5 + 1.0, -1.0), float3(4 - random * 2, 1.1 + random * 0.5, 3.0)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+6, -4.5 + 2.0, +0.5), float3(4 - random * 2, 1.1 + random * 0.5, 3.0)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+0, -4.5 + 0.5, +3.0), float3(3 - random * 2, 0.5 + random * 1.5, 2.5)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+3, -4.5 + 0.5, +0.0), float3(3 - random * 2, 0.5 + random * 1.5, 2.5)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(+0, -4.5 + 2.0, -5.0), float3(3 - random * 2, 0.5 + random * 1.5, 2.5)));
+        result.leaves_dist = min(result.leaves_dist, sd_ellipsoid(b_pos, p1 + float3(-4, -4.5 + 1.0, +0.0), float3(3 - random * 2, 0.5 + random * 1.5, 2.5)));
+        result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, +0, 0), p1 + float3(+0.0, -3, -8.0), 0.7));
+        result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, -1, 0), p1 + float3(+1.0, -2, +8.0), 0.7));
+        result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, +0, 0), p1 + float3(-8.0, -3, -1.0), 0.7));
+        result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, -1, 0), p1 + float3(+8.0, -1, +0.5), 0.7));
+    }
 
     return result;
 }

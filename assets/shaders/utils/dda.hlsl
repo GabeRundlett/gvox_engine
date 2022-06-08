@@ -11,6 +11,9 @@ struct DDA_RunState {
 };
 
 uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
+#if USE_NEW_PRESENCE
+    return x_load_presence(globals, p);
+#else
     BlockID block_id = load_block_id(globals, int3(p));
     if (is_block_occluding(block_id))
         return 0;
@@ -25,6 +28,7 @@ uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
     if (x_load_presence<32>(globals, p))
         return 5;
     return 6;
+#endif
 }
 
 void run_dda_main(StructuredBuffer<Globals> globals, in Ray ray, in out DDA_RunState run_state, in float3 b_min, in float3 b_max, in uint max_steps) {

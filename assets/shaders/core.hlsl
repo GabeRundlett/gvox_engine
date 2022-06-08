@@ -7,6 +7,11 @@
 DAXA_DEFINE_BA_RWTEXTURE3D(uint)
 DAXA_DEFINE_BA_TEXTURE3D(uint)
 
+#if USE_NEW_PRESENCE
+struct ChunkBlockPresence {
+    uint data[32 * 32 * 32 / 8];
+};
+#else
 struct ChunkBlockPresence {
     uint x2[1024];
     uint x4[256];
@@ -14,6 +19,7 @@ struct ChunkBlockPresence {
     uint x16[16];
     uint x32[4];
 };
+#endif
 
 struct Structure {
     float4 p;
@@ -47,13 +53,13 @@ struct Globals {
     ChunkBlockPresence chunk_block_presence[CHUNK_NZ][CHUNK_NY][CHUNK_NX];
 };
 
-// struct ModelLoadBuffer {
-//     float4 pos, dim;
-//     uint data[128 * 128 * 128];
-// };
+struct ModelLoadBuffer {
+    float4 pos, dim;
+    uint data[128 * 128 * 128];
+};
 
 DAXA_DEFINE_BA_BUFFER(Globals)
-// DAXA_DEFINE_BA_BUFFER(ModelLoadBuffer)
+DAXA_DEFINE_BA_BUFFER(ModelLoadBuffer)
 
 BlockID load_block_id(StructuredBuffer<Globals> globals, float3 pos) {
     int3 chunk_i = int3(pos / CHUNK_SIZE);

@@ -7,10 +7,10 @@
 #define OGT_VOX_IMPLEMENTATION
 #include <deps/ogt_vox.h>
 
-// struct ModelLoadBuffer {
-//     glm::vec4 pos, dim;
-//     std::array<u32, 128 * 128 * 128> data;
-// };
+struct ModelLoadBuffer {
+    glm::vec4 pos, dim;
+    std::array<u32, 128 * 128 * 128> data;
+};
 
 namespace gpu {
     struct PlayerInput {
@@ -32,6 +32,11 @@ namespace gpu {
         Camera camera;
     };
 
+#if USE_NEW_PRESENCE
+    struct ChunkBlockPresence {
+        u32 data[32 * 32 * 32 / 8];
+    };
+#else
     struct ChunkBlockPresence {
         u32 x2[1024];
         u32 x4[256];
@@ -39,6 +44,7 @@ namespace gpu {
         u32 x16[16];
         u32 x32[4];
     };
+#endif
 
     struct Structure {
         glm::vec4 p;
@@ -124,12 +130,16 @@ struct RenderableWorld {
     daxa::PipelineHandle raymarch_compute_pipeline;
     daxa::PipelineHandle pickblock_compute_pipeline;
     daxa::PipelineHandle blockedit_compute_pipeline;
+#if USE_NEW_PRESENCE
+    daxa::PipelineHandle new_presence_pipeline;
+#else
     daxa::PipelineHandle subchunk_x2x4_pipeline;
     daxa::PipelineHandle subchunk_x8p_pipeline;
+#endif
     std::array<daxa::PipelineHandle, 2> chunkgen_compute_pipeline_passes;
 
     daxa::BufferHandle compute_globals_buffer;
-    // daxa::BufferHandle model_load_buffer;
+    daxa::BufferHandle model_load_buffer;
     daxa::BufferHandle player_buffer;
 
     ChunkArray<std::unique_ptr<RenderableChunk>> chunks{};
@@ -138,7 +148,7 @@ struct RenderableWorld {
     daxa::ImageViewHandle atlas_texture_array;
     daxa::SamplerHandle atlas_texture_sampler;
 
-    // std::unique_ptr<ModelLoadBuffer> model_load_data = std::make_unique<ModelLoadBuffer>();
+    std::unique_ptr<ModelLoadBuffer> model_load_data = std::make_unique<ModelLoadBuffer>();
     std::array<glm::uvec3, World::DIM.x * World::DIM.y * World::DIM.z> chunk_indices{};
     glm::ivec3 player_rough_chunk_i{0};
 
@@ -165,32 +175,32 @@ struct RenderableWorld {
         player_data.vel = glm::vec4(player.vel, 0);
         player_data.rot = glm::vec4(-player.rot, 0);
 
-        // std::ifstream model_voxfile("assets/models/teapot.vox", std::ios::binary);
-        // std::vector<u8> buffer(std::istreambuf_iterator<char>(model_voxfile), {});
-        // const ogt_vox_scene *scene = ogt_vox_read_scene(buffer.data(), static_cast<u32>(buffer.size()));
-        // auto &model = *scene->models[0];
-        // model_load_data->pos = glm::vec4(-32, 0, -32, 0);
-        // model_load_data->dim = glm::vec4(
-        //     std::min<f32>(static_cast<f32>(model.size_x), 128.0f),
-        //     std::min<f32>(static_cast<f32>(model.size_z), 128.0f),
-        //     std::min<f32>(static_cast<f32>(model.size_y), 128.0f),
-        //     0);
-        // for (size_t zi = 0; zi < Chunk::DIM.z * 2; ++zi) {
-        //     for (size_t yi = 0; yi < Chunk::DIM.y * 2; ++yi) {
-        //         for (size_t xi = 0; xi < Chunk::DIM.x * 2; ++xi) {
-        //             if (xi < model.size_x && zi < model.size_y && yi < model.size_z) {
-        //                 auto v = model.voxel_data[xi + zi * model.size_x + (model.size_z - yi - 1) * model.size_x * model.size_y];
-        //                 if (v != 0)
-        //                     model_load_data->data[xi + yi * 128 + zi * 128 * 128] = v % 24 + 2;
-        //                 else
-        //                     model_load_data->data[xi + yi * 128 + zi * 128 * 128] = 1;
-        //             } else {
-        //                 model_load_data->data[xi + yi * 128 + zi * 128 * 128] = 1;
-        //             }
-        //         }
-        //     }
-        // }
-        // ogt_vox_destroy_scene(scene);
+        std::ifstream model_voxfile("assets/models/suzanne.vox", std::ios::binary);
+        std::vector<u8> buffer(std::istreambuf_iterator<char>(model_voxfile), {});
+        const ogt_vox_scene *scene = ogt_vox_read_scene(buffer.data(), static_cast<u32>(buffer.size()));
+        auto &model = *scene->models[0];
+        model_load_data->pos = glm::vec4(-32, 0, -32, 0);
+        model_load_data->dim = glm::vec4(
+            std::min<f32>(static_cast<f32>(model.size_x), 128.0f),
+            std::min<f32>(static_cast<f32>(model.size_z), 128.0f),
+            std::min<f32>(static_cast<f32>(model.size_y), 128.0f),
+            0);
+        for (size_t zi = 0; zi < Chunk::DIM.z * 2; ++zi) {
+            for (size_t yi = 0; yi < Chunk::DIM.y * 2; ++yi) {
+                for (size_t xi = 0; xi < Chunk::DIM.x * 2; ++xi) {
+                    if (xi < model.size_x && zi < model.size_y && yi < model.size_z) {
+                        auto v = model.voxel_data[xi + zi * model.size_x + (model.size_z - yi - 1) * model.size_x * model.size_y];
+                        if (v != 0)
+                            model_load_data->data[xi + yi * 128 + zi * 128 * 128] = v % 24 + 2;
+                        else
+                            model_load_data->data[xi + yi * 128 + zi * 128 * 128] = 1;
+                    } else {
+                        model_load_data->data[xi + yi * 128 + zi * 128 * 128] = 1;
+                    }
+                }
+            }
+        }
+        ogt_vox_destroy_scene(scene);
 
         empty_chunk = create_chunk();
         for (auto &chunk_layer : chunks)
@@ -202,10 +212,10 @@ struct RenderableWorld {
             .size = sizeof(gpu::ComputeGlobals) + sizeof(gpu::ComputeGlobals_GpuOnly),
             .memoryType = daxa::MemoryType::GPU_ONLY,
         });
-        // model_load_buffer = render_ctx.device->createBuffer({
-        //     .size = sizeof(ModelLoadBuffer),
-        //     .memoryType = daxa::MemoryType::GPU_ONLY,
-        // });
+        model_load_buffer = render_ctx.device->createBuffer({
+            .size = sizeof(ModelLoadBuffer),
+            .memoryType = daxa::MemoryType::GPU_ONLY,
+        });
         player_buffer = render_ctx.device->createBuffer({
             .size = sizeof(gpu::ComputePlayer) + sizeof(gpu::ComputePlayer_GpuOnly),
             .memoryType = daxa::MemoryType::GPU_ONLY,
@@ -232,11 +242,11 @@ struct RenderableWorld {
             }
         }
 
-        // cmd_list.singleCopyHostToBuffer({
-        //     .src = reinterpret_cast<u8 *>(model_load_data.get()),
-        //     .dst = model_load_buffer,
-        //     .region = {.size = sizeof(ModelLoadBuffer)},
-        // });
+        cmd_list.singleCopyHostToBuffer({
+            .src = reinterpret_cast<u8 *>(model_load_data.get()),
+            .dst = model_load_buffer,
+            .region = {.size = sizeof(ModelLoadBuffer)},
+        });
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
         cmd_list.singleCopyHostToBuffer({
             .src = reinterpret_cast<u8 *>(&player_data),
@@ -279,9 +289,13 @@ struct RenderableWorld {
             if (try_recreate_pipeline(pipe))
                 should_reinit0 = true;
         }
+#if USE_NEW_PRESENCE
+        bool should_reinit1 = try_recreate_pipeline(new_presence_pipeline);
+#else
         bool should_reinit1 =
             try_recreate_pipeline(subchunk_x2x4_pipeline) ||
             try_recreate_pipeline(subchunk_x8p_pipeline);
+#endif
         if (should_reinit0 || should_reinit1) {
             initialized = false;
             for (size_t zi = 0; zi < World::DIM.z; ++zi)
@@ -318,6 +332,12 @@ struct RenderableWorld {
 
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
 
+#if USE_NEW_PRESENCE
+        for (i32 zi = z_min; zi <= z_max; ++zi)
+            for (i32 yi = y_min; yi <= y_max; ++yi)
+                for (i32 xi = x_min; xi <= x_max; ++xi)
+                    update_subchunk(cmd_list, {xi, yi, zi}, 1);
+#else
         for (i32 zi = z_min; zi <= z_max; ++zi)
             for (i32 yi = y_min; yi <= y_max; ++yi)
                 for (i32 xi = x_min; xi <= x_max; ++xi)
@@ -328,15 +348,32 @@ struct RenderableWorld {
                 for (i32 xi = x_min; xi <= x_max; ++xi)
                     update_subchunk_x8p(cmd_list, {xi, yi, zi}, 1); // derive id mode (1)
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
+#endif
     }
 
     void update_subchunk(daxa::CommandListHandle cmd_list, glm::uvec3 chunk_i, u32 mode = 0) {
+#if USE_NEW_PRESENCE
+        auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
+        cmd_list.bindPipeline(new_presence_pipeline);
+        cmd_list.bindAll();
+        cmd_list.pushConstant(
+            VK_SHADER_STAGE_COMPUTE_BIT,
+            gpu::push::SubChunk{
+                .chunk_i = {chunk_i.x, chunk_i.y, chunk_i.z, 0},
+                .globalsID = compute_globals_i,
+                .mode = mode,
+            });
+        cmd_list.dispatch(4, 4, 4);
+#else
         update_subchunk_x2x4(cmd_list, chunk_i, mode);
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
         update_subchunk_x8p(cmd_list, chunk_i, mode);
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
+#endif
     }
 
+#if USE_NEW_PRESENCE
+#else
     void update_subchunk_x2x4(daxa::CommandListHandle cmd_list, glm::uvec3 chunk_i, u32 mode = 0) {
         auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
         cmd_list.bindPipeline(subchunk_x2x4_pipeline);
@@ -364,6 +401,7 @@ struct RenderableWorld {
             });
         cmd_list.dispatch(1, 1, 1);
     }
+#endif
 
     void draw(const glm::mat4 &vp_mat, const Player3D &player, daxa::CommandListHandle cmd_list, daxa::ImageViewHandle &render_image) {
         {
@@ -429,8 +467,8 @@ struct RenderableWorld {
             }
         }
 
-        // auto compute_modelload_i = model_load_buffer.getDescriptorIndex();
-        // compute_globals.model_load_index = compute_modelload_i;
+        auto compute_modelload_i = model_load_buffer.getDescriptorIndex();
+        compute_globals.model_load_index = compute_modelload_i;
 
         auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
 
@@ -568,8 +606,12 @@ struct RenderableWorld {
         create_pipeline(raymarch_compute_pipeline, "drawing/raymarch.hlsl");
         create_pipeline(pickblock_compute_pipeline, "utils/pickblock.hlsl");
         create_pipeline(blockedit_compute_pipeline, "world/blockedit.hlsl");
+#if USE_NEW_PRESENCE
+        create_pipeline(new_presence_pipeline, "world/new_presence.hlsl");
+#else
         create_pipeline(subchunk_x2x4_pipeline, "world/subchunk_x2x4.hlsl", "Main");
         create_pipeline(subchunk_x8p_pipeline, "world/subchunk_x8p.hlsl", "Main");
+#endif
 
         std::array<std::filesystem::path, 2> chunkgen_pass_paths = {
             "world/chunkgen/pass0.hlsl",

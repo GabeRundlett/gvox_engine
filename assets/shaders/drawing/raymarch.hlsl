@@ -51,7 +51,7 @@ uint tile_texture_index(StructuredBuffer<Globals> globals, BlockID block_id, Blo
     case BlockID::Sand:            return 27;
     case BlockID::Sandstone:       return 28;
     case BlockID::Stone:           return 29;
-    case BlockID::TallGrass:       return 30;
+    case BlockID::TallGrass:       return 11; // 30;
     case BlockID::Water:           return 31;
     default:                       return 0;
     }
@@ -127,7 +127,7 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
     if (!draw_ui(globals, uv, aspect, color)) {
         draw_world(globals, player_buffer, uv, pixel_i, subsamples, inv_subsamples, inv_frame_dim, aspect, color, depth);
     }
-    
+
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 0, globals[0].frame_dim.y / 2 - 4, 1, 9);
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 4, globals[0].frame_dim.y / 2 - 0, 9, 1);
 
@@ -141,8 +141,8 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
     float4 new_val = float4(pow(color, float3(1, 1, 1)), 1);
 #if ENABLE_TAA
     // if (pixel_i.x > globals[0].frame_dim.x / 2) {
-        output_image[pixel_i.xy] = prev_val * 0.8 + new_val * 0.2;
-    // } else {
+        output_image[pixel_i.xy] = prev_val * 0.90 + new_val * 0.1;
+    // } else 
     // output_image[pixel_i.xy] = new_val;
 #else
     output_image[pixel_i.xy] = new_val;
