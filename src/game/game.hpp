@@ -37,7 +37,7 @@ struct Game {
 
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
-        ImFont *font1 = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/consola.ttf", 14);
+        ImFont *font1 = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 14);
         ImGui_ImplGlfw_InitForVulkan(window.window_ptr, true);
         imgui_renderer.emplace(render_context.device, render_context.queue, render_context.pipeline_compiler);
     }
@@ -168,7 +168,7 @@ struct Game {
             const ImGuiViewport *viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->WorkPos);
             auto size = viewport->WorkSize;
-            size.x = std::min(0.5f * size.x, 400.0f);
+            size.x = std::min(0.5f * size.x, 300.0f);
             ImGui::SetNextWindowSize(size);
             ImGui::Begin("Example: Fullscreen window", nullptr, flags);
             ImGui::SliderInt("ChunkGen Updates/Frame", &world.chunk_updates_per_frame, 1, 50);
