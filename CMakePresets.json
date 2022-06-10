@@ -10,6 +10,7 @@
             "name": "defaults",
             "binaryDir": "${sourceDir}/.out/${presetName}",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
