@@ -3,7 +3,7 @@
 bool draw_ui(
     in StructuredBuffer<Globals> globals,
     in float2 uv, in float aspect, in out float3 color) {
-    uv.y -= 0.8;
+    uv.y -= 0.94;
     uv.y *= 1.0 / aspect;
     uv *= 2;
 

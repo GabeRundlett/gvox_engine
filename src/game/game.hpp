@@ -23,7 +23,7 @@ struct Game {
     Player3D player = reset_player();
     RenderableWorld world{render_context, player};
 
-    bool paused = true;
+    bool pause_menu = false;
     bool perf_menu = true;
 
     std::array<float, 40> frametimes = {};
@@ -36,6 +36,8 @@ struct Game {
         reset_keybinds();
 
         ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        ImFont *font1 = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/consola.ttf", 14);
         ImGui_ImplGlfw_InitForVulkan(window.window_ptr, true);
         imgui_renderer.emplace(render_context.device, render_context.queue, render_context.pipeline_compiler);
     }
@@ -86,7 +88,7 @@ struct Game {
     }
 
     void on_mouse_move(const glm::dvec2 m) {
-        if (!paused) {
+        if (pause_menu) {
             double center_x = static_cast<double>(window.frame_dim.x / 2);
             double center_y = static_cast<double>(window.frame_dim.y / 2);
             auto offset = glm::dvec2{m.x - center_x, center_y - m.y};
@@ -96,7 +98,7 @@ struct Game {
         }
     }
     void on_mouse_scroll(const glm::dvec2 offset) {
-        if (!paused) {
+        if (pause_menu) {
             // player.camera.fov -= static_cast<float>(offset.y);
             // if (player.camera.fov < 10.0f)
             //     player.camera.fov = 10.0f;
@@ -111,7 +113,7 @@ struct Game {
         }
     }
     void on_mouse_button(int button, int action) {
-        if (!paused) {
+        if (pause_menu) {
             switch (button) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 world.should_break = action != GLFW_RELEASE;
@@ -132,7 +134,7 @@ struct Game {
             toggle_pause();
         if (key == GLFW_KEY_F3 && action == GLFW_PRESS)
             perf_menu = !perf_menu;
-        if (!paused) {
+        if (pause_menu) {
             player.on_key(key, action);
         }
     }
@@ -141,8 +143,8 @@ struct Game {
     }
 
     void toggle_pause() {
-        window.set_mouse_capture(paused);
-        paused = !paused;
+        window.set_mouse_capture(!pause_menu);
+        pause_menu = !pause_menu;
     }
 
     void ui_update() {
@@ -150,27 +152,6 @@ struct Game {
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-        if (perf_menu) {
-            ImGui::Begin("Debug", &perf_menu, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
-
-            {
-                float average = 0.0f;
-                for (auto frametime : frametimes)
-                    average += frametime;
-                average /= static_cast<float>(frametimes.size());
-
-                fmt_str.clear();
-                fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
-                ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
-
-                fmt_str.clear();
-                fmt::format_to(std::back_inserter(fmt_str), "{:.2f} {:.2f} {:.2f}", player.pos.x, player.pos.y, player.pos.z);
-                ImGui::Text("%s", fmt_str.c_str());
-            }
-
-            ImGui::End();
-        }
 
         auto HelpMarker = [](const char *const desc) {
             if (ImGui::IsItemHovered()) {
@@ -182,13 +163,14 @@ struct Game {
             }
         };
 
-        // if (io.KeysDown[GLFW_KEY_E])
-        //     fire_ray();
-
-        if (paused) {
-            ImGui::Begin("Settings");
-            // if (ImGui::Button("Reset player"))
-            //     player = reset_player();
+        if (!pause_menu) {
+            const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            auto size = viewport->WorkSize;
+            size.x = std::min(0.5f * size.x, 400.0f);
+            ImGui::SetNextWindowSize(size);
+            ImGui::Begin("Example: Fullscreen window", nullptr, flags);
             ImGui::SliderInt("ChunkGen Updates/Frame", &world.chunk_updates_per_frame, 1, 50);
             ImGui::SliderFloat("Speed", &player.speed, 0.1f, 40.0f);
             HelpMarker("Speed to move (Blocks/s)");
@@ -268,12 +250,35 @@ struct Game {
                     }
                 }
             }
-
-            // auto id = imgui_renderer->getImGuiTextureId(world.atlas_texture_array);
-            // ImGui::Image(reinterpret_cast<void *>(id), ImVec2(32, 32));
-
             ImGui::End();
         }
+
+        if (perf_menu) {
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            auto pos = viewport->WorkPos;
+            pos.x += viewport->WorkSize.x - 240.0f;
+            ImGui::SetNextWindowPos(pos);
+
+            ImGui::Begin("Debug", &perf_menu, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
+            float average = 0.0f;
+            for (auto frametime : frametimes)
+                average += frametime;
+            average /= static_cast<float>(frametimes.size());
+
+            fmt_str.clear();
+            fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
+            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
+
+            fmt_str.clear();
+            fmt::format_to(std::back_inserter(fmt_str), "{:.2f} {:.2f} {:.2f}", player.pos.x, player.pos.y, player.pos.z);
+            ImGui::Text("%s", fmt_str.c_str());
+            ImGui::End();
+        }
+
+        ImGui::Begin("Console");
+        for (const auto &s : world.error_messages)
+            ImGui::Text("%s", s.c_str());
+        ImGui::End();
 
         ImGui::Render();
     }

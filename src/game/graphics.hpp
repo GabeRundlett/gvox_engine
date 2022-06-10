@@ -158,6 +158,9 @@ struct RenderableWorld {
     float delta_time;
     glm::vec2 mouse_offset{0, 0};
 
+    std::vector<std::string> error_messages;
+    bool compilation_failed = false;
+
     RenderableWorld(RenderContext &render_ctx, const Player3D &player) : render_ctx(render_ctx) {
         load_textures("assets/textures");
         load_shaders();
@@ -272,15 +275,21 @@ struct RenderableWorld {
     bool try_recreate_pipeline(daxa::PipelineHandle &pipe) {
         if (render_ctx.pipeline_compiler->checkIfSourcesChanged(pipe)) {
             auto result = render_ctx.pipeline_compiler->recreatePipeline(pipe);
-            std::cout << result << std::endl;
-            if (result)
+            // std::cout << result << std::endl;
+            if (result) {
                 pipe = result.value();
+            } else {
+                compilation_failed = true;
+                error_messages.push_back(result.message());
+            }
             return true;
         }
         return false;
     }
 
     void reload_shaders() {
+        compilation_failed = false;
+
         try_recreate_pipeline(raymarch_compute_pipeline);
         try_recreate_pipeline(blockedit_compute_pipeline);
         try_recreate_pipeline(pickblock_compute_pipeline);
@@ -303,6 +312,11 @@ struct RenderableWorld {
                     for (size_t xi = 0; xi < World::DIM.x; ++xi)
                         chunks[zi][yi][xi]->initialized = false;
         }
+
+        // if (!compilation_failed) {
+        //     error_messages.clear();
+        //     error_messages.push_back("All Good!");
+        // }
     }
 
     void update(float dt) {
