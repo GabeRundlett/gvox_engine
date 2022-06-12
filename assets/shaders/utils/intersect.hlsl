@@ -196,7 +196,7 @@ RayIntersection ray_step_voxels(StructuredBuffer<Globals> globals, in Ray ray, i
 }
 
 RayIntersection trace_chunks(StructuredBuffer<Globals> globals, in Ray ray) {
-    float3 b_min = float3(0, 0, 0), b_max = float3(int(CHUNK_NX * CHUNK_INDEX_REPEAT_X), int(CHUNK_NY * CHUNK_INDEX_REPEAT_Y), int(CHUNK_NZ * CHUNK_INDEX_REPEAT_Z)) * int(CHUNK_SIZE);
+    float3 b_min = float3(0, 0, 0), b_max = float3(BLOCK_NX, BLOCK_NY, BLOCK_NZ);
     RayIntersection result;
     result.hit = false;
     result.dist = 0;

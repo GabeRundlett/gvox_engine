@@ -467,12 +467,12 @@ struct RenderableWorld {
 
         mouse_offset = {0, 0};
 
-        for (size_t zi = 0; zi < World::DIM.z * World::CHUNK_REPEAT.z; ++zi) {
-            size_t zi_mod_dim = zi % World::DIM.z;
-            for (size_t yi = 0; yi < World::DIM.y * World::CHUNK_REPEAT.y; ++yi) {
-                size_t yi_mod_dim = yi % World::DIM.y;
-                for (size_t xi = 0; xi < World::DIM.x * World::CHUNK_REPEAT.x; ++xi) {
-                    size_t xi_mod_dim = xi % World::DIM.x;
+        for (size_t zi = 0; zi < World::DIM.z; ++zi) {
+            size_t zi_mod_dim = zi; // % World::DIM.z;
+            for (size_t yi = 0; yi < World::DIM.y; ++yi) {
+                size_t yi_mod_dim = yi; // % World::DIM.y;
+                for (size_t xi = 0; xi < World::DIM.x; ++xi) {
+                    size_t xi_mod_dim = xi; // % World::DIM.x;
                     if (chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->initialized)
                         compute_globals.chunk_ids[zi][yi][xi] = chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->chunkgen_image_a->getDescriptorIndex();
                     else

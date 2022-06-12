@@ -87,7 +87,6 @@ struct RenderContext {
             });
         }
         pipeline_compiler->addShaderSourceRootPath("assets/shaders");
-        pipeline_compiler->addShaderSourceRootPath("Daxa/shaders");
     }
 
     ~RenderContext() {
