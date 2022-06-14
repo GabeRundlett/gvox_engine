@@ -109,13 +109,15 @@ void draw_world(
             BlockID block_id = load_block_id(globals, intersection_pos);
             int3 intersection_block_pos = int3(intersection_pos);
 
+            float weather = 0; // sin(globals[0].time) * 0.5 + 0.5;
+
             if (ray_chunk_intersection.hit) {
 #if ENABLE_SHADOWS
                 sun_ray.o = intersection_pos + ray_chunk_intersection.nrm * 0.002;
                 RayIntersection sun_ray_chunk_intersection = trace_chunks(globals, sun_ray);
                 float val = float(!sun_ray_chunk_intersection.hit);
                 val = max(val * dot(ray_chunk_intersection.nrm, sun_ray.nrm), 0.01);
-                float3 light = val * 1 * sun_col;
+                float3 light = val * (1 - weather) * sun_col;
 #else
                 // float3 light = shaded(sun_ray, float3(1, 1, 1), ray_chunk_intersection.nrm);
                 float3 light = float3(0, 0, 0);
@@ -204,7 +206,7 @@ void draw_world(
                 }
 #endif
                 color += albedo * light;
-                float dist_exp = 1 - exp(pow(ray_chunk_intersection.dist * 0.005, 2) * -0.01);
+                float dist_exp = 1 - exp(pow(ray_chunk_intersection.dist * lerp(0.005, 0.03, weather), 2) * -0.01);
                 dist_exp = clamp(dist_exp, 0, 1);
                 color = lerp(color, sample_sky(sun_ray, cam_ray.nrm), dist_exp);
             } else {
