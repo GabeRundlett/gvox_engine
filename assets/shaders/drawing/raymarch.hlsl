@@ -124,9 +124,8 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
 #endif
     float2 uv = (float2(i_uv) + uv_offset * inv_subsamples) * inv_frame_dim * 2 - 1;
 
-    if (!draw_ui(globals, uv, aspect, color)) {
+    if (!draw_ui(globals, uv, aspect, color))
         draw_world(globals, player_buffer, uv, pixel_i, subsamples, inv_subsamples, inv_frame_dim, aspect, color, depth);
-    }
 
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 0, globals[0].frame_dim.y / 2 - 4, 1, 9);
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 4, globals[0].frame_dim.y / 2 - 0, 9, 1);
@@ -141,7 +140,7 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
     float4 new_val = float4(pow(color, float3(1, 1, 1)), 1);
 #if ENABLE_TAA
     // if (pixel_i.x > globals[0].frame_dim.x / 2) {
-        output_image[pixel_i.xy] = prev_val * 0.70 + new_val * 0.3;
+        output_image[pixel_i.xy] = prev_val * 0.7 + new_val * 0.3;
     // } else 
     // output_image[pixel_i.xy] = new_val;
 #else

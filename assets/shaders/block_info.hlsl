@@ -68,7 +68,7 @@ BlockID inventory_palette(uint index) {
     case 0: return BlockID::Brick;
     case 1: return BlockID::Cobblestone;
     case 2: return BlockID::Grass;
-    case 3: return BlockID::Dirt;
+    case 3: return BlockID::Water;
     case 4: return BlockID::Sand;
     case 5: return BlockID::Planks;
     case 6: return BlockID::Log;

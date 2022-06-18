@@ -20,8 +20,8 @@ struct Game {
     RenderContext render_context{vulkan_surface, window.frame_dim};
     std::optional<daxa::ImGuiRenderer> imgui_renderer = std::nullopt;
 
-    Player3D player = reset_player();
-    RenderableWorld world{render_context, player};
+    Player player;
+    RenderableWorld world{render_context};
 
     bool pause_menu = false;
     bool perf_menu = true;
@@ -32,7 +32,6 @@ struct Game {
 
     Game() {
         window.set_user_pointer<Game>(this);
-        reset_player();
         reset_keybinds();
 
         ImGui::CreateContext();
@@ -46,13 +45,6 @@ struct Game {
         player.keybinds = input::DEFAULT_KEYBINDS;
     }
 
-    static Player3D reset_player() {
-        Player3D result{};
-        result.pos = glm::vec3(512, -75, 120);
-        result.rot = {0.001f, -0.6f, 0.0f};
-        return result;
-    }
-
     void update() {
         auto now = Clock::now();
         float dt = std::chrono::duration<float>(now - prev_frame_time).count();
@@ -61,7 +53,6 @@ struct Game {
         frametime_rotation_index = (frametime_rotation_index + 1) % frametimes.size();
         ui_update();
         window.update();
-        player.update(dt);
         world.update(dt);
         redraw();
     }
@@ -73,11 +64,7 @@ struct Game {
         }
 
         auto cmd_list = render_context.begin_frame(window.frame_dim);
-        player.camera.resize(window.frame_dim.x, window.frame_dim.y);
-        player.camera.set_pos(player.pos);
-        player.camera.set_rot(player.rot.x, player.rot.y);
-        auto vp_mat = player.camera.vrot_mat;
-        world.draw(vp_mat, player, cmd_list, render_context.render_color_image);
+        world.draw(player, cmd_list, render_context.render_color_image);
         render_context.blit_to_swapchain(cmd_list);
         imgui_renderer->recordCommands(ImGui::GetDrawData(), cmd_list, render_context.swapchain_image.getImageViewHandle());
         render_context.end_frame(cmd_list);
@@ -92,7 +79,6 @@ struct Game {
             double center_x = static_cast<double>(window.frame_dim.x / 2);
             double center_y = static_cast<double>(window.frame_dim.y / 2);
             auto offset = glm::dvec2{m.x - center_x, center_y - m.y};
-            player.on_mouse_move(offset.x, offset.y);
             window.set_mouse_pos(glm::vec2(center_x, center_y));
             world.mouse_offset += glm::vec2(offset);
         }
@@ -270,7 +256,7 @@ struct Game {
             ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
 
             fmt_str.clear();
-            fmt::format_to(std::back_inserter(fmt_str), "{:.2f} {:.2f} {:.2f}", player.pos.x, player.pos.y, player.pos.z);
+            // fmt::format_to(std::back_inserter(fmt_str), "{:.2f} {:.2f} {:.2f}", player.pos.x, player.pos.y, player.pos.z);
             ImGui::Text("%s", fmt_str.c_str());
             ImGui::End();
         }

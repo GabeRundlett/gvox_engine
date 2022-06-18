@@ -14,6 +14,7 @@
 // Whether to cast shadow rays
 #define ENABLE_SHADOWS 1
 #define ENABLE_FAKE_SKY_LIGHTING 1
+#define ENABLE_REFLECTIONS 0
 // Whether to visualize the position that the view ray intersects
 #define SHOW_PICK_POS 1
 #define SHOW_DEBUG_BLOCKS 0

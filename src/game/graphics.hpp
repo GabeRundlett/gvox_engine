@@ -161,7 +161,7 @@ struct RenderableWorld {
     std::vector<std::string> error_messages;
     bool compilation_failed = false, recompiled = false;
 
-    RenderableWorld(RenderContext &render_ctx, const Player3D &player) : render_ctx(render_ctx) {
+    RenderableWorld(RenderContext &render_ctx) : render_ctx(render_ctx) {
         load_textures("assets/textures");
         load_shaders();
 
@@ -174,9 +174,9 @@ struct RenderableWorld {
         prev_break_time = start;
 
         gpu::Player player_data;
-        player_data.pos = glm::vec4(player.pos, 0);
-        player_data.vel = glm::vec4(player.vel, 0);
-        player_data.rot = glm::vec4(-player.rot, 0);
+        player_data.pos = glm::vec4(512, -75, 120, 0);
+        player_data.vel = glm::vec4(0);
+        player_data.rot = glm::vec4(0);
 
         std::ifstream model_voxfile("assets/models/suzanne.vox", std::ios::binary);
         std::vector<u8> buffer(std::istreambuf_iterator<char>(model_voxfile), {});
@@ -419,15 +419,17 @@ struct RenderableWorld {
     }
 #endif
 
-    void draw(const glm::mat4 &vp_mat, const Player3D &player, daxa::CommandListHandle cmd_list, daxa::ImageViewHandle &render_image) {
+    void draw(const Player &player, daxa::CommandListHandle cmd_list, daxa::ImageViewHandle &render_image) {
+        glm::vec3 player_pos = glm::vec3(0.0f);
+
         {
             auto prev_rough_chunk_i = player_rough_chunk_i;
-            player_rough_chunk_i = glm::ivec3(player.pos) / Chunk::DIM;
+            player_rough_chunk_i = glm::ivec3(player_pos) / Chunk::DIM;
             if (player_rough_chunk_i != prev_rough_chunk_i) {
                 std::sort(chunk_indices.begin(), chunk_indices.end(), [&](glm::uvec3 a, glm::uvec3 b) {
                     glm::vec3 wa = glm::vec3(glm::ivec3(a)) * glm::vec3(Chunk::DIM);
                     glm::vec3 wb = glm::vec3(glm::ivec3(b)) * glm::vec3(Chunk::DIM);
-                    return glm::dot(player.pos - wa, player.pos - wa) < glm::dot(player.pos - wb, player.pos - wb);
+                    return glm::dot(player_pos - wa, player_pos - wa) < glm::dot(player_pos - wb, player_pos - wb);
                 });
             }
         }
@@ -438,8 +440,7 @@ struct RenderableWorld {
         auto elapsed = std::chrono::duration<float>(now - start).count();
 
         auto compute_globals = gpu::ComputeGlobals{
-            .viewproj_mat = vp_mat,
-            .pos = glm::vec4(player.pos, 0),
+            .pos = glm::vec4(player_pos, 0),
             .frame_dim = {extent.width, extent.height},
             .time = elapsed,
             .fov = tanf(player.camera.fov * std::numbers::pi_v<f32> / 360.0f),
