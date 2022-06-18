@@ -66,10 +66,20 @@ void draw_world(
             float2 view_uv = (uv + inv_frame_dim * float2(xi, yi) * inv_subsamples) * globals[0].fov * float2(aspect, 1);
             float total_trace_dist = 0.0f;
 
-#if ENABLE_FISHEYE_LENS
+#if LENS_TYPE == LENS_TYPE_FISHEYE
             float r0 = atan2(view_uv.y, view_uv.x);
             float r1 = length(view_uv);
+            if (r1 > 3.14159f)
+                continue;
             float3 r = float3(0, sin(r1), cos(r1));
+            r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
+            cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+#elif LENS_TYPE == LENS_TYPE_EQUIRECTANGULAR
+            float r0 = view_uv.x;
+            float r1 = view_uv.y;
+            if (abs(r1) > 3.14159f * 0.5)
+                continue;
+            float3 r = float3(0, sin(r1 - 3.14159 * 0.5), cos(r1 - 3.14159 * 0.5));
             r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
             cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
 #else

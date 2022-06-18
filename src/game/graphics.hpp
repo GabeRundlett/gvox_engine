@@ -58,7 +58,6 @@ namespace gpu {
     };
 
     struct ComputeGlobals {
-        glm::mat4 viewproj_mat;
         glm::vec4 pos;
         glm::vec4 pick_pos[2];
         glm::ivec2 frame_dim;
