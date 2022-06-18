@@ -66,7 +66,16 @@ void draw_world(
             float2 view_uv = (uv + inv_frame_dim * float2(xi, yi) * inv_subsamples) * globals[0].fov * float2(aspect, 1);
             float total_trace_dist = 0.0f;
 
+#if ENABLE_FISHEYE_LENS
+            float r0 = atan2(view_uv.y, view_uv.x);
+            float r1 = length(view_uv);
+            float3 r = float3(0, sin(r1), cos(r1));
+            r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
+            cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+#else
             cam_ray.nrm = normalize(front + view_uv.x * right + view_uv.y * up);
+#endif
+
             cam_ray.inv_nrm = 1 / cam_ray.nrm;
 
             RayIntersection ray_chunk_intersection = trace_chunks(globals, cam_ray);
