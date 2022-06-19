@@ -33,11 +33,11 @@ float underworld_noise(float3 pos) {
     FractalNoiseConfig noise_conf = {
         /* .amplitude   = */ 1.0f,
         /* .persistance = */ 0.5f,
-        /* .scale       = */ 0.002f,
+        /* .scale       = */ 0.008f,
         /* .lacunarity  = */ 2,
-        /* .octaves     = */ 6,
+        /* .octaves     = */ 4,
     };
-    return fractal_noise(pos, noise_conf) + abs(400 - pos.y) * 0.015 - 1.0;
+    return fractal_noise(pos, noise_conf) + abs(320 - pos.y) * 0.03 - 1.5;
 }
 
 float cave_noise(float3 pos) {
@@ -48,7 +48,9 @@ float cave_noise(float3 pos) {
         /* .lacunarity  = */ 2,
         /* .octaves     = */ 4,
     };
-    return fractal_noise(pos, noise_conf) + abs(220 - pos.y) * 0.01 - 0.5;
+    float val = fractal_noise(pos, noise_conf) + 0.1 + (254 - pos.y + GROUND_LEVEL) * 0.026;
+    val -= smoothstep(-1, 1, (pos.y - 128 + GROUND_LEVEL) * 0.031) * 1.0;
+    return val;
 }
 
 struct WorldgenState {

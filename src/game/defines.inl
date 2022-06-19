@@ -1,7 +1,7 @@
 
 #define CHUNK_SIZE 64
 #define CHUNK_NX 16
-#define CHUNK_NY 4
+#define CHUNK_NY 6
 #define CHUNK_NZ 16
 #define BLOCK_NX (CHUNK_SIZE * CHUNK_NX)
 #define BLOCK_NY (CHUNK_SIZE * CHUNK_NY)
