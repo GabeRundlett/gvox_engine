@@ -447,6 +447,22 @@ struct RenderableWorld {
             .empty_chunk_index = empty_chunk->chunkgen_image_a->getDescriptorIndex(),
             .inventory_index = static_cast<u32>(inventory_index),
         };
+        for (size_t zi = 0; zi < World::DIM.z; ++zi) {
+            size_t zi_mod_dim = zi; // % World::DIM.z;
+            for (size_t yi = 0; yi < World::DIM.y; ++yi) {
+                size_t yi_mod_dim = yi; // % World::DIM.y;
+                for (size_t xi = 0; xi < World::DIM.x; ++xi) {
+                    size_t xi_mod_dim = xi; // % World::DIM.x;
+                    if (chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->initialized)
+                        compute_globals.chunk_ids[zi][yi][xi] = chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->chunkgen_image_a->getDescriptorIndex();
+                    else
+                        compute_globals.chunk_ids[zi][yi][xi] = empty_chunk->chunkgen_image_a->getDescriptorIndex();
+                }
+            }
+        }
+        auto compute_modelload_i = model_load_buffer.getDescriptorIndex();
+        compute_globals.model_load_index = compute_modelload_i;
+        auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
 
         auto compute_player = gpu::ComputePlayer{
             .input = {
@@ -468,25 +484,6 @@ struct RenderableWorld {
         };
 
         mouse_offset = {0, 0};
-
-        for (size_t zi = 0; zi < World::DIM.z; ++zi) {
-            size_t zi_mod_dim = zi; // % World::DIM.z;
-            for (size_t yi = 0; yi < World::DIM.y; ++yi) {
-                size_t yi_mod_dim = yi; // % World::DIM.y;
-                for (size_t xi = 0; xi < World::DIM.x; ++xi) {
-                    size_t xi_mod_dim = xi; // % World::DIM.x;
-                    if (chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->initialized)
-                        compute_globals.chunk_ids[zi][yi][xi] = chunks[zi_mod_dim][yi_mod_dim][xi_mod_dim]->chunkgen_image_a->getDescriptorIndex();
-                    else
-                        compute_globals.chunk_ids[zi][yi][xi] = empty_chunk->chunkgen_image_a->getDescriptorIndex();
-                }
-            }
-        }
-
-        auto compute_modelload_i = model_load_buffer.getDescriptorIndex();
-        compute_globals.model_load_index = compute_modelload_i;
-
-        auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
 
         cmd_list.singleCopyHostToBuffer({
             .src = reinterpret_cast<u8 *>(&compute_globals),
@@ -510,9 +507,7 @@ struct RenderableWorld {
                     break;
                 }
                 glm::uvec3 chunk_i = *chunk_iter;
-                u32 xi = chunk_i.x;
-                u32 yi = chunk_i.y;
-                u32 zi = chunk_i.z;
+                u32 xi = chunk_i.x, yi = chunk_i.y, zi = chunk_i.z;
                 chunks[zi][yi][xi]->initialized = true;
                 compute_globals.chunk_ids[zi][yi][xi] = chunks[zi][yi][xi]->chunkgen_image_a->getDescriptorIndex();
                 cmd_list.singleCopyHostToBuffer({
