@@ -67,21 +67,41 @@ void draw_world(
             float total_trace_dist = 0.0f;
 
 #if LENS_TYPE == LENS_TYPE_FISHEYE
-            float r0 = atan2(view_uv.y, view_uv.x);
-            float r1 = length(view_uv);
-            if (r1 > 3.14159f)
-                continue;
-            float3 r = float3(0, sin(r1), cos(r1));
-            r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
-            cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+            {
+                float r0 = atan2(view_uv.y, view_uv.x);
+                float r1 = length(view_uv);
+                if (r1 > 3.14159f)
+                    continue;
+                float3 r = float3(0, sin(r1), cos(r1));
+                r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
+                cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+            }
 #elif LENS_TYPE == LENS_TYPE_EQUIRECTANGULAR
-            float r0 = view_uv.x;
-            float r1 = view_uv.y;
-            if (abs(r1) > 3.14159f * 0.5)
-                continue;
-            float3 r = float3(0, sin(r1 - 3.14159 * 0.5), cos(r1 - 3.14159 * 0.5));
-            r = float3(cos(r0) * r.y, sin(r0) * r.y, r.z);
-            cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+            {
+                float r0 = -view_uv.x;
+                float r1 = view_uv.y;
+                float cos_r0 = cos(r0), sin_r0 = sin(r0);
+                float cos_r1 = cos(r1), sin_r1 = sin(r1);
+
+                if (abs(r1) > 3.14159f * 0.5)
+                    continue;
+                if (abs(r0) > 3.14159f)
+                    continue;
+
+                float3x3 ry = float3x3(
+                    +cos_r0, 0, -sin_r0,
+                          0, 1,       0,
+                    +cos_r0, 0, +cos_r0
+                );
+                float3x3 rx = float3x3(
+                    1,       0,       0,
+                    0, +cos_r1, +sin_r1,
+                    0, -sin_r1, +cos_r1
+                );
+
+                float3 r = mul(ry, mul(rx, float3(0, 0, 1)));
+                cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
+            }
 #else
             cam_ray.nrm = normalize(front + view_uv.x * right + view_uv.y * up);
 #endif
