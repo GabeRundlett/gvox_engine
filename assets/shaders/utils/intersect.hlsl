@@ -218,7 +218,9 @@ RayIntersection trace_chunks(StructuredBuffer<Globals> globals, in Ray ray) {
         }
     } else {
         RayIntersection bounds_intersection = ray_box_intersect(ray, b_min, b_max);
+        #if !VISUALIZE_SUBGRID
         if (!bounds_intersection.hit)
+        #endif
             return bounds_intersection;
         sdf_dist_total = bounds_intersection.dist;
         float3 sample_pos = ray.o + ray.nrm * sdf_dist_total;

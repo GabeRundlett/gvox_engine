@@ -9,8 +9,7 @@
 #define ALBEDO ALBEDO_TEXTURE
 // Whether to disable everything else and draw just the complexity
 #define VISUALIZE_STEP_COMPLEXITY 0
-#define ENABLE_X16 1
-#define ENABLE_X64 0
+#define VISUALIZE_SUBGRID 0
 // Whether to cast shadow rays
 #define ENABLE_SHADOWS 1
 #define ENABLE_FAKE_SKY_LIGHTING 1
@@ -22,15 +21,13 @@
 
 #define LENS_TYPE LENS_TYPE_DEFAULT
 // Whether to visualize the position that the view ray intersects
+#define SHOW_UI 1
 #define SHOW_PICK_POS 1
 #define SHOW_DEBUG_BLOCKS 0
 // Whether to variate the sample-space coordinates based on time
 #define JITTER_VIEW 0
 // Number of samples per axis (so a value of 4 means 16 samples)
 #define SUBSAMPLE_N 1
-
-// Visualize x_n grid (n can be 1, 2, 4, 8, 16, 32, or 64)
-#define VISUALIZE_SUBGRID 0
 
 #define BLOCKEDIT_RADIUS 0
 

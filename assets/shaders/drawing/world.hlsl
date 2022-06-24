@@ -90,14 +90,12 @@ void draw_world(
 
                 float3x3 ry = float3x3(
                     +cos_r0, 0, -sin_r0,
-                          0, 1,       0,
-                    +cos_r0, 0, +cos_r0
-                );
+                    0, 1, 0,
+                    +cos_r0, 0, +cos_r0);
                 float3x3 rx = float3x3(
-                    1,       0,       0,
+                    1, 0, 0,
                     0, +cos_r1, +sin_r1,
-                    0, -sin_r1, +cos_r1
-                );
+                    0, -sin_r1, +cos_r1);
 
                 float3 r = mul(ry, mul(rx, float3(0, 0, 1)));
                 cam_ray.nrm = normalize(front * r.z + right * r.x + up * r.y);
@@ -107,19 +105,37 @@ void draw_world(
 #endif
 
             cam_ray.inv_nrm = 1 / cam_ray.nrm;
+            float3 tint = float3(1, 1, 1);
 
             RayIntersection ray_chunk_intersection = trace_chunks(globals, cam_ray);
-#if VISUALIZE_STEP_COMPLEXITY
-            // color.r += float(ray_chunk_intersection.steps) * 10.0 / MAX_STEPS;
-            color.r += log(float(ray_chunk_intersection.steps) * 1 / MAX_STEPS + 1) * 10;
-#elif 0
+#if VISUALIZE_SUBGRID
             float3 intersection_pos = get_intersection_pos_corrected(cam_ray, ray_chunk_intersection);
-            BlockID block_id = load_block_id(globals, intersection_pos);
             int3 intersection_block_pos = int3(intersection_pos);
             if (ray_chunk_intersection.hit) {
+                float3 world_pos = intersection_block_pos;
+                uint3 chunk_i = int3(world_pos / CHUNK_SIZE);
+                uint3 in_chunk_p = int3(world_pos) - chunk_i * CHUNK_SIZE;
+                uint3 x_i = in_chunk_p / 32;
+                uint index = x_index<32>(x_i);
+                uint mask = x_mask(x_i);
+
                 uint lod = get_lod(globals, intersection_block_pos);
-                color.rgb += lod;
+                switch (lod) {
+                case 0: color += float3(0, 0, 0); break;
+                case 1: color += float3(0, 0, 1); break;
+                case 2: color += float3(0, 1, 0); break;
+                case 3: color += float3(0, 1, 1); break;
+                case 4: color += float3(1, 0, 0); break;
+                case 5: color += float3(1, 0, 1); break;
+                case 6: color += float3(1, 1, 0); break;
+                case 7: color += float3(1, 1, 1); break;
+                }
+            } else {
+                color += sample_sky(sun_ray, cam_ray.nrm);
             }
+#elif VISUALIZE_STEP_COMPLEXITY
+            // color.r += float(ray_chunk_intersection.steps) * 10.0 / MAX_STEPS;
+            color.r += log(float(ray_chunk_intersection.steps) * 1 / MAX_STEPS + 1) * 10;
 #elif 0
             if (ray_chunk_intersection.hit) {
                 float3 mask = abs(ray_chunk_intersection.nrm);
@@ -148,7 +164,6 @@ void draw_world(
             float3 intersection_pos = get_intersection_pos_corrected(cam_ray, ray_chunk_intersection);
             BlockID block_id = load_block_id(globals, intersection_pos);
 
-            float3 tint = float3(1, 1, 1);
             float3 water_color = 1;
 
             depth = ray_chunk_intersection.dist;
@@ -169,7 +184,7 @@ void draw_world(
                 float x = (noise(globals[0].time * 10 + intersection_pos.x * 3.3 * ripple_scl + intersection_pos.z * 3.1 * ripple_scl) - 0.5) * 0.5 * 0.1;
                 float y = (noise(globals[0].time * 11 + intersection_pos.y * 2.7 * ripple_scl + intersection_pos.x * 3.4 * ripple_scl) - 0.5) * 0.5 * 0.1;
                 float z = (noise(globals[0].time * 11 + intersection_pos.z * 2.9 * ripple_scl + intersection_pos.y * 3.2 * ripple_scl) - 0.5) * 0.5 * 0.1;
-                refl_ray.nrm = reflect(cam_ray.nrm, normalize(ray_chunk_intersection.nrm + float3(x, y, z) * pow(wawa.g * 4, 3) * 0.00 + (rand_vec3(intersection_pos) - 0.5) * 0.00));
+                refl_ray.nrm = reflect(cam_ray.nrm, normalize(ray_chunk_intersection.nrm + float3(x, y, z) * pow(wawa.g * 4, 3) * 0.2 + (rand_vec3(intersection_pos) - 0.5) * 0.01));
                 refl_ray.inv_nrm = 1.0 / refl_ray.nrm;
                 RayIntersection refl_ray_chunk_intersection = trace_chunks(globals, refl_ray);
                 intersection_pos = get_intersection_pos_corrected(refl_ray, refl_ray_chunk_intersection);
@@ -258,7 +273,12 @@ void draw_world(
                 //     int2(0, 0),
                 //     1.0f).rgb;
                 float3 albedo = daxa::getTexture2DArray<float4>(globals[0].texture_index).Load(int4(tex_uv.x * 16, tex_uv.y * 16, tex_id, 0)).rgb;
-                // float3 albedo = 1;
+                // make lava glow
+                if (tex_id >= 13 && tex_id <= 20)
+                    albedo *= 2;
+                // make molten rock glow
+                if (tex_id == 24)
+                    albedo = albedo * (clamp(1 - pow(length(float3(1, 0, 0) - albedo), 5) * 1.5, 0, 1) * 5 + 1);
 #elif ALBEDO == ALBEDO_DEBUG_POS
                 float3 albedo = b_uv;
 #elif ALBEDO == ALBEDO_DEBUG_NRM

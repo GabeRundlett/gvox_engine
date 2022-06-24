@@ -2,8 +2,7 @@
 
 #include "utils/noise.hlsl"
 #include "block_info.hlsl"
-
-#define GROUND_LEVEL 0
+#include "world/chunkgen/defines.hlsl"
 
 float terrain_noise(float3 pos) {
     FractalNoiseConfig noise_conf = {
@@ -22,7 +21,7 @@ float biome_noise(float3 pos) {
     FractalNoiseConfig noise_conf = {
         /* .amplitude   = */ 1.0f,
         /* .persistance = */ 0.4f,
-        /* .scale       = */ 0.001f,
+        /* .scale       = */ 0.001f * 4,
         /* .lacunarity  = */ 6,
         /* .octaves     = */ 4,
     };
@@ -37,7 +36,7 @@ float underworld_noise(float3 pos) {
         /* .lacunarity  = */ 2,
         /* .octaves     = */ 4,
     };
-    return fractal_noise(pos, noise_conf) + abs(320 - pos.y) * 0.03 - 1.5;
+    return fractal_noise(pos, noise_conf) + abs(340 - GROUND_LEVEL - pos.y) * 0.05 - 1.5;
 }
 
 float cave_noise(float3 pos) {

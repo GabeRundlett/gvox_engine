@@ -61,7 +61,7 @@ DAXA_DEFINE_BA_BUFFER(Globals)
 DAXA_DEFINE_BA_BUFFER(ModelLoadBuffer)
 
 BlockID load_block_id(StructuredBuffer<Globals> globals, float3 pos) {
-    int3 chunk_i = int3(pos / CHUNK_SIZE);
+    int3 chunk_i = int3(pos / CHUNK_SIZE) - (pos < 0);
     if (chunk_i.x < 0 || chunk_i.x > CHUNK_NX - 1 ||
         chunk_i.y < 0 || chunk_i.y > CHUNK_NY - 1 ||
         chunk_i.z < 0 || chunk_i.z > CHUNK_NZ - 1) {

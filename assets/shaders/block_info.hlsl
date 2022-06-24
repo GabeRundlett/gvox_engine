@@ -79,4 +79,3 @@ BlockID inventory_palette(uint index) {
 }
 
 #include "../../src/game/defines.inl"
-#define WATER_LEVEL 160

@@ -173,7 +173,7 @@ struct RenderableWorld {
         prev_break_time = start;
 
         gpu::Player player_data;
-        player_data.pos = glm::vec4(512, -75, 120, 0);
+        player_data.pos = glm::vec4(BLOCK_NX / 2, -BLOCK_NY / 8, -BLOCK_NZ / 4, 0);
         player_data.vel = glm::vec4(0);
         player_data.rot = glm::vec4(0);
 

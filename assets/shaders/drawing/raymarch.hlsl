@@ -124,11 +124,15 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
 #endif
     float2 uv = (float2(i_uv) + uv_offset * inv_subsamples) * inv_frame_dim * 2 - 1;
 
+#if SHOW_UI
     if (!draw_ui(globals, uv, aspect, color))
+#endif
         draw_world(globals, player_buffer, uv, pixel_i, subsamples, inv_subsamples, inv_frame_dim, aspect, color, depth);
 
+#if SHOW_UI
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 0, globals[0].frame_dim.y / 2 - 4, 1, 9);
     draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 2 - 4, globals[0].frame_dim.y / 2 - 0, 9, 1);
+#endif
 
     // draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 4 - 0, globals[0].frame_dim.y / 2 - 4, 1, 9);
     // draw_rect(pixel_i.xy, color, globals[0].frame_dim.x / 4 - 4, globals[0].frame_dim.y / 2 - 0, 9, 1);

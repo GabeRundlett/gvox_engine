@@ -150,93 +150,98 @@ struct Game {
         };
 
         if (!pause_menu) {
-            const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
-            const ImGuiViewport *viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->WorkPos);
-            auto size = viewport->WorkSize;
-            size.x = std::min(0.5f * size.x, 300.0f);
-            ImGui::SetNextWindowSize(size);
-            ImGui::Begin("Example: Fullscreen window", nullptr, flags);
-            ImGui::SliderInt("ChunkGen Updates/Frame", &world.chunk_updates_per_frame, 1, 50);
-            ImGui::SliderFloat("Speed", &player.speed, 0.1f, 40.0f);
-            HelpMarker("Speed to move (Blocks/s)");
-            ImGui::SliderFloat("Sprint Speed", &player.sprint_speed, 1.1f, 50.0f);
-            HelpMarker("Sprint Multiplier");
-            ImGui::SliderFloat("FOV", &player.camera.fov, 0.1f, 170.0f);
-            HelpMarker("Vertical field of view (Degrees)");
-            ImGui::SliderFloat("Sensitivity", &player.mouse_sens, 0.01f, 10.0f);
-            HelpMarker("Mouse rotation speed (Radians/Pixels_moved/200)");
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("Settings")) {
+                    ImGui::SliderInt("ChunkGen Updates/Frame", &world.chunk_updates_per_frame, 1, 50);
+                    ImGui::SliderFloat("Speed", &player.speed, 0.1f, 40.0f);
+                    HelpMarker("Speed to move (Blocks/s)");
+                    ImGui::SliderFloat("Sprint Speed", &player.sprint_speed, 1.1f, 50.0f);
+                    HelpMarker("Sprint Multiplier");
+                    ImGui::SliderFloat("FOV", &player.camera.fov, 0.1f, 170.0f);
+                    HelpMarker("Vertical field of view (Degrees)");
+                    ImGui::SliderFloat("Sensitivity", &player.mouse_sens, 0.01f, 10.0f);
+                    HelpMarker("Mouse rotation speed (Radians/Pixels_moved/200)");
 
-            ImGui::Checkbox("Limit place speed", &world.limit_place_speed);
-            if (world.limit_place_speed) {
-                ImGui::SliderFloat("Place speed", &world.place_speed, 0.01f, 1.0f);
-                HelpMarker("Rate at which to place voxels (times/s)");
-            }
-            ImGui::Checkbox("Limit break speed", &world.limit_break_speed);
-            if (world.limit_break_speed) {
-                ImGui::SliderFloat("Break speed", &world.break_speed, 0.01f, 1.0f);
-                HelpMarker("Rate at which to break voxels (times/s)");
-            }
+                    ImGui::Checkbox("Limit place speed", &world.limit_place_speed);
+                    if (world.limit_place_speed) {
+                        ImGui::SliderFloat("Place speed", &world.place_speed, 0.01f, 1.0f);
+                        HelpMarker("Rate at which to place voxels (times/s)");
+                    }
+                    ImGui::Checkbox("Limit break speed", &world.limit_break_speed);
+                    if (world.limit_break_speed) {
+                        ImGui::SliderFloat("Break speed", &world.break_speed, 0.01f, 1.0f);
+                        HelpMarker("Rate at which to break voxels (times/s)");
+                    }
 
-            if (ImGui::TreeNode("Keybinds")) {
-                if (ImGui::Button("Reset"))
-                    reset_keybinds();
-                static i32 *selected_keyitem = nullptr;
-                if (ImGui::BeginTable("table1", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                    ImGui::TableSetupColumn("Control", ImGuiTableColumnFlags_WidthFixed);
-                    ImGui::TableSetupColumn("Keybind", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableHeadersRow();
+                    if (ImGui::TreeNode("Keybinds")) {
+                        if (ImGui::Button("Reset"))
+                            reset_keybinds();
+                        static i32 *selected_keyitem = nullptr;
+                        if (ImGui::BeginTable("table1", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
+                            ImGui::TableSetupColumn("Control", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableSetupColumn("Keybind", ImGuiTableColumnFlags_WidthStretch);
+                            ImGui::TableHeadersRow();
 
-                    auto keycode_to_str = [](i32 key) -> const char * {
-                        static char s[32] = {};
-                        for (auto &c : s)
-                            c = '\0';
-                        if ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') || (key >= 'A' && key <= 'Z')) {
-                            s[0] = static_cast<char>(key);
-                        } else if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-                            s[0] = 'S', s[1] = 'h', s[2] = 'i', s[3] = 'f', s[4] = 't';
-                        } else if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
-                            s[0] = 'C', s[1] = 't', s[2] = 'r', s[3] = 'l';
-                        } else if (key == GLFW_KEY_SPACE) {
-                            s[0] = 'S', s[1] = 'p', s[2] = 'a', s[3] = 'c', s[4] = 'e';
-                        } else {
-                            s[0] = '?';
+                            auto keycode_to_str = [](i32 key) -> const char * {
+                                static char s[32] = {};
+                                for (auto &c : s)
+                                    c = '\0';
+                                if ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') || (key >= 'A' && key <= 'Z')) {
+                                    s[0] = static_cast<char>(key);
+                                } else if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
+                                    s[0] = 'S', s[1] = 'h', s[2] = 'i', s[3] = 'f', s[4] = 't';
+                                } else if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
+                                    s[0] = 'C', s[1] = 't', s[2] = 'r', s[3] = 'l';
+                                } else if (key == GLFW_KEY_SPACE) {
+                                    s[0] = 'S', s[1] = 'p', s[2] = 'a', s[3] = 'c', s[4] = 'e';
+                                } else {
+                                    s[0] = '?';
+                                }
+                                return s;
+                            };
+
+                            auto keybind_row = [&](const char *label, i32 &key) {
+                                ImGui::TableNextRow();
+                                ImGui::TableSetColumnIndex(0);
+                                if (ImGui::Selectable(label, selected_keyitem == &key))
+                                    selected_keyitem = &key;
+                                ImGui::TableSetColumnIndex(1);
+                                ImGui::Text("%s", keycode_to_str(key));
+                            };
+
+                            keybind_row("Move forwards", player.keybinds.move_pz);
+                            keybind_row("Move backwards", player.keybinds.move_nz);
+                            keybind_row("Move left", player.keybinds.move_px);
+                            keybind_row("Move right", player.keybinds.move_nx);
+                            keybind_row("Ascend", player.keybinds.move_py);
+                            keybind_row("Descend", player.keybinds.move_ny);
+                            keybind_row("Sprint", player.keybinds.toggle_sprint);
+
+                            ImGui::EndTable();
                         }
-                        return s;
-                    };
 
-                    auto keybind_row = [&](const char *label, i32 &key) {
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        if (ImGui::Selectable(label, selected_keyitem == &key))
-                            selected_keyitem = &key;
-                        ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%s", keycode_to_str(key));
-                    };
-
-                    keybind_row("Move forwards", player.keybinds.move_pz);
-                    keybind_row("Move backwards", player.keybinds.move_nz);
-                    keybind_row("Move left", player.keybinds.move_px);
-                    keybind_row("Move right", player.keybinds.move_nx);
-                    keybind_row("Ascend", player.keybinds.move_py);
-                    keybind_row("Descend", player.keybinds.move_ny);
-                    keybind_row("Sprint", player.keybinds.toggle_sprint);
-
-                    ImGui::EndTable();
-                }
-
-                ImGui::TreePop();
-                if (selected_keyitem != nullptr) {
-                    for (int i = 0; i < IM_ARRAYSIZE(io.KeysDown); i++) {
-                        if (ImGui::IsKeyPressed(i)) {
-                            *selected_keyitem = i;
-                            selected_keyitem = nullptr;
-                            break;
+                        ImGui::TreePop();
+                        if (selected_keyitem != nullptr) {
+                            for (int i = 0; i < IM_ARRAYSIZE(io.KeysDown); i++) {
+                                if (ImGui::IsKeyPressed(i)) {
+                                    *selected_keyitem = i;
+                                    selected_keyitem = nullptr;
+                                    break;
+                                }
+                            }
                         }
                     }
+
+                    ImGui::EndMenu();
                 }
+
+                if (ImGui::BeginMenu("Console")) {
+                    for (const auto &s : world.error_messages)
+                        ImGui::Text("%s", s.c_str());
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
             }
-            ImGui::End();
         }
 
         if (perf_menu) {
@@ -260,11 +265,6 @@ struct Game {
             ImGui::Text("%s", fmt_str.c_str());
             ImGui::End();
         }
-
-        ImGui::Begin("Console");
-        for (const auto &s : world.error_messages)
-            ImGui::Text("%s", s.c_str());
-        ImGui::End();
 
         ImGui::Render();
     }
