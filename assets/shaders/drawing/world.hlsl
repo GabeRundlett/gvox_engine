@@ -1,6 +1,6 @@
 #pragma once
 
-#define sun_col float3(1.0, 0.84, 0.75) * 4.5
+#define sun_col float3(1.0, 0.84, 0.75) * 2.5
 
 float3 sample_sky(in Ray sun_ray, float3 nrm) {
     float sun_val = clamp((dot(nrm, sun_ray.nrm) - 0.9999) * 10000, 0, 1);
@@ -112,6 +112,7 @@ void draw_world(
             float3 intersection_pos = get_intersection_pos_corrected(cam_ray, ray_chunk_intersection);
             int3 intersection_block_pos = int3(intersection_pos);
             if (ray_chunk_intersection.hit) {
+                BlockID block_id = load_block_id(globals, intersection_pos);
                 float3 world_pos = intersection_block_pos;
                 uint3 chunk_i = int3(world_pos / CHUNK_SIZE);
                 uint3 in_chunk_p = int3(world_pos) - chunk_i * CHUNK_SIZE;
@@ -121,15 +122,50 @@ void draw_world(
 
                 uint lod = get_lod(globals, intersection_block_pos);
                 switch (lod) {
-                case 0: color += float3(0, 0, 0); break;
-                case 1: color += float3(0, 0, 1); break;
-                case 2: color += float3(0, 1, 0); break;
-                case 3: color += float3(0, 1, 1); break;
-                case 4: color += float3(1, 0, 0); break;
-                case 5: color += float3(1, 0, 1); break;
-                case 6: color += float3(1, 1, 0); break;
-                case 7: color += float3(1, 1, 1); break;
+                case 0: color += float3(0.00, 0.00, 0.00); break;
+                case 1: color += float3(0.01, 0.01, 0.06); break;
+                case 2: color += float3(0.01, 0.03, 0.10); break;
+                case 3: color += float3(0.00, 0.10, 0.14); break;
+                case 4: color += float3(0.00, 0.20, 0.15); break;
+                case 5: color += float3(0.00, 0.30, 0.12); break;
+                case 6: color += float3(0.00, 0.40, 0.04); break;
+                case 7: color += float3(0.01, 0.70, 0.02); break;
                 }
+
+                float3 lod_block_uv = float3(fmod(intersection_pos, (1u << lod) * 0.5)) / (1u << lod) * 2;
+
+                float3 b_uv = float3(int3(intersection_pos) % 64) / 64;
+                BlockFace face_id;
+                float2 tex_uv = float2(0, 0);
+                float2 lod_uv = float2(0, 0);
+                uint tex_id;
+                get_texture_info(globals, ray_chunk_intersection, intersection_pos, block_id, tex_uv, face_id, tex_id);
+
+                if (ray_chunk_intersection.nrm.x > 0.5) {
+                    lod_uv = lod_block_uv.zy;
+                    lod_uv.y = 1 - lod_uv.y;
+                } else if (ray_chunk_intersection.nrm.x < -0.5) {
+                    lod_uv = lod_block_uv.zy;
+                    lod_uv = 1 - lod_uv;
+                }
+                if (ray_chunk_intersection.nrm.y > 0.5) {
+                    lod_uv = lod_block_uv.xz;
+                    lod_uv.x = 1 - lod_uv.x;
+                } else if (ray_chunk_intersection.nrm.y < -0.5) {
+                    lod_uv = lod_block_uv.xz;
+                }
+                if (ray_chunk_intersection.nrm.z > 0.5) {
+                    lod_uv = lod_block_uv.xy;
+                    lod_uv = 1 - lod_uv;
+                } else if (ray_chunk_intersection.nrm.z < -0.5) {
+                    lod_uv = lod_block_uv.xy;
+                    lod_uv.y = 1 - lod_uv.y;
+                }
+
+                float2 tuv = abs(lod_uv - 0.5);
+                float t_max = max(tuv.x, tuv.y);
+                if (t_max < 0.5 - 0.5 / (1u << lod))
+                    color = daxa::getTexture2DArray<float4>(globals[0].texture_index).Load(int4(tex_uv.x * 16, tex_uv.y * 16, tex_id, 0)).rgb;
             } else {
                 color += sample_sky(sun_ray, cam_ray.nrm);
             }

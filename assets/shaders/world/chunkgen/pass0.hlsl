@@ -166,6 +166,7 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
         case BiomeID::Forest:
             if (worldgen_state.r_xz < 0.01) {
                 int trunk_height = 1; // int(5 + worldgen_state.r_xz * 400);
+#if INJECT_STRUCTURES
                 if (surroundings.depth_below < trunk_height) {
                     if (globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n < 127) {
                         int structure_n;
@@ -175,6 +176,7 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
                     }
                     worldgen_state.block_id = BlockID::Log;
                 }
+#endif
             } else if (worldgen_state.r < 0.5 && surroundings.depth_below == 0) {
                 worldgen_state.block_id = BlockID::Leaves;
             }
@@ -211,8 +213,10 @@ BlockID gen_block(in float3 b_pos) {
     }
 #else
     block_pass0(worldgen_state, b_pos);
+#if DO_DETAILED_GEN
     SurroundingInfo surroundings = get_surrounding(worldgen_state, b_pos);
     block_pass2(worldgen_state, b_pos, surroundings);
+#endif
 #endif
 
     return worldgen_state.block_id;
@@ -225,5 +229,5 @@ BlockID gen_block(in float3 b_pos) {
     uint chunk_texture_id = p.output_image_i;
     RWTexture3D<uint> chunk = daxa::getRWTexture3D<uint>(chunk_texture_id);
 
-    chunk[int3(global_i)] = (uint)gen_block(block_pos * GEN_SCL + BLOCK_OFFSET);
+    chunk[int3(global_i)] = (uint)gen_block(block_pos * GEN_SCL * float3(1, 1, 1) + BLOCK_OFFSET);
 }

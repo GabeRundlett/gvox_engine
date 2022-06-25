@@ -144,7 +144,7 @@ void get_texture_info(in StructuredBuffer<Globals> globals, in RayIntersection r
     float4 new_val = float4(pow(color, float3(1, 1, 1)), 1);
 #if ENABLE_TAA
     // if (pixel_i.x > globals[0].frame_dim.x / 2) {
-        output_image[pixel_i.xy] = prev_val * 0.7 + new_val * 0.3;
+        output_image[pixel_i.xy] = prev_val * (1.0 - TAA_MIXING) + new_val * TAA_MIXING;
     // } else 
     // output_image[pixel_i.xy] = new_val;
 #else

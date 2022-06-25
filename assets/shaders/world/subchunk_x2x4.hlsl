@@ -52,11 +52,12 @@ void Main(
     uint3 in_chunk_i = x2_i * 2;
 
     bool at_least_one_occluding = false;
+    BlockID base_id_x1 = (BlockID)chunk[in_chunk_i];
     for (int x = 0; x < 2; ++x) 
     for (int y = 0; y < 2; ++y) 
     for (int z = 0; z < 2; ++z) {
-        int3 local_i = in_chunk_i + int3(x,y,z);
-        at_least_one_occluding = at_least_one_occluding || is_block_occluding((BlockID)chunk[local_i]);
+        int3 local_i = in_chunk_i + int3(x,y,z); // in x1 space
+        at_least_one_occluding = at_least_one_occluding || ((BlockID)chunk[local_i] != base_id_x1);
     }
 
     uint result = 0;
@@ -87,18 +88,19 @@ void Main(
         0
     );
     x2_i = x4_i * 2;
+    BlockID base_id_x2 = (BlockID)chunk[x2_i * 2];
     at_least_one_occluding = false;
     for (int x = 0; x < 2; ++x) 
     for (int y = 0; y < 2; ++y) 
     for (int z = 0; z < 2; ++z) {
-        int3 local_i = x2_i + int3(x,y,z);
+        int3 local_i = x2_i + int3(x,y,z); // in x2 space
         uint mask = x_mask(local_i);
         uint2 x2_in_group_index = uint2(
             local_i.x & 0x3,
             local_i.y & 0x3
         );
         bool is_occluding = (local_x2_copy[x2_in_group_index.x][x2_in_group_index.y] & mask) != 0;
-        at_least_one_occluding = at_least_one_occluding || is_occluding;
+        at_least_one_occluding = at_least_one_occluding || is_occluding || ((BlockID)chunk[local_i * 2] != base_id_x2);
     }
     result = 0;
     if (at_least_one_occluding) {

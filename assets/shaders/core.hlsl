@@ -7,11 +7,6 @@
 DAXA_DEFINE_BA_RWTEXTURE3D(uint)
 DAXA_DEFINE_BA_TEXTURE3D(uint)
 
-#if USE_NEW_PRESENCE
-struct ChunkBlockPresence {
-    uint data[32 * 32 * 32 / 8];
-};
-#else
 struct ChunkBlockPresence {
     uint x2[1024];
     uint x4[256];
@@ -19,7 +14,6 @@ struct ChunkBlockPresence {
     uint x16[16];
     uint x32[4];
 };
-#endif
 
 struct Structure {
     float4 p;

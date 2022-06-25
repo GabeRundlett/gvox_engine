@@ -4,6 +4,7 @@
 #include "utils/ray.hlsl"
 
 struct DDA_RunState {
+    float3 color;
     uint side;
     uint total_steps;
     bool hit, outside_bounds;
@@ -11,12 +12,11 @@ struct DDA_RunState {
 };
 
 uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
-#if USE_NEW_PRESENCE
-    return x_load_presence(globals, p);
-#else
     BlockID block_id = load_block_id(globals, int3(p));
+#if !VISUALIZE_SUBGRID
     if (is_block_occluding(block_id))
         return 0;
+#endif
     if (x_load_presence<2>(globals, p))
         return 1;
     if (x_load_presence<4>(globals, p))
@@ -27,8 +27,9 @@ uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
         return 4;
     if (x_load_presence<32>(globals, p))
         return 5;
-    return 6;
-#endif
+    if (x_load_presence<64>(globals, p))
+        return 6;
+    return 7;
 }
 
 void run_dda_main(StructuredBuffer<Globals> globals, in Ray ray, in out DDA_RunState run_state, in float3 b_min, in float3 b_max, in uint max_steps) {

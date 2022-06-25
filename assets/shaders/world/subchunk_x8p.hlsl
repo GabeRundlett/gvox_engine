@@ -44,15 +44,17 @@ void Main(
     RWTexture3D<uint> chunk = daxa::getRWTexture3D<uint>(chunk_id);
     uint3 x4_i = x8_i * 2;
 
+    BlockID base_id_x4 = (BlockID)chunk[x4_i * 4];
+
     bool at_least_one_occluding = false;
     for (int x = 0; x < 2; ++x) 
     for (int y = 0; y < 2; ++y) 
     for (int z = 0; z < 2; ++z) {
-        int3 local_i = x4_i + int3(x,y,z);
+        int3 local_i = x4_i + int3(x,y,z); // x4 space
         uint index = x_index<4>(local_i);
         uint mask = x_mask(local_i);
         bool occluding = (globals[0].chunk_block_presence[chunk_i.z][chunk_i.y][chunk_i.x].x4[index] & mask) != 0;
-        at_least_one_occluding = at_least_one_occluding || occluding;
+        at_least_one_occluding = at_least_one_occluding || occluding || ((BlockID)chunk[local_i * 4] != base_id_x4);
     }
 
     uint result = 0;
@@ -82,16 +84,17 @@ void Main(
         group_local_ID.x & 0x3
     );
     x8_i = x16_i * 2;
+    BlockID base_id_x8 = (BlockID)chunk[x8_i * 8];
 
     at_least_one_occluding = false;
     for (int x = 0; x < 2; ++x) 
     for (int y = 0; y < 2; ++y) 
     for (int z = 0; z < 2; ++z) {
-        int3 local_i = x8_i + int3(x,y,z);
+        int3 local_i = x8_i + int3(x,y,z); // x8 space
         uint mask = x_mask(local_i);
         uint index = x_index<8>(local_i);
         bool is_occluding = (local_x8_copy[index] & mask) != 0;
-        at_least_one_occluding = at_least_one_occluding || is_occluding;
+        at_least_one_occluding = at_least_one_occluding || is_occluding || ((BlockID)chunk[local_i * 8] != base_id_x8);
     }
 
     result = 0;
@@ -121,16 +124,17 @@ void Main(
         group_local_ID.x & 0x1
     );
     x16_i = x32_i * 2;
+    BlockID base_id_x16 = (BlockID)chunk[x16_i * 16];
 
     at_least_one_occluding = false;
     for (int x = 0; x < 2; ++x) 
     for (int y = 0; y < 2; ++y) 
     for (int z = 0; z < 2; ++z) {
-        int3 local_i = x16_i + int3(x,y,z);
+        int3 local_i = x16_i + int3(x,y,z); // x16 space
         uint mask = x_mask(local_i);
         uint index = x_index<16>(local_i);
         bool is_occluding = (local_x16_copy[index] & mask) != 0;
-        at_least_one_occluding = at_least_one_occluding || is_occluding;
+        at_least_one_occluding = at_least_one_occluding || is_occluding || ((BlockID)chunk[local_i * 16] != base_id_x16);
     }
 
     result = 0;

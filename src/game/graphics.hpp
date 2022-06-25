@@ -32,11 +32,6 @@ namespace gpu {
         Camera camera;
     };
 
-#if USE_NEW_PRESENCE
-    struct ChunkBlockPresence {
-        u32 data[32 * 32 * 32 / 8];
-    };
-#else
     struct ChunkBlockPresence {
         u32 x2[1024];
         u32 x4[256];
@@ -44,7 +39,6 @@ namespace gpu {
         u32 x16[16];
         u32 x32[4];
     };
-#endif
 
     struct Structure {
         glm::vec4 p;
@@ -129,12 +123,8 @@ struct RenderableWorld {
     daxa::PipelineHandle raymarch_compute_pipeline;
     daxa::PipelineHandle pickblock_compute_pipeline;
     daxa::PipelineHandle blockedit_compute_pipeline;
-#if USE_NEW_PRESENCE
-    daxa::PipelineHandle new_presence_pipeline;
-#else
     daxa::PipelineHandle subchunk_x2x4_pipeline;
     daxa::PipelineHandle subchunk_x8p_pipeline;
-#endif
     std::array<daxa::PipelineHandle, 2> chunkgen_compute_pipeline_passes;
 
     daxa::BufferHandle compute_globals_buffer;
@@ -299,13 +289,9 @@ struct RenderableWorld {
             if (try_recreate_pipeline(pipe))
                 should_reinit0 = true;
         }
-#if USE_NEW_PRESENCE
-        bool should_reinit1 = try_recreate_pipeline(new_presence_pipeline);
-#else
         bool should_reinit1 =
             try_recreate_pipeline(subchunk_x2x4_pipeline) ||
             try_recreate_pipeline(subchunk_x8p_pipeline);
-#endif
         if (should_reinit0 || should_reinit1) {
             initialized = false;
             for (size_t zi = 0; zi < World::DIM.z; ++zi)
@@ -347,12 +333,6 @@ struct RenderableWorld {
 
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
 
-#if USE_NEW_PRESENCE
-        for (i32 zi = z_min; zi <= z_max; ++zi)
-            for (i32 yi = y_min; yi <= y_max; ++yi)
-                for (i32 xi = x_min; xi <= x_max; ++xi)
-                    update_subchunk(cmd_list, {xi, yi, zi}, 1);
-#else
         for (i32 zi = z_min; zi <= z_max; ++zi)
             for (i32 yi = y_min; yi <= y_max; ++yi)
                 for (i32 xi = x_min; xi <= x_max; ++xi)
@@ -363,32 +343,15 @@ struct RenderableWorld {
                 for (i32 xi = x_min; xi <= x_max; ++xi)
                     update_subchunk_x8p(cmd_list, {xi, yi, zi}, 1); // derive id mode (1)
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-#endif
     }
 
     void update_subchunk(daxa::CommandListHandle cmd_list, glm::uvec3 chunk_i, u32 mode = 0) {
-#if USE_NEW_PRESENCE
-        auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
-        cmd_list.bindPipeline(new_presence_pipeline);
-        cmd_list.bindAll();
-        cmd_list.pushConstant(
-            VK_SHADER_STAGE_COMPUTE_BIT,
-            gpu::push::SubChunk{
-                .chunk_i = {chunk_i.x, chunk_i.y, chunk_i.z, 0},
-                .globalsID = compute_globals_i,
-                .mode = mode,
-            });
-        cmd_list.dispatch(4, 4, 4);
-#else
         update_subchunk_x2x4(cmd_list, chunk_i, mode);
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
         update_subchunk_x8p(cmd_list, chunk_i, mode);
         cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-#endif
     }
 
-#if USE_NEW_PRESENCE
-#else
     void update_subchunk_x2x4(daxa::CommandListHandle cmd_list, glm::uvec3 chunk_i, u32 mode = 0) {
         auto compute_globals_i = compute_globals_buffer.getDescriptorIndex();
         cmd_list.bindPipeline(subchunk_x2x4_pipeline);
@@ -416,7 +379,6 @@ struct RenderableWorld {
             });
         cmd_list.dispatch(1, 1, 1);
     }
-#endif
 
     void draw(const Player &player, daxa::CommandListHandle cmd_list, daxa::ImageViewHandle &render_image) {
         glm::vec3 player_pos = glm::vec3(0.0f);
@@ -617,12 +579,8 @@ struct RenderableWorld {
         create_pipeline(raymarch_compute_pipeline, "drawing/raymarch.hlsl");
         create_pipeline(pickblock_compute_pipeline, "utils/pickblock.hlsl");
         create_pipeline(blockedit_compute_pipeline, "world/blockedit.hlsl");
-#if USE_NEW_PRESENCE
-        create_pipeline(new_presence_pipeline, "world/new_presence.hlsl");
-#else
         create_pipeline(subchunk_x2x4_pipeline, "world/subchunk_x2x4.hlsl", "Main");
         create_pipeline(subchunk_x8p_pipeline, "world/subchunk_x8p.hlsl", "Main");
-#endif
 
         std::array<std::filesystem::path, 2> chunkgen_pass_paths = {
             "world/chunkgen/pass0.hlsl",
