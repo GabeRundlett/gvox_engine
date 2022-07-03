@@ -4,6 +4,7 @@
 #define ALBEDO_DEBUG_NRM 2
 #define ALBEDO_DEBUG_DIST 4
 #define ALBEDO_DEBUG_RANDOM 5
+#define ALBEDO_DEBUG_BLOCKID 6
 
 // Which information to show as the albedo
 #define ALBEDO ALBEDO_TEXTURE
@@ -13,7 +14,7 @@
 // Whether to cast shadow rays
 #define ENABLE_SHADOWS 1
 #define ENABLE_FAKE_SKY_LIGHTING 1
-#define ENABLE_REFLECTIONS 0
+#define ENABLE_REFLECTIONS 1
 // Camera settings
 #define LENS_TYPE_DEFAULT 0
 #define LENS_TYPE_FISHEYE 1

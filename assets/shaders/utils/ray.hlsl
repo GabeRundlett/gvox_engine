@@ -9,7 +9,9 @@ struct RayIntersection {
     bool hit;
     float dist;
     uint steps;
+    float3 pos;
     float3 nrm;
+    float3 col;
 };
 
 bool point_box_contains(float3 p, float3 b_min, float3 b_max) {

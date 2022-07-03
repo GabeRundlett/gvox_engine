@@ -8,7 +8,7 @@
 uint gen_block(float3 b_pos) {
     StructuredBuffer<Globals> globals = daxa::getBuffer<Globals>(p.globals_sb);
     int3 chunk_i = p.pos.xyz / CHUNK_SIZE;
-    int3 chunk_i_min = int3(max(chunk_i.x - 1, 0), max(chunk_i.y - 3, 0), max(chunk_i.z - 1, 0));
+    int3 chunk_i_min = int3(max(chunk_i.x - 1, 0), max(chunk_i.y - 1, 0), max(chunk_i.z - 1, 0));
     int3 chunk_i_max = int3(min(chunk_i.x + 1, CHUNK_NX), min(chunk_i.y + 3, CHUNK_NY), min(chunk_i.z + 1, CHUNK_NZ));
 
     BlockID result;
@@ -37,6 +37,18 @@ uint gen_block(float3 b_pos) {
                         if (tree_sdf.leaves_dist < 0)
                             result = BlockID::Leaves;
                     } break;
+                    case 3: {
+                        p += float3(0, 0, 0);
+                        TreeSDF cactus_sdf = sd_cactus(p / GEN_SCL, 0);
+                        if (cactus_sdf.trunk_dist < 0)
+                            result = BlockID::Cactus;
+                    } break;
+                    // case 4: {
+                    //     p += float3(0, 0, 0);
+                    //     TreeSDF cactus_sdf = sd_rust_spike(p / GEN_SCL, 0);
+                    //     if (cactus_sdf.trunk_dist < 0)
+                    //         result = BlockID::Cobblestone;
+                    // } break;
                     }
                 }
             }

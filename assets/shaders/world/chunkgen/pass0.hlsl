@@ -9,11 +9,14 @@ void biome_pass0(in out WorldgenState worldgen_state, in float3 b_pos) {
     worldgen_state.biome_id = BiomeID::Plains;
     if (b_pos.y > MIN_WATER_LEVEL + worldgen_state.r * 20) {
         worldgen_state.biome_id = BiomeID::Underworld;
-    } else if (worldgen_state.b_noise < 0.7) {
+    } else if (worldgen_state.b_noise - worldgen_state.r * 0.5 < 0.4) {
         worldgen_state.biome_id = BiomeID::Forest;
-    } else if (worldgen_state.b_noise > 1.5) {
+    } else if (worldgen_state.b_noise - worldgen_state.r * 0.2 > 1.5) {
         worldgen_state.biome_id = BiomeID::Desert;
     }
+    // else if (worldgen_state.b_noise - worldgen_state.r * 0.2 > 1.3) {
+    //     worldgen_state.biome_id = BiomeID::RustSpike;
+    // }
 }
 
 void block_pass0(in out WorldgenState worldgen_state, in float3 b_pos) {
@@ -99,6 +102,14 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
                  in SurroundingInfo surroundings) {
     StructuredBuffer<Globals> globals = daxa::getBuffer<Globals>(p.globals_sb);
     uint3 chunk_i = p.pos.xyz / CHUNK_SIZE;
+    // if (worldgen_state.biome_id == BiomeID::RustSpike) {
+    //     if (worldgen_state.block_id == BlockID::Stone)
+    //         worldgen_state.block_id = BlockID::Bedrock;
+    //     // if (surroundings.depth_below < 1 - worldgen_state.r * 1) {
+    //     // } else {
+    //     //     worldgen_state.block_id = BlockID::Air;
+    //     // }
+    // }
 
     if (!is_transparent(worldgen_state.block_id)) {
         switch (worldgen_state.biome_id) {
@@ -150,6 +161,7 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
                     worldgen_state.block_id = BlockID::Gravel;
             }
             break;
+        default: break;
         }
     } else if (worldgen_state.block_id == BlockID::Air &&
                !surroundings.above_water) {
@@ -165,14 +177,14 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
             break;
         case BiomeID::Forest:
             if (worldgen_state.r_xz < 0.01) {
-                int trunk_height = 1; // int(5 + worldgen_state.r_xz * 400);
 #if INJECT_STRUCTURES
+                int trunk_height = 1; // int(5 + worldgen_state.r_xz * 400);
                 if (surroundings.depth_below < trunk_height) {
                     if (globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n < 127) {
                         int structure_n;
                         InterlockedAdd(globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n, 1, structure_n);
                         globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].p = float4(b_pos, 0);
-                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = (int(b_pos.x + 10000) % 5 == 0) ? 2 : 1;
+                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = 1; // (int(b_pos.x + 10000) % 5 == 0) ? 2 : 1;
                     }
                     worldgen_state.block_id = BlockID::Log;
                 }
@@ -183,14 +195,34 @@ void block_pass2(in out WorldgenState worldgen_state, in float3 b_pos,
             break;
         case BiomeID::Desert:
             if (worldgen_state.r_xz < 0.005) {
-                int trunk_height = int(5 + worldgen_state.r_xz * 400);
+#if INJECT_STRUCTURES
+                int trunk_height = 1;
                 if (surroundings.depth_below < trunk_height) {
-                    worldgen_state.block_id = BlockID::Cactus;
+                    if (globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n < 127) {
+                        int structure_n;
+                        InterlockedAdd(globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n, 1, structure_n);
+                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].p = float4(b_pos, 0);
+                        globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = 3;
+                    }
                 }
+#endif
             } else if (worldgen_state.r < 0.02 && surroundings.depth_below == 0) {
                 worldgen_state.block_id = BlockID::DriedShrub;
             }
             break;
+        // case BiomeID::RustSpike:
+        //     #if INJECT_STRUCTURES
+        //     if (surroundings.depth_below < 1 && worldgen_state.r_xz < 0.01) {
+        //         if (globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n < 127) {
+        //             int structure_n;
+        //             InterlockedAdd(globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structure_n, 1, structure_n);
+        //             globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].p = float4(b_pos, 0);
+        //             globals[0].chunkgen_data[chunk_i.z][chunk_i.y][chunk_i.x].structures[structure_n].id = 4;
+        //         }
+        //         worldgen_state.block_id = BlockID::Log;
+        //     }
+        //     #endif
+        //     break;
         default:
             break;
         }

@@ -32,6 +32,7 @@ enum class BiomeID : uint {
     Desert,
     Beach,
     Caves,
+    // RustSpike,
     Underworld,
 };
 
@@ -47,6 +48,7 @@ enum class BlockFace : uint {
 bool is_block_occluding(BlockID block_id) {
     switch (block_id) {
     case BlockID::Air:
+    case BlockID::Water:
         return false;
     default:
         return true;

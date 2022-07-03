@@ -134,6 +134,19 @@ TreeSDF sd_tree_pine(float3 p, float random) {
     return result;
 }
 
+TreeSDF sd_cactus(float3 p, float random) {
+    TreeSDF result;
+
+    result.trunk_dist = 1e9;
+    result.leaves_dist = 1e9;
+
+    result.trunk_dist = min(result.trunk_dist, sd_cylinder(p, float3(0, 1, 0), float3(0, -5, 0), 1));
+    result.trunk_dist = min(result.trunk_dist, sd_cylinder(p, float3(0, -3 + random, 0), float3(2, -3 + random, 0), 1));
+    result.trunk_dist = min(result.trunk_dist, sd_cylinder(p, float3(0, -1 + random, 0), float3(0, -2 + random, 1), 1));
+
+    return result;
+}
+
 #include "utils/rand.hlsl"
 
 TreeSDF sd_tree_custom(float3 b_pos, float random, float3 tree_pos) {
@@ -180,6 +193,17 @@ TreeSDF sd_tree_custom(float3 b_pos, float random, float3 tree_pos) {
         result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, +0, 0), p1 + float3(-8.0, -3, -1.0), 0.7));
         result.trunk_dist = min(result.trunk_dist, sd_cylinder(b_pos, p1 + float3(0, -1, 0), p1 + float3(+8.0, -1, +0.5), 0.7));
     }
+
+    return result;
+}
+
+TreeSDF sd_rust_spike(float3 b_pos, float random) {
+    TreeSDF result;
+
+    result.trunk_dist = 1e9;
+    result.leaves_dist = 1e9;
+
+    result.trunk_dist = min(result.trunk_dist, sd_cone(b_pos, float3(0, 12, 0), float3(0, -20, 0), 5, 1));
 
     return result;
 }

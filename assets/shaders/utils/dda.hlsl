@@ -9,12 +9,33 @@ struct DDA_RunState {
     uint total_steps;
     bool hit, outside_bounds;
     float dist;
+    BlockID block_id;
 };
 
 uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
+    if (x_load_presence<2>(globals, p))
+        return 1;
+    if (x_load_presence<4>(globals, p))
+        return 2;
+    if (x_load_presence<8>(globals, p))
+        return 3;
+    if (x_load_presence<16>(globals, p))
+        return 4;
+    if (x_load_presence<32>(globals, p))
+        return 5;
+    if (x_load_presence<64>(globals, p))
+        return 6;
+    return 7;
+}
+
+uint dda_get_lod(StructuredBuffer<Globals> globals, in out DDA_RunState run_state, in float3 p) {
+    BlockID prev_block_id = run_state.block_id;
     BlockID block_id = load_block_id(globals, int3(p));
+    if (block_id == BlockID::Debug)
+        return 7;
+    run_state.block_id = block_id;
 #if !VISUALIZE_SUBGRID
-    if (is_block_occluding(block_id))
+    if (prev_block_id != run_state.block_id)
         return 0;
 #endif
     if (x_load_presence<2>(globals, p))
@@ -41,7 +62,7 @@ void run_dda_main(StructuredBuffer<Globals> globals, in Ray ray, in out DDA_RunS
         ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
         ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
 
-    uint lod = get_lod(globals, ray.o);
+    uint lod = dda_get_lod(globals, run_state, ray.o);
     if (lod == 0) {
         run_state.hit = true;
         return;
@@ -75,7 +96,7 @@ void run_dda_main(StructuredBuffer<Globals> globals, in Ray ray, in out DDA_RunS
             run_state.outside_bounds = true;
             break;
         }
-        lod = get_lod(globals, current_pos);
+        lod = dda_get_lod(globals, run_state, current_pos);
         // if (lod < 0 + t_curr * 0.005) {
         if (lod == 0) {
             run_state.hit = true;

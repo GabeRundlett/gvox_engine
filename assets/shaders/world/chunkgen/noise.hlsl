@@ -12,8 +12,8 @@ float terrain_noise(float3 pos) {
         /* .lacunarity  = */ 3.5,
         /* .octaves     = */ 4,
     };
-    float val = fractal_noise(pos, noise_conf) + 0.1 + (pos.y - 154 + GROUND_LEVEL) * 0.026;
-    val -= smoothstep(-1, 1, (pos.y - 128 + GROUND_LEVEL) * 0.031) * 1.0;
+    float val = fractal_noise(pos, noise_conf) + 0.1 + (pos.y - 154 + GROUND_LEVEL) * 0.016;
+    val -= smoothstep(-1, 1, (pos.y - 128 + GROUND_LEVEL) * 0.019) * 1.0;
     return val;
 }
 

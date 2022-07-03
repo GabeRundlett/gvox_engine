@@ -14,9 +14,8 @@
     ray.nrm = normalize(front);
     ray.inv_nrm = 1 / ray.nrm;
     RayIntersection view_chunk_intersection = trace_chunks(globals, ray);
-    float3 view_intersection_pos0 = get_intersection_pos_corrected(ray, view_chunk_intersection);
-    view_chunk_intersection.nrm *= -1;
-    float3 view_intersection_pos1 = get_intersection_pos_corrected(ray, view_chunk_intersection);
+    float3 view_intersection_pos0 = view_chunk_intersection.pos + view_chunk_intersection.nrm * -0.01;
+    float3 view_intersection_pos1 = view_chunk_intersection.pos + view_chunk_intersection.nrm * +0.01;
     if (view_chunk_intersection.hit) {
         globals[0].pick_pos[0] = float4(view_intersection_pos0, 0);
         globals[0].pick_pos[1] = float4(view_intersection_pos1, 0);

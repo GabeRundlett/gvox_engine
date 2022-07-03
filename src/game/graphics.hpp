@@ -142,7 +142,7 @@ struct RenderableWorld {
     glm::ivec3 player_rough_chunk_i{0};
 
     bool initialized = false;
-    int chunk_updates_per_frame = 4;
+    int chunk_updates_per_frame = 1;
 
     float delta_time;
     glm::vec2 mouse_offset{0, 0};
@@ -265,7 +265,7 @@ struct RenderableWorld {
         if (render_ctx.pipeline_compiler->checkIfSourcesChanged(pipe)) {
             recompiled = true;
             auto result = render_ctx.pipeline_compiler->recreatePipeline(pipe);
-            // std::cout << result << std::endl;
+            std::cout << result << std::endl;
             if (result) {
                 pipe = result.value();
             } else {
@@ -381,7 +381,7 @@ struct RenderableWorld {
     }
 
     void draw(const Player &player, daxa::CommandListHandle cmd_list, daxa::ImageViewHandle &render_image) {
-        glm::vec3 player_pos = glm::vec3(0.0f);
+        glm::vec3 player_pos = glm::vec3(BLOCK_NX / 2, 0, BLOCK_NZ / 2);
 
         {
             auto prev_rough_chunk_i = player_rough_chunk_i;
