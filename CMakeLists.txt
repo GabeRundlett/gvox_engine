@@ -8,7 +8,9 @@ find_package(daxa CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC daxa::daxa fmt::fmt)
 target_include_directories(${PROJECT_NAME} PUBLIC "src")
 
-target_link_options(${PROJECT_NAME} PRIVATE "-Wl,/entry:mainCRTStartup")
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_options(${PROJECT_NAME} PRIVATE "-Wl,/entry:mainCRTStartup")
+endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 
