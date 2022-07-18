@@ -38,6 +38,10 @@ uint dda_get_lod(StructuredBuffer<Globals> globals, in out DDA_RunState run_stat
     if (prev_block_id != run_state.block_id)
         return 0;
 #endif
+
+#if DISABLE_DRIVER_BREAKING_CODE
+    return 1;
+#else
     if (x_load_presence<2>(globals, p))
         return 1;
     if (x_load_presence<4>(globals, p))
@@ -51,6 +55,7 @@ uint dda_get_lod(StructuredBuffer<Globals> globals, in out DDA_RunState run_stat
     if (x_load_presence<64>(globals, p))
         return 6;
     return 7;
+#endif
 }
 
 void run_dda_main(StructuredBuffer<Globals> globals, in Ray ray, in out DDA_RunState run_state, in float3 b_min, in float3 b_max, in uint max_steps) {
