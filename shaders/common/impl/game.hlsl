@@ -14,6 +14,7 @@ void ShapeScene::trace(in out GameTraceState trace_state, Ray ray, int shape_typ
         case ShapeType::Sphere: shape_trace_result = trace_sphere(ray, spheres[shape.storage_index]); break;
         case ShapeType::Box: shape_trace_result = trace_box(ray, boxes[shape.storage_index]); break;
         case ShapeType::Capsule: shape_trace_result = trace_capsule(ray, capsules[shape.storage_index]); break;
+        case ShapeType::SdfWorld: shape_trace_result = trace_sdf_world(ray, sdf_worlds[shape.storage_index]); break;
         default: break;
         }
         if (shape_trace_result.hit && shape_trace_result.dist < trace_state.trace_record.dist) {
@@ -80,7 +81,7 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
 
         trace_state.draw_sample.col = result;
     } break;
-    case 1:
+    case 1: {
         float s = 50;
         float mx = smoothstep(0.45, 0.55, s * 0.5 - abs(s * 0.5 - frac(trace_state.draw_sample.pos.x) * s));
         float my = smoothstep(0.45, 0.55, s * 0.5 - abs(s * 0.5 - frac(trace_state.draw_sample.pos.y) * s));
@@ -89,6 +90,9 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
                    lerp(float3(0, 1, 0), float3(0.01, 0.01, 0.01), my) / 3 +
                    lerp(float3(0, 0, 1), float3(0.01, 0.01, 0.01), mz) / 3;
         trace_state.draw_sample.col = m;
+    } break;
+    case 2:
+        trace_state.draw_sample.col = float3(1, 1, 1);
         break;
     }
 }
@@ -135,6 +139,18 @@ void ShapeScene::add_shape(Capsule c, float3 color, uint material_id) {
     }
 }
 
+void ShapeScene::add_shape(SdfWorld s, float3 color, uint material_id) {
+    if (capsule_n < MAX_DEBUG_CAPSULES) {
+        sdf_worlds[sdf_world_n] = s;
+        shapes[shape_n].type = ShapeType::SdfWorld;
+        shapes[shape_n].storage_index = sdf_world_n;
+        shapes[shape_n].material_id = material_id;
+        shapes[shape_n].color = color;
+        ++sdf_world_n;
+        ++shape_n;
+    }
+}
+
 static const float3 sun_col = float3(1, 0.85, 0.5) * 4;
 
 float3 sample_sky(float3 nrm) {
@@ -146,6 +162,7 @@ void Game::init() {
     Box temp_box;
     Sphere temp_sphere;
     Capsule temp_capsule;
+    SdfWorld temp_sdf_world;
 
     // temp_box.bound_min = float3(0, 0, 0) - float3(1, 1, 2.0);
     // temp_box.bound_max = float3(0, 0, 0) + float3(1, 1, 2.0);
@@ -167,6 +184,9 @@ void Game::init() {
     temp_capsule.r = 0.02;
     temp_capsule.forward = float2(0, 1);
     debug_scene.add_shape(temp_capsule, float3(0.9, 0.7, 0.4), 0);
+
+    debug_scene.add_shape(temp_sdf_world, float3(0, 0, 0), 2);
+
     // temp_sphere.o = float3(0, 0, 0);
     // temp_sphere.r = 0.02;
     // debug_scene.add_shape(temp_sphere, float3(0.9, 0.7, 0.4), 0);

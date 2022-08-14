@@ -6,25 +6,28 @@
 #define MAX_DEBUG_SPHERES 40
 #define MAX_DEBUG_BOXES 10
 #define MAX_DEBUG_CAPSULES 10
-#define MAX_DEBUG_SHAPES (MAX_DEBUG_SPHERES + MAX_DEBUG_SPHERES + MAX_DEBUG_CAPSULES)
+#define MAX_DEBUG_SDF_WORLDS 4
+#define MAX_DEBUG_SHAPES (MAX_DEBUG_SPHERES + MAX_DEBUG_SPHERES + MAX_DEBUG_CAPSULES + MAX_DEBUG_SDF_WORLDS)
 
 struct ShapeScene {
     Shape shapes[MAX_DEBUG_SHAPES];
     Sphere spheres[MAX_DEBUG_SPHERES];
     Box boxes[MAX_DEBUG_BOXES];
     Capsule capsules[MAX_DEBUG_CAPSULES];
+    SdfWorld sdf_worlds[MAX_DEBUG_SDF_WORLDS];
 
     uint shape_n;
-    uint sphere_n, box_n, capsule_n;
+    uint sphere_n, box_n, capsule_n, sdf_world_n;
 
     void default_init() {
         shape_n = 0;
-        sphere_n = 0, box_n = 0, capsule_n = 0;
+        sphere_n = 0, box_n = 0, capsule_n = 0, sdf_world_n = 0;
     }
 
     void add_shape(Sphere s, float3 color, uint material_id);
     void add_shape(Box b, float3 color, uint material_id);
     void add_shape(Capsule c, float3 color, uint material_id);
+    void add_shape(SdfWorld s, float3 color, uint material_id);
 
     void trace(in out GameTraceState trace_state, Ray ray, int shape_type);
     void eval_color(in out GameTraceState trace_state);

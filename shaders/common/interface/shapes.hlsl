@@ -5,6 +5,7 @@ enum class ShapeType {
     Sphere,
     Box,
     Capsule,
+    SdfWorld,
 };
 
 struct Shape {
@@ -53,6 +54,16 @@ struct Box {
     void default_init() {
         bound_min = float3(0, 0, 0);
         bound_max = float3(1, 1, 1);
+    }
+
+    bool inside(float3 p);
+};
+
+struct SdfWorld {
+    Capsule c;
+
+    void default_init() {
+        c.default_init();
     }
 
     bool inside(float3 p);

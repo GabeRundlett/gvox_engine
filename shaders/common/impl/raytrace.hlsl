@@ -112,3 +112,28 @@ TraceRecord trace_capsule(Ray ray, Capsule cap) {
     }
     return result;
 }
+
+TraceRecord trace_sdf_world(Ray ray, SdfWorld world) {
+    TraceRecord result;
+    result.default_init();
+
+    float3 s = float3(10, 10, 25);
+
+    float t = 0;
+    for (int i = 0; i < 70; i++) {
+        float3 p = ray.o + ray.nrm * t;
+
+        // sphere sd
+        float sd = length(p - s) - 8;
+
+        if (sd < 0.01) {
+            result.hit = true;
+            result.nrm = normalize(p - s);
+            result.dist = t;
+            break;
+        }
+        t += sd;
+    }
+
+    return result;
+}

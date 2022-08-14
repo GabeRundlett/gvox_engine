@@ -2,8 +2,8 @@
 
 #include "common/interface/voxel_chunk.hlsl"
 
-#define CHUNK_NX 12
-#define CHUNK_NY 12
+#define CHUNK_NX 4
+#define CHUNK_NY 4
 #define CHUNK_NZ 4
 #define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
 #define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)

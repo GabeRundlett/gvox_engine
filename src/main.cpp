@@ -221,8 +221,8 @@ struct Game {
 
         gpu_input.mouse.pos_delta = {0.0f, 0.0f};
         gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
-        // std::this_thread::sleep_for(10ms);
-        std::cout << std::flush;
+        std::this_thread::sleep_for(10ms);
+        // std::cout << std::flush;
     }
     void run_frame() {
         if (window.frame_dim.x < 1 || window.frame_dim.y < 1) {
