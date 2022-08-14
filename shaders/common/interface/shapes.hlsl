@@ -60,10 +60,10 @@ struct Box {
 };
 
 struct SdfWorld {
-    Capsule c;
+    float3 origin;
 
     void default_init() {
-        c.default_init();
+        origin = float3(0, 0, 0);
     }
 
     bool inside(float3 p);

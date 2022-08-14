@@ -294,6 +294,9 @@ void Game::update(in out Input input) {
     // debug_scene.boxes[0].bound_max = player.pos + float3(0.1, 0.1, 0.2);
     debug_scene.capsules[0].p0 = player.pos + float3(0, 0, 0.3);
     debug_scene.capsules[0].p1 = player.pos + float3(0, 0, PLAYER_EYE_HEIGHT);
+
+    debug_scene.sdf_worlds[0].origin = player.pos;
+
     debug_scene.capsules[0].r = 0.3;
     if (dot(vel.xy, vel.xy) > 0.001) {
         debug_scene.capsules[0].forward = normalize(vel.xy);

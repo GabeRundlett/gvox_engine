@@ -117,16 +117,16 @@ TraceRecord trace_sdf_world(Ray ray, SdfWorld world) {
     TraceRecord result;
     result.default_init();
 
-    float3 s = float3(10, 10, 25);
+    float3 s = float3(0, 0, 0) + world.origin;
 
     float t = 0;
     for (int i = 0; i < 70; i++) {
         float3 p = ray.o + ray.nrm * t;
 
         // sphere sd
-        float sd = length(p - s) - 8;
+        float sd = length(p - s) - 0.5;
 
-        if (sd < 0.01) {
+        if (sd < 0.001) {
             result.hit = true;
             result.nrm = normalize(p - s);
             result.dist = t;
