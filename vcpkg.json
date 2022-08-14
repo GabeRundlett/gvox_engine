@@ -2,6 +2,14 @@
     "name": "gabecraft",
     "version": "0.1.0",
     "dependencies": [
-        "daxa"
+        "daxa",
+        "libsoundio"
+    ],
+    "builtin-baseline": "678c0ea99b778c7871e648182d61e1db7cee8892",
+    "overrides": [
+        {
+            "name": "daxa",
+            "version": "0.1.0"
+        }
     ]
 }

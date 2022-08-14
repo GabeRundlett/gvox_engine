@@ -2,17 +2,31 @@
     "version": 3,
     "cmakeMinimumRequired": {
         "major": 3,
-        "minor": 12,
+        "minor": 21,
         "patch": 0
     },
     "configurePresets": [
         {
             "name": "defaults",
+            "hidden": true,
+            "generator": "Ninja"
+        },
+        {
+            "name": "debug",
             "binaryDir": "${sourceDir}/.out/${presetName}",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-            "generator": "Ninja",
+            "inherits": "defaults",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "binaryDir": "${sourceDir}/.out/${presetName}",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "inherits": "defaults",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
             }
         }
     ]
