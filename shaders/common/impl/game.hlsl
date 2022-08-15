@@ -92,7 +92,7 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
         trace_state.draw_sample.col = m;
     } break;
     case 2:
-        trace_state.draw_sample.col = float3(1, 1, 1);
+        trace_state.draw_sample.col = float3(0.04, 0.04, 0.12);
         break;
     }
 }
@@ -490,7 +490,7 @@ DrawSample Game::draw(in out Input input, uint2 pixel_i, float start_depth) {
     float2 uv_offset =
         float2(rand(float2(pixel_i) + uv_rand_offset + 10),
                rand(float2(pixel_i) + uv_rand_offset)) *
-        0.0;
+        1.0;
 
     float2 view_uv = player.camera.create_view_uv(pixel_i + uv_offset);
     Ray ray = player.camera.create_view_ray(view_uv);

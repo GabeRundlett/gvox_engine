@@ -113,23 +113,49 @@ TraceRecord trace_capsule(Ray ray, Capsule cap) {
     return result;
 }
 
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
+    return lerp(a, b, h) - k * h * (1.0 - h);
+}
+
+float sd_sphere(float3 p, float3 o, float r) {
+    return length(p - o) - r;
+}
+
+float map(float3 p) {
+    float sd0 = sd_sphere(p, float3(+0.00, +0.0, 0.9), 0.28);
+    float sd1 = sd_sphere(p, float3(+0.15, -0.2, 0.9), 0.20);
+    float sd2 = sd_sphere(p, float3(-0.15, -0.2, 0.9), 0.20);
+    float sd = 10000;
+    sd = smin(sd, sd1, 0.05);
+    sd = smin(sd, sd2, 0.05);
+    sd = smin(sd, sd0, 0.05);
+
+    return sd;
+}
+
+float3 map_normal(in float3 pos) {
+    float2 e = float2(1.0, -1.0) * 0.5773;
+    const float eps = 0.01;
+    return normalize(
+        e.xyy * map(pos + e.xyy * eps) +
+        e.yyx * map(pos + e.yyx * eps) +
+        e.yxy * map(pos + e.yxy * eps) +
+        e.xxx * map(pos + e.xxx * eps));
+}
+
 TraceRecord trace_sdf_world(Ray ray, SdfWorld world) {
     TraceRecord result;
     result.default_init();
 
-    float3 s = float3(0, 0, 0) + world.origin;
-
     float t = 0;
     for (int i = 0; i < 70; i++) {
-        float3 p = ray.o + ray.nrm * t;
-
-        // sphere sd
-        float sd = length(p - s) - 0.5;
-
-        if (sd < 0.001) {
+        float3 p = ray.o + ray.nrm * t - world.origin;
+        float sd = map(p);
+        if (sd < 0.01) {
             result.hit = true;
-            result.nrm = normalize(p - s);
-            result.dist = t;
+            result.dist = t - 0.01;
+            result.nrm = map_normal(p);
             break;
         }
         t += sd;

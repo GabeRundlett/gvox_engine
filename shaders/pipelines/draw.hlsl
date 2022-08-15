@@ -15,7 +15,7 @@ struct Push {
 
 [[vk::push_constant]] const Push p;
 
-#define MIXING_FACTOR 1
+#define MIXING_FACTOR 0.5
 
 float3 rgb2hsv(float3 c)
 {

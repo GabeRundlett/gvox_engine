@@ -105,6 +105,7 @@ struct Game {
     gpu::Readback readback_data;
 
     bool paused = true;
+    bool laptop_power_saving = true;
 
     void create_pipeline(daxa::PipelineHandle &pipe, const std::filesystem::path &path, const char *entry = "main") {
         auto result = render_context.pipeline_compiler->createComputePipeline({
@@ -221,8 +222,9 @@ struct Game {
 
         gpu_input.mouse.pos_delta = {0.0f, 0.0f};
         gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
-        std::this_thread::sleep_for(10ms);
-        // std::cout << std::flush;
+
+        if (laptop_power_saving)
+            std::this_thread::sleep_for(10ms);
     }
     void run_frame() {
         if (window.frame_dim.x < 1 || window.frame_dim.y < 1) {
@@ -367,6 +369,7 @@ struct Game {
         ImGui::SliderInt("Maximum Steps", &max_steps, 1, 120);
         gpu_input._pad0[0] = max_steps;
         ImGui::Checkbox("Depth Prepass", &enable_depth_prepass);
+        ImGui::Checkbox("Laptop Power Saving", &laptop_power_saving);
     }
     void build_ui() {
         auto &io = ImGui::GetIO();
