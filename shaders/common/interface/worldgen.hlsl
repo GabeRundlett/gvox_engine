@@ -35,10 +35,12 @@ struct WorldgenState {
 struct SurroundingInfo {
     BlockID above_ids[15];
     BlockID below_ids[15];
+    BlockID neighbor_ids[6];
     uint depth_above;
     uint depth_below;
     uint under_water;
     uint above_water;
+    uint exposure;
     float3 nrm;
 };
 

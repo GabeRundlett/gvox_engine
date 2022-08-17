@@ -45,6 +45,15 @@ bool is_transparent(BlockID block_id) {
     }
 }
 
+bool is_block_occluding(BlockID block_id) {
+    switch (block_id) {
+    case BlockID::Air:
+        return false;
+    default:
+        return true;
+    }
+}
+
 float terrain_noise(float3 pos) {
     FractalNoiseConfig noise_conf = {
         /* .amplitude   = */ 1.0,
@@ -73,6 +82,16 @@ void block_pass0(in out WorldgenState worldgen_state, float3 block_pos) {
     if (worldgen_state.t_noise > 0) {
         worldgen_state.block_id = BlockID::Stone;
     }
+}
+
+float3 terrain_nrm(in float3 pos) {
+    float2 e = float2(1.0, -1.0) * 0.5773;
+    const float eps = 0.001;
+    return -normalize(
+        e.xyy * terrain_noise(pos + e.xyy * eps) +
+        e.yyx * terrain_noise(pos + e.yyx * eps) +
+        e.yxy * terrain_noise(pos + e.yxy * eps) +
+        e.xxx * terrain_noise(pos + e.xxx * eps));
 }
 
 void block_pass1(in out WorldgenState worldgen_state, float3 block_pos, in SurroundingInfo surroundings) {
@@ -108,4 +127,82 @@ void block_pass1(in out WorldgenState worldgen_state, float3 block_pos, in Surro
             }
         }
     }
+}
+
+SurroundingInfo get_surrounding(in out WorldgenState worldgen_state, float3 block_pos) {
+    SurroundingInfo surroundings;
+
+    for (int i = 0; i < 15; ++i) {
+        WorldgenState temp;
+        float3 sample_pos;
+
+        sample_pos = block_pos + float3(0, 0, i + 1) / VOXEL_SCL;
+        temp = get_worldgen_state(sample_pos);
+        block_pass0(temp, sample_pos);
+        surroundings.below_ids[i] = temp.block_id;
+
+        sample_pos = block_pos + float3(0, 0, -i - 1) / VOXEL_SCL;
+        temp = get_worldgen_state(sample_pos);
+        block_pass0(temp, sample_pos);
+        surroundings.above_ids[i] = temp.block_id;
+    }
+
+    float3 neighbor_offsets[] = {
+        float3(+1, +0, +0) / VOXEL_SCL,
+        float3(-1, +0, +0) / VOXEL_SCL,
+        float3(+0, +1, +0) / VOXEL_SCL,
+        float3(+0, -1, +0) / VOXEL_SCL,
+        float3(+0, +0, +1) / VOXEL_SCL,
+        float3(+0, +0, -1) / VOXEL_SCL,
+    };
+
+    surroundings.exposure = 0;
+    for (int i = 0; i < 6; ++i)
+    {
+        float3 sample_pos = block_pos + neighbor_offsets[i];
+        WorldgenState temp = get_worldgen_state(sample_pos);
+        block_pass0(temp, sample_pos);
+        surroundings.neighbor_ids[i] = temp.block_id;
+        if (!is_block_occluding(temp.block_id))
+            ++surroundings.exposure;
+    }
+
+    surroundings.depth_above = 0;
+    surroundings.depth_below = 0;
+    surroundings.above_water = 0;
+    surroundings.under_water = 0;
+
+    if (worldgen_state.block_id == BlockID::Air) {
+        for (; surroundings.depth_above < 15; ++surroundings.depth_above) {
+            if (surroundings.above_ids[surroundings.depth_above] == BlockID::Water)
+                surroundings.under_water++;
+            if (is_block_occluding(surroundings.above_ids[surroundings.depth_above]))
+                break;
+        }
+        for (; surroundings.depth_below < 15; ++surroundings.depth_below) {
+            if (surroundings.below_ids[surroundings.depth_below] == BlockID::Water)
+                surroundings.above_water++;
+            if (is_block_occluding(surroundings.below_ids[surroundings.depth_below]))
+                break;
+        }
+    } else {
+        for (; surroundings.depth_above < 15; ++surroundings.depth_above) {
+            if (surroundings.above_ids[surroundings.depth_above] == BlockID::Water)
+                surroundings.under_water++;
+            if (!is_block_occluding(surroundings.above_ids[surroundings.depth_above]))
+                break;
+        }
+        for (; surroundings.depth_below < 15; ++surroundings.depth_below) {
+            if (surroundings.below_ids[surroundings.depth_below] == BlockID::Water)
+                surroundings.above_water++;
+            if (!is_block_occluding(surroundings.below_ids[surroundings.depth_below]))
+                break;
+        }
+    }
+    WorldgenState slope_t0 = get_worldgen_state(block_pos + float3(1, 0, 0) / VOXEL_SCL * 0.01);
+    WorldgenState slope_t1 = get_worldgen_state(block_pos + float3(0, 1, 0) / VOXEL_SCL * 0.01);
+    WorldgenState slope_t2 = get_worldgen_state(block_pos + float3(0, 0, 1) / VOXEL_SCL * 0.01);
+    surroundings.nrm = normalize(float3(slope_t0.t_noise, slope_t1.t_noise, slope_t2.t_noise) - worldgen_state.t_noise);
+
+    return surroundings;
 }

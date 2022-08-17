@@ -1,6 +1,6 @@
 #include "common/buffers.hlsl"
 
-#include "common/impl/game.hlsl"
+#include "common/impl/game/_update.hlsl"
 
 struct Push {
     uint globals_id;

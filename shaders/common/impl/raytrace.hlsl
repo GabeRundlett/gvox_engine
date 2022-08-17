@@ -123,14 +123,13 @@ float sd_sphere(float3 p, float3 o, float r) {
 }
 
 float map(float3 p) {
-    float sd0 = sd_sphere(p, float3(+0.00, +0.0, 0.9), 0.28);
-    float sd1 = sd_sphere(p, float3(+0.15, -0.2, 0.9), 0.20);
-    float sd2 = sd_sphere(p, float3(-0.15, -0.2, 0.9), 0.20);
+    float sd0 = sd_sphere(p, float3(+0.00, +0.0, 0.9), 0.29);
+    float sd1 = sd_sphere(p, float3(+0.12, -0.2, 0.8), 0.20);
+    float sd2 = sd_sphere(p, float3(-0.12, -0.2, 0.8), 0.20);
     float sd = 10000;
-    sd = smin(sd, sd1, 0.05);
-    sd = smin(sd, sd2, 0.05);
-    sd = smin(sd, sd0, 0.05);
-
+    sd = smin(sd, sd1, 0.01);
+    sd = smin(sd, sd2, 0.01);
+    sd = smin(sd, sd0, 0.15);
     return sd;
 }
 
@@ -151,11 +150,16 @@ TraceRecord trace_sdf_world(Ray ray, SdfWorld world) {
     float t = 0;
     for (int i = 0; i < 70; i++) {
         float3 p = ray.o + ray.nrm * t - world.origin;
+
+        float2x2 rot_mat = float2x2(float2(-world.forward.y, world.forward.x), world.forward);
+        p.xy = mul(rot_mat, p.xy);
+
         float sd = map(p);
-        if (sd < 0.01) {
+        if (sd < 0.001) {
             result.hit = true;
-            result.dist = t - 0.01;
+            result.dist = t - 0.001;
             result.nrm = map_normal(p);
+            result.nrm.xy = mul(rot_mat, result.nrm.xy);
             break;
         }
         t += sd;

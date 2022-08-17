@@ -22,8 +22,16 @@ struct EditInfo {
     }
 };
 
+struct Voxel {
+    uint col_id;
+    uint nrm;
+
+    float3 get_col();
+    float3 get_nrm();
+};
+
 struct VoxelChunk {
-    uint data[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    Voxel data[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
     Box box;
 
     void default_init() {
@@ -35,6 +43,7 @@ struct VoxelChunk {
     uint sample_tile(float3 p);
     uint sample_tile(int3 tile_offset);
     uint sample_tile(uint index);
+    Voxel sample_voxel(uint index);
     float3 sample_color(float3 p);
     void gen(int3 block_offset);
     void do_edit(int3 block_offset, in out EditInfo edit_info);

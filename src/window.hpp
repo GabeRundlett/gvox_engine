@@ -12,7 +12,7 @@
 
 struct Window {
     GLFWwindow *window_ptr = nullptr;
-    glm::ivec2 frame_dim{960, 540};
+    glm::ivec2 frame_dim{640, 480};
     VkSurfaceKHR vulkan_surface = nullptr;
 
     Window() {

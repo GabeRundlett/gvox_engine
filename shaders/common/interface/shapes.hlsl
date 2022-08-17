@@ -61,6 +61,7 @@ struct Box {
 
 struct SdfWorld {
     float3 origin;
+    float2 forward;
 
     void default_init() {
         origin = float3(0, 0, 0);

@@ -1,6 +1,6 @@
 #include "common/buffers.hlsl"
 
-#include "common/impl/voxel_world.hlsl"
+#include "common/impl/voxel_world/_update.hlsl"
 
 struct Push {
     uint globals_id;

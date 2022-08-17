@@ -3,7 +3,7 @@
 #include "utils/rand.hlsl"
 #include "utils/tonemapping.hlsl"
 
-#include "common/impl/game.hlsl"
+#include "common/impl/game/_drawing.hlsl"
 
 struct Push {
     uint globals_id;
