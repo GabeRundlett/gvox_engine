@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Daxa.hpp>
+#include <daxa/daxa.hpp>
+using namespace daxa::types;
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -8,6 +9,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#define GLM_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 struct Window {
@@ -22,10 +24,16 @@ struct Window {
     }
 
     ~Window() {
-        auto vk_instance = daxa::instance->getVkInstance();
-        vkDestroySurfaceKHR(vk_instance, vulkan_surface, nullptr);
         glfwDestroyWindow(window_ptr);
         glfwTerminate();
+    }
+
+    auto get_native_handle() -> daxa::NativeWindowHandle {
+#if defined(_WIN32)
+        return glfwGetWin32Window(window_ptr);
+#elif defined(__linux__)
+        return glfwGetX11Window(window_ptr);
+#endif
     }
 
     bool should_close() {
@@ -35,12 +43,7 @@ struct Window {
         glfwPollEvents();
     }
     void swap_buffers() {
-        glfwSwapBuffers(window_ptr);
-    }
-    VkSurfaceKHR get_vksurface(VkInstance vk_instance) {
-        if (!vulkan_surface)
-            glfwCreateWindowSurface(vk_instance, window_ptr, nullptr, &vulkan_surface);
-        return vulkan_surface;
+        // glfwSwapBuffers(window_ptr);
     }
 
     template <typename T>

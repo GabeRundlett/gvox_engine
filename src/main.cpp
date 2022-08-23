@@ -3,67 +3,80 @@
 #include "render_context.hpp"
 #include "window.hpp"
 
+#include <iostream>
 #include <chrono>
 #include <thread>
 using namespace std::literals;
 
 #include "defines.inl"
 
+#include <daxa/utils/imgui.hpp>
+#include "imgui/imgui_impl_glfw.h"
+
+// clang-format off
+#define GAME_KEY_W                  0
+#define GAME_KEY_A                  1
+#define GAME_KEY_S                  2
+#define GAME_KEY_D                  3
+#define GAME_KEY_R                  4
+#define GAME_KEY_F                  5
+#define GAME_KEY_SPACE              6
+#define GAME_KEY_LEFT_CONTROL       7
+#define GAME_KEY_LEFT_SHIFT         8
+#define GAME_KEY_F5                 9
+#define GAME_KEY_LAST               GAME_KEY_F5
+// clang-format on
+
 namespace gpu {
     struct MouseInput {
-        glm::vec2 pos;
-        glm::vec2 pos_delta;
-        glm::vec2 scroll_delta;
-        u32 buttons[GLFW_MOUSE_BUTTON_LAST + 1];
+        glm::vec2 pos = {};
+        glm::vec2 pos_delta = {};
+        glm::vec2 scroll_delta = {};
+        u32 buttons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
     };
     struct KeyboardInput {
-        u32 keys[GLFW_KEY_LAST + 1];
+        u32 keys[GAME_KEY_LAST + 1] = {};
     };
 
     struct Input {
-        glm::ivec2 frame_dim;
-        float time, delta_time;
-        float fov;
+        glm::ivec2 frame_dim = {};
+        float time = {}, delta_time = {};
+        float fov = {};
         glm::vec3 block_color = {1.0f, 0.05f, 0.08f};
         u32 flags = 0;
         u32 _pad0[3] = {50, 0, 0};
-        MouseInput mouse;
-        KeyboardInput keyboard;
+        MouseInput mouse = {};
+        KeyboardInput keyboard = {};
     };
     struct Globals {
         u8 data[u64{1} << 30];
     };
-    struct Readback {
-        glm::vec3 player_pos;
-        u32 _pad0;
-    };
     namespace push {
         struct Startup {
-            u32 globals_id;
+            daxa::BufferId globals_id;
         };
         struct Chunkgen {
-            u32 globals_id;
-            u32 input_id;
+            daxa::BufferId globals_id;
+            daxa::BufferId input_id;
         };
         struct Subchunk {
-            u32 globals_id;
+            daxa::BufferId globals_id;
             u32 mode;
         };
         struct Perframe {
-            u32 globals_id;
-            u32 input_id;
+            daxa::BufferId globals_id;
+            daxa::BufferId input_id;
         };
         struct Draw {
-            u32 globals_id;
-            u32 input_id;
-            u32 col_image_id_in, col_image_id_out;
-            u32 pos_image_id_in, pos_image_id_out;
-            u32 nrm_image_id_in, nrm_image_id_out;
+            daxa::BufferId globals_id;
+            daxa::BufferId input_id;
+            daxa::ImageViewId col_image_id_in, col_image_id_out;
+            daxa::ImageViewId pos_image_id_in, pos_image_id_out;
         };
         struct DepthPrepass {
-            u32 globals_id;
-            u32 input_id;
-            u32 pos_image_id_in, pos_image_id_out;
+            daxa::BufferId globals_id;
+            daxa::BufferId input_id;
+            daxa::ImageViewId pos_image_id_in, pos_image_id_out;
             u32 scl;
         };
     } // namespace push
@@ -81,112 +94,111 @@ struct Game {
     bool should_place = false;
     bool started = false;
     bool enable_depth_prepass = true;
+    bool should_run_startup = true;
 
-    Window window;
-    VkSurfaceKHR vulkan_surface = window.get_vksurface(daxa::instance->getVkInstance());
-    RenderContext render_context{vulkan_surface, window.frame_dim};
-    std::optional<daxa::ImGuiRenderer> imgui_renderer = std::nullopt;
+    Window window = {};
+    RenderContext render_context{window.get_native_handle(), window.frame_dim};
+    daxa::ImGuiRenderer imgui_renderer = create_imgui_renderer();
+    auto create_imgui_renderer() -> daxa::ImGuiRenderer {
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForVulkan(window.window_ptr, true);
+        return daxa::ImGuiRenderer({
+            .device = render_context.device,
+            .pipeline_compiler = render_context.pipeline_compiler,
+            .format = render_context.swapchain.get_format(),
+        });
+    }
 
-    daxa::PipelineHandle startup_compute_pipeline;
-    daxa::PipelineHandle perframe_compute_pipeline;
+    // clang-format off
+    daxa::ComputePipeline startup_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"startup.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Startup),
+        .debug_name = APPNAME_PREFIX("startup_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline perframe_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"chunkgen.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Perframe),
+        .debug_name = APPNAME_PREFIX("startup_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline subchunk_x2x4_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"subchunk_x2x4.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Subchunk),
+        .debug_name = APPNAME_PREFIX("subchunk_x2x4_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline subchunk_x8up_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"subchunk_x8up.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Subchunk),
+        .debug_name = APPNAME_PREFIX("subchunk_x8up_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline chunkgen_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"perframe.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Chunkgen),
+        .debug_name = APPNAME_PREFIX("chunkgen_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline depth_prepass0_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"depth_prepass0.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::DepthPrepass),
+        .debug_name = APPNAME_PREFIX("depth_prepass0_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline depth_prepass1_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"depth_prepass1.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::DepthPrepass),
+        .debug_name = APPNAME_PREFIX("depth_prepass1_compute_pipeline"),
+    }).value();
+    daxa::ComputePipeline draw_compute_pipeline = render_context.pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"draw.hlsl"}},
+        .push_constant_size = sizeof(gpu::push::Draw),
+        .debug_name = APPNAME_PREFIX("draw_compute_pipeline"),
+    }).value();
+    // clang-format on
 
-    daxa::PipelineHandle chunkgen_compute_pipeline;
-    daxa::PipelineHandle subchunk_x2x4_compute_pipeline;
-    daxa::PipelineHandle subchunk_x8up_compute_pipeline;
-    daxa::PipelineHandle depth_prepass0_compute_pipeline;
-    daxa::PipelineHandle depth_prepass1_compute_pipeline;
-    daxa::PipelineHandle draw_compute_pipeline;
+    daxa::BufferId gpu_input_buffer = render_context.device.create_buffer({
+        .size = sizeof(gpu::Input),
+        .debug_name = "gpu_input_buffer",
+    });
+    daxa::BufferId staging_gpu_input_buffer = render_context.device.create_buffer({
+        .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+        .size = sizeof(gpu::Input),
+        .debug_name = "staging_gpu_input_buffer",
+    });
+    daxa::BufferId gpu_globals_buffer = render_context.device.create_buffer({
+        .size = sizeof(gpu::Globals),
+        .debug_name = "gpu_globals_buffer",
+    });
+    daxa::TaskBufferId task_gpu_input_buffer;
+    daxa::TaskBufferId task_staging_gpu_input_buffer;
+    daxa::TaskBufferId task_gpu_globals_buffer;
 
-    daxa::BufferHandle gpu_input_buffer, gpu_globals_buffer;
-    daxa::BufferHandle gpu_readback_buffer;
-    daxa::DescriptorIndex gpu_input_id, gpu_globals_id;
+    daxa::TaskImageId task_swapchain_image;
+    daxa::TaskImageId task_color_image, task_pos_image;
 
     gpu::Input gpu_input{.fov = 90.0f};
-    gpu::Readback readback_data;
 
     bool paused = true;
     bool laptop_power_saving = true;
 
-    void create_pipeline(daxa::PipelineHandle &pipe, const std::filesystem::path &path, const char *entry = "main") {
-        auto result = render_context.pipeline_compiler->createComputePipeline({
-            .shaderCI = {
-                .pathToSource = std::filesystem::path("shaders/pipelines") / path,
-                .shaderLang = daxa::ShaderLang::HLSL,
-                .entryPoint = entry,
-                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-            },
-            .overwriteSets = {daxa::BIND_ALL_SET_DESCRIPTION},
-        });
-        pipe = result.value();
-    }
-    bool try_recreate_pipeline(daxa::PipelineHandle &pipe) {
-        if (render_context.pipeline_compiler->checkIfSourcesChanged(pipe)) {
-            auto result = render_context.pipeline_compiler->recreatePipeline(pipe);
-            std::cout << result << std::endl;
-            if (result)
-                pipe = result.value();
+    daxa::TaskList loop_task_list = record_loop_task_list();
+
+    bool try_recreate_pipeline(daxa::ComputePipeline &compute_pipeline) {
+        if (render_context.pipeline_compiler.check_if_sources_changed(compute_pipeline)) {
+            auto new_pipeline = render_context.pipeline_compiler.recreate_compute_pipeline(compute_pipeline);
+            if (new_pipeline.is_ok()) {
+                compute_pipeline = new_pipeline.value();
+                std::cout << "Shader Compilation SUCCESS!" << std::endl;
+            } else {
+                std::cout << new_pipeline.message() << std::endl;
+            }
             return true;
         }
         return false;
     }
 
     void run_startup() {
-        auto cmd_list = render_context.queue->getCommandList({});
-        gpu_input.time = 0;
-        cmd_list.singleCopyHostToBuffer({
-            .src = reinterpret_cast<u8 *>(&gpu_input),
-            .dst = gpu_input_buffer,
-            .region = {.size = sizeof(gpu_input)},
-        });
-        cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-
-        cmd_list.bindPipeline(startup_compute_pipeline);
-        cmd_list.bindAll();
-        cmd_list.pushConstant(
-            VK_SHADER_STAGE_COMPUTE_BIT,
-            gpu::push::Startup{
-                .globals_id = gpu_globals_id,
-            });
-        cmd_list.dispatch(1, 1, 1);
-        cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-
-        render_context.submit(cmd_list);
-
-        start_time = Clock::now();
-        prev_place_time = start_time;
-        prev_break_time = start_time;
+        should_run_startup = true;
     }
 
     Game() {
         window.set_user_pointer<Game>(this);
-        ImGui::CreateContext();
-        ImGui_ImplGlfw_InitForVulkan(window.window_ptr, true);
-        imgui_renderer.emplace(render_context.device, render_context.queue, render_context.pipeline_compiler);
-
-        gpu_input_buffer = render_context.device->createBuffer({
-            .size = sizeof(gpu::Input),
-            .memoryType = daxa::MemoryType::GPU_ONLY,
-        });
-        gpu_globals_buffer = render_context.device->createBuffer({
-            .size = sizeof(gpu::Globals),
-            .memoryType = daxa::MemoryType::GPU_ONLY,
-        });
-        gpu_readback_buffer = render_context.device->createBuffer({
-            .size = sizeof(gpu::Readback),
-            .memoryType = daxa::MemoryType::GPU_ONLY,
-        });
-
-        create_pipeline(startup_compute_pipeline, "startup.hlsl");
-        create_pipeline(chunkgen_compute_pipeline, "chunkgen.hlsl");
-        create_pipeline(subchunk_x2x4_compute_pipeline, "subchunk_x2x4.hlsl");
-        create_pipeline(subchunk_x8up_compute_pipeline, "subchunk_x8up.hlsl");
-        create_pipeline(perframe_compute_pipeline, "perframe.hlsl");
-        create_pipeline(depth_prepass0_compute_pipeline, "depth_prepass0.hlsl");
-        create_pipeline(depth_prepass1_compute_pipeline, "depth_prepass1.hlsl");
-        create_pipeline(draw_compute_pipeline, "draw.hlsl");
-
-        gpu_globals_id = gpu_globals_buffer.getDescriptorIndex();
-        gpu_input_id = gpu_input_buffer.getDescriptorIndex();
 
         update();
         run_startup();
@@ -194,6 +206,10 @@ struct Game {
 
     ~Game() {
         render_context.wait_idle();
+        ImGui_ImplGlfw_Shutdown();
+        render_context.device.destroy_buffer(gpu_input_buffer);
+        render_context.device.destroy_buffer(staging_gpu_input_buffer);
+        render_context.device.destroy_buffer(gpu_globals_buffer);
     }
 
     void update() {
@@ -232,126 +248,32 @@ struct Game {
             return;
         }
 
-        auto cmd_list = render_context.begin_frame(window.frame_dim);
+        gpu_input.frame_dim = {render_context.dim.x, render_context.dim.y};
 
-        auto render_image = render_context.render_col_images[render_context.frame_i];
-        auto extent = render_image->getImageHandle()->getVkExtent3D();
+        render_context.swapchain_image = render_context.swapchain.acquire_next_image();
 
-        gpu_input.frame_dim = {extent.width, extent.height};
-        if (started) {
-            cmd_list.singleCopyHostToBuffer({
-                .src = reinterpret_cast<u8 *>(&gpu_input),
-                .dst = gpu_input_buffer,
-                .region = {.size = sizeof(gpu_input)},
-            });
-            cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-
-            cmd_list.bindPipeline(chunkgen_compute_pipeline);
-            cmd_list.bindAll();
-            cmd_list.pushConstant(
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                gpu::push::Chunkgen{
-                    .globals_id = gpu_globals_id,
-                    .input_id = gpu_input_id,
-                });
-            cmd_list.dispatch(CHUNKGEN_DISPATCH_SIZE, CHUNKGEN_DISPATCH_SIZE, CHUNKGEN_DISPATCH_SIZE);
-            cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-            cmd_list.bindPipeline(subchunk_x2x4_compute_pipeline);
-            cmd_list.bindAll();
-            cmd_list.pushConstant(
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                gpu::push::Subchunk{
-                    .globals_id = gpu_globals_id,
-                    .mode = 0,
-                });
-            cmd_list.dispatch(1, 64, 1);
-            cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-            cmd_list.bindPipeline(subchunk_x8up_compute_pipeline);
-            cmd_list.bindAll();
-            cmd_list.pushConstant(
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                gpu::push::Subchunk{
-                    .globals_id = gpu_globals_id,
-                    .mode = 0,
-                });
-            cmd_list.dispatch(1, 1, 1);
-            cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-
-            cmd_list.bindPipeline(perframe_compute_pipeline);
-            cmd_list.bindAll();
-            cmd_list.pushConstant(
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                gpu::push::Perframe{
-                    .globals_id = gpu_globals_id,
-                    .input_id = gpu_input_id,
-                });
-            cmd_list.dispatch(1, 1, 1);
-            cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-
-            // auto readback_buffer_future = cmd_list.singleCopyBufferToHost({
-            //     .src = gpu_readback_buffer,
-            //     .region = {.size = sizeof(gpu::Readback)},
-            // });
-
-            u32 i = render_context.frame_i;
-            if (enable_depth_prepass) {
-                cmd_list.bindPipeline(depth_prepass0_compute_pipeline);
-                cmd_list.bindAll();
-                cmd_list.pushConstant(
-                    VK_SHADER_STAGE_COMPUTE_BIT,
-                    gpu::push::DepthPrepass{
-                        .globals_id = gpu_globals_id,
-                        .input_id = gpu_input_id,
-                        .pos_image_id_in = render_context.render_pos_images[1 - i]->getDescriptorIndex(),
-                        .pos_image_id_out = render_context.render_pos_images[i]->getDescriptorIndex(),
-                        .scl = 1,
-                    });
-                cmd_list.dispatch((extent.width + 15) / 16, (extent.height + 15) / 16, 1);
-                cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-                cmd_list.bindPipeline(depth_prepass1_compute_pipeline);
-                cmd_list.bindAll();
-                cmd_list.pushConstant(
-                    VK_SHADER_STAGE_COMPUTE_BIT,
-                    gpu::push::DepthPrepass{
-                        .globals_id = gpu_globals_id,
-                        .input_id = gpu_input_id,
-                        .pos_image_id_in = render_context.render_pos_images[1 - i]->getDescriptorIndex(),
-                        .pos_image_id_out = render_context.render_pos_images[i]->getDescriptorIndex(),
-                        .scl = 1,
-                    });
-                cmd_list.dispatch((extent.width + 15) / 16, (extent.height + 15) / 16, 1);
-                cmd_list.queueMemoryBarrier(daxa::FULL_MEMORY_BARRIER);
-            }
-
-            cmd_list.bindPipeline(draw_compute_pipeline);
-            cmd_list.bindAll();
-            cmd_list.pushConstant(
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                gpu::push::Draw{
-                    .globals_id = gpu_globals_id,
-                    .input_id = gpu_input_id,
-                    .col_image_id_in = render_context.render_col_images[1 - i]->getDescriptorIndex(),
-                    .col_image_id_out = render_context.render_col_images[i]->getDescriptorIndex(),
-                    .pos_image_id_in = render_context.render_pos_images[1 - i]->getDescriptorIndex(),
-                    .pos_image_id_out = render_context.render_pos_images[i]->getDescriptorIndex(),
-                    .nrm_image_id_in = render_context.render_nrm_images[1 - i]->getDescriptorIndex(),
-                    .nrm_image_id_out = render_context.render_nrm_images[i]->getDescriptorIndex(),
-                });
-            cmd_list.dispatch((extent.width + 7) / 8, (extent.height + 7) / 8, 1);
-        }
-
-        render_context.blit_to_swapchain(cmd_list);
-        imgui_renderer->recordCommands(ImGui::GetDrawData(), cmd_list, render_context.swapchain_image.getImageViewHandle());
-        render_context.end_frame(cmd_list);
-
-        // render_context.device->waitIdle();
-        // while (!readback_buffer_future.ready()) {
-        // }
-        // {
-        //     auto memmapped_ptr = readback_buffer_future.getPtr();
-        //     if (memmapped_ptr)
-        //         readback_data = *reinterpret_cast<gpu::Readback *>(memmapped_ptr->hostPtr);
-        // }
+        loop_task_list.execute();
+        auto command_lists = loop_task_list.command_lists();
+        auto cmd_list = render_context.device.create_command_list({});
+        cmd_list.pipeline_barrier_image_transition({
+            .awaited_pipeline_access = loop_task_list.last_access(task_swapchain_image),
+            .before_layout = loop_task_list.last_layout(task_swapchain_image),
+            .after_layout = daxa::ImageLayout::PRESENT_SRC,
+            .image_id = render_context.swapchain_image,
+        });
+        cmd_list.complete();
+        ++render_context.cpu_framecount;
+        command_lists.push_back(cmd_list);
+        render_context.device.submit_commands({
+            .command_lists = command_lists,
+            .signal_binary_semaphores = {render_context.binary_semaphore},
+            .signal_timeline_semaphores = {{render_context.gpu_framecount_timeline_sema, render_context.cpu_framecount}},
+        });
+        render_context.device.present_frame({
+            .wait_binary_semaphores = {render_context.binary_semaphore},
+            .swapchain = render_context.swapchain,
+        });
+        render_context.gpu_framecount_timeline_sema.wait_for_value(render_context.cpu_framecount - 1);
     }
 
     void ImGui_settings_begin() {
@@ -440,26 +362,340 @@ struct Game {
             run_startup();
 
         if (!paused) {
-            gpu_input.keyboard.keys[key] = action;
+            // clang-format off
+            switch (key) {
+            case GLFW_KEY_W:                  gpu_input.keyboard.keys[0] = action; break;
+            case GLFW_KEY_A:                  gpu_input.keyboard.keys[1] = action; break;
+            case GLFW_KEY_S:                  gpu_input.keyboard.keys[2] = action; break;
+            case GLFW_KEY_D:                  gpu_input.keyboard.keys[3] = action; break;
+            case GLFW_KEY_R:                  gpu_input.keyboard.keys[4] = action; break;
+            case GLFW_KEY_F:                  gpu_input.keyboard.keys[5] = action; break;
+            case GLFW_KEY_SPACE:              gpu_input.keyboard.keys[6] = action; break;
+            case GLFW_KEY_LEFT_CONTROL:       gpu_input.keyboard.keys[7] = action; break;
+            case GLFW_KEY_LEFT_SHIFT:         gpu_input.keyboard.keys[8] = action; break;
+            case GLFW_KEY_F5:                 gpu_input.keyboard.keys[9] = action; break;
+            }
+            // clang-format on
+            // gpu_input.keyboard.keys[key] = action;
         }
     }
-    void on_resize() { update(); }
+    void on_resize() {
+        if (window.frame_dim.x < 1 || window.frame_dim.y < 1) {
+            return;
+        }
+        render_context.resize(window.frame_dim);
+        update();
+    }
 
     void toggle_pause() {
         window.set_mouse_capture(paused);
         paused = !paused;
     }
+
+    auto record_loop_task_list() -> daxa::TaskList {
+        daxa::TaskList new_task_list = daxa::TaskList({
+            .device = render_context.device,
+            .debug_name = "task_list",
+        });
+        task_swapchain_image = new_task_list.create_task_image({
+            .fetch_callback = [this]() { return render_context.swapchain_image; },
+            .debug_name = "task_swapchain_image",
+        });
+        task_color_image = new_task_list.create_task_image({
+            .fetch_callback = [this]() { return render_context.render_col_images[render_context.frame_i]; },
+            .debug_name = "task_color_image",
+        });
+        task_pos_image = new_task_list.create_task_image({
+            .fetch_callback = [this]() { return render_context.render_pos_images[render_context.frame_i]; },
+            .debug_name = "task_pos_image",
+        });
+
+        task_gpu_input_buffer = new_task_list.create_task_buffer({
+            .fetch_callback = [this]() { return gpu_input_buffer; },
+            .debug_name = "task_gpu_input_buffer",
+        });
+        task_staging_gpu_input_buffer = new_task_list.create_task_buffer({
+            .fetch_callback = [this]() { return staging_gpu_input_buffer; },
+            .debug_name = "task_staging_gpu_input_buffer",
+        });
+        task_gpu_globals_buffer = new_task_list.create_task_buffer({
+            .fetch_callback = [this]() { return gpu_globals_buffer; },
+            .debug_name = "task_gpu_globals_buffer",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface /* interf */) {
+                gpu::Input *buffer_ptr = render_context.device.map_memory_as<gpu::Input>(staging_gpu_input_buffer);
+                *buffer_ptr = this->gpu_input;
+                render_context.device.unmap_memory(staging_gpu_input_buffer);
+            },
+            .debug_name = "Gpu Input MemMap",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+                    {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                cmd_list.copy_buffer_to_buffer({
+                    .src_buffer = staging_gpu_input_buffer,
+                    .dst_buffer = gpu_input_buffer,
+                    .size = sizeof(gpu::Input),
+                });
+            },
+            .debug_name = "Gpu Input Transfer",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (should_run_startup) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(startup_compute_pipeline);
+                    auto push = gpu::push::Startup{
+                        .globals_id = gpu_globals_buffer,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(1, 1, 1);
+                    should_run_startup = false;
+                }
+            },
+            .debug_name = "Startup Task",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(chunkgen_compute_pipeline);
+                    auto push = gpu::push::Chunkgen{
+                        .globals_id = gpu_globals_buffer,
+                        .input_id = gpu_input_buffer,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(CHUNKGEN_DISPATCH_SIZE, CHUNKGEN_DISPATCH_SIZE, CHUNKGEN_DISPATCH_SIZE);
+                }
+            },
+            .debug_name = "Chunkgen Task",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(subchunk_x2x4_compute_pipeline);
+                    auto push = gpu::push::Subchunk{
+                        .globals_id = gpu_globals_buffer,
+                        .mode = 0,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(1, 64, 1);
+                }
+            },
+            .debug_name = "Subchunk x2x4 Task",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(subchunk_x8up_compute_pipeline);
+                    auto push = gpu::push::Subchunk{
+                        .globals_id = gpu_globals_buffer,
+                        .mode = 0,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(1, 1, 1);
+                }
+            },
+            .debug_name = "Subchunk x8up Task",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(perframe_compute_pipeline);
+                    auto push = gpu::push::Perframe{
+                        .globals_id = gpu_globals_buffer,
+                        .input_id = gpu_input_buffer,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(1, 1, 1);
+                }
+            },
+            .debug_name = "Perframe Task",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                },
+                .images = {
+                    {task_pos_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started && enable_depth_prepass) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(depth_prepass0_compute_pipeline);
+                    u32 i = render_context.frame_i;
+                    auto push = gpu::push::DepthPrepass{
+                        .globals_id = gpu_globals_buffer,
+                        .input_id = gpu_input_buffer,
+                        .pos_image_id_in = render_context.render_pos_images[1 - i].default_view(),
+                        .pos_image_id_out = render_context.render_pos_images[i].default_view(),
+                        .scl = 1,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch((render_context.dim.x + 15) / 16, (render_context.dim.y + 15) / 16, 1);
+                }
+            },
+            .debug_name = "Depth-prepass 1 Task",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                },
+                .images = {
+                    {task_pos_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started && enable_depth_prepass) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(depth_prepass1_compute_pipeline);
+                    u32 i = render_context.frame_i;
+                    auto push = gpu::push::DepthPrepass{
+                        .globals_id = gpu_globals_buffer,
+                        .input_id = gpu_input_buffer,
+                        .pos_image_id_in = render_context.render_pos_images[1 - i].default_view(),
+                        .pos_image_id_out = render_context.render_pos_images[i].default_view(),
+                        .scl = 1,
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch((render_context.dim.x + 15) / 16, (render_context.dim.y + 15) / 16, 1);
+                }
+            },
+            .debug_name = "Depth-prepass 2 Task",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .buffers = {
+                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                },
+                .images = {
+                    {task_color_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_WRITE},
+                    {task_pos_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (started) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(draw_compute_pipeline);
+                    u32 i = render_context.frame_i;
+                    auto push = gpu::push::Draw{
+                        .globals_id = gpu_globals_buffer,
+                        .input_id = gpu_input_buffer,
+                        .col_image_id_in = render_context.render_col_images[1 - i].default_view(),
+                        .col_image_id_out = render_context.render_col_images[i].default_view(),
+                        .pos_image_id_in = render_context.render_pos_images[1 - i].default_view(),
+                        .pos_image_id_out = render_context.render_pos_images[i].default_view(),
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch((render_context.dim.x + 7) / 8, (render_context.dim.y + 7) / 8, 1);
+                }
+            },
+            .debug_name = "Draw Task",
+        });
+
+        new_task_list.add_task({
+            .resources = {
+                .images = {
+                    {task_color_image, daxa::TaskImageAccess::TRANSFER_READ},
+                    {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                cmd_list.blit_image_to_image({
+                    .src_image = render_context.render_col_images[render_context.frame_i],
+                    .src_image_layout = daxa::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    .dst_image = render_context.swapchain_image,
+                    .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    .src_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
+                    .src_offsets = {{{0, 0, 0}, {static_cast<i32>(render_context.dim.x), static_cast<i32>(render_context.dim.y), 1}}},
+                    .dst_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
+                    .dst_offsets = {{{0, 0, 0}, {static_cast<i32>(render_context.dim.x), static_cast<i32>(render_context.dim.y), 1}}},
+                });
+                render_context.frame_i = 1 - render_context.frame_i;
+            },
+            .debug_name = "Blit Task",
+        });
+        new_task_list.add_task({
+            .resources = {
+                .images = {
+                    {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT},
+                },
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, render_context.swapchain_image, render_context.dim.x, render_context.dim.y);
+            },
+            .debug_name = "ImGui Task",
+        });
+
+        new_task_list.compile();
+        new_task_list.output_graphviz();
+
+        return new_task_list;
+    }
 };
 
 int main() {
-    daxa::initialize();
-    {
-        Game game;
-        while (true) {
-            game.update();
-            if (game.window.should_close())
-                break;
-        }
+    Game game;
+    while (true) {
+        game.update();
+        if (game.window.should_close())
+            break;
     }
-    daxa::cleanup();
 }

@@ -10,7 +10,7 @@ struct MouseInput {
 };
 
 struct KeyboardInput {
-    uint keys[GLFW_KEY_LAST + 1];
+    uint keys[GAME_KEY_LAST + 1];
 };
 
 struct Input {

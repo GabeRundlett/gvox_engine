@@ -150,7 +150,6 @@ void audio_main() {
 }
 
 int main() {
-    daxa::initialize();
     auto audio_thread = std::thread(audio_main);
     {
         App app;
@@ -162,5 +161,4 @@ int main() {
         keep_running = false;
     }
     audio_thread.join();
-    daxa::cleanup();
 }

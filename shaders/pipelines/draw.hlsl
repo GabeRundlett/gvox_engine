@@ -6,11 +6,10 @@
 #include "common/impl/game/_drawing.hlsl"
 
 struct Push {
-    uint globals_id;
-    uint input_id;
-    uint col_image_id_in, col_image_id_out;
-    uint pos_image_id_in, pos_image_id_out;
-    uint nrm_image_id_in, nrm_image_id_out;
+    daxa::BufferId globals_id;
+    daxa::BufferId input_id;
+    daxa::ImageViewId col_image_id_in, col_image_id_out;
+    daxa::ImageViewId pos_image_id_in, pos_image_id_out;
 };
 
 [[vk::push_constant]] const Push p;
@@ -39,19 +38,17 @@ float3 hsv2rgb(float3 c)
 [numthreads(8, 8, 1)] void main(uint3 pixel_i: SV_DispatchThreadID) {
     // clang-format on
 
-    StructuredBuffer<Globals> globals = daxa::getBuffer<Globals>(p.globals_id);
-    StructuredBuffer<Input> input = daxa::getBuffer<Input>(p.input_id);
+    StructuredBuffer<Globals> globals = daxa::get_StructuredBuffer<Globals>(p.globals_id);
+    StructuredBuffer<Input> input = daxa::get_StructuredBuffer<Input>(p.input_id);
 
     if (pixel_i.x >= input[0].frame_dim.x ||
         pixel_i.y >= input[0].frame_dim.y)
         return;
 
-    RWTexture2D<float4> col_image_in = daxa::getRWTexture2D<float4>(p.col_image_id_in);
-    RWTexture2D<float4> col_image_out = daxa::getRWTexture2D<float4>(p.col_image_id_out);
-    RWTexture2D<float4> pos_image_in = daxa::getRWTexture2D<float4>(p.pos_image_id_in);
-    RWTexture2D<float4> pos_image_out = daxa::getRWTexture2D<float4>(p.pos_image_id_out);
-    RWTexture2D<float4> nrm_image_in = daxa::getRWTexture2D<float4>(p.nrm_image_id_in);
-    RWTexture2D<float4> nrm_image_out = daxa::getRWTexture2D<float4>(p.nrm_image_id_out);
+    RWTexture2D<float4> col_image_in = daxa::get_RWTexture2D<float4>(p.col_image_id_in);
+    RWTexture2D<float4> col_image_out = daxa::get_RWTexture2D<float4>(p.col_image_id_out);
+    RWTexture2D<float4> pos_image_in = daxa::get_RWTexture2D<float4>(p.pos_image_id_in);
+    RWTexture2D<float4> pos_image_out = daxa::get_RWTexture2D<float4>(p.pos_image_id_out);
 
     float start_depth = pos_image_in[uint2(pixel_i.xy / 2) * 2 + uint2(1, 0)].a;
 
@@ -79,7 +76,6 @@ float3 hsv2rgb(float3 c)
     // out_col = float4(tonemap<1>(fog), draw_sample.lifetime);
 
     col_image_out[pixel_i.xy] = out_col;
-    nrm_image_out[pixel_i.xy] = float4(draw_sample.nrm, 0);
 
     // write zero to depth value (instead of draw_sample.depth)
     pos_image_out[pixel_i.xy] = float4(draw_sample.pos, 0);

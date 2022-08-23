@@ -61,7 +61,7 @@ void Player::calc_update(in out Input input) {
             force_vel.z = EARTH_GRAV * sqrt(EARTH_JUMP_HEIGHT * 2.0 / EARTH_GRAV);
     }
 
-    if (input.keyboard.keys[GLFW_KEY_F5] != 0) {
+    if (input.keyboard.keys[GAME_KEY_F5] != 0) {
         if ((view_state & 0x10) == 0) {
             view_state |= 0x10;
             toggle_view();

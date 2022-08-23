@@ -120,7 +120,7 @@ void Game::init() {
 }
 
 void Game::update(in out Input input) {
-    if (input.keyboard.keys[GLFW_KEY_R] != 0) {
+    if (input.keyboard.keys[GAME_KEY_R] != 0) {
         default_init();
         init();
     }
