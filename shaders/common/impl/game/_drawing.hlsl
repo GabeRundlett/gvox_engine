@@ -14,7 +14,7 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
         float2x2 rot_mat = float2x2(float2(-c.forward.y, c.forward.x), c.forward);
         local_pos.xy = mul(rot_mat, local_pos.xy);
 
-#define MINION 1
+#define MINION 0
         float2 uv = local_pos.xz;
         float2 e1_uv = uv - float2(0.1, 0.0);
         float e1 = dot(e1_uv, e1_uv) > 0.001;
