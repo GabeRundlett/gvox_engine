@@ -61,14 +61,14 @@ struct Game {
     }
 
     void init();
-    void update(in out Input input);
+    void update(in out GpuInput input);
     void trace_collidables(in out GameTraceState trace_state, Ray ray);
 
-    float trace_depth(Ray ray, in uint max_steps);
-    float draw_depth(uint2 pixel_i, float start_depth, uint max_steps);
+    float trace_depth(Ray ray);
+    float draw_depth(uint2 pixel_i, float start_depth);
 
-    GameTraceRecord trace(Ray ray, in uint max_steps);
-    DrawSample draw(in out Input input, uint2 pixel_i, float start_depth);
+    GameTraceRecord trace(Ray ray);
+    DrawSample draw(in out GpuInput input, uint2 pixel_i, float start_depth);
 
     TraceRecord cube_min_trace(Ray ray, Box box);
 };

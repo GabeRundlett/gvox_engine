@@ -1,12 +1,10 @@
+#include "shared.inl"
+
 #include "common/buffers.hlsl"
 
 #include "common/impl/voxel_world/_update.hlsl"
 
-struct Push {
-    daxa::BufferId globals_id;
-    uint mode;
-};
-[[vk::push_constant]] const Push p;
+[[vk::push_constant]] const SubchunkPush p;
 
 groupshared uint local_x8_copy[64];
 groupshared uint local_x16_copy[16];
@@ -131,10 +129,7 @@ void VoxelWorld::subchunk_x8up(uint3 group_local_id, int3 chunk_i) {
 // clang-format off
 [numthreads(512, 1, 1)] void main(uint3 group_local_id: SV_GroupThreadID) {
     // clang-format on
-    StructuredBuffer<Globals> globals = daxa::get_StructuredBuffer<Globals>(p.globals_id);
+    StructuredBuffer<GpuGlobals> globals = daxa::get_StructuredBuffer<GpuGlobals>(p.globals_buffer_id);
     uint3 chunk_i = globals[0].game.voxel_world.chunkgen_i;
-    // if (p.mode == 1) {
-    //     chunk_i += int3(globals[0].game.pick_pos[0].xyz) / CHUNK_SIZE;
-    // }
     globals[0].game.voxel_world.subchunk_x8up(group_local_id, chunk_i);
 }

@@ -2,15 +2,6 @@
 
 #include "common/interface/voxel_chunk.hlsl"
 
-#define CHUNK_NX 8
-#define CHUNK_NY 8
-#define CHUNK_NZ 4
-#define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
-#define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)
-#define BLOCK_NY (CHUNK_NY * CHUNK_SIZE)
-#define BLOCK_NZ (CHUNK_NZ * CHUNK_SIZE)
-#define BLOCK_N (CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
-
 enum EditStage {
     None,
     ProceduralGen,
@@ -35,7 +26,6 @@ struct VoxelWorld {
     VoxelChunk voxel_chunks[CHUNK_N];
     VoxelUniformityChunk uniformity_chunks[CHUNK_N];
     GenState chunks_genstate[CHUNK_N];
-    // VoxelOctree voxel_octrees[CHUNK_N];
 
     void default_init() {
         chunkgen_i = -1000;
@@ -49,8 +39,8 @@ struct VoxelWorld {
     }
 
     void init();
-    void update(in out Input input);
-    void chunkgen(int3 block_offset, in out Input input);
+    void update(in out GpuInput input);
+    void chunkgen(int3 block_offset, in out GpuInput input);
     void queue_edit();
     void subchunk_x2x4(uint3 group_local_id, uint3 group_id, int3 chunk_i);
     void subchunk_x8up(uint3 group_local_id, int3 chunk_i);
@@ -60,5 +50,5 @@ struct VoxelWorld {
 
     uint get_chunk_index(int3 chunk_i);
     uint sample_lod(float3 p, in out int chunk_index);
-    TraceRecord dda(Ray ray, in out int chunk_index, in uint max_steps);
+    TraceRecord dda(Ray ray, in out int chunk_index);
 };

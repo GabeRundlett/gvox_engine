@@ -52,12 +52,10 @@ struct GameTraceState {
     DrawSample draw_sample;
     int shape_type;
     int shape_i;
-    uint max_steps;
 
     void default_init() {
         trace_record.default_init();
         shape_type = 0, shape_i = 0;
-        max_steps = 10;
     }
 };
 

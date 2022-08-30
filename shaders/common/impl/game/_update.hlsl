@@ -119,7 +119,7 @@ void Game::init() {
     // editing = false;
 }
 
-void Game::update(in out Input input) {
+void Game::update(in out GpuInput input) {
     if (input.keyboard.keys[GAME_KEY_R] != 0) {
         default_init();
         init();
@@ -142,16 +142,16 @@ void Game::update(in out Input input) {
     pick_ray.o = player.camera.pos;
     pick_ray.nrm = mul(player.camera.rot_mat, float3(0, 1, 0));
     pick_ray.inv_nrm = 1.0 / pick_ray.nrm;
-    float pick_depth = trace_depth(pick_ray, input.max_steps());
+    float pick_depth = trace_depth(pick_ray);
 
     if (pick_depth > EDIT_RADIUS * 1.5) {
         pick_pos[0] = player.camera.pos + pick_ray.nrm * (pick_depth + 1.0 / VOXEL_SCL);
         pick_pos[1] = player.camera.pos + pick_ray.nrm * (pick_depth - 1.0 / VOXEL_SCL);
 
-        if (input.mouse.buttons[GLFW_MOUSE_BUTTON_RIGHT] != 0) {
+        if (input.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
             voxel_world.edit_info.pos = pick_pos[1];
             voxel_world.edit_info.block_id = BlockID::Stone;
-        } else if (input.mouse.buttons[GLFW_MOUSE_BUTTON_LEFT] != 0) {
+        } else if (input.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
             voxel_world.edit_info.pos = pick_pos[0];
             voxel_world.edit_info.block_id = BlockID::Air;
         }

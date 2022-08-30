@@ -57,10 +57,9 @@ TraceRecord Game::cube_min_trace(Ray ray, Box box) {
     return final_trace_record;
 }
 
-float Game::trace_depth(Ray ray, in uint max_steps) {
+float Game::trace_depth(Ray ray) {
     GameTraceState trace_state;
     trace_state.default_init();
-    trace_state.max_steps = max_steps;
     trace_collidables(trace_state, ray);
     // debug_scene.trace(trace_state, ray, 2);
     return trace_state.trace_record.dist;

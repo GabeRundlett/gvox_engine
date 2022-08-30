@@ -6,9 +6,9 @@
 #include "common/impl/voxel_chunk/_update.hlsl"
 
 void VoxelWorld::init() {
-    for (int zi = 0; zi < CHUNK_NZ; ++zi) {
-        for (int yi = 0; yi < CHUNK_NY; ++yi) {
-            for (int xi = 0; xi < CHUNK_NX; ++xi) {
+    for (int zi = 0; zi < CHUNK_COUNT_Z; ++zi) {
+        for (int yi = 0; yi < CHUNK_COUNT_Y; ++yi) {
+            for (int xi = 0; xi < CHUNK_COUNT_X; ++xi) {
                 int index = get_chunk_index(int3(xi, yi, zi));
                 voxel_chunks[index].box.bound_min = float3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
                 voxel_chunks[index].box.bound_max = voxel_chunks[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
@@ -19,9 +19,9 @@ void VoxelWorld::init() {
     box.bound_max = voxel_chunks[CHUNK_N - 1].box.bound_max;
 
     float min_dist = 1e38;
-    for (uint zi = 0; zi < CHUNK_NZ / 1; ++zi) {
-        for (uint yi = 0; yi < CHUNK_NY / 1; ++yi) {
-            for (uint xi = 0; xi < CHUNK_NX / 1; ++xi) {
+    for (uint zi = 0; zi < CHUNK_COUNT_Z / 1; ++zi) {
+        for (uint yi = 0; yi < CHUNK_COUNT_Y / 1; ++yi) {
+            for (uint xi = 0; xi < CHUNK_COUNT_X / 1; ++xi) {
                 uint i = get_chunk_index(int3(xi, yi, zi));
                 float3 chunk_p = (float3(xi, yi, zi) * 1 + 2) * CHUNK_SIZE / VOXEL_SCL + box.bound_min;
                 float chunk_dist = length(chunk_p - center_pt);
@@ -34,8 +34,8 @@ void VoxelWorld::init() {
     }
 }
 
-void VoxelWorld::chunkgen(int3 block_offset, in out Input input) {
-    int3 chunk_i = clamp(chunkgen_i, int3(0, 0, 0), int3(CHUNK_NX - 1, CHUNK_NY - 1, CHUNK_NZ - 1));
+void VoxelWorld::chunkgen(int3 block_offset, in out GpuInput input) {
+    int3 chunk_i = clamp(chunkgen_i, int3(0, 0, 0), int3(CHUNK_COUNT_X - 1, CHUNK_COUNT_Y - 1, CHUNK_COUNT_Z - 1));
     int index = clamp(get_chunk_index(chunk_i), 0, CHUNK_N - 1);
     switch (chunks_genstate[index].edit_stage) {
     case EditStage::ProceduralGen: voxel_chunks[index].gen(block_offset); break;
@@ -45,21 +45,21 @@ void VoxelWorld::chunkgen(int3 block_offset, in out Input input) {
 }
 
 void VoxelWorld::queue_edit() {
-    int3 chunk_i = clamp(int3(edit_info.pos * VOXEL_SCL / CHUNK_SIZE), int3(0, 0, 0), int3(CHUNK_NX - 1, CHUNK_NY - 1, CHUNK_NZ - 1));
+    int3 chunk_i = clamp(int3(edit_info.pos * VOXEL_SCL / CHUNK_SIZE), int3(0, 0, 0), int3(CHUNK_COUNT_X - 1, CHUNK_COUNT_Y - 1, CHUNK_COUNT_Z - 1));
     int index = clamp(get_chunk_index(chunk_i), 0, CHUNK_N - 1);
     chunks_genstate[index].edit_stage = EditStage::BlockEdit;
 }
 
-void VoxelWorld::update(in out Input input) {
+void VoxelWorld::update(in out GpuInput input) {
     uint prev_i = get_chunk_index(chunkgen_i);
     if (chunkgen_i.x != -1000)
         chunks_genstate[prev_i].edit_stage = EditStage::Finished;
 
     bool finished = true;
     float min_dist = 1e38;
-    for (uint zi = 0; zi < CHUNK_NZ / 1; ++zi) {
-        for (uint yi = 0; yi < CHUNK_NY / 1; ++yi) {
-            for (uint xi = 0; xi < CHUNK_NX / 1; ++xi) {
+    for (uint zi = 0; zi < CHUNK_COUNT_Z / 1; ++zi) {
+        for (uint yi = 0; yi < CHUNK_COUNT_Y / 1; ++yi) {
+            for (uint xi = 0; xi < CHUNK_COUNT_X / 1; ++xi) {
                 uint i = get_chunk_index(int3(xi, yi, zi));
                 Box chunk_box = voxel_chunks[i].box;
                 if (chunks_genstate[i].edit_stage != EditStage::Finished) {

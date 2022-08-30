@@ -85,20 +85,19 @@ float3 sample_sky(float3 nrm) {
     return lerp(float3(0.02, 0.05, 0.90) * 2, float3(0.08, 0.10, 0.54), pow(sky_val, 2));
 }
 
-float Game::draw_depth(uint2 pixel_i, float start_depth, in uint max_steps) {
+float Game::draw_depth(uint2 pixel_i, float start_depth) {
     float2 view_uv = player.camera.create_view_uv(pixel_i);
     Ray ray = player.camera.create_view_ray(view_uv);
     ray.o += ray.nrm * start_depth;
-    GameTraceRecord game_trace_record = trace(ray, max_steps);
+    GameTraceRecord game_trace_record = trace(ray);
     game_trace_record.trace_record.dist += start_depth;
     game_trace_record.draw_sample.depth += start_depth;
     return game_trace_record.trace_record.dist;
 }
 
-GameTraceRecord Game::trace(Ray ray, in uint max_steps) {
+GameTraceRecord Game::trace(Ray ray) {
     GameTraceState trace_state;
     trace_state.default_init();
-    trace_state.max_steps = max_steps;
 
     trace_collidables(trace_state, ray);
     debug_scene.trace(trace_state, ray, 2);
@@ -129,7 +128,7 @@ GameTraceRecord Game::trace(Ray ray, in uint max_steps) {
     return game_trace_record;
 }
 
-DrawSample Game::draw(in out Input input, uint2 pixel_i, float start_depth) {
+DrawSample Game::draw(in out GpuInput input, uint2 pixel_i, float start_depth) {
     float uv_rand_offset = input.time;
     float2 uv_offset =
         float2(rand(float2(pixel_i) + uv_rand_offset + 10),
@@ -140,28 +139,28 @@ DrawSample Game::draw(in out Input input, uint2 pixel_i, float start_depth) {
     Ray ray = player.camera.create_view_ray(view_uv);
     ray.o += ray.nrm * start_depth;
 
-    GameTraceRecord game_trace_record = trace(ray, input.max_steps());
+    GameTraceRecord game_trace_record = trace(ray);
     game_trace_record.trace_record.dist += start_depth;
     game_trace_record.draw_sample.depth += start_depth;
     GameTraceRecord temp_trace_record;
 
     if (game_trace_record.trace_record.hit) {
-        if (input.shadows_enabled()) {
-            ray.o = game_trace_record.draw_sample.pos + game_trace_record.draw_sample.nrm * 0.001;
-            ray.nrm = sun_nrm;
-            ray.inv_nrm = 1 / ray.nrm;
-            temp_trace_record = trace(ray, input.max_steps());
-            float3 shade = max(dot(game_trace_record.draw_sample.nrm, sun_nrm), 0) * sun_col;
-            if (temp_trace_record.trace_record.hit) {
-                shade = 0;
-            }
-            shade += sample_sky(game_trace_record.draw_sample.nrm) * 0.3;
-            game_trace_record.draw_sample.col *= shade;
-        } else {
+        // if (input.shadows_enabled()) {
+        //     ray.o = game_trace_record.draw_sample.pos + game_trace_record.draw_sample.nrm * 0.001;
+        //     ray.nrm = sun_nrm;
+        //     ray.inv_nrm = 1 / ray.nrm;
+        //     temp_trace_record = trace(ray, 0);
+        //     float3 shade = max(dot(game_trace_record.draw_sample.nrm, sun_nrm), 0) * sun_col;
+        //     if (temp_trace_record.trace_record.hit) {
+        //         shade = 0;
+        //     }
+        //     shade += sample_sky(game_trace_record.draw_sample.nrm) * 0.3;
+        //     game_trace_record.draw_sample.col *= shade;
+        // } else {
             float3 shade = max(dot(sun_nrm, game_trace_record.draw_sample.nrm), 0) * sun_col;
             shade += sample_sky(game_trace_record.draw_sample.nrm) * 0.3;
             game_trace_record.draw_sample.col *= shade;
-        }
+        // }
     }
 
     float3 p = floor(game_trace_record.draw_sample.pos * VOXEL_SCL) / VOXEL_SCL;

@@ -1,7 +1,7 @@
 #pragma once
 
 uint VoxelWorld::get_chunk_index(int3 chunk_i) {
-    return chunk_i.x + chunk_i.y * CHUNK_NX + chunk_i.z * CHUNK_NX * CHUNK_NY;
+    return chunk_i.x + chunk_i.y * CHUNK_COUNT_X + chunk_i.z * CHUNK_COUNT_X * CHUNK_COUNT_Y;
 }
 
 uint VoxelWorld::sample_lod(float3 p, in out int index) {
@@ -70,7 +70,7 @@ void VoxelWorld::trace(in out GameTraceState trace_state, Ray ray) {
         uint lod = sample_lod(dda_ray.o, chunk_index);
         if (lod != 0) {
             float prev_dist = bound_trace.dist;
-            bound_trace = dda(dda_ray, chunk_index, trace_state.max_steps);
+            bound_trace = dda(dda_ray, chunk_index);
             bound_trace.dist += prev_dist;
         }
     }
@@ -81,12 +81,12 @@ void VoxelWorld::trace(in out GameTraceState trace_state, Ray ray) {
     }
 }
 
-TraceRecord VoxelWorld::dda(Ray ray, in out int index, in uint /*max_steps*/) {
+TraceRecord VoxelWorld::dda(Ray ray, in out int index) {
     TraceRecord result;
     result.default_init();
     result.dist = 0;
 
-    const uint max_steps = (CHUNK_NX + CHUNK_NY + CHUNK_NZ) * CHUNK_SIZE * 3;
+    const uint max_steps = (CHUNK_COUNT_X + CHUNK_COUNT_Y + CHUNK_COUNT_Z) * CHUNK_SIZE * 3;
     float3 delta = float3(
         ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
         ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),

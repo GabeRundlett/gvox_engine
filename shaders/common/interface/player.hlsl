@@ -45,8 +45,8 @@ struct Player {
     }
 
     void init();
-    void calc_update(in out Input input);
-    void apply_update(float3 v, in out Input input);
+    void calc_update(in out GpuInput input);
+    void apply_update(float3 v, in out GpuInput input);
 
     void toggle_view();
     float3 view_vec();
@@ -67,7 +67,7 @@ struct Player {
         flag |= mask * val;
     }
 
-    void update_keys(in out Input input) {
+    void update_keys(in out GpuInput input) {
         set_flag_bit(move_flags, 0, input.keyboard.keys[KEYBINDS_SPRINT] != 0);
         set_flag_bit(move_flags, 1, input.keyboard.keys[KEYBINDS_MOVE_L] != 0);
         set_flag_bit(move_flags, 2, input.keyboard.keys[KEYBINDS_MOVE_R] != 0);

@@ -47,7 +47,7 @@ float3 Player::view_vec() {
     }
 }
 
-void Player::calc_update(in out Input input) {
+void Player::calc_update(in out GpuInput input) {
     update_keys(input);
 
     if (should_noclip()) {
@@ -71,7 +71,7 @@ void Player::calc_update(in out Input input) {
     }
 
     rot.z -= input.mouse.pos_delta.x * mouse_sens * 0.001f;
-    rot.x -= input.mouse.pos_delta.y * mouse_sens * 0.001f;
+    rot.x += input.mouse.pos_delta.y * mouse_sens * 0.001f;
     const float MAX_ROT = deg2rad(90);
     if (rot.x > MAX_ROT)
         rot.x = MAX_ROT;
@@ -151,7 +151,7 @@ void Player::calc_update(in out Input input) {
     }
 }
 
-void Player::apply_update(float3 v, in out Input input) {
+void Player::apply_update(float3 v, in out GpuInput input) {
     pos += (move_vel + force_vel) * input.delta_time;
 
     if (pos.z <= 0) {
