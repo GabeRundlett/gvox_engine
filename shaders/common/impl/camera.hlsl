@@ -55,11 +55,11 @@ uint2 Camera::world2screen(float3 worldspace_p) {
     return uint2(round((prev_uv * float2(0.5 / aspect, 0.5) + float2(0.5, 0.5)) * render_size));
 }
 
-void Camera::update(in out GpuInput input) {
-    render_size = input.render_size;
+void Camera::update(StructuredBuffer<GpuInput> input) {
+    render_size = input[0].render_size;
     inv_frame_dim = 1 / render_size;
     aspect = render_size.x * inv_frame_dim.y;
-    fov = input.fov;
+    fov = input[0].fov;
     tan_half_fov = tan(fov * 3.14159f / 360.0f);
     inv_mat = inverse(float4x4(
         rot_mat[0], 0,

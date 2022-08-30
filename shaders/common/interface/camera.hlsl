@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/input.hlsl"
+#include "shared.inl"
 #include "common/interface/raytrace.hlsl"
 
 struct Camera {
@@ -20,7 +20,7 @@ struct Camera {
         aspect = 0;
     }
 
-    void update(in out GpuInput input);
+    void update(StructuredBuffer<GpuInput> input);
 
     float2 create_view_uv(float2 pixel_i);
     Ray create_view_ray(float2 uv);

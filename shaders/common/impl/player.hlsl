@@ -47,7 +47,7 @@ float3 Player::view_vec() {
     }
 }
 
-void Player::calc_update(in out GpuInput input) {
+void Player::calc_update(StructuredBuffer<GpuInput> input) {
     update_keys(input);
 
     if (should_noclip()) {
@@ -61,7 +61,7 @@ void Player::calc_update(in out GpuInput input) {
             force_vel.z = EARTH_GRAV * sqrt(EARTH_JUMP_HEIGHT * 2.0 / EARTH_GRAV);
     }
 
-    if (input.keyboard.keys[GAME_KEY_F5] != 0) {
+    if (input[0].keyboard.keys[GAME_KEY_F5] != 0) {
         if ((view_state & 0x10) == 0) {
             view_state |= 0x10;
             toggle_view();
@@ -70,8 +70,8 @@ void Player::calc_update(in out GpuInput input) {
         view_state &= ~0x10;
     }
 
-    rot.z -= input.mouse.pos_delta.x * mouse_sens * 0.001f;
-    rot.x += input.mouse.pos_delta.y * mouse_sens * 0.001f;
+    rot.z -= input[0].mouse.pos_delta.x * mouse_sens * 0.001f;
+    rot.x += input[0].mouse.pos_delta.y * mouse_sens * 0.001f;
     const float MAX_ROT = deg2rad(90);
     if (rot.x > MAX_ROT)
         rot.x = MAX_ROT;
@@ -115,16 +115,16 @@ void Player::calc_update(in out GpuInput input) {
 
     float applied_accel = accel_rate;
     if (should_sprint())
-        max_speed += input.delta_time * accel_rate;
+        max_speed += input[0].delta_time * accel_rate;
     else
-        max_speed -= input.delta_time * accel_rate;
+        max_speed -= input[0].delta_time * accel_rate;
 
     max_speed = clamp(max_speed, speed, speed * sprint_speed);
 
     float move_magsq = dot(move_vec, move_vec);
     if (move_magsq > 0) {
-        move_vec = normalize(move_vec) * input.delta_time * applied_accel * (on_ground ? 1 : 0.1);
-        bobbing_phase += input.delta_time * 18;
+        move_vec = normalize(move_vec) * input[0].delta_time * applied_accel * (on_ground ? 1 : 0.1);
+        bobbing_phase += input[0].delta_time * 18;
     }
 
     float move_vel_mag = length(move_vel);
@@ -132,7 +132,7 @@ void Player::calc_update(in out GpuInput input) {
     if (move_vel_mag > 0) {
         move_vel_dir = move_vel / move_vel_mag;
         if (on_ground)
-            move_vel -= move_vel_dir * min(accel_rate * 0.4 * input.delta_time, move_vel_mag);
+            move_vel -= move_vel_dir * min(accel_rate * 0.4 * input[0].delta_time, move_vel_mag);
     }
 
     move_vel += move_vec * 2;
@@ -147,12 +147,12 @@ void Player::calc_update(in out GpuInput input) {
     if (should_noclip()) {
         force_vel = 0;
     } else {
-        force_vel += float3(0, 0, -1) * GRAVITY * input.delta_time;
+        force_vel += float3(0, 0, -1) * GRAVITY * input[0].delta_time;
     }
 }
 
-void Player::apply_update(float3 v, in out GpuInput input) {
-    pos += (move_vel + force_vel) * input.delta_time;
+void Player::apply_update(float3 v, StructuredBuffer<GpuInput> input) {
+    pos += (move_vel + force_vel) * input[0].delta_time;
 
     if (pos.z <= 0) {
         pos.z = 0;

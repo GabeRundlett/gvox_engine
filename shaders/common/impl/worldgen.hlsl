@@ -157,8 +157,7 @@ SurroundingInfo get_surrounding(in out WorldgenState worldgen_state, float3 bloc
     };
 
     surroundings.exposure = 0;
-    for (int i = 0; i < 6; ++i)
-    {
+    for (int i = 0; i < 6; ++i) {
         float3 sample_pos = block_pos + neighbor_offsets[i];
         WorldgenState temp = get_worldgen_state(sample_pos);
         block_pass0(temp, sample_pos);

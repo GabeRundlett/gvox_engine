@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/input.hlsl"
+#include "shared.inl"
 #include "common/interface/camera.hlsl"
 
 #define KEYBINDS_MOVE_R GAME_KEY_D
@@ -45,8 +45,8 @@ struct Player {
     }
 
     void init();
-    void calc_update(in out GpuInput input);
-    void apply_update(float3 v, in out GpuInput input);
+    void calc_update(StructuredBuffer<GpuInput> input);
+    void apply_update(float3 v, StructuredBuffer<GpuInput> input);
 
     void toggle_view();
     float3 view_vec();
@@ -67,24 +67,24 @@ struct Player {
         flag |= mask * val;
     }
 
-    void update_keys(in out GpuInput input) {
-        set_flag_bit(move_flags, 0, input.keyboard.keys[KEYBINDS_SPRINT] != 0);
-        set_flag_bit(move_flags, 1, input.keyboard.keys[KEYBINDS_MOVE_L] != 0);
-        set_flag_bit(move_flags, 2, input.keyboard.keys[KEYBINDS_MOVE_R] != 0);
-        set_flag_bit(move_flags, 3, input.keyboard.keys[KEYBINDS_MOVE_F] != 0);
-        set_flag_bit(move_flags, 4, input.keyboard.keys[KEYBINDS_MOVE_B] != 0);
-        set_flag_bit(move_flags, 5, input.keyboard.keys[KEYBINDS_MOVE_U] != 0);
-        set_flag_bit(move_flags, 6, input.keyboard.keys[KEYBINDS_MOVE_D] != 0);
+    void update_keys(StructuredBuffer<GpuInput> input) {
+        set_flag_bit(move_flags, 0, input[0].keyboard.keys[KEYBINDS_SPRINT] != 0);
+        set_flag_bit(move_flags, 1, input[0].keyboard.keys[KEYBINDS_MOVE_L] != 0);
+        set_flag_bit(move_flags, 2, input[0].keyboard.keys[KEYBINDS_MOVE_R] != 0);
+        set_flag_bit(move_flags, 3, input[0].keyboard.keys[KEYBINDS_MOVE_F] != 0);
+        set_flag_bit(move_flags, 4, input[0].keyboard.keys[KEYBINDS_MOVE_B] != 0);
+        set_flag_bit(move_flags, 5, input[0].keyboard.keys[KEYBINDS_MOVE_U] != 0);
+        set_flag_bit(move_flags, 6, input[0].keyboard.keys[KEYBINDS_MOVE_D] != 0);
 
         prev_key_flags = key_flags;
-        set_flag_bit(key_flags, 0, input.keyboard.keys[KEYBINDS_SPRINT] != 0);
-        set_flag_bit(key_flags, 1, input.keyboard.keys[KEYBINDS_MOVE_L] != 0);
-        set_flag_bit(key_flags, 2, input.keyboard.keys[KEYBINDS_MOVE_R] != 0);
-        set_flag_bit(key_flags, 3, input.keyboard.keys[KEYBINDS_MOVE_F] != 0);
-        set_flag_bit(key_flags, 4, input.keyboard.keys[KEYBINDS_MOVE_B] != 0);
-        set_flag_bit(key_flags, 5, input.keyboard.keys[KEYBINDS_MOVE_U] != 0);
-        set_flag_bit(key_flags, 6, input.keyboard.keys[KEYBINDS_MOVE_D] != 0);
-        set_flag_bit(key_flags, 7, input.keyboard.keys[KEYBINDS_NOCLIP] != 0);
+        set_flag_bit(key_flags, 0, input[0].keyboard.keys[KEYBINDS_SPRINT] != 0);
+        set_flag_bit(key_flags, 1, input[0].keyboard.keys[KEYBINDS_MOVE_L] != 0);
+        set_flag_bit(key_flags, 2, input[0].keyboard.keys[KEYBINDS_MOVE_R] != 0);
+        set_flag_bit(key_flags, 3, input[0].keyboard.keys[KEYBINDS_MOVE_F] != 0);
+        set_flag_bit(key_flags, 4, input[0].keyboard.keys[KEYBINDS_MOVE_B] != 0);
+        set_flag_bit(key_flags, 5, input[0].keyboard.keys[KEYBINDS_MOVE_U] != 0);
+        set_flag_bit(key_flags, 6, input[0].keyboard.keys[KEYBINDS_MOVE_D] != 0);
+        set_flag_bit(key_flags, 7, input[0].keyboard.keys[KEYBINDS_NOCLIP] != 0);
 
         uint k0 = (prev_key_flags >> 7) & 0x1;
         uint k1 = (key_flags >> 7) & 0x1;

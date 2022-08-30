@@ -79,7 +79,7 @@ namespace daxa_common {
         f32 time, delta_time;
 
         bool paused = true;
-        bool fsr_enabled = true;
+        bool fsr_enabled = false;
 
         daxa::ImageId swapchain_image;
         daxa::TaskImageId task_swapchain_image;

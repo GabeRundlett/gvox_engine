@@ -119,18 +119,21 @@ void Game::init() {
     // editing = false;
 }
 
-void Game::update(in out GpuInput input) {
-    if (input.keyboard.keys[GAME_KEY_R] != 0) {
+void Game::update(StructuredBuffer<GpuInput> input, in out GpuOutput output) {
+    if (input[0].keyboard.keys[GAME_KEY_R] != 0) {
         default_init();
         init();
     }
+
+    output.player_pos = float3(input[0].keyboard.keys[GAME_KEY_W], 0, 0);
+    output.player_rot = float3(0, 0, 0);
 
     player.calc_update(input);
 
     voxel_world.center_pt = player.pos;
     voxel_world.update(input);
 
-    float3 player_v = (player.move_vel + player.force_vel) * input.delta_time;
+    float3 player_v = (player.move_vel + player.force_vel) * input[0].delta_time;
     float3 p = player.pos;
     Ray ray;
     ray.o = p + float3(0, 0, 0);
@@ -148,15 +151,15 @@ void Game::update(in out GpuInput input) {
         pick_pos[0] = player.camera.pos + pick_ray.nrm * (pick_depth + 1.0 / VOXEL_SCL);
         pick_pos[1] = player.camera.pos + pick_ray.nrm * (pick_depth - 1.0 / VOXEL_SCL);
 
-        if (input.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
+        if (input[0].mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
             voxel_world.edit_info.pos = pick_pos[1];
             voxel_world.edit_info.block_id = BlockID::Stone;
-        } else if (input.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
+        } else if (input[0].mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
             voxel_world.edit_info.pos = pick_pos[0];
             voxel_world.edit_info.block_id = BlockID::Air;
         }
         voxel_world.edit_info.radius = EDIT_RADIUS;
-        voxel_world.edit_info.col = input.block_color;
+        voxel_world.edit_info.col = input[0].block_color;
         voxel_world.queue_edit();
     } else {
         pick_pos[0] = -1000;

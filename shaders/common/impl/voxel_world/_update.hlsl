@@ -34,7 +34,7 @@ void VoxelWorld::init() {
     }
 }
 
-void VoxelWorld::chunkgen(int3 block_offset, in out GpuInput input) {
+void VoxelWorld::chunkgen(int3 block_offset, StructuredBuffer<GpuInput> input) {
     int3 chunk_i = clamp(chunkgen_i, int3(0, 0, 0), int3(CHUNK_COUNT_X - 1, CHUNK_COUNT_Y - 1, CHUNK_COUNT_Z - 1));
     int index = clamp(get_chunk_index(chunk_i), 0, CHUNK_N - 1);
     switch (chunks_genstate[index].edit_stage) {
@@ -50,7 +50,7 @@ void VoxelWorld::queue_edit() {
     chunks_genstate[index].edit_stage = EditStage::BlockEdit;
 }
 
-void VoxelWorld::update(in out GpuInput input) {
+void VoxelWorld::update(StructuredBuffer<GpuInput> input) {
     uint prev_i = get_chunk_index(chunkgen_i);
     if (chunkgen_i.x != -1000)
         chunks_genstate[prev_i].edit_stage = EditStage::Finished;

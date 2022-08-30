@@ -12,5 +12,5 @@
 
     StructuredBuffer<GpuGlobals> globals = daxa::get_StructuredBuffer<GpuGlobals>(p.globals_buffer_id);
     StructuredBuffer<GpuInput> input = daxa::get_StructuredBuffer<GpuInput>(p.input_buffer_id);
-    globals[0].game.voxel_world.chunkgen(block_offset, input[0]);
+    globals[0].game.voxel_world.chunkgen(block_offset, input);
 }

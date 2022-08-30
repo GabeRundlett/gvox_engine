@@ -128,8 +128,8 @@ GameTraceRecord Game::trace(Ray ray) {
     return game_trace_record;
 }
 
-DrawSample Game::draw(in out GpuInput input, uint2 pixel_i, float start_depth) {
-    float uv_rand_offset = input.time;
+DrawSample Game::draw(StructuredBuffer<GpuInput> input, uint2 pixel_i, float start_depth) {
+    float uv_rand_offset = input[0].time;
     float2 uv_offset =
         float2(rand(float2(pixel_i) + uv_rand_offset + 10),
                rand(float2(pixel_i) + uv_rand_offset)) *
@@ -145,7 +145,7 @@ DrawSample Game::draw(in out GpuInput input, uint2 pixel_i, float start_depth) {
     GameTraceRecord temp_trace_record;
 
     if (game_trace_record.trace_record.hit) {
-        // if (input.shadows_enabled()) {
+        // if (input[0].shadows_enabled()) {
         //     ray.o = game_trace_record.draw_sample.pos + game_trace_record.draw_sample.nrm * 0.001;
         //     ray.nrm = sun_nrm;
         //     ray.inv_nrm = 1 / ray.nrm;

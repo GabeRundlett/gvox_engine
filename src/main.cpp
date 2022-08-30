@@ -112,9 +112,9 @@ struct App : daxa_common::App<App> {
     bool should_break = false;
     bool should_place = false;
     bool started = false;
-    bool enable_depth_prepass = true;
+    bool enable_depth_prepass = false;
     bool should_run_startup = true;
-    bool laptop_power_saving = true;
+    bool laptop_power_saving = false;
 
     App() : daxa_common::App<App>(APPNAME) {
         std::cout << device.properties().device_name << std::endl;
@@ -506,7 +506,7 @@ struct App : daxa_common::App<App> {
                 },
             },
             .task = [this](daxa::TaskInterface interf) {
-                if (started) {
+                if (started && enable_depth_prepass) {
                     auto cmd_list = interf.get_command_list();
                     cmd_list.set_pipeline(depth_prepass0_pipeline);
                     auto push = DrawPush{
@@ -532,7 +532,7 @@ struct App : daxa_common::App<App> {
                 },
             },
             .task = [this](daxa::TaskInterface interf) {
-                if (started) {
+                if (started && enable_depth_prepass) {
                     auto cmd_list = interf.get_command_list();
                     cmd_list.set_pipeline(depth_prepass1_pipeline);
                     auto push = DrawPush{

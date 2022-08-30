@@ -10,6 +10,13 @@ float rad2deg(float r) {
     return r * 180.0 / PI;
 }
 
+float fresnel(float3 i, float3 n, float ior) {
+    float cosine = clamp(dot(-i, n), 0, 1);
+    float r0 = (1 - ior) / (1 + ior);
+    r0 = r0 * r0;
+    return r0 + (1 - r0) * pow((1 - cosine), 5);
+}
+
 float4 uint_to_float4(uint u) {
     float4 result;
     result.r = float((u >> 0x00) & 0xff) / 255;
@@ -21,11 +28,58 @@ float4 uint_to_float4(uint u) {
 
 uint float4_to_uint(float4 f) {
     uint result = 0;
-    result |= uint(clamp(f.r, 0, 1) * 255) << 0x00;
-    result |= uint(clamp(f.g, 0, 1) * 255) << 0x08;
-    result |= uint(clamp(f.b, 0, 1) * 255) << 0x10;
-    result |= uint(clamp(f.a, 0, 1) * 255) << 0x18;
+    result |= uint(f.r * 255) << 0x00;
+    result |= uint(f.g * 255) << 0x08;
+    result |= uint(f.b * 255) << 0x10;
+    result |= uint(f.a * 255) << 0x18;
     return result;
+}
+
+float3x3 inverse(float3x3 m) {
+    float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0];
+    float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1];
+    float n31 = m[0][2], n32 = m[1][2], n33 = m[2][2];
+
+    float det = determinant(m);
+    float idet = 1.0 / determinant(m);
+
+    float3x3 ret;
+
+    ret[0][0] = determinant(float2x2(
+        n22, n23,
+        n32, n33));
+    ret[0][1] = determinant(float2x2(
+        n13, n12,
+        n33, n32));
+    ret[0][2] = determinant(float2x2(
+        n12, n13,
+        n22, n23));
+
+    ret[1][0] = determinant(float2x2(
+        n23, n21,
+        n33, n31));
+    ret[1][1] = determinant(float2x2(
+        n11, n13,
+        n31, n33));
+    ret[1][2] = determinant(float2x2(
+        n13, n11,
+        n23, n21));
+
+    ret[2][0] = determinant(float2x2(
+        n21, n22,
+        n31, n32));
+    ret[2][1] = determinant(float2x2(
+        n12, n11,
+        n32, n31));
+    ret[2][2] = determinant(float2x2(
+        n11, n12,
+        n21, n22));
+
+    ret[0][0] *= idet, ret[0][1] *= idet, ret[0][2] *= idet;
+    ret[1][0] *= idet, ret[1][1] *= idet, ret[1][2] *= idet;
+    ret[2][0] *= idet, ret[2][1] *= idet, ret[2][2] *= idet;
+
+    return ret;
 }
 
 float4x4 inverse(float4x4 m) {

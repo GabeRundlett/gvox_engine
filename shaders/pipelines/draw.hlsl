@@ -48,7 +48,7 @@ float3 hsv2rgb(float3 c) {
 
     start_depth = clamp(start_depth - 1, 0, MAX_D);
 
-    DrawSample draw_sample = globals[0].game.draw(input[0], pixel_i.xy, start_depth);
+    DrawSample draw_sample = globals[0].game.draw(input, pixel_i.xy, start_depth);
 
     float4 out_col;
 

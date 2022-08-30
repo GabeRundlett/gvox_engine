@@ -39,8 +39,8 @@ struct VoxelWorld {
     }
 
     void init();
-    void update(in out GpuInput input);
-    void chunkgen(int3 block_offset, in out GpuInput input);
+    void update(StructuredBuffer<GpuInput> input);
+    void chunkgen(int3 block_offset, StructuredBuffer<GpuInput> input);
     void queue_edit();
     void subchunk_x2x4(uint3 group_local_id, uint3 group_id, int3 chunk_i);
     void subchunk_x8up(uint3 group_local_id, int3 chunk_i);
