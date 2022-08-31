@@ -23,7 +23,7 @@ void VoxelChunk::gen(int3 block_offset) {
     // float3 nrm = -surroundings.nrm;
     nrm = nrm * (surroundings.exposure > 0);
     if (worldgen_state.block_id == BlockID::Water)
-        nrm = float3(0, 0, 1);
+        nrm = float3(0, 0, 1) * (block_pos.z > 16 - 1.1 / VOXEL_SCL);
 
     uint index = calc_index(block_offset);
     Voxel result;
@@ -42,9 +42,13 @@ void VoxelChunk::do_edit(int3 block_offset, in out EditInfo edit_info) {
 
     if (l < edit_info.radius) {
         // float3 col = float3(1, 0.05, 0.08);
-        Voxel result;
-        result.col_id = float4_to_uint(float4(edit_info.col, 0)) | ((uint)(edit_info.block_id) << 0x18);
-        result.nrm = float4_to_uint(float4(normalize(del) * (l > edit_info.radius - 3.0 / VOXEL_SCL), 0));
-        data[index] = result;
+        Voxel prev = data[index];
+        BlockID prev_id = (BlockID)(prev.col_id >> 0x18);
+        if (prev_id != BlockID::Air) {
+            Voxel result = prev;
+            result.col_id = float4_to_uint(float4(edit_info.col, 0)) | ((uint)(edit_info.block_id) << 0x18);
+            // result.nrm = float4_to_uint(float4(normalize(del) * (l > edit_info.radius - 3.0 / VOXEL_SCL), 0));
+            data[index] = result;
+        }
     }
 }

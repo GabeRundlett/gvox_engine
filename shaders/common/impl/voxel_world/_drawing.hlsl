@@ -69,6 +69,8 @@ void VoxelWorld::eval_color(in out GameTraceState trace_state) {
     // int temp_chunk_index;
     // trace_state.draw_sample.col = 0.1 * sample_lod(trace_state.draw_sample.pos, temp_chunk_index);
 
+    // trace_state.draw_sample.col = 0.5;
+
     // trace_state.draw_sample.nrm = voxel.get_nrm();
     // trace_state.draw_sample.nrm = normalize(voxel.get_nrm() + trace_state.draw_sample.nrm * 0.1);
 }

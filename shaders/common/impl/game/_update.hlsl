@@ -115,7 +115,7 @@ void Game::init() {
     // temp_box.bound_max -= float3(1, 1, 1) * 0.25;
     // debug_scene.add_shape(temp_box, float3(0, 1, 0.5), 0);
 
-    sun_nrm = normalize(float3(-1.5, -3, 2));
+    sun_nrm = normalize(float3(-1.5, -1, 6));
     // editing = false;
 }
 

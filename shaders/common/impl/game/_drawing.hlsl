@@ -78,11 +78,11 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
     }
 }
 
-static const float3 sun_col = float3(1, 0.85, 0.5) * 4;
+static const float3 sun_col = float3(1, 0.75, 0.5) * 2;
 
 float3 sample_sky(float3 nrm) {
-    float sky_val = clamp(dot(nrm, float3(0, 0, -1)) * 0.5 + 0.5, 0, 1);
-    return lerp(float3(0.02, 0.05, 0.90) * 2, float3(0.08, 0.10, 0.54), pow(sky_val, 2));
+    float sky_val = clamp(dot(nrm, float3(0, 0, 1)) * 0.5 + 0.5, 0, 1);
+    return lerp(float3(0.11, 0.10, 0.09) * 0.1, float3(0.2, 0.21, 0.90) * 2, pow(sky_val, 1)) * 2;
 }
 
 float Game::draw_depth(uint2 pixel_i, float start_depth, in uint max_steps) {
@@ -156,11 +156,22 @@ DrawSample Game::draw(in out Input input, uint2 pixel_i, float start_depth) {
                 shade = 0;
             }
             shade += sample_sky(game_trace_record.draw_sample.nrm) * 0.3;
+
+            // float val = dot(float(0, 0, -1), game_trace_record.draw_sample.nrm) * 0.5 + 0.5;
+            // val = pow(val, 2);
+            // shade *= val;
+
             game_trace_record.draw_sample.col *= shade;
         } else {
             float3 shade = max(dot(sun_nrm, game_trace_record.draw_sample.nrm), 0) * sun_col;
             shade += sample_sky(game_trace_record.draw_sample.nrm) * 0.3;
+
+            // float val = dot(float(0, 0, -1), game_trace_record.draw_sample.nrm) * 0.5 + 0.5;
+            // val = pow(val, 2);
+            // shade *= val;
+            
             game_trace_record.draw_sample.col *= shade;
+
         }
     }
 
