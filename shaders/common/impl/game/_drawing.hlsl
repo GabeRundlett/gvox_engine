@@ -24,9 +24,9 @@ void ShapeScene::eval_color(in out GameTraceState trace_state) {
 #if MINION
         float2 m_uv = uv + float2(0.0, 0.2);
 #else
-        float2 m_uv = uv + float2(0.0, 0.04);
+        float2 m_uv = uv + float2(0.0, 0.2);
 #endif
-        float m = clamp((dot(m_uv, m_uv) > 0.02) + (m_uv.y > -0.05), 0, 1);
+        float m = clamp((dot(m_uv, m_uv) > 0.02) + (m_uv.y < 0.05)  + (m_uv.y > 0.12), 0, 1);
 
         float face_fac = clamp(e1 * e2 * m + (local_pos.y < 0) * 10, 0, 1);
         float pants_fac = local_pos.z > -0.6;
