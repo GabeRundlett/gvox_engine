@@ -105,7 +105,7 @@ struct Game {
     gpu::Readback readback_data;
 
     bool paused = true;
-    bool laptop_power_saving = true;
+    bool laptop_power_saving = false;
 
     void create_pipeline(daxa::PipelineHandle &pipe, const std::filesystem::path &path, const char *entry = "main") {
         auto result = render_context.pipeline_compiler->createComputePipeline({
@@ -190,6 +190,9 @@ struct Game {
 
         update();
         run_startup();
+
+        bool enable_shadows = true;
+        gpu_input.flags = (gpu_input.flags & ~(1 << 0)) | (static_cast<u32>(enable_shadows) << 0);
     }
 
     ~Game() {
