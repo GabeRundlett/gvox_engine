@@ -5,23 +5,27 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#if _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#elif __linux__
+#define GLFW_EXPOSE_NATIVE_X11
+#endif
 #include <GLFW/glfw3native.h>
 
 #include <glm/glm.hpp>
 
-struct Window {
+struct AppWindow {
     GLFWwindow *window_ptr = nullptr;
     glm::ivec2 frame_dim{640, 480};
     VkSurfaceKHR vulkan_surface = nullptr;
 
-    Window() {
+    AppWindow() {
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         window_ptr = glfwCreateWindow(frame_dim.x, frame_dim.y, "title", nullptr, nullptr);
     }
 
-    ~Window() {
+    ~AppWindow() {
         auto vk_instance = daxa::instance->getVkInstance();
         vkDestroySurfaceKHR(vk_instance, vulkan_surface, nullptr);
         glfwDestroyWindow(window_ptr);

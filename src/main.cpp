@@ -82,7 +82,7 @@ struct Game {
     bool started = false;
     bool enable_depth_prepass = true;
 
-    Window window;
+    AppWindow window;
     VkSurfaceKHR vulkan_surface = window.get_vksurface(daxa::instance->getVkInstance());
     RenderContext render_context{vulkan_surface, window.frame_dim};
     std::optional<daxa::ImGuiRenderer> imgui_renderer = std::nullopt;
@@ -401,7 +401,7 @@ struct Game {
 
         ImGui::Render();
     }
-    Window &get_window() { return window; }
+    AppWindow &get_window() { return window; }
     void on_mouse_move(const glm::dvec2 m) {
         if (!paused) {
             double center_x = static_cast<double>(window.frame_dim.x / 2);
