@@ -3,11 +3,15 @@
 #include "window.hpp"
 
 #include <thread>
+using namespace std::chrono_literals;
 #include <iostream>
 #include <cmath>
 
 #include <daxa/utils/imgui.hpp>
 #include "imgui/imgui_impl_glfw.h"
+
+#include <daxa/utils/math_operators.hpp>
+using namespace daxa::math_operators;
 
 using namespace daxa::types;
 #include "../shaders/shared.inl"
@@ -95,21 +99,22 @@ struct BaseApp : AppWindow<T> {
         if (!AppWindow<T>::minimized) {
             reinterpret_cast<T *>(this)->on_update();
         } else {
-            using namespace std::literals;
             std::this_thread::sleep_for(1ms);
         }
 
         return false;
     }
 
-    void reload_pipeline(auto & pipeline) {
+    auto reload_pipeline(auto &pipeline) -> bool {
         if (pipeline_compiler.check_if_sources_changed(pipeline)) {
             auto new_pipeline = pipeline_compiler.recreate_compute_pipeline(pipeline);
             std::cout << new_pipeline.to_string() << std::endl;
             if (new_pipeline.is_ok()) {
                 pipeline = new_pipeline.value();
+                return true;
             }
         }
+        return false;
     }
 
     void submit_task_list() {

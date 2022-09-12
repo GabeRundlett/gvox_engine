@@ -1,20 +1,31 @@
 #include "base_app.hpp"
+#include <map>
 
 struct App : BaseApp<App> {
     // clang-format off
-    daxa::ComputePipeline compute_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {.source = daxa::ShaderFile{"compute.glsl"}},
-        .push_constant_size = sizeof(ComputePush),
-        .debug_name = APPNAME_PREFIX("compute_pipeline"),
+    daxa::ComputePipeline startup_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"startup.comp.glsl"}},
+        .push_constant_size = sizeof(StartupCompPush),
+        .debug_name = APPNAME_PREFIX("startup_comp_pipeline"),
+    }).value();
+    daxa::ComputePipeline perframe_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"perframe.comp.glsl"}},
+        .push_constant_size = sizeof(PerframeCompPush),
+        .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
+    }).value();
+    daxa::ComputePipeline draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
+        .push_constant_size = sizeof(DrawCompPush),
+        .debug_name = APPNAME_PREFIX("draw_comp_pipeline"),
     }).value();
     // clang-format on
 
-    GpuInput gpu_input = {
-        .view_origin = {0, 0},
-        .mouse_pos = {0, 0},
-        .zoom = 2.0f,
-        .max_steps = 512,
-    };
+    GpuInput gpu_input = default_gpu_input();
+    auto default_gpu_input() -> GpuInput {
+        return {
+            .fov = 90.0f,
+        };
+    }
 
     daxa::BufferId gpu_input_buffer = device.create_buffer({
         .size = sizeof(GpuInput),
@@ -37,11 +48,42 @@ struct App : BaseApp<App> {
     });
     daxa::TaskImageId task_render_image;
 
-    App() : BaseApp<App>() {}
+    BufferId gpu_globals_buffer = device.create_buffer({
+        .size = sizeof(GpuGlobals),
+        .debug_name = "gpu_globals_buffer",
+    });
+    daxa::TaskBufferId task_gpu_globals_buffer;
+
+    std::map<i32, usize> mouse_bindings;
+    std::map<i32, usize> key_bindings;
+
+    bool battery_saving_mode = false;
+    bool should_run_startup = true;
+    bool paused = true;
+
+    App() : BaseApp<App>() {
+        key_bindings[GLFW_KEY_W] = GAME_KEY_W;
+        key_bindings[GLFW_KEY_A] = GAME_KEY_A;
+        key_bindings[GLFW_KEY_S] = GAME_KEY_S;
+        key_bindings[GLFW_KEY_D] = GAME_KEY_D;
+        key_bindings[GLFW_KEY_R] = GAME_KEY_R;
+        key_bindings[GLFW_KEY_F] = GAME_KEY_F;
+        key_bindings[GLFW_KEY_SPACE] = GAME_KEY_SPACE;
+        key_bindings[GLFW_KEY_LEFT_CONTROL] = GAME_KEY_LEFT_CONTROL;
+        key_bindings[GLFW_KEY_LEFT_SHIFT] = GAME_KEY_LEFT_SHIFT;
+        key_bindings[GLFW_KEY_F5] = GAME_KEY_F5;
+
+        mouse_bindings[GLFW_MOUSE_BUTTON_1] = GAME_MOUSE_BUTTON_1;
+        mouse_bindings[GLFW_MOUSE_BUTTON_2] = GAME_MOUSE_BUTTON_2;
+        mouse_bindings[GLFW_MOUSE_BUTTON_3] = GAME_MOUSE_BUTTON_3;
+        mouse_bindings[GLFW_MOUSE_BUTTON_4] = GAME_MOUSE_BUTTON_4;
+        mouse_bindings[GLFW_MOUSE_BUTTON_5] = GAME_MOUSE_BUTTON_5;
+    }
 
     ~App() {
         device.wait_idle();
         device.collect_garbage();
+        device.destroy_buffer(gpu_globals_buffer);
         device.destroy_buffer(gpu_input_buffer);
         device.destroy_buffer(staging_gpu_input_buffer);
         device.destroy_image(render_image);
@@ -51,40 +93,65 @@ struct App : BaseApp<App> {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::Begin("Test");
-        ImGui::DragFloat2("View Origin", reinterpret_cast<f32 *>(&gpu_input.view_origin), 0.001f, -2.0f, 2.0f, "%.7f");
-        ImGui::DragFloat("Zoom", &gpu_input.zoom, 0.01f, 0.0f, 4.0f, "%.7f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragInt("Max Steps", &gpu_input.max_steps, 1.0f, 1, 1024, "%d", ImGuiSliderFlags_Logarithmic);
+        ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
         ImGui::End();
         ImGui::Render();
     }
 
     void on_update() {
         auto now = Clock::now();
-        elapsed_s = std::chrono::duration<f32>(now - prev_time).count();
+        gpu_input.time = std::chrono::duration<f32>(now - start).count();
+        gpu_input.delta_time = std::chrono::duration<f32>(now - prev_time).count();
         prev_time = now;
 
-        gpu_input.time = elapsed_s;
         gpu_input.frame_dim = {size_x, size_y};
 
+        if (battery_saving_mode) {
+            std::this_thread::sleep_for(10ms);
+        }
+
+        reload_pipeline(draw_comp_pipeline);
+        reload_pipeline(perframe_comp_pipeline);
+        if (reload_pipeline(startup_comp_pipeline))
+            should_run_startup = true;
+
         ui_update();
-        reload_pipeline(compute_pipeline);
         submit_task_list();
+
+        gpu_input.mouse.pos_delta = {0.0f, 0.0f};
+        gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
     }
 
     void on_mouse_move(f32 x, f32 y) {
-        gpu_input.mouse_pos = {x, y};
+        if (!paused) {
+            f32vec2 center = {static_cast<f32>(size_x / 2), static_cast<f32>(size_y / 2)};
+            auto offset = gpu_input.mouse.pos - center;
+            set_mouse_pos(center.x, center.y);
+            gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
+            gpu_input.mouse.pos = f32vec2{x, y};
+        }
     }
-    void on_mouse_scroll(f32 x, f32 y) {
-        f32 mul = 0;
-        if (y < 0)
-            mul = pow(1.05f, abs(y));
-        else if (y > 0)
-            mul = 1.0f / pow(1.05f, abs(y));
-        gpu_input.zoom *= mul;
+    void on_mouse_scroll(f32 dx, f32 dy) {
+        if (!paused) {
+            gpu_input.mouse.scroll_delta = gpu_input.mouse.scroll_delta + f32vec2{dx, dy};
+        }
     }
-    void on_mouse_button(i32, i32) {
+    void on_mouse_button(i32 button_id, i32 action) {
+        if (!paused && mouse_bindings.contains(button_id)) {
+            auto index = mouse_bindings[button_id];
+            gpu_input.mouse.buttons[index] = action;
+        }
     }
-    void on_key(i32, i32) {
+    void on_key(i32 key_id, i32 action) {
+        if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+            toggle_pause();
+        if (key_id == GLFW_KEY_R && action == GLFW_PRESS)
+            should_run_startup = true;
+
+        if (!paused && key_bindings.contains(key_id)) {
+            auto index = key_bindings[key_id];
+            gpu_input.keyboard.keys[index] = action;
+        }
     }
     void on_resize(u32 sx, u32 sy) {
         minimized = (sx == 0 || sy == 0);
@@ -101,6 +168,12 @@ struct App : BaseApp<App> {
             on_update();
         }
     }
+    void toggle_pause() {
+        set_mouse_capture(paused);
+        if (paused)
+            gpu_input = default_gpu_input();
+        paused = !paused;
+    }
 
     void record_tasks(daxa::TaskList &new_task_list) {
         task_render_image = new_task_list.create_task_image({
@@ -115,6 +188,11 @@ struct App : BaseApp<App> {
         task_staging_gpu_input_buffer = new_task_list.create_task_buffer({
             .fetch_callback = [this]() { return staging_gpu_input_buffer; },
             .debug_name = APPNAME_PREFIX("task_staging_gpu_input_buffer"),
+        });
+
+        task_gpu_globals_buffer = new_task_list.create_task_buffer({
+            .fetch_callback = [this]() { return gpu_globals_buffer; },
+            .debug_name = "task_gpu_globals_buffer",
         });
 
         new_task_list.add_task({
@@ -146,21 +224,77 @@ struct App : BaseApp<App> {
 
         new_task_list.add_task({
             .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (should_run_startup) {
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.clear_buffer({
+                        .buffer = gpu_globals_buffer,
+                        .offset = 0,
+                        .size = sizeof(GpuGlobals),
+                        .clear_value = 0,
+                    });
+                }
+            },
+            .debug_name = "Startup (Globals Clear)",
+        });
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (should_run_startup) {
+                    should_run_startup = false;
+                    auto cmd_list = interf.get_command_list();
+                    cmd_list.set_pipeline(startup_comp_pipeline);
+                    auto push = StartupCompPush{
+                        .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(1, 1, 1);
+                }
+            },
+            .debug_name = "Startup (Compute)",
+        });
+
+        new_task_list.add_task({
+            .used_buffers = {
                 {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                cmd_list.set_pipeline(perframe_comp_pipeline);
+                auto push = PerframeCompPush{
+                    .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
+                    .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                };
+                cmd_list.push_constant(push);
+                cmd_list.dispatch(1, 1, 1);
+            },
+            .debug_name = "Perframe (Compute)",
+        });
+
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
-                cmd_list.set_pipeline(compute_pipeline);
-                cmd_list.push_constant(ComputePush{
-                    .image_id = render_image.default_view(),
+                cmd_list.set_pipeline(draw_comp_pipeline);
+                cmd_list.push_constant(DrawCompPush{
+                    .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                     .gpu_input = device.buffer_reference(gpu_input_buffer),
+                    .image_id = render_image.default_view(),
                 });
                 cmd_list.dispatch((size_x + 7) / 8, (size_y + 7) / 8);
             },
-            .debug_name = APPNAME_PREFIX("Compute Task"),
+            .debug_name = APPNAME_PREFIX("Draw (Compute)"),
         });
 
         new_task_list.add_task({
@@ -181,7 +315,7 @@ struct App : BaseApp<App> {
                     .dst_offsets = {{{0, 0, 0}, {static_cast<i32>(size_x), static_cast<i32>(size_y), 1}}},
                 });
             },
-            .debug_name = APPNAME_PREFIX("Blit Task (render to swapchain)"),
+            .debug_name = APPNAME_PREFIX("Blit (render to swapchain)"),
         });
     }
 };
