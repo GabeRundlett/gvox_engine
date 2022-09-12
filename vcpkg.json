@@ -5,7 +5,9 @@
         {
             "name": "daxa",
             "features": [
-                "utils"
+                "utils",
+                "glslang",
+                "dxc"
             ]
         },
         "fmt",

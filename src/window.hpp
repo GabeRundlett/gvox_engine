@@ -12,7 +12,7 @@ using namespace daxa::types;
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;
-    u32 size_x = 800, size_y = 800;
+    u32 size_x = 800, size_y = 600;
     bool minimized = false;
 
     AppWindow(char const *window_name) {
@@ -33,9 +33,10 @@ struct AppWindow {
                 app.on_mouse_scroll(static_cast<f32>(x), static_cast<f32>(y));
             });
         glfwSetMouseButtonCallback(
-            glfw_window_ptr, [](GLFWwindow *window_ptr, i32 button, i32 action, i32) -> void {
+            glfw_window_ptr,
+            [](GLFWwindow *window_ptr, i32 key, i32 action, i32) {
                 auto &app = *reinterpret_cast<App *>(glfwGetWindowUserPointer(window_ptr));
-                app.on_mouse_button(button, action);
+                app.on_mouse_button(key, action);
             });
         glfwSetKeyCallback(
             glfw_window_ptr,
