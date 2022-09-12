@@ -21,20 +21,25 @@ struct Ray {
     f32vec3 inv_nrm;
 };
 
-struct HitRecord {
+struct IntersectionRecord {
     b32 hit;
     f32 dist;
     f32vec3 nrm;
 };
 
-void default_init(out HitRecord result) {
+struct TraceRecord {
+    IntersectionRecord intersection_record;
+    f32vec3 color;
+};
+
+void default_init(out IntersectionRecord result) {
     result.hit = false;
     result.dist = MAX_DIST;
     result.nrm = f32vec3(0, 0, 0);
 }
 
-HitRecord trace_sphere(Ray ray, Sphere s) {
-    HitRecord result;
+IntersectionRecord intersect_sphere(Ray ray, Sphere s) {
+    IntersectionRecord result;
     default_init(result);
 
     f32vec3 so_r = ray.o - s.o;
@@ -50,8 +55,8 @@ HitRecord trace_sphere(Ray ray, Sphere s) {
     return result;
 }
 
-HitRecord trace_box(Ray ray, Box b) {
-    HitRecord result;
+IntersectionRecord intersect_box(Ray ray, Box b) {
+    IntersectionRecord result;
     default_init(result);
 
     f32 tx1 = (b.bound_min.x - ray.o.x) * ray.inv_nrm.x;
@@ -107,6 +112,34 @@ Ray create_view_ray(f32vec2 uv) {
     return result;
 }
 
+TraceRecord trace_scene(in Ray ray) {
+    Sphere s0;
+    s0.o = f32vec3(sin(push_constant.gpu_input.time) * 0, 1, 0);
+    s0.r = 0.5;
+
+    Box b0;
+    b0.bound_min = f32vec3(-2.0, -2.0, -0.6);
+    b0.bound_max = f32vec3(+2.0, +2.0, -0.5);
+
+    TraceRecord trace;
+    default_init(trace.intersection_record);
+    trace.color = f32vec3(0.3, 0.4, 0.9);
+
+    IntersectionRecord s0_hit = intersect_sphere(ray, s0);
+    IntersectionRecord b0_hit = intersect_box(ray, b0);
+
+    if (s0_hit.hit && s0_hit.dist < trace.intersection_record.dist) {
+        trace.intersection_record = s0_hit;
+        trace.color = f32vec3(1.0, 0.5, 0.5);
+    }
+    if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
+        trace.intersection_record = b0_hit;
+        trace.color = f32vec3(0.5, 0.5, 1.0);
+    }
+
+    return trace;
+}
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     u32vec3 pixel_i = gl_GlobalInvocationID.xyz;
@@ -122,32 +155,24 @@ void main() {
     f32vec2 uv = pixel_p * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
 
-    Sphere s0;
-    s0.o = f32vec3(sin(push_constant.gpu_input.time) * 0, 1, 0);
-    s0.r = 0.5;
-
-    Box b0;
-    b0.bound_min = f32vec3(-2.0, -2.0, -0.6);
-    b0.bound_max = f32vec3(+2.0, +2.0, -0.5);
-
-    f32vec3 col = f32vec3(0.3, 0.4, 0.9);
+    f32vec3 col = f32vec3(0, 0, 0);
 
     Ray view_ray = create_view_ray(uv);
     view_ray.inv_nrm = 1.0 / view_ray.nrm;
 
-    HitRecord hit_record;
-    default_init(hit_record);
+    TraceRecord view_trace_record = trace_scene(view_ray);
+    col = view_trace_record.color;
 
-    HitRecord s0_hit = trace_sphere(view_ray, s0);
-    HitRecord b0_hit = trace_box(view_ray, b0);
-
-    if (s0_hit.hit && s0_hit.dist < hit_record.dist) {
-        hit_record = s0_hit;
-        col = f32vec3(1, 0, 0);
-    }
-    if (b0_hit.hit && b0_hit.dist < hit_record.dist) {
-        hit_record = b0_hit;
-        col = f32vec3(1, 0, 1);
+    if (view_trace_record.intersection_record.hit) {
+        f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
+        Ray sun_ray;
+        sun_ray.o = hit_pos + view_trace_record.intersection_record.nrm * 0.001;
+        sun_ray.nrm = normalize(f32vec3(1, -2, 3));
+        sun_ray.inv_nrm = 1.0 / sun_ray.nrm;
+        f32 shade = max(dot(sun_ray.nrm, view_trace_record.intersection_record.nrm), 0.0);
+        TraceRecord sun_trace_record = trace_scene(sun_ray);
+        shade *= f32(!sun_trace_record.intersection_record.hit);
+        col *= shade;
     }
 
     imageStore(
