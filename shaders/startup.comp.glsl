@@ -5,7 +5,7 @@
 DAXA_USE_PUSH_CONSTANT(StartupCompPush)
 
 void startup_player(inout Player player) {
-    player.pos = f32vec3(0, 0, 0);
+    player.pos = f32vec3(0, -2, 0);
     player.vel = f32vec3(0, 0, 0);
     player.rot = f32vec3(0, 0, 0);
 }

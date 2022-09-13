@@ -6,6 +6,8 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 
 void perframe_player(inout Player player) {
     const f32 mouse_sens = 1.0;
+    const f32 speed_mul = 5.0;
+    const f32 sprint_mul = 5.0;
 
     player.rot.z += push_constant.gpu_input.mouse.pos_delta.x * mouse_sens * 0.001;
     player.rot.x -= push_constant.gpu_input.mouse.pos_delta.y * mouse_sens * 0.001;
@@ -36,6 +38,7 @@ void perframe_player(inout Player player) {
     f32vec3 move_vec = f32vec3(0, 0, 0);
     f32vec3 forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
     f32vec3 lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
+    f32 speed = speed_mul;
 
     if (push_constant.gpu_input.keyboard.keys[GAME_KEY_W] != 0)
         move_vec += forward;
@@ -51,7 +54,10 @@ void perframe_player(inout Player player) {
     if (push_constant.gpu_input.keyboard.keys[GAME_KEY_LEFT_CONTROL] != 0)
         move_vec -= f32vec3(0, 0, 1);
 
-    player.pos += move_vec * push_constant.gpu_input.delta_time * 10;
+    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_LEFT_SHIFT] != 0)
+        speed *= sprint_mul;
+
+    player.pos += move_vec * push_constant.gpu_input.delta_time * speed;
 
     player.cam.pos = player.pos;
     player.cam.tan_half_fov = tan(push_constant.gpu_input.fov * 3.14159 / 360.0);

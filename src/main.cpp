@@ -170,6 +170,8 @@ struct App : BaseApp<App> {
     }
     void toggle_pause() {
         set_mouse_capture(paused);
+        gpu_input.mouse.pos_delta = {0.0f, 0.0f};
+        gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
         if (paused)
             gpu_input = default_gpu_input();
         paused = !paused;

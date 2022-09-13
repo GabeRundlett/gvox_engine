@@ -153,6 +153,8 @@ struct BaseApp : AppWindow<T> {
         new_task_list.present({});
         new_task_list.compile();
 
+        // new_task_list.output_graphviz();
+
         return new_task_list;
     }
 };
