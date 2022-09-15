@@ -1,6 +1,6 @@
 #version 450
 
-#include <shared.inl>
+#include <shared/shared.inl>
 #include <utils/voxel.glsl>
 
 DAXA_USE_PUSH_CONSTANT(DrawCompPush)
@@ -12,14 +12,12 @@ struct Ray {
     f32vec3 nrm;
     f32vec3 inv_nrm;
 };
-
 struct IntersectionRecord {
     b32 hit;
     f32 internal_fac;
     f32 dist;
     f32vec3 nrm;
 };
-
 struct TraceRecord {
     IntersectionRecord intersection_record;
     f32vec3 color;
@@ -33,6 +31,92 @@ void default_init(out IntersectionRecord result) {
     result.nrm = f32vec3(0, 0, 0);
 }
 
+u32 sample_lod(f32vec3 p) {
+    // i32vec3 block_i = clamp(i32vec3((p - CHUNK.box.bound_min) / VOXEL_SCL), i32vec3(0 + 0.001, 0 + 0.001, 0 + 0.001), i32vec3(CHUNK_SIZE - 0.001, CHUNK_SIZE - 0.001, CHUNK_SIZE - 0.001));
+    // i32vec3 chunk_i = block_i / CHUNK_SIZE;
+    // i32vec3 inchunk_block_i = block_i - chunk_i * CHUNK_SIZE;
+    // u32 block_index = inchunk_block_i.x + inchunk_block_i.y * CHUNK_SIZE + inchunk_block_i.z * CHUNK_SIZE * CHUNK_SIZE;
+    // Voxel voxel = unpack_voxel(CHUNK.packed_voxels[block_index]);
+    // if (voxel.block_id == 0)
+    //     return 1;
+    return 0;
+}
+IntersectionRecord dda(Ray ray) {
+    IntersectionRecord result;
+    default_init(result);
+    result.dist = 0;
+
+    const u32 max_steps = CHUNK_SIZE * 3;
+    f32vec3 delta = f32vec3(
+        ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
+        ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
+        ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
+    u32 lod = sample_lod(ray.o);
+    if (lod == 0) {
+        result.hit = true;
+        return result;
+    }
+    f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
+    f32vec3 t_start;
+    if (ray.nrm.x < 0) {
+        t_start.x = (ray.o.x / cell_size - floor(ray.o.x / cell_size)) * cell_size * delta.x;
+    } else {
+        t_start.x = (ceil(ray.o.x / cell_size) - ray.o.x / cell_size) * cell_size * delta.x;
+    }
+    if (ray.nrm.y < 0) {
+        t_start.y = (ray.o.y / cell_size - floor(ray.o.y / cell_size)) * cell_size * delta.y;
+    } else {
+        t_start.y = (ceil(ray.o.y / cell_size) - ray.o.y / cell_size) * cell_size * delta.y;
+    }
+    if (ray.nrm.z < 0) {
+        t_start.z = (ray.o.z / cell_size - floor(ray.o.z / cell_size)) * cell_size * delta.z;
+    } else {
+        t_start.z = (ceil(ray.o.z / cell_size) - ray.o.z / cell_size) * cell_size * delta.z;
+    }
+    f32 t_curr = min(min(t_start.x, t_start.y), t_start.z);
+    f32vec3 current_pos;
+    f32vec3 t_next = t_start;
+    b32 outside_bounds = false;
+    u32 side = 0;
+    i32 x1_steps;
+    for (x1_steps = 0; x1_steps < max_steps; ++x1_steps) {
+        current_pos = ray.o + ray.nrm * t_curr;
+        // if (inside(current_pos + ray.nrm * 0.001, CHUNK.box) == false) {
+        //     outside_bounds = true;
+        //     result.hit = false;
+        //     break;
+        // }
+        lod = sample_lod(current_pos);
+        if (lod == 0) {
+            result.hit = true;
+            if (t_next.x < t_next.y) {
+                if (t_next.x < t_next.z) {
+                    side = 0;
+                } else {
+                    side = 2;
+                }
+            } else {
+                if (t_next.y < t_next.z) {
+                    side = 1;
+                } else {
+                    side = 2;
+                }
+            }
+            break;
+        }
+        cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
+
+        t_next = (0.5 + sign(ray.nrm) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 / VOXEL_SCL);
+    }
+    result.dist = t_curr;
+    switch (side) {
+    case 0: result.nrm = f32vec3(ray.nrm.x < 0 ? 1 : -1, 0, 0); break;
+    case 1: result.nrm = f32vec3(0, ray.nrm.y < 0 ? 1 : -1, 0); break;
+    case 2: result.nrm = f32vec3(0, 0, ray.nrm.z < 0 ? 1 : -1); break;
+    }
+    return result;
+}
 IntersectionRecord intersect(Ray ray, Sphere s) {
     IntersectionRecord result;
     default_init(result);
@@ -76,6 +160,7 @@ IntersectionRecord intersect(Ray ray, Box b) {
             result.dist = tmax;
             result.hit = true;
             result.internal_fac = -1.0;
+            tmin = tmax;
         }
     }
 
@@ -106,7 +191,30 @@ IntersectionRecord intersect(Ray ray, Box b) {
 
     return result;
 }
+IntersectionRecord intersect_chunk(Ray ray) {
+    IntersectionRecord result;
+    default_init(result);
+    result = intersect(ray, VOXEL_WORLD.box);
 
+    // if (inside(ray.o, CHUNK.box)) {
+    //     result.dist = 0;
+    //     result.hit = true;
+    // } else {
+    //     result = intersect(ray, VOXEL_WORLD.box);
+    //     result.dist += 0.0001;
+    // }
+
+    // Ray dda_ray = ray;
+    // dda_ray.o = ray.o + ray.nrm * result.dist;
+
+    // if (result.hit && sample_lod(dda_ray.o) != 0) {
+    //     f32 prev_dist = result.dist;
+    //     result = dda(dda_ray);
+    //     result.dist += prev_dist;
+    // }
+
+    return result;
+}
 Ray create_view_ray(f32vec2 uv) {
     Ray result;
 
@@ -116,18 +224,9 @@ Ray create_view_ray(f32vec2 uv) {
 
     return result;
 }
-
-b32 inside(f32vec3 p, Sphere s) {
-    return dot(p - s.o, p - s.o) < s.r * s.r;
-}
-b32 inside(f32vec3 p, Box b) {
-    return f32(p.x >= b.bound_min.x) * f32(p.y >= b.bound_min.y) * f32(p.y >= b.bound_min.y) * f32(p.x <= b.bound_max.x) * f32(p.y <= b.bound_max.y) * f32(p.y <= b.bound_max.y) > 0;
-}
-
 u32 scene_id(f32vec3 p) {
     return 1;
 }
-
 TraceRecord trace_scene(in Ray ray) {
     TraceRecord trace;
     default_init(trace.intersection_record);
@@ -154,11 +253,11 @@ TraceRecord trace_scene(in Ray ray) {
         }
     }
 
-    IntersectionRecord b0_hit = intersect(ray, CHUNK.box);
+    IntersectionRecord b0_hit = intersect_chunk(ray);
     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
         trace.intersection_record = b0_hit;
         trace.color = f32vec3(0.5, 1.0, 0.5);
-        trace.material = 1;
+        trace.material = 2;
     }
 
     return trace;
@@ -193,6 +292,7 @@ void main() {
         f32 hit_dist = view_trace_record.intersection_record.dist;
         Ray bounce_ray;
         bounce_ray.o = hit_pos;
+
         switch (view_trace_record.material) {
         case 0: {
             // bounce_ray.nrm = reflect(view_ray.nrm, hit_nrm);
@@ -203,22 +303,35 @@ void main() {
             bounce_ray.nrm = normalize(f32vec3(1, -2, 3));
             bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
         } break;
+        case 2: {
+            bounce_ray.nrm = normalize(f32vec3(1, -2, 3));
+            bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
+        } break;
         }
         bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
-        TraceRecord bounce_trace_record = trace_scene(bounce_ray);
+        f32 shade = max(dot(bounce_ray.nrm, view_trace_record.intersection_record.nrm) * 0.5 + 0.5, 0.0);
+        // TraceRecord bounce_trace_record = trace_scene(bounce_ray);
         switch (view_trace_record.material) {
         case 0: {
-            col = bounce_trace_record.color;
+            // col = bounce_trace_record.color;
         } break;
         case 1: {
+            // col = f32vec3(1, 0, 1);
+            // f32 shade = max(dot(bounce_ray.nrm, view_trace_record.intersection_record.nrm), 0.0);
+            // shade *= f32(!bounce_trace_record.intersection_record.hit);
+            col *= shade;
+        } break;
+        case 2: {
             f32vec3 voxel_p = clamp((hit_pos - f32vec3(-2, -2, -2)) * 0.25, f32vec3(0.0001), f32vec3(0.9999));
             u32vec3 voxel_i = u32vec3(voxel_p * CHUNK_SIZE);
             u32 voxel_index = voxel_i.x + voxel_i.y * CHUNK_SIZE + voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
-            Voxel v = unpack_voxel(CHUNK.packed_voxels[voxel_index]);
-            // col = f32vec3(v.mat_id) * 0.01;
-            col = v.col;
-            f32 shade = max(dot(bounce_ray.nrm, view_trace_record.intersection_record.nrm), 0.0);
-            shade *= f32(!bounce_trace_record.intersection_record.hit);
+            // Voxel v = unpack_voxel(CHUNK.packed_voxels[voxel_index]);
+            // col = f32vec3(v.block_id);
+            // col = v.col;
+            // col = v.nrm;
+            // col = voxel_p;
+            // col = hit_nrm;
+            // shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.1);
             col *= shade;
         } break;
         }

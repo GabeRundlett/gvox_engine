@@ -1,12 +1,12 @@
 #version 450
 
-#include <shared.inl>
+#include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 
 void perframe_player(inout Player player) {
     const f32 mouse_sens = 1.0;
-    const f32 speed_mul = 5.0;
+    const f32 speed_mul = 30.0;
     const f32 sprint_mul = 5.0;
 
     player.rot.z += push_constant.gpu_input.mouse.pos_delta.x * mouse_sens * 0.001;

@@ -62,7 +62,7 @@ struct App : BaseApp<App> {
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
-    bool battery_saving_mode = true;
+    bool battery_saving_mode = false;
     bool should_run_startup = true;
     bool paused = true;
 
@@ -117,6 +117,7 @@ struct App : BaseApp<App> {
 
         reload_pipeline(draw_comp_pipeline);
         reload_pipeline(perframe_comp_pipeline);
+        reload_pipeline(chunkgen_comp_pipeline);
         if (reload_pipeline(startup_comp_pipeline))
             should_run_startup = true;
 
@@ -130,10 +131,10 @@ struct App : BaseApp<App> {
     void on_mouse_move(f32 x, f32 y) {
         if (!paused) {
             f32vec2 center = {static_cast<f32>(size_x / 2), static_cast<f32>(size_y / 2)};
-            auto offset = gpu_input.mouse.pos - center;
-            set_mouse_pos(center.x, center.y);
-            gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
             gpu_input.mouse.pos = f32vec2{x, y};
+            auto offset = gpu_input.mouse.pos - center;
+            gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
+            set_mouse_pos(center.x, center.y);
         }
     }
     void on_mouse_scroll(f32 dx, f32 dy) {
@@ -175,10 +176,10 @@ struct App : BaseApp<App> {
     }
     void toggle_pause() {
         set_mouse_capture(paused);
-        gpu_input.mouse.pos_delta = {0.0f, 0.0f};
-        gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
         if (paused)
             gpu_input = default_gpu_input();
+        gpu_input.mouse.pos_delta = {0.0f, 0.0f};
+        gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
         paused = !paused;
     }
 
@@ -267,8 +268,8 @@ struct App : BaseApp<App> {
 
         new_task_list.add_task({
             .used_buffers = {
-                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -285,8 +286,8 @@ struct App : BaseApp<App> {
 
         new_task_list.add_task({
             .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
                 {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
@@ -297,15 +298,15 @@ struct App : BaseApp<App> {
                 cmd_list.push_constant(ChunkgenCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 });
-                cmd_list.dispatch(8, 8, 8);
+                cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
             },
             .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
         });
 
         new_task_list.add_task({
             .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
                 {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
@@ -324,6 +325,9 @@ struct App : BaseApp<App> {
         });
 
         new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::TRANSFER_READ},
                 {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE},

@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 using namespace daxa::math_operators;
 
 using namespace daxa::types;
-#include "../shaders/shared.inl"
+#include <shared/shared.inl>
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -46,6 +46,7 @@ struct BaseApp : AppWindow<T> {
                 ".out/debug/vcpkg_installed/x64-linux/include",
 #endif
                 "shaders",
+                "src",
             },
             .language = daxa::ShaderLanguage::GLSL,
         },
