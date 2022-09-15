@@ -13,6 +13,11 @@ struct App : BaseApp<App> {
         .push_constant_size = sizeof(PerframeCompPush),
         .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
     }).value();
+    daxa::ComputePipeline chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
+        .push_constant_size = sizeof(ChunkgenCompPush),
+        .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
+    }).value();
     daxa::ComputePipeline draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
         .push_constant_size = sizeof(DrawCompPush),
@@ -57,7 +62,7 @@ struct App : BaseApp<App> {
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
-    bool battery_saving_mode = false;
+    bool battery_saving_mode = true;
     bool should_run_startup = true;
     bool paused = true;
 
@@ -226,7 +231,7 @@ struct App : BaseApp<App> {
 
         new_task_list.add_task({
             .used_buffers = {
-                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
             },
             .task = [this](daxa::TaskInterface interf) {
                 if (should_run_startup) {
@@ -276,6 +281,25 @@ struct App : BaseApp<App> {
                 cmd_list.dispatch(1, 1, 1);
             },
             .debug_name = "Perframe (Compute)",
+        });
+
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            },
+            .used_images = {
+                {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                cmd_list.set_pipeline(chunkgen_comp_pipeline);
+                cmd_list.push_constant(ChunkgenCompPush{
+                    .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                });
+                cmd_list.dispatch(8, 8, 8);
+            },
+            .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
         });
 
         new_task_list.add_task({

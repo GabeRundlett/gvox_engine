@@ -1,19 +1,11 @@
 #version 450
 
 #include <shared.inl>
+#include <utils/voxel.glsl>
 
 DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #define MAX_DIST 10000.0
-
-struct Sphere {
-    f32vec3 o;
-    f32 r;
-};
-
-struct Box {
-    f32vec3 bound_min, bound_max;
-};
 
 struct Ray {
     f32vec3 o;
@@ -137,30 +129,35 @@ u32 scene_id(f32vec3 p) {
 }
 
 TraceRecord trace_scene(in Ray ray) {
-    Sphere s0;
-    s0.o = f32vec3(0, 0, 0);
-    s0.r = 0.5;
-
-    Box b0;
-    b0.bound_min = f32vec3(-2.0, -2.0, -0.6);
-    b0.bound_max = f32vec3(+2.0, +2.0, -0.5);
-
     TraceRecord trace;
     default_init(trace.intersection_record);
     trace.color = f32vec3(0.3, 0.4, 0.9);
     trace.material = 0;
 
-    IntersectionRecord s0_hit = intersect(ray, s0);
-    IntersectionRecord b0_hit = intersect(ray, b0);
-
-    if (s0_hit.hit && s0_hit.dist < trace.intersection_record.dist) {
-        trace.intersection_record = s0_hit;
-        trace.color = f32vec3(1.0, 0.5, 0.5);
-        trace.material = 1;
+    for (u32 i = 0; i < SCENE.sphere_n; ++i) {
+        Sphere s = SCENE.spheres[i];
+        IntersectionRecord s_hit = intersect(ray, s);
+        if (s_hit.hit && s_hit.dist < trace.intersection_record.dist) {
+            trace.intersection_record = s_hit;
+            trace.color = f32vec3(0.5, 0.5, 1.0);
+            trace.material = 1;
+        }
     }
+
+    for (u32 i = 0; i < SCENE.box_n; ++i) {
+        Box b = SCENE.boxes[i];
+        IntersectionRecord b_hit = intersect(ray, b);
+        if (b_hit.hit && b_hit.dist < trace.intersection_record.dist) {
+            trace.intersection_record = b_hit;
+            trace.color = f32vec3(1.0, 0.5, 0.5);
+            trace.material = 1;
+        }
+    }
+
+    IntersectionRecord b0_hit = intersect(ray, CHUNK.box);
     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
         trace.intersection_record = b0_hit;
-        trace.color = f32vec3(0.5, 0.5, 1.0);
+        trace.color = f32vec3(0.5, 1.0, 0.5);
         trace.material = 1;
     }
 
@@ -194,7 +191,6 @@ void main() {
         f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
         f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
         f32 hit_dist = view_trace_record.intersection_record.dist;
-
         Ray bounce_ray;
         bounce_ray.o = hit_pos;
         switch (view_trace_record.material) {
@@ -209,14 +205,18 @@ void main() {
         } break;
         }
         bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
-
         TraceRecord bounce_trace_record = trace_scene(bounce_ray);
-
         switch (view_trace_record.material) {
         case 0: {
             col = bounce_trace_record.color;
         } break;
         case 1: {
+            f32vec3 voxel_p = clamp((hit_pos - f32vec3(-2, -2, -2)) * 0.25, f32vec3(0.0001), f32vec3(0.9999));
+            u32vec3 voxel_i = u32vec3(voxel_p * CHUNK_SIZE);
+            u32 voxel_index = voxel_i.x + voxel_i.y * CHUNK_SIZE + voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
+            Voxel v = unpack_voxel(CHUNK.packed_voxels[voxel_index]);
+            // col = f32vec3(v.mat_id) * 0.01;
+            col = v.col;
             f32 shade = max(dot(bounce_ray.nrm, view_trace_record.intersection_record.nrm), 0.0);
             shade *= f32(!bounce_trace_record.intersection_record.hit);
             col *= shade;

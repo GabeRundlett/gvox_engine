@@ -49,6 +49,44 @@ struct Player {
     f32vec3 rot;
 };
 
+struct Voxel {
+    f32vec3 col;
+    f32vec3 nrm;
+    u32 mat_id;
+};
+
+struct PackedVoxel {
+    u32 data;
+};
+
+struct Sphere {
+    f32vec3 o;
+    f32 r;
+};
+
+struct Box {
+    f32vec3 bound_min, bound_max;
+};
+
+#define CHUNK_SIZE 64
+
+struct Chunk {
+    Box box;
+    PackedVoxel packed_voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+};
+
+#define MAX_SPHERES 10
+#define MAX_BOXES 10
+
+struct Scene {
+    u32 sphere_n;
+    u32 box_n;
+
+    Sphere spheres[MAX_SPHERES];
+    Box boxes[MAX_BOXES];
+    Chunk chunk;
+};
+
 DAXA_DECL_BUFFER_STRUCT(GpuInput, {
     u32vec2 frame_dim;
     f32 time;
@@ -60,6 +98,7 @@ DAXA_DECL_BUFFER_STRUCT(GpuInput, {
 
 DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     Player player;
+    Scene scene;
 });
 
 struct StartupCompPush {
@@ -71,9 +110,16 @@ struct PerframeCompPush {
     BufferRef(GpuInput) gpu_input;
 };
 
+struct ChunkgenCompPush {
+    BufferRef(GpuGlobals) gpu_globals;
+};
+
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
 
     ImageViewId image_id;
 };
+
+#define SCENE push_constant.gpu_globals.scene
+#define CHUNK push_constant.gpu_globals.scene.chunk
