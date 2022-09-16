@@ -1,19 +1,20 @@
 #version 450
 
 #include <shared/shared.inl>
-#include <utils/voxel.glsl>
 
 DAXA_USE_PUSH_CONSTANT(StartupCompPush)
 
-void startup(inout Player player) {
-    player.pos = f32vec3(0, -5, 0);
-    player.vel = f32vec3(0, 0, 0);
-    player.rot = f32vec3(0, 0, 0);
+#include <utils/voxel.glsl>
+
+void startup_player() {
+    PLAYER.pos = f32vec3(BLOCK_NX / VOXEL_SCL / 2, -10, 40) + 0.001;
+    PLAYER.vel = f32vec3(0, 0, 0);
+    PLAYER.rot = f32vec3(-0.53, 0, 0.003);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    startup(push_constant.gpu_globals.player);
+    startup_player();
 
     for (i32 zi = 0; zi < CHUNK_NZ; ++zi) {
         for (i32 yi = 0; yi < CHUNK_NY; ++yi) {
@@ -30,9 +31,6 @@ void main() {
     VOXEL_WORLD.box.bound_min = VOXEL_CHUNKS[0].box.bound_min;
     VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max;
 
-    SCENE.sphere_n = 1;
-    SCENE.spheres[0].o = f32vec3(-5, 0, 0);
-    SCENE.spheres[0].r = 2;
-
-    SCENE.box_n = 0;
+    SCENE.capsule_n++;
+    SCENE.capsules[0].r = 0.5;
 }

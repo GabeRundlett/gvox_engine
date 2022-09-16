@@ -15,6 +15,9 @@ DAXA_DECL_BUFFER_STRUCT(GpuInput, {
 DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     Player player;
     Scene scene;
+
+    f32vec3 pick_pos;
+    f32vec3 pick_nrm;
 });
 
 struct StartupCompPush {
@@ -27,6 +30,9 @@ struct PerframeCompPush {
 struct ChunkgenCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
+struct ChunkOptCompPush {
+    BufferRef(GpuGlobals) gpu_globals;
+};
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
@@ -34,6 +40,10 @@ struct DrawCompPush {
     ImageViewId image_id;
 };
 
+#define GLOBALS push_constant.gpu_globals
 #define SCENE push_constant.gpu_globals.scene
 #define VOXEL_WORLD push_constant.gpu_globals.scene.voxel_world
 #define VOXEL_CHUNKS push_constant.gpu_globals.scene.voxel_world.voxel_chunks
+#define UNIFORMITY_CHUNKS push_constant.gpu_globals.scene.voxel_world.uniformity_chunks
+#define INPUT push_constant.gpu_input
+#define PLAYER push_constant.gpu_globals.player

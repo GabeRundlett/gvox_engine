@@ -5,9 +5,9 @@
 #define CHUNK_SIZE 64
 #define VOXEL_SCL 8
 
-#define CHUNK_NX 1
-#define CHUNK_NY 1
-#define CHUNK_NZ 1
+#define CHUNK_NX 12
+#define CHUNK_NY 12
+#define CHUNK_NZ 4
 #define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
 #define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)
 #define BLOCK_NY (CHUNK_NY * CHUNK_SIZE)
@@ -38,17 +38,30 @@ struct SurroundingInfo {
     f32vec3 nrm;
 };
 
+struct ChunkGenState {
+    u32 edit_stage;
+};
+
 struct VoxelChunk {
     Box box;
     PackedVoxel packed_voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
+
+struct VoxelUniformityChunk {
+    u32 lod_x2[1024];
+    u32 lod_x4[256];
+    u32 lod_x8[64];
+    u32 lod_x16[16];
+    u32 lod_x32[4];
+};
+
 struct VoxelWorld {
     Box box;
     i32vec3 chunkgen_i;
+    i32vec3 chunkgen_i2;
     f32vec3 center_pt;
+    f32 last_update_time;
     VoxelChunk voxel_chunks[CHUNK_N];
+    VoxelUniformityChunk uniformity_chunks[CHUNK_N];
+    ChunkGenState chunks_genstate[CHUNK_N];
 };
-
-u32 get_chunk_index(i32vec3 chunk_i) {
-    return chunk_i.x + chunk_i.y * CHUNK_NX + chunk_i.z * CHUNK_NX * CHUNK_NY;
-}

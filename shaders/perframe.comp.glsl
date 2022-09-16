@@ -4,25 +4,42 @@
 
 DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 
-void perframe_player(inout Player player) {
+#include <utils/voxel.glsl>
+#include <utils/raytrace.glsl>
+
+void toggle_view() {
+    PLAYER.view_state = (PLAYER.view_state & ~0xf) | ((PLAYER.view_state & 0xf) + 1);
+    if ((PLAYER.view_state & 0xf) > 1)
+        PLAYER.view_state = (PLAYER.view_state & ~0xf) | 0;
+}
+
+f32vec3 view_vec() {
+    switch (PLAYER.view_state) {
+    case 0: return PLAYER.forward * 0.55;
+    case 1: return PLAYER.cam.rot_mat * f32vec3(0, -2, 0);
+    default: return f32vec3(0, 0, 0);
+    }
+}
+
+void perframe_player() {
     const f32 mouse_sens = 1.0;
     const f32 speed_mul = 30.0;
     const f32 sprint_mul = 5.0;
 
-    player.rot.z += push_constant.gpu_input.mouse.pos_delta.x * mouse_sens * 0.001;
-    player.rot.x -= push_constant.gpu_input.mouse.pos_delta.y * mouse_sens * 0.001;
+    PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * 0.001;
+    PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * 0.001;
 
     const float MAX_ROT = 1.57;
-    if (player.rot.x > MAX_ROT)
-        player.rot.x = MAX_ROT;
-    if (player.rot.x < -MAX_ROT)
-        player.rot.x = -MAX_ROT;
-    float sin_rot_x = sin(player.rot.x), cos_rot_x = cos(player.rot.x);
-    float sin_rot_y = sin(player.rot.y), cos_rot_y = cos(player.rot.y);
-    float sin_rot_z = sin(player.rot.z), cos_rot_z = cos(player.rot.z);
+    if (PLAYER.rot.x > MAX_ROT)
+        PLAYER.rot.x = MAX_ROT;
+    if (PLAYER.rot.x < -MAX_ROT)
+        PLAYER.rot.x = -MAX_ROT;
+    float sin_rot_x = sin(PLAYER.rot.x), cos_rot_x = cos(PLAYER.rot.x);
+    float sin_rot_y = sin(PLAYER.rot.y), cos_rot_y = cos(PLAYER.rot.y);
+    float sin_rot_z = sin(PLAYER.rot.z), cos_rot_z = cos(PLAYER.rot.z);
 
     // clang-format off
-    player.cam.rot_mat = 
+    PLAYER.cam.rot_mat = 
         f32mat3x3(
             cos_rot_z, -sin_rot_z, 0,
             sin_rot_z,  cos_rot_z, 0,
@@ -35,35 +52,104 @@ void perframe_player(inout Player player) {
         );
     // clang-format on
 
+    if (INPUT.keyboard.keys[GAME_KEY_F5] != 0) {
+        if ((PLAYER.view_state & 0x10) == 0) {
+            PLAYER.view_state |= 0x10;
+            toggle_view();
+        }
+    } else {
+        PLAYER.view_state &= ~0x10;
+    }
+
     f32vec3 move_vec = f32vec3(0, 0, 0);
-    f32vec3 forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
-    f32vec3 lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
+    PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
+    PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
     f32 speed = speed_mul;
 
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_W] != 0)
-        move_vec += forward;
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_S] != 0)
-        move_vec -= forward;
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_A] != 0)
-        move_vec -= lateral;
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_D] != 0)
-        move_vec += lateral;
+    if (INPUT.keyboard.keys[GAME_KEY_W] != 0)
+        move_vec += PLAYER.forward;
+    if (INPUT.keyboard.keys[GAME_KEY_S] != 0)
+        move_vec -= PLAYER.forward;
+    if (INPUT.keyboard.keys[GAME_KEY_A] != 0)
+        move_vec -= PLAYER.lateral;
+    if (INPUT.keyboard.keys[GAME_KEY_D] != 0)
+        move_vec += PLAYER.lateral;
 
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_SPACE] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_SPACE] != 0)
         move_vec += f32vec3(0, 0, 1);
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_LEFT_CONTROL] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_LEFT_CONTROL] != 0)
         move_vec -= f32vec3(0, 0, 1);
 
-    if (push_constant.gpu_input.keyboard.keys[GAME_KEY_LEFT_SHIFT] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_LEFT_SHIFT] != 0)
         speed *= sprint_mul;
 
-    player.pos += move_vec * push_constant.gpu_input.delta_time * speed;
+    PLAYER.pos += move_vec * INPUT.delta_time * speed;
 
-    player.cam.pos = player.pos;
-    player.cam.tan_half_fov = tan(push_constant.gpu_input.fov * 3.14159 / 360.0);
+    f32vec3 cam_offset = view_vec();
+
+    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 2) + cam_offset;
+    PLAYER.cam.tan_half_fov = tan(INPUT.fov * 3.14159 / 360.0);
+}
+
+void perframe_voxel_world() {
+    // uint prev_i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    // if (VOXEL_WORLD.chunkgen_i.x != -1000)
+    //     chunks_genstate[prev_i].edit_stage = EditStage::Finished;
+
+    VOXEL_WORLD.center_pt = PLAYER.pos;
+    b32 chunk_needs_updating = false;
+    f32 min_dist_sq = 1000.0;
+
+    for (u32 zi = 0; zi < CHUNK_NZ; ++zi) {
+        for (u32 yi = 0; yi < CHUNK_NY; ++yi) {
+            for (u32 xi = 0; xi < CHUNK_NX; ++xi) {
+                i32vec3 chunk_i = i32vec3(xi, yi, zi);
+                u32 i = get_chunk_index(chunk_i);
+                f32vec3 box_center = (VOXEL_CHUNKS[i].box.bound_max + VOXEL_CHUNKS[i].box.bound_min) * 0.5;
+                f32vec3 del = VOXEL_WORLD.center_pt - box_center;
+                f32 dist_sq = dot(del, del);
+                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 0 &&
+                    (dist_sq < min_dist_sq || !chunk_needs_updating)) {
+                    min_dist_sq = dist_sq;
+                    chunk_needs_updating = true;
+                    VOXEL_WORLD.chunkgen_i2 = chunk_i;
+                }
+            }
+        }
+    }
+
+    if (INPUT.keyboard.keys[GAME_KEY_F] > 0 &&
+        INPUT.time - VOXEL_WORLD.last_update_time > 0.01) {
+        u32 i = get_chunk_index(VOXEL_WORLD.chunkgen_i2);
+        VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
+        VOXEL_WORLD.last_update_time = INPUT.time;
+    }
+
+    ++VOXEL_WORLD.chunkgen_i.x;
+    if (VOXEL_WORLD.chunkgen_i.x >= CHUNK_NX) {
+        VOXEL_WORLD.chunkgen_i.x = 0;
+        ++VOXEL_WORLD.chunkgen_i.y;
+    }
+    if (VOXEL_WORLD.chunkgen_i.y >= CHUNK_NY) {
+        VOXEL_WORLD.chunkgen_i.y = 0;
+        ++VOXEL_WORLD.chunkgen_i.z;
+    }
+    if (VOXEL_WORLD.chunkgen_i.z >= CHUNK_NZ) {
+        VOXEL_WORLD.chunkgen_i = i32vec3(0, 0, 0);
+    }
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    perframe_player(push_constant.gpu_globals.player);
+    perframe_player();
+    perframe_voxel_world();
+
+    Ray pick_ray = create_view_ray(f32vec2(0.0, 0.0));
+    IntersectionRecord pick_intersection = intersect_chunk(pick_ray);
+
+    GLOBALS.pick_pos = pick_ray.o + pick_ray.nrm * pick_intersection.dist;
+    GLOBALS.pick_nrm = pick_intersection.nrm;
+
+    SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0);
+    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, 2);
 }

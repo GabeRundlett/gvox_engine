@@ -12,4 +12,6 @@ struct Player {
     Camera cam;
     f32vec3 pos, vel;
     f32vec3 rot;
+    f32vec3 forward, lateral;
+    u32 view_state;
 };

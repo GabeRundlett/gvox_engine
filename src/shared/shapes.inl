@@ -11,6 +11,11 @@ struct Box {
     f32vec3 bound_min, bound_max;
 };
 
+struct Capsule {
+    f32vec3 p0, p1;
+    f32 r;
+};
+
 b32 inside(f32vec3 p, Sphere s) {
     return dot(p - s.o, p - s.o) < s.r * s.r;
 }

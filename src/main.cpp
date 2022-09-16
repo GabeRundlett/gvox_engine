@@ -1,6 +1,12 @@
 #include "base_app.hpp"
 #include <map>
 
+#define TEMP_BARRIER(cmd_list)                                     \
+    cmd_list.pipeline_barrier({                                    \
+        .awaited_pipeline_access = daxa::AccessConsts::READ_WRITE, \
+        .waiting_pipeline_access = daxa::AccessConsts::READ_WRITE, \
+    })
+
 struct App : BaseApp<App> {
     // clang-format off
     daxa::ComputePipeline startup_comp_pipeline = pipeline_compiler.create_compute_pipeline({
@@ -17,6 +23,26 @@ struct App : BaseApp<App> {
         .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
         .push_constant_size = sizeof(ChunkgenCompPush),
         .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
+    }).value();
+    daxa::ComputePipeline subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {
+            .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
+            .compile_options = {
+                .defines = {{.name = "SUBCHUNK_X2X4", .value = "1"}},
+            },
+        },
+        .push_constant_size = sizeof(ChunkOptCompPush),
+        .debug_name = APPNAME_PREFIX("subchunk_x2x4_comp_pipeline"),
+    }).value();
+    daxa::ComputePipeline subchunk_x8up_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {
+            .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
+            .compile_options = {
+                .defines = {{.name = "SUBCHUNK_X8UP", .value = "1"}},
+            },
+        },
+        .push_constant_size = sizeof(ChunkOptCompPush),
+        .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
     }).value();
     daxa::ComputePipeline draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
@@ -73,9 +99,12 @@ struct App : BaseApp<App> {
         key_bindings[GLFW_KEY_D] = GAME_KEY_D;
         key_bindings[GLFW_KEY_R] = GAME_KEY_R;
         key_bindings[GLFW_KEY_F] = GAME_KEY_F;
+        key_bindings[GLFW_KEY_Q] = GAME_KEY_Q;
+        key_bindings[GLFW_KEY_E] = GAME_KEY_E;
         key_bindings[GLFW_KEY_SPACE] = GAME_KEY_SPACE;
         key_bindings[GLFW_KEY_LEFT_CONTROL] = GAME_KEY_LEFT_CONTROL;
         key_bindings[GLFW_KEY_LEFT_SHIFT] = GAME_KEY_LEFT_SHIFT;
+        key_bindings[GLFW_KEY_LEFT_ALT] = GAME_KEY_LEFT_ALT;
         key_bindings[GLFW_KEY_F5] = GAME_KEY_F5;
 
         mouse_bindings[GLFW_MOUSE_BUTTON_1] = GAME_MOUSE_BUTTON_1;
@@ -97,6 +126,7 @@ struct App : BaseApp<App> {
     void ui_update() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::ShowMetricsWindow();
         ImGui::Begin("Test");
         ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
         ImGui::End();
@@ -118,6 +148,8 @@ struct App : BaseApp<App> {
         reload_pipeline(draw_comp_pipeline);
         reload_pipeline(perframe_comp_pipeline);
         reload_pipeline(chunkgen_comp_pipeline);
+        reload_pipeline(subchunk_x2x4_comp_pipeline);
+        reload_pipeline(subchunk_x8up_comp_pipeline);
         if (reload_pipeline(startup_comp_pipeline))
             should_run_startup = true;
 
@@ -221,6 +253,7 @@ struct App : BaseApp<App> {
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gpu_input_buffer,
                     .dst_buffer = gpu_input_buffer,
@@ -237,6 +270,7 @@ struct App : BaseApp<App> {
             .task = [this](daxa::TaskInterface interf) {
                 if (should_run_startup) {
                     auto cmd_list = interf.get_command_list();
+                    TEMP_BARRIER(cmd_list);
                     cmd_list.clear_buffer({
                         .buffer = gpu_globals_buffer,
                         .offset = 0,
@@ -255,6 +289,7 @@ struct App : BaseApp<App> {
                 if (should_run_startup) {
                     should_run_startup = false;
                     auto cmd_list = interf.get_command_list();
+                    TEMP_BARRIER(cmd_list);
                     cmd_list.set_pipeline(startup_comp_pipeline);
                     auto push = StartupCompPush{
                         .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
@@ -273,6 +308,7 @@ struct App : BaseApp<App> {
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
                 cmd_list.set_pipeline(perframe_comp_pipeline);
                 auto push = PerframeCompPush{
                     .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
@@ -287,13 +323,10 @@ struct App : BaseApp<App> {
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            },
-            .used_images = {
-                {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
                 cmd_list.set_pipeline(chunkgen_comp_pipeline);
                 cmd_list.push_constant(ChunkgenCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
@@ -301,6 +334,36 @@ struct App : BaseApp<App> {
                 cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
             },
             .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
+        });
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
+                cmd_list.set_pipeline(subchunk_x2x4_comp_pipeline);
+                cmd_list.push_constant(ChunkOptCompPush{
+                    .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                });
+                cmd_list.dispatch(1, 64, 1);
+            },
+            .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
+        });
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
+                cmd_list.set_pipeline(subchunk_x8up_comp_pipeline);
+                cmd_list.push_constant(ChunkOptCompPush{
+                    .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                });
+                cmd_list.dispatch(1, 1, 1);
+            },
+            .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
         });
 
         new_task_list.add_task({
@@ -313,6 +376,7 @@ struct App : BaseApp<App> {
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
                 cmd_list.set_pipeline(draw_comp_pipeline);
                 cmd_list.push_constant(DrawCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
@@ -334,6 +398,7 @@ struct App : BaseApp<App> {
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
+                TEMP_BARRIER(cmd_list);
                 cmd_list.blit_image_to_image({
                     .src_image = render_image,
                     .src_image_layout = daxa::ImageLayout::TRANSFER_SRC_OPTIMAL,

@@ -19,10 +19,13 @@
 #define GAME_KEY_D                  3
 #define GAME_KEY_R                  4
 #define GAME_KEY_F                  5
-#define GAME_KEY_SPACE              6
-#define GAME_KEY_LEFT_CONTROL       7
-#define GAME_KEY_LEFT_SHIFT         8
-#define GAME_KEY_F5                 9
+#define GAME_KEY_Q                  6
+#define GAME_KEY_E                  7
+#define GAME_KEY_SPACE              (GAME_KEY_E + 1)
+#define GAME_KEY_LEFT_CONTROL       (GAME_KEY_E + 2)
+#define GAME_KEY_LEFT_SHIFT         (GAME_KEY_E + 3)
+#define GAME_KEY_LEFT_ALT           (GAME_KEY_E + 4)
+#define GAME_KEY_F5                 (GAME_KEY_E + 5)
 #define GAME_KEY_LAST               GAME_KEY_F5
 // clang-format on
 
