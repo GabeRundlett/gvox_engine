@@ -1,5 +1,3 @@
-#version 450
-
 #include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
@@ -92,9 +90,9 @@ void perframe_player() {
 }
 
 void perframe_voxel_world() {
-    // uint prev_i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    // if (VOXEL_WORLD.chunkgen_i.x != -1000)
-    //     chunks_genstate[prev_i].edit_stage = EditStage::Finished;
+    uint prev_i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 1)
+        VOXEL_WORLD.chunks_genstate[prev_i].edit_stage = 2;
 
     VOXEL_WORLD.center_pt = PLAYER.pos;
     b32 chunk_needs_updating = false;
@@ -112,31 +110,15 @@ void perframe_voxel_world() {
                     (dist_sq < min_dist_sq || !chunk_needs_updating)) {
                     min_dist_sq = dist_sq;
                     chunk_needs_updating = true;
-                    VOXEL_WORLD.chunkgen_i2 = chunk_i;
+                    VOXEL_WORLD.chunkgen_i = chunk_i;
                 }
             }
         }
     }
 
-    if (INPUT.keyboard.keys[GAME_KEY_F] > 0 &&
-        INPUT.time - VOXEL_WORLD.last_update_time > 0.01) {
-        u32 i = get_chunk_index(VOXEL_WORLD.chunkgen_i2);
+    u32 i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 0)
         VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
-        VOXEL_WORLD.last_update_time = INPUT.time;
-    }
-
-    ++VOXEL_WORLD.chunkgen_i.x;
-    if (VOXEL_WORLD.chunkgen_i.x >= CHUNK_NX) {
-        VOXEL_WORLD.chunkgen_i.x = 0;
-        ++VOXEL_WORLD.chunkgen_i.y;
-    }
-    if (VOXEL_WORLD.chunkgen_i.y >= CHUNK_NY) {
-        VOXEL_WORLD.chunkgen_i.y = 0;
-        ++VOXEL_WORLD.chunkgen_i.z;
-    }
-    if (VOXEL_WORLD.chunkgen_i.z >= CHUNK_NZ) {
-        VOXEL_WORLD.chunkgen_i = i32vec3(0, 0, 0);
-    }
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;

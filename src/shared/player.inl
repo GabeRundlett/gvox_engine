@@ -14,4 +14,5 @@ struct Player {
     f32vec3 rot;
     f32vec3 forward, lateral;
     u32 view_state;
+    u32 interact_state;
 };

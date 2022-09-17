@@ -1,5 +1,3 @@
-#version 450
-
 #include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(DrawCompPush)
@@ -83,11 +81,12 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
     u32 block_id = sample_voxel_id(chunk_info.chunk_index, chunk_info.voxel_index);
     col = block_color(block_id);
-    // if ((chunk_info.chunk_i == VOXEL_WORLD.chunkgen_i2))
+    // if ((chunk_info.chunk_i == VOXEL_WORLD.chunkgen_i))
     //     col = f32vec3(0.3, 0.4, 1.0);
-    // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage > 0))
+    // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 1))
     //     col = f32vec3(0.2, 1.0, 0.2);
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
+    // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 
     if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
         // col = f32vec3(1, 1, 1);
@@ -153,12 +152,9 @@ void main() {
             bounce_ray.nrm = refract(view_ray.nrm, hit_nrm, 1.0 / 1.4);
             bounce_ray.o -= view_trace_record.intersection_record.nrm * 0.001;
         } break;
-        case 1: {
-            bounce_ray.nrm = normalize(f32vec3(1.4, -3.1, 2.3));
-            bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
-        } break;
+        case 1:
         case 2: {
-            bounce_ray.nrm = normalize(f32vec3(1.4, -3.1, 2.3));
+            bounce_ray.nrm = normalize(f32vec3(1.4, -5.1, 2.3));
             bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
         } break;
         }
@@ -215,8 +211,8 @@ void main() {
 
         f32 pick_dist = length(f32vec3((GLOBALS.pick_pos * VOXEL_SCL) - i32vec3(hit_pos * VOXEL_SCL))) / VOXEL_SCL;
 
-        if (pick_dist > 1.8 && pick_dist < 2) {
-            col *= 4.0;
+        if (pick_dist > 1.99 - 1.0 / VOXEL_SCL && pick_dist < 2) {
+            col *= f32vec3(4.0, 4.0, 4.0);
             col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
         }
 
@@ -234,6 +230,18 @@ void main() {
         // sun_ray.inv_nrm = 1.0 / sun_ray.nrm;
         // TraceRecord sun_trace_record = trace_scene(sun_ray);
     }
+
+    i32vec2 crosshair_uv = abs(i32vec2(pixel_i) - i32vec2(frame_dim / 2));
+
+    if ((crosshair_uv.x < 1 && crosshair_uv.y < 10) ||
+        (crosshair_uv.y < 1 && crosshair_uv.x < 10)) {
+        col = f32vec3(1, 1, 1);
+    }
+
+    // imageLoad(
+    //     daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
+    //     i32vec2(pixel_i.xy),
+    //     f32vec4(filmic(col), 1));
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),

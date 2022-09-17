@@ -123,7 +123,7 @@ struct BaseApp : AppWindow<T> {
         ++cpu_framecount;
         submit_info.signal_timeline_semaphores = {{gpu_framecount_timeline_sema, cpu_framecount}};
         loop_task_list.execute();
-        gpu_framecount_timeline_sema.wait_for_value(cpu_framecount - 1);
+        gpu_framecount_timeline_sema.wait_for_value(cpu_framecount - FRAMES_IN_FLIGHT);
     }
 
     auto record_loop_task_list() -> daxa::TaskList {

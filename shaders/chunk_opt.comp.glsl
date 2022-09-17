@@ -1,5 +1,3 @@
-#version 450
-
 #include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(ChunkOptCompPush)

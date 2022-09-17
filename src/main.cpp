@@ -44,6 +44,11 @@ struct App : BaseApp<App> {
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
     }).value();
+    daxa::ComputePipeline chunk_edit_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"chunk_edit.comp.glsl"}},
+        .push_constant_size = sizeof(ChunkEditCompPush),
+        .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
+    }).value();
     daxa::ComputePipeline draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
         .push_constant_size = sizeof(DrawCompPush),
@@ -335,6 +340,21 @@ struct App : BaseApp<App> {
             },
             .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
         });
+        // new_task_list.add_task({
+        //     .used_buffers = {
+        //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+        //     },
+        //     .task = [this](daxa::TaskInterface interf) {
+        //         auto cmd_list = interf.get_command_list();
+        //         TEMP_BARRIER(cmd_list);
+        //         cmd_list.set_pipeline(chunk_edit_comp_pipeline);
+        //         cmd_list.push_constant(ChunkEditCompPush{
+        //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+        //         });
+        //         cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
+        //     },
+        //     .debug_name = APPNAME_PREFIX("Chunk Edit (Compute)"),
+        // });
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},

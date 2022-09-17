@@ -45,8 +45,8 @@ u32 sample_lod(f32vec3 p, in out u32 chunk_index) {
     u32 lod_mask_x64 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 64);
 
     u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
-    // if (chunk_edit_stage != 2)
-    //     return 7;
+    if (chunk_edit_stage != 2)
+        return 7;
     if (sample_voxel_id(chunk_index, chunk_info.inchunk_voxel_i) != BlockID_Air)
         return 0;
     if (voxel_uniformity_lod_nonuniform(2)(chunk_index, lod_index_x2, lod_mask_x2))
