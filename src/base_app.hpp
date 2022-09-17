@@ -40,11 +40,7 @@ struct BaseApp : AppWindow<T> {
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
         .shader_compile_options = {
             .root_paths = {
-#if _WIN32
-                ".out/debug/vcpkg_installed/x64-windows/include",
-#elif __linux__
-                ".out/debug/vcpkg_installed/x64-linux/include",
-#endif
+                DAXA_SHADER_INCLUDE_DIR,
                 "shaders",
                 "src",
             },

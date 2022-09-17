@@ -98,6 +98,14 @@ void perframe_voxel_world() {
     b32 chunk_needs_updating = false;
     f32 min_dist_sq = 1000.0;
 
+    i32vec3 pick_chunk_i = get_chunk_i(get_voxel_i(GLOBALS.pick_pos));
+
+    if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
+        u32 i = get_chunk_index(pick_chunk_i);
+        if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2)
+            VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
+    }
+
     for (u32 zi = 0; zi < CHUNK_NZ; ++zi) {
         for (u32 yi = 0; yi < CHUNK_NY; ++yi) {
             for (u32 xi = 0; xi < CHUNK_NX; ++xi) {
@@ -106,7 +114,8 @@ void perframe_voxel_world() {
                 f32vec3 box_center = (VOXEL_CHUNKS[i].box.bound_max + VOXEL_CHUNKS[i].box.bound_min) * 0.5;
                 f32vec3 del = VOXEL_WORLD.center_pt - box_center;
                 f32 dist_sq = dot(del, del);
-                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 0 &&
+                u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
+                if ((stage == 0 || stage == 3) &&
                     (dist_sq < min_dist_sq || !chunk_needs_updating)) {
                     min_dist_sq = dist_sq;
                     chunk_needs_updating = true;
@@ -117,8 +126,12 @@ void perframe_voxel_world() {
     }
 
     u32 i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 0)
+    u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
+    if (stage == 0)
         VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
+    if (stage == 3)
+        VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
+
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;

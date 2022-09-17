@@ -6,7 +6,8 @@ DAXA_USE_PUSH_CONSTANT(ChunkEditCompPush)
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
-    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    i32vec3 pick_chunk_i = get_chunk_i(get_voxel_i(GLOBALS.pick_pos));
+    u32 chunk_index = get_chunk_index(pick_chunk_i);
     if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage != 3)
         return;
 
@@ -20,5 +21,7 @@ void main() {
     result.nrm = f32vec3(0, 0, 1);
     result.block_id = BlockID_Debug;
 
-    VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+    if (length(voxel_p - GLOBALS.pick_pos) < 2) {
+        VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+    }
 }
