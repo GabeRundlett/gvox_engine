@@ -90,6 +90,12 @@ struct App : BaseApp<App> {
     });
     daxa::TaskBufferId task_gpu_globals_buffer;
 
+    BufferId gpu_indirect_dispatch_buffer = device.create_buffer({
+        .size = sizeof(GpuIndirectDispatch),
+        .debug_name = "gpu_indirect_dispatch_buffer",
+    });
+    daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;
+
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
@@ -124,6 +130,7 @@ struct App : BaseApp<App> {
         device.collect_garbage();
         device.destroy_buffer(gpu_globals_buffer);
         device.destroy_buffer(gpu_input_buffer);
+        device.destroy_buffer(gpu_indirect_dispatch_buffer);
         device.destroy_buffer(staging_gpu_input_buffer);
         device.destroy_image(render_image);
     }
@@ -153,6 +160,7 @@ struct App : BaseApp<App> {
         reload_pipeline(draw_comp_pipeline);
         reload_pipeline(perframe_comp_pipeline);
         reload_pipeline(chunkgen_comp_pipeline);
+        reload_pipeline(chunk_edit_comp_pipeline);
         reload_pipeline(subchunk_x2x4_comp_pipeline);
         reload_pipeline(subchunk_x8up_comp_pipeline);
         if (reload_pipeline(startup_comp_pipeline))
@@ -240,6 +248,11 @@ struct App : BaseApp<App> {
             .debug_name = "task_gpu_globals_buffer",
         });
 
+        task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({
+            .fetch_callback = [this]() { return gpu_indirect_dispatch_buffer; },
+            .debug_name = "task_gpu_indirect_dispatch_buffer",
+        });
+
         new_task_list.add_task({
             .used_buffers = {
                 {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
@@ -310,6 +323,7 @@ struct App : BaseApp<App> {
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
                 {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -318,6 +332,7 @@ struct App : BaseApp<App> {
                 auto push = PerframeCompPush{
                     .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
                     .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                    .gpu_indirect_dispatch = this->device.buffer_reference(gpu_indirect_dispatch_buffer),
                 };
                 cmd_list.push_constant(push);
                 cmd_list.dispatch(1, 1, 1);
@@ -328,6 +343,7 @@ struct App : BaseApp<App> {
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -343,6 +359,7 @@ struct App : BaseApp<App> {
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -351,13 +368,14 @@ struct App : BaseApp<App> {
                 cmd_list.push_constant(ChunkEditCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 });
-                cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
+                cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
             },
             .debug_name = APPNAME_PREFIX("Chunk Edit (Compute)"),
         });
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -366,13 +384,14 @@ struct App : BaseApp<App> {
                 cmd_list.push_constant(ChunkOptCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 });
-                cmd_list.dispatch(1, 64, 1);
+                cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch)});
             },
             .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
         });
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -381,7 +400,7 @@ struct App : BaseApp<App> {
                 cmd_list.push_constant(ChunkOptCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 });
-                cmd_list.dispatch(1, 1, 1);
+                cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch)});
             },
             .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
         });

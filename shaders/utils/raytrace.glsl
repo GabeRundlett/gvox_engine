@@ -45,7 +45,7 @@ u32 sample_lod(f32vec3 p, in out u32 chunk_index) {
     u32 lod_mask_x64 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 64);
 
     u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
-    if (chunk_edit_stage != 2)
+    if (chunk_edit_stage != 2 && chunk_edit_stage != 4)
         return 7;
     if (sample_voxel_id(chunk_index, chunk_info.inchunk_voxel_i) != BlockID_Air)
         return 0;
@@ -130,7 +130,7 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index) {
         cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
 
         t_next = (0.5 + sign(ray.nrm) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
-        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 / VOXEL_SCL);
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0002 / VOXEL_SCL);
     }
     result.dist = t_curr;
     switch (side) {

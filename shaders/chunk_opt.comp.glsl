@@ -8,12 +8,7 @@ DAXA_USE_PUSH_CONSTANT(ChunkOptCompPush)
 
 shared u32 local_x2_copy[4][4];
 
-layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
-void main() {
-    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
-        return;
-
+void chunk_opt_x2x4(in u32 chunk_index, in u32 chunk_local_workgroup) {
     u32vec2 x2_in_group_location = u32vec2(
         (gl_LocalInvocationID.x >> 5) & 0x3,
         (gl_LocalInvocationID.x >> 7) & 0x3);
@@ -21,7 +16,7 @@ void main() {
         (gl_LocalInvocationID.x >> 5) & 0x3,
         (gl_LocalInvocationID.x >> 7) & 0x3,
         (gl_LocalInvocationID.x & 0x1F));
-    x2_i += 4 * u32vec3(gl_WorkGroupID.y & 0x7, (gl_WorkGroupID.y >> 3) & 0x7, 0);
+    x2_i += 4 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
     u32vec3 in_chunk_i = x2_i * 2;
     b32 at_least_one_occluding = false;
     u32 base_id_x1 = sample_voxel_id(chunk_index, in_chunk_i);
@@ -49,7 +44,7 @@ void main() {
         (gl_LocalInvocationID.x >> 4) & 0x1,
         (gl_LocalInvocationID.x >> 5) & 0x1,
         gl_LocalInvocationID.x & 0xF);
-    x4_i += 2 * u32vec3(gl_WorkGroupID.y & 0x7, (gl_WorkGroupID.y >> 3) & 0x7, 0);
+    x4_i += 2 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
     x2_i = x4_i * 2;
     u32 base_id_x2 = sample_voxel_id(chunk_index, x2_i * 2);
     at_least_one_occluding = false;
@@ -79,6 +74,15 @@ void main() {
     }
 }
 
+layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
+        return;
+
+    chunk_opt_x2x4(chunk_index, gl_WorkGroupID.y % 64);
+}
+
 #endif
 
 #if defined(SUBCHUNK_X8UP)
@@ -86,12 +90,7 @@ void main() {
 shared u32 local_x8_copy[64];
 shared u32 local_x16_copy[16];
 
-layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
-void main() {
-    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
-        return;
-
+void chunk_opt_x8up(in u32 chunk_index) {
     u32vec3 x8_i = u32vec3(
         (gl_LocalInvocationID.x >> 3) & 0x7,
         (gl_LocalInvocationID.x >> 6) & 0x7,
@@ -202,6 +201,15 @@ void main() {
         u32 index = uniformity_lod_index(32)(x32_i);
         UNIFORMITY_CHUNKS[chunk_index].lod_x32[index] = result;
     }
+}
+
+layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
+        return;
+
+    chunk_opt_x8up(chunk_index);
 }
 
 #endif

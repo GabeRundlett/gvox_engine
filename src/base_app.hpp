@@ -24,7 +24,10 @@ using Clock = std::chrono::high_resolution_clock;
 template <typename T>
 struct BaseApp : AppWindow<T> {
     daxa::Context daxa_ctx = daxa::create_context({
-        .enable_validation = true,
+        .enable_validation = false,
+        // .validation_callback = [](daxa::MsgSeverity, daxa::MsgType, std::string_view message) {
+        //     MessageBoxA(nullptr, message.data(), "BRUH", MB_OK);
+        // },
     });
     daxa::Device device = daxa_ctx.create_device({
         .debug_name = APPNAME_PREFIX("device"),

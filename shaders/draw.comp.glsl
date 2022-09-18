@@ -2,6 +2,7 @@
 
 DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
+#include <utils/rand.glsl>
 #include <utils/raytrace.glsl>
 
 f32vec3 sample_sky(f32vec3 nrm) {
@@ -75,6 +76,12 @@ f32vec3 filmic(f32vec3 color) {
     return color;
 }
 
+f32vec3 filmic_inv(f32vec3 color) {
+    color = max(color, f32vec3(0, 0, 0));
+    color = (-sqrt(5.0) * sqrt(701.0 * color * color - 106.0 * color + 125.0) - 85 * color + 25) / (620 * (color - 1));
+    return color;
+}
+
 f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
@@ -127,6 +134,11 @@ void main() {
     f32vec2 frame_dim = INPUT.frame_dim;
     f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
     f32 aspect = frame_dim.x * inv_frame_dim.y;
+
+    f32 uv_rand_offset = INPUT.time;
+    f32vec2 uv_offset =
+        f32vec2(rand(pixel_p + uv_rand_offset + 10), rand(pixel_p + uv_rand_offset)) * 1.0 - 0.5;
+    pixel_p += uv_offset;
 
     f32vec2 uv = pixel_p * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
@@ -211,7 +223,7 @@ void main() {
 
         f32 pick_dist = length(f32vec3((GLOBALS.pick_pos * VOXEL_SCL) - i32vec3(hit_pos * VOXEL_SCL))) / VOXEL_SCL;
 
-        if (pick_dist > 1.99 - 1.0 / VOXEL_SCL && pick_dist < 2) {
+        if (pick_dist < 10.0 / VOXEL_SCL) {
             col *= f32vec3(4.0, 4.0, 4.0);
             col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
         }
@@ -238,13 +250,17 @@ void main() {
         col = f32vec3(1, 1, 1);
     }
 
-    // imageLoad(
-    //     daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
-    //     i32vec2(pixel_i.xy),
-    //     f32vec4(filmic(col), 1));
+    f32vec3 prev_col =
+        imageLoad(
+            daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
+            i32vec2(pixel_i.xy))
+            .rgb;
+    prev_col = filmic_inv(prev_col);
+
+    const f32 PREV_FAC = 0.5;
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
         i32vec2(pixel_i.xy),
-        f32vec4(filmic(col), 1));
+        f32vec4(filmic(clamp(col * (1.0 - PREV_FAC) + prev_col * PREV_FAC, f32vec3(0), f32vec3(1))), 1));
 }

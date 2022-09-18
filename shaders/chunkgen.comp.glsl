@@ -5,16 +5,18 @@ DAXA_USE_PUSH_CONSTANT(ChunkgenCompPush)
 #include <utils/noise.glsl>
 #include <utils/voxel.glsl>
 
+#define WATER_LEVEL 0.5
+
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.12,
-        /* .scale       = */ 0.05,
+        /* .scale       = */ 0.01,
         /* .lacunarity  = */ 4.7,
         /* .octaves     = */ 4);
     f32 val = fractal_noise(p, noise_conf);
-    val = val - (p.z - 20) * 0.1;
-    val += smoothstep(-1, 1, -(p.z - 20 + 4) * 2.5) * 0.1;
+    val = val - (p.z - WATER_LEVEL - 4) * 0.05;
+    val += smoothstep(-1, 1, -(p.z - WATER_LEVEL) * 2.5) * 0.05;
     val = max(val, 0);
     return val;
 }
@@ -41,11 +43,11 @@ void block_pass1(in out WorldgenState worldgen_state, f32vec3 voxel_p, in Surrou
     f32 upwards = max(dot(surroundings.nrm, f32vec3(0, 0, -1)), 0);
 
     if (worldgen_state.block_id == BlockID_Air) {
-        if (voxel_p.z < 16) {
+        if (voxel_p.z < WATER_LEVEL) {
             worldgen_state.block_id = BlockID_Water;
         }
     } else {
-        f32vec3 p = voxel_p - f32vec3(0, 0, 16) + surroundings.nrm * max(dot(surroundings.nrm, f32vec3(0, 0, -1)) - worldgen_state.t_noise * 10, 0);
+        f32vec3 p = voxel_p - f32vec3(0, 0, WATER_LEVEL) + surroundings.nrm * max(dot(surroundings.nrm, f32vec3(0, 0, -1)) - worldgen_state.t_noise * 10, 0);
         if (p.z < 0) {
             if (upwards - rough_depth * 15 > 0) {
                 worldgen_state.block_id = BlockID_Sand;
@@ -83,7 +85,7 @@ b32 is_block_occluding(u32 block_id) {
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
+    if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage != 1)
         return;
 
     u32vec3 voxel_i = gl_GlobalInvocationID.xyz;

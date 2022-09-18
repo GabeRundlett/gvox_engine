@@ -20,12 +20,19 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     f32vec3 pick_nrm;
 });
 
+DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
+    u32vec3 chunk_edit_dispatch;
+    u32vec3 subchunk_x2x4_dispatch;
+    u32vec3 subchunk_x8up_dispatch;
+});
+
 struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    BufferRef(GpuIndirectDispatch) gpu_indirect_dispatch;
 };
 struct ChunkgenCompPush {
     BufferRef(GpuGlobals) gpu_globals;
@@ -50,3 +57,4 @@ struct DrawCompPush {
 #define UNIFORMITY_CHUNKS push_constant.gpu_globals.scene.voxel_world.uniformity_chunks
 #define INPUT push_constant.gpu_input
 #define PLAYER push_constant.gpu_globals.player
+#define INDIRECT push_constant.gpu_indirect_dispatch

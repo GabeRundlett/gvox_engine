@@ -90,8 +90,14 @@ void perframe_player() {
 }
 
 void perframe_voxel_world() {
+    INDIRECT.chunk_edit_dispatch = u32vec3((CHUNK_SIZE + 7) / 8);
+    INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 1);
+    INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 1);
+
     uint prev_i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
     if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 1)
+        VOXEL_WORLD.chunks_genstate[prev_i].edit_stage = 2;
+    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 4)
         VOXEL_WORLD.chunks_genstate[prev_i].edit_stage = 2;
 
     VOXEL_WORLD.center_pt = PLAYER.pos;
@@ -130,8 +136,7 @@ void perframe_voxel_world() {
     if (stage == 0)
         VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
     if (stage == 3)
-        VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
-
+        VOXEL_WORLD.chunks_genstate[i].edit_stage = 4;
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
