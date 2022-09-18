@@ -5,6 +5,10 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 #include <utils/rand.glsl>
 #include <utils/raytrace.glsl>
 
+b32 get_flag(u32 index) {
+    return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
+}
+
 f32vec3 sample_sky(f32vec3 nrm) {
     f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.5 + 0.5, 0, 1);
     return mix(f32vec3(0.02, 0.05, 0.90) * 2, f32vec3(0.08, 0.10, 0.54), pow(sky_val, 2)) * 0.3;
@@ -134,9 +138,8 @@ void main() {
     f32 aspect = frame_dim.x * inv_frame_dim.y;
 
     f32 uv_rand_offset = INPUT.time;
-    f32vec2 uv_offset =
-        f32vec2(rand(pixel_p + uv_rand_offset + 10), rand(pixel_p + uv_rand_offset)) * 1.0 - 0.5;
-    pixel_p += uv_offset;
+    f32vec2 uv_offset = f32vec2(rand(pixel_p + uv_rand_offset + 10), rand(pixel_p + uv_rand_offset)) * 1.0 - 0.5;
+    pixel_p += uv_offset * INPUT.settings.jitter_scl;
 
     f32vec2 uv = pixel_p * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
@@ -181,34 +184,28 @@ void main() {
             f32vec3 local_pos = (hit_pos - c.p1);
             local_pos.xy = rot_mat * local_pos.xy;
             f32vec3 result = f32vec3(0.60, 0.27, 0.20);
-
             f32vec2 uv = local_pos.xz;
             f32vec2 e1_uv = uv - f32vec2(0.1, 0.0);
             f32 e1 = f32(dot(e1_uv, e1_uv) > 0.001);
             f32vec2 e2_uv = uv + f32vec2(0.1, 0.0);
             f32 e2 = f32(dot(e2_uv, e2_uv) > 0.001);
             f32vec2 m_uv = uv + f32vec2(0.0, 0.04);
-
             f32 m = clamp(f32(dot(m_uv, m_uv) > 0.02) + f32(m_uv.y > -0.05), 0, 1);
             f32 face_fac = clamp(e1 * e2 * m + f32(local_pos.y < 0) * 10, 0, 1);
             f32 pants_fac = f32(local_pos.z > -0.6);
-
             f32 radial = atan(local_pos.y, local_pos.x) / 6.28 + 0.5;
             f32vec2 b_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.075, (local_pos.z + 0.7) * 0.5);
             f32vec2 f_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.200, (local_pos.z + 0.7) * 0.5);
             f32 b_pockets_fac = f32(b_pocket_pos.y < 0.0 && b_pocket_pos.x < 0.04 && b_pocket_pos.x > -0.04 && dot(b_pocket_pos, b_pocket_pos) < 0.003 && local_pos.y < 0);
             f32 f_pockets_fac = f32(f_pocket_pos.y < 0.0 && f_pocket_pos.x < 0.02 && f_pocket_pos.x > -0.06 && dot(f_pocket_pos, f_pocket_pos) < 0.003 && local_pos.y > 0);
             f32 belt_fac = f32(fract(radial * 20) < 0.8 && local_pos.z > -0.64 && local_pos.z < -0.62);
-
             f32vec2 shirt_uv = f32vec2(local_pos.x, (local_pos.z + 0.40) * 4);
             f32 shirt_fac = f32(shirt_uv.y > 0 || (dot(shirt_uv, shirt_uv) < 0.1 + local_pos.y * 0.1));
             result = mix(f32vec3(0.4, 0.05, 0.042), result, shirt_fac);
-
             result = mix(f32vec3(0.04, 0.04, 0.12), result, pants_fac);
             result = mix(result, f32vec3(0.03, 0.03, 0.10), f32(b_pockets_fac != 0.0 || f_pockets_fac != 0.0 || (f_pocket_pos.x > 0.045 && local_pos.z < -0.68 && local_pos.z > -1.5)));
             result = mix(f32vec3(0.0, 0.0, 0.0), result, face_fac);
             result = mix(result, f32vec3(0.04, 0.02, 0.01), belt_fac);
-
             col = result;
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
         } break;
@@ -243,19 +240,12 @@ void main() {
 
     i32vec2 crosshair_uv = abs(i32vec2(pixel_i) - i32vec2(frame_dim / 2));
 
-    if ((crosshair_uv.x < 1 && crosshair_uv.y < 10) ||
-        (crosshair_uv.y < 1 && crosshair_uv.x < 10)) {
-        col = f32vec3(1, 1, 1);
+    if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
+        if ((crosshair_uv.x < 1 && crosshair_uv.y < 10) ||
+            (crosshair_uv.y < 1 && crosshair_uv.x < 10)) {
+            col = f32vec3(1, 1, 1);
+        }
     }
-
-    // f32vec3 prev_col =
-    //     imageLoad(
-    //         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
-    //         i32vec2(pixel_i.xy))
-    //         .rgb;
-    // prev_col = filmic_inv(prev_col);
-    // const f32 PREV_FAC = 0.0;
-    // col = clamp(col * (1.0 - PREV_FAC) + prev_col * PREV_FAC, f32vec3(0), f32vec3(1));
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),

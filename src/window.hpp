@@ -9,6 +9,14 @@ using namespace daxa::types;
 #endif
 #include <GLFW/glfw3native.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#include <dwmapi.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;
@@ -50,6 +58,14 @@ struct AppWindow {
                 auto &app = *reinterpret_cast<App *>(glfwGetWindowUserPointer(window_ptr));
                 app.on_resize(static_cast<u32>(sx), static_cast<u32>(sy));
             });
+
+        GLFWimage images[1];
+        images[0].pixels = stbi_load("appicon.png", &images[0].width, &images[0].height, 0, 4);
+        glfwSetWindowIcon(glfw_window_ptr, 1, images);
+        stbi_image_free(images[0].pixels);
+
+        BOOL value = TRUE;
+        ::DwmSetWindowAttribute(get_native_handle(), DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
     }
 
     ~AppWindow() {

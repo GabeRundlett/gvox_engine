@@ -29,6 +29,19 @@
 #define GAME_KEY_LAST               GAME_KEY_F5
 // clang-format on
 
+struct Settings {
+    u32 flags;
+    f32 fov;
+    f32 edit_rate;
+    f32 jitter_scl;
+
+    f32 gen_amplitude;
+    f32 gen_persistance;
+    f32 gen_scale;
+    f32 gen_lacunarity;
+    i32 gen_octaves;
+};
+
 struct MouseInput {
     f32vec2 pos;
     f32vec2 pos_delta;

@@ -1,5 +1,6 @@
 #include "base_app.hpp"
 #include <map>
+#include <fmt/format.h>
 
 #define TEMP_BARRIER(cmd_list)                                     \
     cmd_list.pipeline_barrier({                                    \
@@ -59,8 +60,24 @@ struct App : BaseApp<App> {
     GpuInput gpu_input = default_gpu_input();
     auto default_gpu_input() -> GpuInput {
         return {
-            .fov = 90.0f,
+            .settings{
+                .fov = 90.0f,
+                .jitter_scl = 1.0f,
+
+                .gen_amplitude = 1.0f,
+                .gen_persistance = 0.12f,
+                .gen_scale = 0.01f,
+                .gen_lacunarity = 4.7f,
+                .gen_octaves = 4,
+            },
         };
+    }
+    auto get_flag(u32 index) -> bool {
+        return (gpu_input.settings.flags >> index) & 0x01;
+    }
+    void set_flag(u32 index, bool value) {
+        gpu_input.settings.flags &= ~(0x01 << index);
+        gpu_input.settings.flags |= static_cast<u32>(value) << index;
     }
 
     daxa::BufferId gpu_input_buffer = device.create_buffer({
@@ -99,24 +116,36 @@ struct App : BaseApp<App> {
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
+    std::array<i32, GAME_KEY_LAST + 1> keys{
+        GLFW_KEY_W,
+        GLFW_KEY_A,
+        GLFW_KEY_S,
+        GLFW_KEY_D,
+        GLFW_KEY_R,
+        GLFW_KEY_F,
+        GLFW_KEY_Q,
+        GLFW_KEY_E,
+        GLFW_KEY_SPACE,
+        GLFW_KEY_LEFT_CONTROL,
+        GLFW_KEY_LEFT_SHIFT,
+        GLFW_KEY_LEFT_ALT,
+        GLFW_KEY_F5,
+    };
+
     bool battery_saving_mode = false;
     bool should_run_startup = true;
+    bool should_regenerate = false;
     bool paused = true;
+    bool use_vsync = false;
+
+    std::array<float, 40> frametimes = {};
+    u64 frametime_rotation_index = 0;
+    std::string fmt_str;
 
     App() : BaseApp<App>() {
-        key_bindings[GLFW_KEY_W] = GAME_KEY_W;
-        key_bindings[GLFW_KEY_A] = GAME_KEY_A;
-        key_bindings[GLFW_KEY_S] = GAME_KEY_S;
-        key_bindings[GLFW_KEY_D] = GAME_KEY_D;
-        key_bindings[GLFW_KEY_R] = GAME_KEY_R;
-        key_bindings[GLFW_KEY_F] = GAME_KEY_F;
-        key_bindings[GLFW_KEY_Q] = GAME_KEY_Q;
-        key_bindings[GLFW_KEY_E] = GAME_KEY_E;
-        key_bindings[GLFW_KEY_SPACE] = GAME_KEY_SPACE;
-        key_bindings[GLFW_KEY_LEFT_CONTROL] = GAME_KEY_LEFT_CONTROL;
-        key_bindings[GLFW_KEY_LEFT_SHIFT] = GAME_KEY_LEFT_SHIFT;
-        key_bindings[GLFW_KEY_LEFT_ALT] = GAME_KEY_LEFT_ALT;
-        key_bindings[GLFW_KEY_F5] = GAME_KEY_F5;
+        for (usize i = 0; i < keys.size(); ++i) {
+            key_bindings[keys[i]] = i;
+        }
 
         mouse_bindings[GLFW_MOUSE_BUTTON_1] = GAME_MOUSE_BUTTON_1;
         mouse_bindings[GLFW_MOUSE_BUTTON_2] = GAME_MOUSE_BUTTON_2;
@@ -136,12 +165,65 @@ struct App : BaseApp<App> {
     }
 
     void ui_update() {
+        frametimes[frametime_rotation_index] = gpu_input.delta_time;
+        frametime_rotation_index = (frametime_rotation_index + 1) % frametimes.size();
+        should_regenerate = false;
+
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowMetricsWindow();
-        ImGui::Begin("Test");
-        ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
-        ImGui::End();
+        if (paused) {
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("Settings")) {
+                    ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
+                    // auto prev_vsync = use_vsync;
+                    // ImGui::Checkbox("VSYNC", &use_vsync);
+                    // if (prev_vsync != use_vsync) {
+                    //     device.wait_idle();
+                    //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
+                    // }
+                    bool limit_edit_rate = get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE);
+                    ImGui::Checkbox("Limit Edit Rate", &limit_edit_rate);
+                    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, limit_edit_rate);
+                    if (limit_edit_rate)
+                        ImGui::SliderFloat("Edit Rate", &gpu_input.settings.edit_rate, 0.01f, 1.0f);
+                    ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
+                    ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
+
+                    if (ImGui::TreeNode("Generation")) {
+                        ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
+                        ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
+                        ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f);
+                        ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
+                        ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
+                        if (ImGui::Button("Regenerate"))
+                            should_regenerate = true;
+                        ImGui::TreePop();
+                    }
+
+                    if (ImGui::Button("Reset Settings")) {
+                        gpu_input = default_gpu_input();
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
+        }
+
+        {
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            auto pos = viewport->WorkPos;
+            pos.x += viewport->WorkSize.x - 240.0f;
+            ImGui::SetNextWindowPos(pos);
+            ImGui::Begin("Test", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
+            float average = 0.0f;
+            for (auto frametime : frametimes)
+                average += frametime;
+            average /= static_cast<float>(frametimes.size());
+            fmt_str.clear();
+            fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
+            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
+            ImGui::End();
+        }
         ImGui::Render();
     }
 
@@ -152,6 +234,7 @@ struct App : BaseApp<App> {
         prev_time = now;
 
         gpu_input.frame_dim = {size_x, size_y};
+        set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, paused);
 
         if (battery_saving_mode) {
             std::this_thread::sleep_for(10ms);
@@ -174,26 +257,36 @@ struct App : BaseApp<App> {
     }
 
     void on_mouse_move(f32 x, f32 y) {
+        f32vec2 center = {static_cast<f32>(size_x / 2), static_cast<f32>(size_y / 2)};
+        gpu_input.mouse.pos = f32vec2{x, y};
+        auto offset = gpu_input.mouse.pos - center;
         if (!paused) {
-            f32vec2 center = {static_cast<f32>(size_x / 2), static_cast<f32>(size_y / 2)};
-            gpu_input.mouse.pos = f32vec2{x, y};
-            auto offset = gpu_input.mouse.pos - center;
             gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
             set_mouse_pos(center.x, center.y);
         }
     }
     void on_mouse_scroll(f32 dx, f32 dy) {
-        if (!paused) {
-            gpu_input.mouse.scroll_delta = gpu_input.mouse.scroll_delta + f32vec2{dx, dy};
-        }
+        auto &io = ImGui::GetIO();
+        if (io.WantCaptureMouse)
+            return;
+
+        gpu_input.mouse.scroll_delta = gpu_input.mouse.scroll_delta + f32vec2{dx, dy};
     }
     void on_mouse_button(i32 button_id, i32 action) {
-        if (!paused && mouse_bindings.contains(button_id)) {
+        auto &io = ImGui::GetIO();
+        if (io.WantCaptureMouse)
+            return;
+
+        if (mouse_bindings.contains(button_id)) {
             auto index = mouse_bindings[button_id];
             gpu_input.mouse.buttons[index] = action;
         }
     }
     void on_key(i32 key_id, i32 action) {
+        auto &io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard)
+            return;
+
         if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
             toggle_pause();
         if (key_id == GLFW_KEY_R && action == GLFW_PRESS)
@@ -221,10 +314,8 @@ struct App : BaseApp<App> {
     }
     void toggle_pause() {
         set_mouse_capture(paused);
-        if (paused)
-            gpu_input = default_gpu_input();
-        gpu_input.mouse.pos_delta = {0.0f, 0.0f};
-        gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
+        gpu_input.mouse = {};
+        gpu_input.keyboard = {};
         paused = !paused;
     }
 
@@ -279,6 +370,31 @@ struct App : BaseApp<App> {
                 });
             },
             .debug_name = APPNAME_PREFIX("Input Transfer"),
+        });
+
+        new_task_list.add_task({
+            .used_buffers = {
+                {task_gpu_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (!should_run_startup && should_regenerate) {
+                    auto cmd_list = interf.get_command_list();
+                    TEMP_BARRIER(cmd_list);
+                    cmd_list.clear_buffer({
+                        .buffer = gpu_globals_buffer,
+                        .offset = offsetof(GpuGlobals, scene) + offsetof(Scene, voxel_world) + offsetof(VoxelWorld, chunk_update_indices),
+                        .size = offsetof(VoxelWorld, voxel_chunks) - offsetof(VoxelWorld, chunk_update_indices),
+                        .clear_value = 0,
+                    });
+                    cmd_list.clear_buffer({
+                        .buffer = gpu_globals_buffer,
+                        .offset = offsetof(GpuGlobals, scene) + offsetof(Scene, voxel_world) + offsetof(VoxelWorld, chunks_genstate),
+                        .size = sizeof(VoxelWorld::chunks_genstate),
+                        .clear_value = 0,
+                    });
+                }
+            },
+            .debug_name = "Startup (GenState Clear)",
         });
 
         new_task_list.add_task({
@@ -343,6 +459,7 @@ struct App : BaseApp<App> {
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
                 {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
@@ -351,6 +468,7 @@ struct App : BaseApp<App> {
                 cmd_list.set_pipeline(chunkgen_comp_pipeline);
                 cmd_list.push_constant(ChunkgenCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                    .gpu_input = this->device.buffer_reference(gpu_input_buffer),
                 });
                 cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
             },

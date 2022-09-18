@@ -57,7 +57,6 @@ struct VoxelUniformityChunk {
 
 struct VoxelWorld {
     Box box;
-    // i32vec3 chunkgen_i;
     f32vec3 center_pt;
     f32 last_update_time;
     u32 chunk_update_indices[64];

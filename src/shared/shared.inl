@@ -4,11 +4,14 @@
 #include <shared/player.inl>
 #include <shared/scene.inl>
 
+#define GPU_INPUT_FLAG_INDEX_PAUSED 0
+#define GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE 1
+
 DAXA_DECL_BUFFER_STRUCT(GpuInput, {
     u32vec2 frame_dim;
     f32 time;
     f32 delta_time;
-    f32 fov;
+    Settings settings;
     MouseInput mouse;
     KeyboardInput keyboard;
 });
@@ -36,6 +39,7 @@ struct PerframeCompPush {
 };
 struct ChunkgenCompPush {
     BufferRef(GpuGlobals) gpu_globals;
+    BufferRef(GpuInput) gpu_input;
 };
 struct ChunkOptCompPush {
     BufferRef(GpuGlobals) gpu_globals;

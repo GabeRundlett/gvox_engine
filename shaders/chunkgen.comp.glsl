@@ -9,11 +9,11 @@ DAXA_USE_PUSH_CONSTANT(ChunkgenCompPush)
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
-        /* .amplitude   = */ 1.0,
-        /* .persistance = */ 0.12,
-        /* .scale       = */ 0.01,
-        /* .lacunarity  = */ 4.7,
-        /* .octaves     = */ 4);
+        /* .amplitude   = */ INPUT.settings.gen_amplitude,
+        /* .persistance = */ INPUT.settings.gen_persistance,
+        /* .scale       = */ INPUT.settings.gen_scale,
+        /* .lacunarity  = */ INPUT.settings.gen_lacunarity,
+        /* .octaves     = */ INPUT.settings.gen_octaves);
     f32 val = fractal_noise(p, noise_conf);
     val = val - (p.z - WATER_LEVEL - 4) * 0.02;
     val += smoothstep(-1, 1, -atan((p.z - WATER_LEVEL) * 0.5)) * 0.5;

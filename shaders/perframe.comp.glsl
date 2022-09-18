@@ -5,6 +5,8 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/voxel.glsl>
 #include <utils/raytrace.glsl>
 
+#define PLAYER_HEIGHT 1.8
+
 void toggle_view() {
     PLAYER.view_state = (PLAYER.view_state & ~0xf) | ((PLAYER.view_state & 0xf) + 1);
     if ((PLAYER.view_state & 0xf) > 1)
@@ -13,11 +15,19 @@ void toggle_view() {
 
 f32vec3 view_vec() {
     switch (PLAYER.view_state) {
-    case 0: return PLAYER.forward * 0.55;
+    case 0: return PLAYER.forward * 0.32;
     case 1: return PLAYER.cam.rot_mat * f32vec3(0, -2, 0);
     default: return f32vec3(0, 0, 0);
     }
 }
+
+b32 get_flag(u32 index) {
+    return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
+}
+// void set_flag(u32 index, b32 value) {
+//     INPUT.settings.flags &= ~(0x01 << index);
+//     INPUT.settings.flags |= static_cast<u32>(value) << index;
+// }
 
 void perframe_player() {
     const f32 mouse_sens = 1.0;
@@ -91,19 +101,25 @@ void perframe_player() {
         PLAYER.edit_radius /= 1.05;
     }
 
-    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 64 / VOXEL_SCL);
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 63.0 / VOXEL_SCL);
 
-    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 2) + cam_offset;
-    PLAYER.cam.tan_half_fov = tan(INPUT.fov * 3.14159 / 360.0);
+    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3) + cam_offset;
+    PLAYER.cam.fov = INPUT.settings.fov * 3.14159 / 180.0;
+    PLAYER.cam.tan_half_fov = tan(PLAYER.cam.fov * 0.5);
 }
 
 u32 calculate_chunk_edit() {
     u32 non_chunkgen_update_n = 0;
-    i32vec3 chunk_i = get_chunk_i(get_voxel_i(GLOBALS.pick_pos));
     for (i32 zi = 0; zi < 3; ++zi) {
+        if (VOXEL_WORLD.chunk_update_n >= 64)
+            break;
         for (i32 yi = 0; yi < 3; ++yi) {
+            if (VOXEL_WORLD.chunk_update_n >= 64)
+                break;
             for (i32 xi = 0; xi < 3; ++xi) {
-                u32 i = get_chunk_index(chunk_i + i32vec3(xi, yi, zi) - 1);
+                if (VOXEL_WORLD.chunk_update_n >= 64)
+                    break;
+                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos) + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE));
                 if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
@@ -113,6 +129,8 @@ u32 calculate_chunk_edit() {
             }
         }
     }
+    if (VOXEL_WORLD.chunk_update_n > 64)
+        VOXEL_WORLD.chunk_update_n = 64;
     return non_chunkgen_update_n;
 }
 
@@ -149,7 +167,7 @@ void perframe_voxel_world() {
     }
 
     u32 non_chunkgen_update_n = 0;
-    if (INPUT.time - PLAYER.last_edit_time > 0.2) {
+    if (!get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE) || INPUT.time - PLAYER.last_edit_time > INPUT.settings.edit_rate) {
         if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
             non_chunkgen_update_n = calculate_chunk_edit();
             PLAYER.edit_voxel_id = BlockID_Air;
@@ -159,11 +177,10 @@ void perframe_voxel_world() {
             PLAYER.edit_voxel_id = BlockID_Stone;
             PLAYER.last_edit_time = INPUT.time;
         }
-
-        if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
-            INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
-            PLAYER.last_edit_time = 0.0;
     }
+    if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
+        INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
+        PLAYER.last_edit_time = 0.0;
 
     for (u32 i = 0; i < VOXEL_WORLD.chunk_update_n; ++i) {
         u32 chunk_index = VOXEL_WORLD.chunk_update_indices[i];
@@ -185,12 +202,22 @@ void main() {
     perframe_player();
     perframe_voxel_world();
 
-    Ray pick_ray = create_view_ray(f32vec2(0.0, 0.0));
+    f32vec2 pick_uv = f32vec2(0.0, 0.0);
+    if (get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
+        f32vec2 pixel_p = INPUT.mouse.pos;
+        f32vec2 frame_dim = INPUT.frame_dim;
+        f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
+        f32 aspect = frame_dim.x * inv_frame_dim.y;
+        pick_uv = pixel_p * inv_frame_dim;
+        pick_uv = (pick_uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
+    }
+
+    Ray pick_ray = create_view_ray(pick_uv);
     IntersectionRecord pick_intersection = intersect_chunk(pick_ray);
 
     GLOBALS.pick_pos = pick_ray.o + pick_ray.nrm * pick_intersection.dist;
     GLOBALS.pick_nrm = pick_intersection.nrm;
 
     SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0.3);
-    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, 1.7);
+    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3);
 }
