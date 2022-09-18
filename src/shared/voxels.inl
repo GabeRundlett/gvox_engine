@@ -5,8 +5,8 @@
 #define CHUNK_SIZE 64
 #define VOXEL_SCL 8
 
-#define CHUNK_NX 12
-#define CHUNK_NY 12
+#define CHUNK_NX 16
+#define CHUNK_NY 16
 #define CHUNK_NZ 4
 #define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
 #define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)
@@ -57,10 +57,13 @@ struct VoxelUniformityChunk {
 
 struct VoxelWorld {
     Box box;
-    i32vec3 chunkgen_i;
-    i32vec3 chunkgen_i2;
+    // i32vec3 chunkgen_i;
     f32vec3 center_pt;
     f32 last_update_time;
+    u32 chunk_update_indices[64];
+    u32 chunk_update_n;
+    u32 chunkgen_index;
+
     VoxelChunk voxel_chunks[CHUNK_N];
     VoxelUniformityChunk uniformity_chunks[CHUNK_N];
     ChunkGenState chunks_genstate[CHUNK_N];

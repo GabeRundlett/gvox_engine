@@ -5,7 +5,7 @@ DAXA_USE_PUSH_CONSTANT(ChunkgenCompPush)
 #include <utils/noise.glsl>
 #include <utils/voxel.glsl>
 
-#define WATER_LEVEL 0.5
+#define WATER_LEVEL 16
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
@@ -15,8 +15,8 @@ f32 terrain_noise(f32vec3 p) {
         /* .lacunarity  = */ 4.7,
         /* .octaves     = */ 4);
     f32 val = fractal_noise(p, noise_conf);
-    val = val - (p.z - WATER_LEVEL - 4) * 0.05;
-    val += smoothstep(-1, 1, -(p.z - WATER_LEVEL) * 2.5) * 0.05;
+    val = val - (p.z - WATER_LEVEL - 4) * 0.02;
+    val += smoothstep(-1, 1, -atan((p.z - WATER_LEVEL) * 0.5)) * 0.5;
     val = max(val, 0);
     return val;
 }
@@ -84,7 +84,7 @@ b32 is_block_occluding(u32 block_id) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
-    u32 chunk_index = get_chunk_index(VOXEL_WORLD.chunkgen_i);
+    u32 chunk_index = VOXEL_WORLD.chunkgen_index;
     if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage != 1)
         return;
 

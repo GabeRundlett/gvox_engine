@@ -85,32 +85,49 @@ void perframe_player() {
 
     f32vec3 cam_offset = view_vec();
 
+    if (INPUT.mouse.scroll_delta.y < 0.0) {
+        PLAYER.edit_radius *= 1.05;
+    } else if (INPUT.mouse.scroll_delta.y > 0.0) {
+        PLAYER.edit_radius /= 1.05;
+    }
+
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 64 / VOXEL_SCL);
+
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 2) + cam_offset;
     PLAYER.cam.tan_half_fov = tan(INPUT.fov * 3.14159 / 360.0);
 }
 
-void perframe_voxel_world() {
-    INDIRECT.chunk_edit_dispatch = u32vec3((CHUNK_SIZE + 7) / 8);
-    INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 1);
-    INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 1);
+u32 calculate_chunk_edit() {
+    u32 non_chunkgen_update_n = 0;
+    i32vec3 chunk_i = get_chunk_i(get_voxel_i(GLOBALS.pick_pos));
+    for (i32 zi = 0; zi < 3; ++zi) {
+        for (i32 yi = 0; yi < 3; ++yi) {
+            for (i32 xi = 0; xi < 3; ++xi) {
+                u32 i = get_chunk_index(chunk_i + i32vec3(xi, yi, zi) - 1);
+                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) {
+                    VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
+                    VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
+                    ++VOXEL_WORLD.chunk_update_n;
+                    ++non_chunkgen_update_n;
+                }
+            }
+        }
+    }
+    return non_chunkgen_update_n;
+}
 
-    uint prev_i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 1)
-        VOXEL_WORLD.chunks_genstate[prev_i].edit_stage = 2;
-    if (VOXEL_WORLD.chunks_genstate[prev_i].edit_stage == 4)
-        VOXEL_WORLD.chunks_genstate[prev_i].edit_stage = 2;
+void perframe_voxel_world() {
+    for (u32 i = 0; i < VOXEL_WORLD.chunk_update_n; ++i) {
+        u32 chunk_index = VOXEL_WORLD.chunk_update_indices[i];
+        if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 1)
+            VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage = 2;
+        if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 3)
+            VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage = 2;
+    }
+    VOXEL_WORLD.chunk_update_n = 0;
 
     VOXEL_WORLD.center_pt = PLAYER.pos;
-    b32 chunk_needs_updating = false;
     f32 min_dist_sq = 1000.0;
-
-    i32vec3 pick_chunk_i = get_chunk_i(get_voxel_i(GLOBALS.pick_pos));
-
-    if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
-        u32 i = get_chunk_index(pick_chunk_i);
-        if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2)
-            VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
-    }
 
     for (u32 zi = 0; zi < CHUNK_NZ; ++zi) {
         for (u32 yi = 0; yi < CHUNK_NY; ++yi) {
@@ -121,22 +138,46 @@ void perframe_voxel_world() {
                 f32vec3 del = VOXEL_WORLD.center_pt - box_center;
                 f32 dist_sq = dot(del, del);
                 u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
-                if ((stage == 0 || stage == 3) &&
-                    (dist_sq < min_dist_sq || !chunk_needs_updating)) {
+                if (stage == 0 && (dist_sq < min_dist_sq || VOXEL_WORLD.chunk_update_n == 0)) {
                     min_dist_sq = dist_sq;
-                    chunk_needs_updating = true;
-                    VOXEL_WORLD.chunkgen_i = chunk_i;
+                    VOXEL_WORLD.chunkgen_index = i;
+                    VOXEL_WORLD.chunk_update_n = 1;
+                    VOXEL_WORLD.chunk_update_indices[0] = i;
                 }
             }
         }
     }
 
-    u32 i = get_chunk_index(VOXEL_WORLD.chunkgen_i);
-    u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
-    if (stage == 0)
-        VOXEL_WORLD.chunks_genstate[i].edit_stage = 1;
-    if (stage == 3)
-        VOXEL_WORLD.chunks_genstate[i].edit_stage = 4;
+    u32 non_chunkgen_update_n = 0;
+    if (INPUT.time - PLAYER.last_edit_time > 0.2) {
+        if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
+            non_chunkgen_update_n = calculate_chunk_edit();
+            PLAYER.edit_voxel_id = BlockID_Air;
+            PLAYER.last_edit_time = INPUT.time;
+        } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
+            non_chunkgen_update_n = calculate_chunk_edit();
+            PLAYER.edit_voxel_id = BlockID_Stone;
+            PLAYER.last_edit_time = INPUT.time;
+        }
+
+        if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
+            INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
+            PLAYER.last_edit_time = 0.0;
+    }
+
+    for (u32 i = 0; i < VOXEL_WORLD.chunk_update_n; ++i) {
+        u32 chunk_index = VOXEL_WORLD.chunk_update_indices[i];
+        if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 0)
+            VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage = 1;
+    }
+
+    INDIRECT.chunk_edit_dispatch = u32vec3((CHUNK_SIZE + 7) / 8);
+    INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 1);
+    INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 1);
+
+    INDIRECT.chunk_edit_dispatch.z *= non_chunkgen_update_n;
+    INDIRECT.subchunk_x2x4_dispatch.y *= VOXEL_WORLD.chunk_update_n;
+    INDIRECT.subchunk_x8up_dispatch.y *= VOXEL_WORLD.chunk_update_n;
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -150,6 +191,6 @@ void main() {
     GLOBALS.pick_pos = pick_ray.o + pick_ray.nrm * pick_intersection.dist;
     GLOBALS.pick_nrm = pick_intersection.nrm;
 
-    SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0);
-    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, 2);
+    SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0.3);
+    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, 1.7);
 }

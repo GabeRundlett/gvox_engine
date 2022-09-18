@@ -24,11 +24,11 @@ void main() {
         }
     }
 
-    VOXEL_WORLD.chunkgen_i = i32vec3(0, 0, 0);
-
     VOXEL_WORLD.box.bound_min = VOXEL_CHUNKS[0].box.bound_min;
     VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max;
 
+    PLAYER.edit_radius = 1.0;
+
     SCENE.capsule_n++;
-    SCENE.capsules[0].r = 0.5;
+    SCENE.capsules[0].r = 0.3;
 }

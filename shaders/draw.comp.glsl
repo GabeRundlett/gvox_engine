@@ -88,9 +88,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
     u32 block_id = sample_voxel_id(chunk_info.chunk_index, chunk_info.voxel_index);
     col = block_color(block_id);
-    // if ((chunk_info.chunk_i == VOXEL_WORLD.chunkgen_i))
-    //     col = f32vec3(0.3, 0.4, 1.0);
-    // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 1))
+    // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
     //     col = f32vec3(0.2, 1.0, 0.2);
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
@@ -180,7 +178,7 @@ void main() {
         case 1: {
             Capsule c = SCENE.capsules[0];
             f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
-            f32vec3 local_pos = (hit_pos - c.p1) * 0.65;
+            f32vec3 local_pos = (hit_pos - c.p1);
             local_pos.xy = rot_mat * local_pos.xy;
             f32vec3 result = f32vec3(0.60, 0.27, 0.20);
 
@@ -223,7 +221,7 @@ void main() {
 
         f32 pick_dist = length(f32vec3((GLOBALS.pick_pos * VOXEL_SCL) - i32vec3(hit_pos * VOXEL_SCL))) / VOXEL_SCL;
 
-        if (pick_dist < 10.0 / VOXEL_SCL) {
+        if (pick_dist < PLAYER.edit_radius) {
             col *= f32vec3(4.0, 4.0, 4.0);
             col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
         }
@@ -250,17 +248,17 @@ void main() {
         col = f32vec3(1, 1, 1);
     }
 
-    f32vec3 prev_col =
-        imageLoad(
-            daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
-            i32vec2(pixel_i.xy))
-            .rgb;
-    prev_col = filmic_inv(prev_col);
-
-    const f32 PREV_FAC = 0.5;
+    // f32vec3 prev_col =
+    //     imageLoad(
+    //         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
+    //         i32vec2(pixel_i.xy))
+    //         .rgb;
+    // prev_col = filmic_inv(prev_col);
+    // const f32 PREV_FAC = 0.0;
+    // col = clamp(col * (1.0 - PREV_FAC) + prev_col * PREV_FAC, f32vec3(0), f32vec3(1));
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
         i32vec2(pixel_i.xy),
-        f32vec4(filmic(clamp(col * (1.0 - PREV_FAC) + prev_col * PREV_FAC, f32vec3(0), f32vec3(1))), 1));
+        f32vec4(filmic(col), 1));
 }
