@@ -12,9 +12,11 @@ void toggle_view() {
     if ((PLAYER.view_state & 0xf) > 1)
         PLAYER.view_state = (PLAYER.view_state & ~0xf) | 0;
 }
+// void toggle_fly() {
+// }
 
 f32vec3 view_vec() {
-    switch (PLAYER.view_state) {
+    switch (PLAYER.view_state & 0xf) {
     case 0: return PLAYER.forward * 0.32;
     case 1: return PLAYER.cam.rot_mat * f32vec3(0, -2, 0);
     default: return f32vec3(0, 0, 0);
@@ -24,10 +26,6 @@ f32vec3 view_vec() {
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
 }
-// void set_flag(u32 index, b32 value) {
-//     INPUT.settings.flags &= ~(0x01 << index);
-//     INPUT.settings.flags |= static_cast<u32>(value) << index;
-// }
 
 void perframe_player() {
     const f32 mouse_sens = 1.0;
@@ -68,6 +66,14 @@ void perframe_player() {
     } else {
         PLAYER.view_state &= ~0x10;
     }
+    // if (INPUT.keyboard.keys[GAME_KEY_F] != 0) {
+    //     if ((PLAYER.view_state & 0x20) == 0) {
+    //         PLAYER.view_state |= 0x20;
+    //         toggle_fly();
+    //     }
+    // } else {
+    //     PLAYER.view_state &= ~0x20;
+    // }
 
     f32vec3 move_vec = f32vec3(0, 0, 0);
     PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
@@ -119,7 +125,7 @@ u32 calculate_chunk_edit() {
             for (i32 xi = 0; xi < 3; ++xi) {
                 if (VOXEL_WORLD.chunk_update_n >= 64)
                     break;
-                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos) + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE));
+                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
                 if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;

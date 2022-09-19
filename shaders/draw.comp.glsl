@@ -94,6 +94,28 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     col = block_color(block_id);
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
     //     col = f32vec3(0.2, 1.0, 0.2);
+
+    // for (i32 zi = 0; zi < 3; ++zi) {
+    //     if (VOXEL_WORLD.chunk_update_n >= 64)
+    //         break;
+    //     for (i32 yi = 0; yi < 3; ++yi) {
+    //         if (VOXEL_WORLD.chunk_update_n >= 64)
+    //             break;
+    //         for (i32 xi = 0; xi < 3; ++xi) {
+    //             if (VOXEL_WORLD.chunk_update_n >= 64)
+    //                 break;
+    //             u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
+    //             if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && i == chunk_info.chunk_index ) {
+    //                 col = f32vec3(0.2, 1.0, 0.2);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // if ((PLAYER.view_state & 0x01) == 1) {
+    //     col = f32vec3(1, 1, 1);
+    // }
+
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 
