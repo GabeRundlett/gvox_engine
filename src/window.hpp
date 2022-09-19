@@ -4,6 +4,10 @@ using namespace daxa::types;
 #include <GLFW/glfw3.h>
 #if defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
+#include <dwmapi.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
@@ -11,11 +15,6 @@ using namespace daxa::types;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-#include <dwmapi.h>
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
 
 template <typename App>
 struct AppWindow {
@@ -64,8 +63,10 @@ struct AppWindow {
         glfwSetWindowIcon(glfw_window_ptr, 1, images);
         stbi_image_free(images[0].pixels);
 
+#if defined(_WIN32)
         BOOL value = TRUE;
         ::DwmSetWindowAttribute(get_native_handle(), DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+#endif
     }
 
     ~AppWindow() {

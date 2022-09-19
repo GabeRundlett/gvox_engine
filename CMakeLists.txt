@@ -26,16 +26,16 @@ endif()
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gabe_voxel_game>/vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
 
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt glfw)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
-install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
-install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
-
 # set(PACKAGE_VOXEL_GAME true)
 
 if(PACKAGE_VOXEL_GAME)
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt glfw)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
+    install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
+    install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
+
     target_sources(${PROJECT_NAME} PRIVATE "src/main.rc")
 
     set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
