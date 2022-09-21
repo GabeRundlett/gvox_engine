@@ -29,8 +29,8 @@ b32 get_flag(u32 index) {
 
 void perframe_player() {
     const f32 mouse_sens = 1.0;
-    const f32 speed_mul = 30.0;
-    const f32 sprint_mul = 5.0;
+    const f32 speed_mul = 2.0;
+    const f32 sprint_mul = 30.0;
 
     PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * 0.001;
     PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * 0.001;
@@ -175,14 +175,20 @@ void perframe_voxel_world() {
     u32 non_chunkgen_update_n = 0;
     if (!get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE) || INPUT.time - PLAYER.last_edit_time > INPUT.settings.edit_rate) {
         if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
+            GLOBALS.edit_flags = 1;
             non_chunkgen_update_n = calculate_chunk_edit();
             PLAYER.edit_voxel_id = BlockID_Air;
             PLAYER.last_edit_time = INPUT.time;
         } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
+            GLOBALS.edit_flags = 1;
             non_chunkgen_update_n = calculate_chunk_edit();
             PLAYER.edit_voxel_id = BlockID_Stone;
             PLAYER.last_edit_time = INPUT.time;
+        } else {
+            GLOBALS.edit_flags = 0;
         }
+    } else {
+        GLOBALS.edit_flags = 0;
     }
     if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
         INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
@@ -205,6 +211,8 @@ void perframe_voxel_world() {
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
+    u32 prev_edit_flags = GLOBALS.edit_flags;
+
     perframe_player();
     perframe_voxel_world();
 
@@ -223,6 +231,12 @@ void main() {
 
     GLOBALS.pick_pos = pick_ray.o + pick_ray.nrm * pick_intersection.dist;
     GLOBALS.pick_nrm = pick_intersection.nrm;
+
+    if (GLOBALS.edit_flags == 0) {
+        GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
+    } else if (GLOBALS.edit_flags == 1 && prev_edit_flags == 0) {
+        GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
+    }
 
     SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0.3);
     SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3);

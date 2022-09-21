@@ -4,6 +4,7 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #include <utils/rand.glsl>
 #include <utils/raytrace.glsl>
+#include <utils/voxel_edit.glsl>
 
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
@@ -189,7 +190,7 @@ void main() {
         } break;
         case 1:
         case 2: {
-            bounce_ray.nrm = normalize(f32vec3(1.4, -5.1, 2.3));
+            bounce_ray.nrm = normalize(f32vec3(1.4, -5.1, 3.3));
             bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
         } break;
         }
@@ -238,9 +239,9 @@ void main() {
         }
         col *= (shade * sun_col + sample_sky(view_ray.nrm));
 
-        f32 pick_dist = length(f32vec3((GLOBALS.pick_pos * VOXEL_SCL) - i32vec3(hit_pos * VOXEL_SCL))) / VOXEL_SCL;
+        f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
 
-        if (pick_dist < PLAYER.edit_radius) {
+        if (brush_should_edit(voxel_p)) {
             col *= f32vec3(4.0, 4.0, 4.0);
             col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
         }

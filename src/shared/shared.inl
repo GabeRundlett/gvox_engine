@@ -21,6 +21,9 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
 
     f32vec3 pick_pos;
     f32vec3 pick_nrm;
+
+    f32vec3 edit_origin;
+    u32 edit_flags;
 });
 
 DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {

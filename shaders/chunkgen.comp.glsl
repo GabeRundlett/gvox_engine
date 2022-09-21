@@ -5,7 +5,7 @@ DAXA_USE_PUSH_CONSTANT(ChunkgenCompPush)
 #include <utils/noise.glsl>
 #include <utils/voxel.glsl>
 
-#define WATER_LEVEL 16
+#define WATER_LEVEL 4
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
@@ -91,7 +91,7 @@ void main() {
     u32vec3 voxel_i = gl_GlobalInvocationID.xyz;
     u32 voxel_index = voxel_i.x + voxel_i.y * CHUNK_SIZE + voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
 
-    f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_CHUNKS[chunk_index].box.bound_min;
+    f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_CHUNKS[chunk_index].box.bound_min + f32vec3(1000, -50, 0);
     Voxel result;
 
     WorldgenState worldgen_state = get_worldgen_state(voxel_p);
