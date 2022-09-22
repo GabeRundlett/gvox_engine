@@ -58,7 +58,7 @@ void perframe_player() {
         );
     // clang-format on
 
-    if (INPUT.keyboard.keys[GAME_KEY_F5] != 0) {
+    if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
         if ((PLAYER.view_state & 0x10) == 0) {
             PLAYER.view_state |= 0x10;
             toggle_view();
@@ -66,7 +66,7 @@ void perframe_player() {
     } else {
         PLAYER.view_state &= ~0x10;
     }
-    // if (INPUT.keyboard.keys[GAME_KEY_F] != 0) {
+    // if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
     //     if ((PLAYER.view_state & 0x20) == 0) {
     //         PLAYER.view_state |= 0x20;
     //         toggle_fly();
@@ -80,21 +80,21 @@ void perframe_player() {
     PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
     f32 speed = speed_mul;
 
-    if (INPUT.keyboard.keys[GAME_KEY_W] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_MOVE_FORWARD] != 0)
         move_vec += PLAYER.forward;
-    if (INPUT.keyboard.keys[GAME_KEY_S] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_MOVE_BACKWARD] != 0)
         move_vec -= PLAYER.forward;
-    if (INPUT.keyboard.keys[GAME_KEY_A] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_MOVE_LEFT] != 0)
         move_vec -= PLAYER.lateral;
-    if (INPUT.keyboard.keys[GAME_KEY_D] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_MOVE_RIGHT] != 0)
         move_vec += PLAYER.lateral;
 
-    if (INPUT.keyboard.keys[GAME_KEY_SPACE] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0)
         move_vec += f32vec3(0, 0, 1);
-    if (INPUT.keyboard.keys[GAME_KEY_LEFT_CONTROL] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_CROUCH] != 0)
         move_vec -= f32vec3(0, 0, 1);
 
-    if (INPUT.keyboard.keys[GAME_KEY_LEFT_SHIFT] != 0)
+    if (INPUT.keyboard.keys[GAME_KEY_SPRINT] != 0)
         speed *= sprint_mul;
 
     PLAYER.pos += move_vec * INPUT.delta_time * speed;
@@ -107,7 +107,7 @@ void perframe_player() {
         PLAYER.edit_radius /= 1.05;
     }
 
-    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 63.0 / VOXEL_SCL);
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 127.0 / VOXEL_SCL);
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3) + cam_offset;
     PLAYER.cam.fov = INPUT.settings.fov * 3.14159 / 180.0;
@@ -116,17 +116,17 @@ void perframe_player() {
 
 u32 calculate_chunk_edit() {
     u32 non_chunkgen_update_n = 0;
-    for (i32 zi = 0; zi < 3; ++zi) {
-        if (VOXEL_WORLD.chunk_update_n >= 64)
+    for (i32 zi = 0; zi < 5; ++zi) {
+        if (VOXEL_WORLD.chunk_update_n >= 128)
             break;
-        for (i32 yi = 0; yi < 3; ++yi) {
-            if (VOXEL_WORLD.chunk_update_n >= 64)
+        for (i32 yi = 0; yi < 5; ++yi) {
+            if (VOXEL_WORLD.chunk_update_n >= 128)
                 break;
-            for (i32 xi = 0; xi < 3; ++xi) {
-                if (VOXEL_WORLD.chunk_update_n >= 64)
+            for (i32 xi = 0; xi < 5; ++xi) {
+                if (VOXEL_WORLD.chunk_update_n >= 128)
                     break;
-                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
-                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) {
+                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 2) * CHUNK_SIZE / VOXEL_SCL)));
+                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) { // TODO: determine if a chunk actually needs to be modified.
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
                     ++VOXEL_WORLD.chunk_update_n;
@@ -135,8 +135,8 @@ u32 calculate_chunk_edit() {
             }
         }
     }
-    if (VOXEL_WORLD.chunk_update_n > 64)
-        VOXEL_WORLD.chunk_update_n = 64;
+    if (VOXEL_WORLD.chunk_update_n > 128)
+        VOXEL_WORLD.chunk_update_n = 128;
     return non_chunkgen_update_n;
 }
 

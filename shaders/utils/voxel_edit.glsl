@@ -4,11 +4,13 @@
 #include <utils/noise.glsl>
 #include <utils/sd_shapes.glsl>
 
+#include <utils/chunkgen.glsl>
+
 f32 brush_noise_value(in f32vec3 voxel_p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.5,
-        /* .scale       = */ 0.5,
+        /* .scale       = */ 1.0,
         /* .lacunarity  = */ 2.0,
         /* .octaves     = */ 4);
     return fractal_noise(voxel_p, noise_conf);
@@ -31,7 +33,7 @@ f32 sd_gear(vec3 p, float radius1, float radius2, f32 notch_n, f32 notch_fac) {
     d = max(d, -sd_plane(p + f32vec3(0, 0, 1)));
     d = max(d, +sd_plane(p - f32vec3(0, 0, 1)));
 
-    return d;
+    return d * 40;
 }
 
 f32 sd_castle_wall(in f32vec3 p) {
@@ -75,10 +77,18 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     voxel_p = voxel_p;
     b32 result = false;
     f32vec3 pick_pos = floor(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
-    f32vec3 p = voxel_p - GLOBALS.edit_origin;
-    result = sd_castle_wall(p) + abs(brush_noise_value(voxel_p)) * 0.0 < 0.0;
-    return result && (sd_box(voxel_p - pick_pos, f32vec3(8, 8, 8)) < 0.0);
+
+    // f32vec3 p = voxel_p - GLOBALS.edit_origin;
+    // result = sd_castle_wall(p) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
+
+    f32vec3 p = voxel_p - pick_pos;
+    result = sd_sphere(p, PLAYER.edit_radius) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
+
+    return result && (sd_box(voxel_p - pick_pos, f32vec3(16, 16, 16)) < 0.0);
 }
 u32 brush_id_kernel(in f32vec3 voxel_p) {
+    // Voxel result = gen_voxel(voxel_p);
+    // return result.block_id;
+
     return PLAYER.edit_voxel_id;
 }

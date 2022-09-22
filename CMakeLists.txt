@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(gabe_voxel_game VERSION 0.1.4)
+project(gabe_voxel_game VERSION 0.1.5)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(daxa CONFIG REQUIRED)

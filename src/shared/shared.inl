@@ -49,6 +49,7 @@ struct ChunkOptCompPush {
 };
 struct ChunkEditCompPush {
     BufferRef(GpuGlobals) gpu_globals;
+    BufferRef(GpuInput) gpu_input;
 };
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;

@@ -59,7 +59,7 @@ struct VoxelWorld {
     Box box;
     f32vec3 center_pt;
     f32 last_update_time;
-    u32 chunk_update_indices[64];
+    u32 chunk_update_indices[128];
     u32 chunk_update_n;
     u32 chunkgen_index;
 

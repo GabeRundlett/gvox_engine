@@ -64,9 +64,10 @@ struct App : BaseApp<App> {
                 .fov = 90.0f,
                 .jitter_scl = 1.0f,
 
+                .gen_origin = {-1000.0f, 50.0f, 0.0f},
                 .gen_amplitude = 1.0f,
-                .gen_persistance = 0.12f,
-                .gen_scale = 0.01f,
+                .gen_persistance = 0.14f,
+                .gen_scale = 0.015f,
                 .gen_lacunarity = 4.7f,
                 .gen_octaves = 4,
             },
@@ -138,6 +139,10 @@ struct App : BaseApp<App> {
     bool paused = true;
     bool use_vsync = false;
 
+    bool show_debug_menu = false;
+    bool show_help_menu = false;
+    bool show_generation_menu = false;
+
     std::array<float, 40> frametimes = {};
     u64 frametime_rotation_index = 0;
     std::string fmt_str;
@@ -171,6 +176,7 @@ struct App : BaseApp<App> {
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::PushFont(base_font);
         if (paused) {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("Settings")) {
@@ -189,16 +195,7 @@ struct App : BaseApp<App> {
                     ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
                     ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
 
-                    if (ImGui::TreeNode("Generation")) {
-                        ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
-                        ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
-                        ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f);
-                        ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
-                        ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
-                        if (ImGui::Button("Regenerate"))
-                            should_regenerate = true;
-                        ImGui::TreePop();
-                    }
+                    ImGui::Checkbox("Generation Settings", &show_generation_menu);
 
                     if (ImGui::Button("Reset Settings")) {
                         gpu_input = default_gpu_input();
@@ -207,12 +204,39 @@ struct App : BaseApp<App> {
                 }
                 ImGui::EndMainMenuBar();
             }
+
+            if (show_generation_menu) {
+                ImGui::Begin("Generation");
+                ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
+                ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
+                ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
+                ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
+                ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
+                if (ImGui::Button("Regenerate"))
+                    should_regenerate = true;
+                ImGui::End();
+            }
+
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            ImVec2 pos = {viewport->WorkPos.x, viewport->WorkPos.y};
+            ImVec2 dim = {200.0f, viewport->WorkSize.y};
+            ImGui::SetNextWindowPos(pos);
+            ImGui::SetNextWindowSize(dim);
+
+            ImGui::PushFont(menu_font);
+            ImGui::Begin("Sidebar", nullptr, ImGuiWindowFlags_NoDecoration);
+            if (ImGui::Button("Resume"))
+                toggle_pause();
+            ImGui::End();
+            ImGui::PopFont();
         }
 
-        {
+        if (show_debug_menu) {
+            ImGui::PushFont(mono_font);
             const ImGuiViewport *viewport = ImGui::GetMainViewport();
             auto pos = viewport->WorkPos;
-            pos.x += viewport->WorkSize.x - 240.0f;
+            pos.x += viewport->WorkSize.x - 220.0f;
             ImGui::SetNextWindowPos(pos);
             ImGui::Begin("Test", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
             float average = 0.0f;
@@ -223,7 +247,18 @@ struct App : BaseApp<App> {
             fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
             ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
             ImGui::End();
+            ImGui::PopFont();
         }
+
+        if (show_help_menu) {
+            ImGui::Begin("Help");
+            ImGui::Text("TODO: Make a help menu 😈");
+            ImGui::End();
+        }
+
+        // ImGui::ShowDemoWindow();
+
+        ImGui::PopFont();
         ImGui::Render();
     }
 
@@ -289,8 +324,17 @@ struct App : BaseApp<App> {
 
         if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
             toggle_pause();
-        if (key_id == GLFW_KEY_R && action == GLFW_PRESS)
-            should_run_startup = true;
+        if (key_id == GLFW_KEY_R && action == GLFW_PRESS) {
+            if (glfwGetKey(glfw_window_ptr, GLFW_KEY_LEFT_CONTROL) != GLFW_RELEASE) {
+                should_run_startup = true;
+            } else {
+                should_regenerate = true;
+            }
+        }
+        if (key_id == GLFW_KEY_F1 && action == GLFW_PRESS)
+            show_help_menu = !show_help_menu;
+        if (key_id == GLFW_KEY_F3 && action == GLFW_PRESS)
+            show_debug_menu = !show_debug_menu;
 
         if (!paused && key_bindings.contains(key_id)) {
             auto index = key_bindings[key_id];
@@ -477,6 +521,7 @@ struct App : BaseApp<App> {
         new_task_list.add_task({
             .used_buffers = {
                 {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
                 {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
@@ -485,6 +530,7 @@ struct App : BaseApp<App> {
                 cmd_list.set_pipeline(chunk_edit_comp_pipeline);
                 cmd_list.push_constant(ChunkEditCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                    .gpu_input = this->device.buffer_reference(gpu_input_buffer),
                 });
                 cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
             },
