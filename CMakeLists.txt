@@ -26,23 +26,32 @@ endif()
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gabe_voxel_game>/vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
 
-# set(PACKAGE_VOXEL_GAME true)
+set(PACKAGE_VOXEL_GAME true)
 
 if(PACKAGE_VOXEL_GAME)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-    install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt glfw)
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw)
+    endif()
+
+    install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
     install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
 
-    target_sources(${PROJECT_NAME} PRIVATE "src/main.rc")
-
     set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_sources(${PROJECT_NAME} PRIVATE "packaging/main.rc")
         set(CPACK_NSIS_CREATE_ICONS_EXTRA "SetOutPath '$INSTDIR\\\\bin'\nCreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\gabe_voxel_game.lnk' '$INSTDIR\\\\bin\\\\gabe_voxel_game.exe'")
         set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\gabe_voxel_game.lnk'")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # TODO: Find a better way to package, though tar.gz works for now
+        # install(FILES "${CMAKE_SOURCE_DIR}/packaging/gabe_voxel_game.desktop" DESTINATION share/applications)
+        # set(CPACK_BINARY_AppImage ON)
     endif()
 
     include(InstallRequiredSystemLibraries)

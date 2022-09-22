@@ -65,8 +65,13 @@ struct BaseApp : AppWindow<T> {
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
         mono_font = io.Fonts->AddFontDefault();
-        base_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 16.0f);
+#if defined(_WIN32)
+        base_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 16.0f);
         menu_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 32.0f);
+#elif defined(__linux__)
+        base_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16.0f);
+        menu_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32.0f);
+#endif
         ImGui_ImplGlfw_InitForVulkan(AppWindow<T>::glfw_window_ptr, true);
         return daxa::ImGuiRenderer({
             .device = device,
