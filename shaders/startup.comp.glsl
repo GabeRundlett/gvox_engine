@@ -8,6 +8,8 @@ void startup_player() {
     PLAYER.pos = f32vec3(BLOCK_NX / VOXEL_SCL / 2, -BLOCK_NZ / VOXEL_SCL / 2, BLOCK_NZ / VOXEL_SCL / 2 * 3) + 0.001;
     PLAYER.vel = f32vec3(0, 0, 0);
     PLAYER.rot = f32vec3(-0.53, 0, 0.003);
+
+    PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 6)) | (1 << 6);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;

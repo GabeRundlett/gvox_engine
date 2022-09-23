@@ -172,7 +172,6 @@ struct App : BaseApp<App> {
     void ui_update() {
         frametimes[frametime_rotation_index] = gpu_input.delta_time;
         frametime_rotation_index = (frametime_rotation_index + 1) % frametimes.size();
-        should_regenerate = false;
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -202,12 +201,16 @@ struct App : BaseApp<App> {
                     }
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("Help")) {
+                    show_help_menu = true;
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMainMenuBar();
             }
 
             if (show_generation_menu) {
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 240.f});
-                ImGui::Begin("Generation");
+                ImGui::Begin("Generation", &show_generation_menu);
                 ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
                 ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
                 ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
@@ -240,7 +243,7 @@ struct App : BaseApp<App> {
             auto pos = viewport->WorkPos;
             pos.x += viewport->WorkSize.x - 220.0f;
             ImGui::SetNextWindowPos(pos);
-            ImGui::Begin("Test", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
+            ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
             float average = 0.0f;
             for (auto frametime : frametimes)
                 average += frametime;
@@ -253,9 +256,30 @@ struct App : BaseApp<App> {
         }
 
         if (show_help_menu) {
-            ImGui::Begin("Help");
-            ImGui::Text("TODO: Make a help menu 😈");
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 360.f});
+            ImGui::Begin("Help", &show_help_menu);
+            ImGui::Text(R"(Keybinds:
+F1 for help
+F3 to see debug info
+WASD to move
+F to toggle fly
+R to reload chunks
+CTRL+R to reload the game
+
+(when flying)
+    SPACEBAR to ascend
+    LEFT CONTROL to descend
+(not flying)
+    SPACEBAR to jump
+
+ESCAPE to toggle pause (lock/unlock camera)
+SCROLL to increase/decrease brush size
+
+LEFT MOUSE BUTTON to destroy voxels
+RIGHT MOUSE BUTTON to place voxels
+)");
             ImGui::End();
+            ImGui::PopStyleVar();
         }
 
         // ImGui::ShowDemoWindow();
@@ -438,6 +462,7 @@ struct App : BaseApp<App> {
                         .size = sizeof(VoxelWorld::chunks_genstate),
                         .clear_value = 0,
                     });
+                    should_regenerate = false;
                 }
             },
             .debug_name = "Startup (GenState Clear)",

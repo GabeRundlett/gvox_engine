@@ -6,14 +6,27 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/raytrace.glsl>
 
 #define PLAYER_HEIGHT 1.8
+#define COLLIDE_DELTA 0.09
+#define PLAYER_SPEED 1.5
+#define PLAYER_ACCEL 10.0
+
+#define EARTH_GRAV 9.807
+#define MOON_GRAV 1.625
+#define MARS_GRAV 3.728
+#define JUPITER_GRAV 25.93
+
+#define GRAVITY EARTH_GRAV
+#define EARTH_JUMP_HEIGHT 0.59
 
 void toggle_view() {
     PLAYER.view_state = (PLAYER.view_state & ~0xf) | ((PLAYER.view_state & 0xf) + 1);
     if ((PLAYER.view_state & 0xf) > 1)
         PLAYER.view_state = (PLAYER.view_state & ~0xf) | 0;
 }
-// void toggle_fly() {
-// }
+void toggle_fly() {
+    u32 is_flying = (PLAYER.view_state >> 6) & 0x1;
+    PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 6)) | ((1 - is_flying) << 6);
+}
 
 f32vec3 view_vec() {
     switch (PLAYER.view_state & 0xf) {
@@ -29,8 +42,37 @@ b32 get_flag(u32 index) {
 
 void perframe_player() {
     const f32 mouse_sens = 1.0;
-    const f32 speed_mul = 2.0;
-    const f32 sprint_mul = 30.0;
+
+    b32 is_flying = ((PLAYER.view_state >> 6) & 0x1) == 1;
+
+    if (is_flying) {
+        PLAYER.speed = PLAYER_SPEED * 30;
+        PLAYER.accel_rate = PLAYER_ACCEL * 30;
+        PLAYER.on_ground = true;
+    } else {
+        PLAYER.speed = PLAYER_SPEED;
+        PLAYER.accel_rate = PLAYER_ACCEL;
+        if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0 && PLAYER.on_ground)
+            PLAYER.force_vel.z = EARTH_GRAV * sqrt(EARTH_JUMP_HEIGHT * 2.0 / EARTH_GRAV);
+    }
+    PLAYER.sprint_speed = 2.5;
+
+    if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
+        if ((PLAYER.view_state & 0x10) == 0) {
+            PLAYER.view_state |= 0x10;
+            toggle_view();
+        }
+    } else {
+        PLAYER.view_state &= ~0x10;
+    }
+    if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
+        if ((PLAYER.view_state & 0x20) == 0) {
+            PLAYER.view_state |= 0x20;
+            toggle_fly();
+        }
+    } else {
+        PLAYER.view_state &= ~0x20;
+    }
 
     PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * 0.001;
     PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * 0.001;
@@ -58,27 +100,9 @@ void perframe_player() {
         );
     // clang-format on
 
-    if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
-        if ((PLAYER.view_state & 0x10) == 0) {
-            PLAYER.view_state |= 0x10;
-            toggle_view();
-        }
-    } else {
-        PLAYER.view_state &= ~0x10;
-    }
-    // if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
-    //     if ((PLAYER.view_state & 0x20) == 0) {
-    //         PLAYER.view_state |= 0x20;
-    //         toggle_fly();
-    //     }
-    // } else {
-    //     PLAYER.view_state &= ~0x20;
-    // }
-
     f32vec3 move_vec = f32vec3(0, 0, 0);
     PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
     PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
-    f32 speed = speed_mul;
 
     if (INPUT.keyboard.keys[GAME_KEY_MOVE_FORWARD] != 0)
         move_vec += PLAYER.forward;
@@ -89,15 +113,56 @@ void perframe_player() {
     if (INPUT.keyboard.keys[GAME_KEY_MOVE_RIGHT] != 0)
         move_vec += PLAYER.lateral;
 
-    if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0)
-        move_vec += f32vec3(0, 0, 1);
-    if (INPUT.keyboard.keys[GAME_KEY_CROUCH] != 0)
-        move_vec -= f32vec3(0, 0, 1);
+    if (is_flying) {
+        if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0)
+            move_vec += f32vec3(0, 0, 1);
+        if (INPUT.keyboard.keys[GAME_KEY_CROUCH] != 0)
+            move_vec -= f32vec3(0, 0, 1);
+    }
 
+    f32 applied_accel = PLAYER.accel_rate;
     if (INPUT.keyboard.keys[GAME_KEY_SPRINT] != 0)
-        speed *= sprint_mul;
+        PLAYER.max_speed += INPUT.delta_time * PLAYER.accel_rate;
+    else
+        PLAYER.max_speed -= INPUT.delta_time * PLAYER.accel_rate;
+    PLAYER.max_speed = clamp(PLAYER.max_speed, PLAYER.speed, PLAYER.speed * PLAYER.sprint_speed);
 
-    PLAYER.pos += move_vec * INPUT.delta_time * speed;
+    f32 move_magsq = dot(move_vec, move_vec);
+    if (move_magsq > 0) {
+        move_vec = normalize(move_vec) * INPUT.delta_time * applied_accel * (PLAYER.on_ground ? 1 : 0.1);
+    }
+
+    f32 move_vel_mag = length(PLAYER.move_vel);
+    f32vec3 move_vel_dir;
+    if (move_vel_mag > 0) {
+        move_vel_dir = PLAYER.move_vel / move_vel_mag;
+        if (PLAYER.on_ground)
+            PLAYER.move_vel -= move_vel_dir * min(PLAYER.accel_rate * 0.4 * INPUT.delta_time, move_vel_mag);
+    }
+    PLAYER.move_vel += move_vec * 2;
+
+    move_vel_mag = length(PLAYER.move_vel);
+    if (move_vel_mag > 0) {
+        PLAYER.move_vel = PLAYER.move_vel / move_vel_mag * min(move_vel_mag, PLAYER.max_speed);
+    }
+
+    if (is_flying) {
+        PLAYER.force_vel = f32vec3(0, 0, 0);
+    } else {
+        PLAYER.force_vel += f32vec3(0, 0, -1) * GRAVITY * INPUT.delta_time;
+    }
+
+    f32vec3 vel = PLAYER.move_vel + PLAYER.force_vel;
+    PLAYER.pos += vel * INPUT.delta_time;
+
+    if (PLAYER.pos.z <= 0) {
+        PLAYER.pos.z = 0;
+        PLAYER.on_ground = true;
+        PLAYER.force_vel.z = 0;
+        PLAYER.move_vel.z = 0;
+    } else {
+        PLAYER.on_ground = true;
+    }
 
     f32vec3 cam_offset = view_vec();
 
@@ -112,6 +177,104 @@ void perframe_player() {
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3) + cam_offset;
     PLAYER.cam.fov = INPUT.settings.fov * 3.14159 / 180.0;
     PLAYER.cam.tan_half_fov = tan(PLAYER.cam.fov * 0.5);
+
+    Ray ray;
+    ray.o = PLAYER.pos + f32vec3(0, 0, 0);
+    f32vec3 player_ray_o;
+
+#if 1
+    // TODO: rewrite collisions to be swept AABB
+    player_ray_o = PLAYER.pos + f32vec3(0.0, 0.0, 0.1);
+    {
+        f32 axis_sign = sign(vel.z);
+        if (axis_sign != 0) {
+            ray.nrm = f32vec3(0, 0, axis_sign);
+            ray.inv_nrm = 1.0 / ray.nrm;
+            IntersectionRecord intersections[4];
+            ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, -COLLIDE_DELTA, 0);
+            intersections[0] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, -COLLIDE_DELTA, 0);
+            intersections[1] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, +COLLIDE_DELTA, 0);
+            intersections[2] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, +COLLIDE_DELTA, 0);
+            intersections[3] = intersect_chunk(ray);
+            IntersectionRecord intersection;
+            intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
+            intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
+            PLAYER.on_ground = false;
+            if (intersection.hit && intersection.dist <= 0.1) {
+                PLAYER.on_ground = true;
+                PLAYER.pos.z = ray.o.z + ray.nrm.z * intersection.dist - ray.nrm.z * 0.1 - 0.1;
+                PLAYER.move_vel.z = 0, PLAYER.force_vel.z = 0;
+            }
+        }
+    }
+    player_ray_o = PLAYER.pos + f32vec3(0.0, 0.0, 0.1);
+    {
+        f32 axis_sign = sign(vel.x);
+        if (axis_sign != 0) {
+            ray.nrm = f32vec3(axis_sign, 0, 0);
+            ray.inv_nrm = 1.0 / ray.nrm;
+            IntersectionRecord intersections[4];
+            ray.o = player_ray_o + f32vec3(0, -COLLIDE_DELTA, -COLLIDE_DELTA);
+            intersections[0] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(0, +COLLIDE_DELTA, -COLLIDE_DELTA);
+            intersections[1] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(0, -COLLIDE_DELTA, +COLLIDE_DELTA);
+            intersections[2] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(0, +COLLIDE_DELTA, +COLLIDE_DELTA);
+            intersections[3] = intersect_chunk(ray);
+            IntersectionRecord intersection;
+            intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
+            intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
+            if (intersection.hit) {
+                if (intersection.dist <= 0.1) {
+                    f32vec3 hit_pos = ray.o + ray.nrm * (intersection.dist + 0.001);
+                    u32 temp_chunk_index;
+                    if (sample_lod(hit_pos + f32vec3(0, 0, 1) / VOXEL_SCL, temp_chunk_index) != 0) {
+                        PLAYER.pos.z = floor(PLAYER.pos.z * VOXEL_SCL + 1.001) / VOXEL_SCL;
+                    } else {
+                        PLAYER.pos.x = ray.o.x + ray.nrm.x * intersection.dist - ray.nrm.x * 0.1;
+                        PLAYER.move_vel.x = 0, PLAYER.force_vel.x = 0;
+                    }
+                }
+            }
+        }
+    }
+    player_ray_o = PLAYER.pos + f32vec3(0.0, 0.0, 0.1);
+    {
+        f32 axis_sign = sign(vel.y);
+        if (axis_sign != 0) {
+            ray.nrm = f32vec3(0, axis_sign, 0);
+            ray.inv_nrm = 1.0 / ray.nrm;
+            IntersectionRecord intersections[4];
+            ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, 0, -COLLIDE_DELTA);
+            intersections[0] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, 0, -COLLIDE_DELTA);
+            intersections[1] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, 0, +COLLIDE_DELTA);
+            intersections[2] = intersect_chunk(ray);
+            ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, 0, +COLLIDE_DELTA);
+            intersections[3] = intersect_chunk(ray);
+            IntersectionRecord intersection;
+            intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
+            intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
+            if (intersection.hit) {
+                if (intersection.dist <= 0.1) {
+                    f32vec3 hit_pos = ray.o + ray.nrm * (intersection.dist + 0.001);
+                    u32 temp_chunk_index;
+                    if (sample_lod(hit_pos + f32vec3(0, 0, 1) / VOXEL_SCL, temp_chunk_index) != 0) {
+                        PLAYER.pos.z = floor(PLAYER.pos.z * VOXEL_SCL + 1.001) / VOXEL_SCL;
+                    } else {
+                        PLAYER.pos.y = ray.o.y + ray.nrm.y * intersection.dist - ray.nrm.y * 0.1;
+                        PLAYER.move_vel.y = 0, PLAYER.force_vel.y = 0;
+                    }
+                }
+            }
+        }
+    }
+#endif
 }
 
 u32 calculate_chunk_edit() {
