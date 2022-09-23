@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 #include <cmath>
 
 #include <daxa/utils/imgui.hpp>
-#include "imgui/imgui_impl_glfw.h"
+#include <imgui_impl_glfw.h>
 
 #include <daxa/utils/math_operators.hpp>
 using namespace daxa::math_operators;

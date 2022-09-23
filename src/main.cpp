@@ -206,6 +206,7 @@ struct App : BaseApp<App> {
             }
 
             if (show_generation_menu) {
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 240.f});
                 ImGui::Begin("Generation");
                 ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
                 ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
@@ -216,20 +217,21 @@ struct App : BaseApp<App> {
                 if (ImGui::Button("Regenerate"))
                     should_regenerate = true;
                 ImGui::End();
+                ImGui::PopStyleVar();
             }
 
-            const ImGuiViewport *viewport = ImGui::GetMainViewport();
-            ImVec2 pos = {viewport->WorkPos.x, viewport->WorkPos.y};
-            ImVec2 dim = {200.0f, viewport->WorkSize.y};
-            ImGui::SetNextWindowPos(pos);
-            ImGui::SetNextWindowSize(dim);
+            // const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            // ImVec2 pos = {viewport->WorkPos.x, viewport->WorkPos.y};
+            // ImVec2 dim = {200.0f, viewport->WorkSize.y};
+            // ImGui::SetNextWindowPos(pos);
+            // ImGui::SetNextWindowSize(dim);
 
-            ImGui::PushFont(menu_font);
-            ImGui::Begin("Sidebar", nullptr, ImGuiWindowFlags_NoDecoration);
-            if (ImGui::Button("Resume"))
-                toggle_pause();
-            ImGui::End();
-            ImGui::PopFont();
+            // ImGui::PushFont(menu_font);
+            // ImGui::Begin("Sidebar", nullptr, ImGuiWindowFlags_NoDecoration);
+            // if (ImGui::Button("Resume"))
+            //     toggle_pause();
+            // ImGui::End();
+            // ImGui::PopFont();
         }
 
         if (show_debug_menu) {

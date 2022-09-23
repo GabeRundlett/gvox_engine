@@ -13,6 +13,12 @@
         "glfw3",
         "glm",
         "stb",
-        "libsoundio"
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding",
+                "docking-experimental"
+            ]
+        }
     ]
 }
