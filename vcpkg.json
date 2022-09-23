@@ -2,6 +2,23 @@
     "name": "gabecraft",
     "version": "0.1.0",
     "dependencies": [
-        "daxa"
+        {
+            "name": "daxa",
+            "features": [
+                "glslang",
+                "utils"
+            ]
+        },
+        "fmt",
+        "glfw3",
+        "glm",
+        "stb",
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding",
+                "docking-experimental"
+            ]
+        }
     ]
 }
