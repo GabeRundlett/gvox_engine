@@ -77,6 +77,9 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     voxel_p = voxel_p;
     b32 result = false;
     f32vec3 pick_pos = floor(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
+    if (GLOBALS.edit_flags == 2) {
+        pick_pos += GLOBALS.pick_nrm * 1.0 / VOXEL_SCL;
+    }
 
     // f32vec3 p = voxel_p - GLOBALS.edit_origin;
     // result = sd_castle_wall(p) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
@@ -84,7 +87,7 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     f32vec3 p = voxel_p - pick_pos;
     result = sd_sphere(p, PLAYER.edit_radius) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
 
-    return result && (sd_box(voxel_p - pick_pos, f32vec3(16, 16, 16)) < 0.0);
+    return result && (sd_box(voxel_p - pick_pos, f32vec3(128.0 / VOXEL_SCL)) < 0.0);
 }
 u32 brush_id_kernel(in f32vec3 voxel_p) {
     // Voxel result = gen_voxel(voxel_p);

@@ -7,8 +7,16 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 
 #define PLAYER_HEIGHT 1.8
 #define COLLIDE_DELTA 0.09
+
+#if 0 // REALISTIC
 #define PLAYER_SPEED 1.5
 #define PLAYER_ACCEL 10.0
+#define EARTH_JUMP_HEIGHT 0.59
+#else // MINECRAFT
+#define PLAYER_SPEED 2.5
+#define PLAYER_ACCEL 10.0
+#define EARTH_JUMP_HEIGHT 1.1
+#endif
 
 #define EARTH_GRAV 9.807
 #define MOON_GRAV 1.625
@@ -16,7 +24,6 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #define JUPITER_GRAV 25.93
 
 #define GRAVITY EARTH_GRAV
-#define EARTH_JUMP_HEIGHT 0.59
 
 void toggle_view() {
     PLAYER.view_state = (PLAYER.view_state & ~0xf) | ((PLAYER.view_state & 0xf) + 1);
@@ -50,6 +57,12 @@ void perframe_player() {
         PLAYER.accel_rate = PLAYER_ACCEL * 30;
         PLAYER.on_ground = true;
     } else {
+        if (PLAYER.pos.z <= 0) {
+            PLAYER.pos.z = 0;
+            PLAYER.on_ground = true;
+            PLAYER.force_vel.z = 0;
+            PLAYER.move_vel.z = 0;
+        }
         PLAYER.speed = PLAYER_SPEED;
         PLAYER.accel_rate = PLAYER_ACCEL;
         if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0 && PLAYER.on_ground)
@@ -154,15 +167,7 @@ void perframe_player() {
 
     f32vec3 vel = PLAYER.move_vel + PLAYER.force_vel;
     PLAYER.pos += vel * INPUT.delta_time;
-
-    if (PLAYER.pos.z <= 0) {
-        PLAYER.pos.z = 0;
-        PLAYER.on_ground = true;
-        PLAYER.force_vel.z = 0;
-        PLAYER.move_vel.z = 0;
-    } else {
-        PLAYER.on_ground = true;
-    }
+    PLAYER.on_ground = true;
 
     f32vec3 cam_offset = view_vec();
 
@@ -172,7 +177,7 @@ void perframe_player() {
         PLAYER.edit_radius /= 1.05;
     }
 
-    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.5 / VOXEL_SCL, 127.0 / VOXEL_SCL);
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.0 / VOXEL_SCL, 127.0 / VOXEL_SCL);
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3) + cam_offset;
     PLAYER.cam.fov = INPUT.settings.fov * 3.14159 / 180.0;
@@ -343,7 +348,7 @@ void perframe_voxel_world() {
             PLAYER.edit_voxel_id = BlockID_Air;
             PLAYER.last_edit_time = INPUT.time;
         } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
-            GLOBALS.edit_flags = 1;
+            GLOBALS.edit_flags = 2;
             non_chunkgen_update_n = calculate_chunk_edit();
             PLAYER.edit_voxel_id = BlockID_Stone;
             PLAYER.last_edit_time = INPUT.time;
@@ -397,7 +402,7 @@ void main() {
 
     if (GLOBALS.edit_flags == 0) {
         GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
-    } else if (GLOBALS.edit_flags == 1 && prev_edit_flags == 0) {
+    } else if (GLOBALS.edit_flags != 0 && prev_edit_flags == 0) {
         GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
     }
 

@@ -15,6 +15,37 @@ f32vec3 sample_sky(f32vec3 nrm) {
     return mix(f32vec3(0.02, 0.05, 0.90) * 2, f32vec3(0.08, 0.10, 0.54), pow(sky_val, 2)) * 0.3;
 }
 
+f32vec3 block_color(u32 block_id) {
+    // clang-format off
+    switch (block_id) {
+    case BlockID_Debug:           return f32vec3(0.60, 0.00, 0.50); break;
+    case BlockID_Air:             return f32vec3(0.66, 0.67, 0.91); break;
+    // case BlockID_Bedrock:         return f32vec3(0.30, 0.30, 0.30); break;
+    // case BlockID_Brick:           return f32vec3(0.47, 0.23, 0.20); break;
+    // case BlockID_Cactus:          return f32vec3(0.36, 0.62, 0.28); break;
+    // case BlockID_Cobblestone:     return f32vec3(0.32, 0.31, 0.31); break;
+    // case BlockID_CompressedStone: return f32vec3(0.32, 0.31, 0.31); break;
+    // case BlockID_DiamondOre:      return f32vec3(0.18, 0.67, 0.69); break;
+    case BlockID_Dirt:            return f32vec3(0.08, 0.05, 0.03); break;
+    // case BlockID_DriedShrub:      return f32vec3(0.52, 0.36, 0.27); break;
+    case BlockID_Grass:           return f32vec3(0.05, 0.09, 0.03); break;
+    case BlockID_Gravel:          return f32vec3(0.10, 0.08, 0.07); break;
+    // case BlockID_Lava:            return f32vec3(0.00, 0.00, 0.00); break;
+    // case BlockID_Leaves:          return f32vec3(0.10, 0.29, 0.10); break;
+    // case BlockID_Log:             return f32vec3(0.23, 0.14, 0.10); break;
+    // case BlockID_MoltenRock:      return f32vec3(0.20, 0.13, 0.12); break;
+    // case BlockID_Planks:          return f32vec3(0.68, 0.47, 0.35); break;
+    // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
+    case BlockID_Sand:            return f32vec3(0.82, 0.50, 0.19); break;
+    case BlockID_Sandstone:       return f32vec3(0.94, 0.65, 0.38); break;
+    case BlockID_Stone:           return f32vec3(0.10, 0.09, 0.08); break;
+    case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
+    case BlockID_Water:           return f32vec3(0.10, 0.18, 0.93); break;
+    default:                      return f32vec3(0.00, 0.00, 0.00); break;
+    }
+    // clang-format on
+}
+
 TraceRecord trace_scene(in Ray ray) {
     TraceRecord trace;
     default_init(trace.intersection_record);
@@ -75,15 +106,25 @@ f32vec4 voxel_ao(f32vec4 side, f32vec4 corner) {
     return 1.0 - ao;
 }
 
+#define TONEMAPPER 0
+
 f32vec3 filmic(f32vec3 color) {
+#if TONEMAPPER == 0
     color = max(color, f32vec3(0, 0, 0));
     color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06);
+#elif TONEMAPPER == 1
+    color = pow(color, f32vec3(2.2));
+#endif
     return color;
 }
 
 f32vec3 filmic_inv(f32vec3 color) {
+#if TONEMAPPER == 0
     color = max(color, f32vec3(0, 0, 0));
     color = (-sqrt(5.0) * sqrt(701.0 * color * color - 106.0 * color + 125.0) - 85 * color + 25) / (620 * (color - 1));
+#elif TONEMAPPER == 1
+    color = pow(color, f32vec3(1.0 / 2.2));
+#endif
     return color;
 }
 
@@ -122,25 +163,26 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 
     if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
         // col = f32vec3(1, 1, 1);
-        f32vec3 mask = abs(hit_nrm);
-        f32vec3 v_pos = hit_pos * VOXEL_SCL - hit_nrm * 0.01;
-        f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
-        f32vec3 d1 = mask.zxy / VOXEL_SCL;
-        f32vec3 d2 = mask.yzx / VOXEL_SCL;
-        f32vec4 side = f32vec4(
-            sample_lod(b_pos + d1, temp_chunk_index) == 0,
-            sample_lod(b_pos + d2, temp_chunk_index) == 0,
-            sample_lod(b_pos - d1, temp_chunk_index) == 0,
-            sample_lod(b_pos - d2, temp_chunk_index) == 0);
-        f32vec4 corner = f32vec4(
-            sample_lod(b_pos + d1 + d2, temp_chunk_index) == 0,
-            sample_lod(b_pos - d1 + d2, temp_chunk_index) == 0,
-            sample_lod(b_pos - d1 - d2, temp_chunk_index) == 0,
-            sample_lod(b_pos + d1 - d2, temp_chunk_index) == 0);
-        f32vec2 uv = mod(f32vec2(dot(mask * v_pos.yzx, f32vec3(1, 1, 1)), dot(mask * v_pos.zxy, f32vec3(1, 1, 1))), f32vec2(1, 1));
-        f32vec4 ao = voxel_ao(side, corner);
-        f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
-        col *= interp_ao * 0.6 + 0.4;
+
+        // f32vec3 mask = abs(hit_nrm);
+        // f32vec3 v_pos = hit_pos * VOXEL_SCL - hit_nrm * 0.01;
+        // f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
+        // f32vec3 d1 = mask.zxy / VOXEL_SCL;
+        // f32vec3 d2 = mask.yzx / VOXEL_SCL;
+        // f32vec4 side = f32vec4(
+        //     sample_lod(b_pos + d1, temp_chunk_index) == 0,
+        //     sample_lod(b_pos + d2, temp_chunk_index) == 0,
+        //     sample_lod(b_pos - d1, temp_chunk_index) == 0,
+        //     sample_lod(b_pos - d2, temp_chunk_index) == 0);
+        // f32vec4 corner = f32vec4(
+        //     sample_lod(b_pos + d1 + d2, temp_chunk_index) == 0,
+        //     sample_lod(b_pos - d1 + d2, temp_chunk_index) == 0,
+        //     sample_lod(b_pos - d1 - d2, temp_chunk_index) == 0,
+        //     sample_lod(b_pos + d1 - d2, temp_chunk_index) == 0);
+        // f32vec2 uv = mod(f32vec2(dot(mask * v_pos.yzx, f32vec3(1, 1, 1)), dot(mask * v_pos.zxy, f32vec3(1, 1, 1))), f32vec2(1, 1));
+        // f32vec4 ao = voxel_ao(side, corner);
+        // f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
+        // col *= interp_ao * 0.6 + 0.4;
     }
 
     return col;
@@ -182,16 +224,22 @@ void main() {
         Ray bounce_ray;
         bounce_ray.o = hit_pos;
 
+        // Voxel hit_voxel;
+        // hit_voxel.nrm = hit_nrm;
+
         switch (view_trace_record.material) {
         case 0: {
-            // bounce_ray.nrm = reflect(view_ray.nrm, hit_nrm);
             bounce_ray.nrm = refract(view_ray.nrm, hit_nrm, 1.0 / 1.4);
-            bounce_ray.o -= view_trace_record.intersection_record.nrm * 0.001;
+            bounce_ray.o -= hit_nrm * 0.001;
         } break;
         case 1:
         case 2: {
             bounce_ray.nrm = normalize(f32vec3(1.4, -5.1, 3.3));
-            bounce_ray.o += view_trace_record.intersection_record.nrm * 0.001;
+            bounce_ray.o += hit_nrm * 0.001;
+            // VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
+            // hit_voxel = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+            // hit_voxel.nrm = hit_nrm;
+            // hit_voxel.nrm *= -1;
         } break;
         }
         bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
@@ -237,7 +285,7 @@ void main() {
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
         } break;
         }
-        col *= (shade * sun_col + sample_sky(view_ray.nrm));
+        col *= (shade * sun_col + sample_sky(hit_nrm) * 1);
 
         f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
 
@@ -269,6 +317,7 @@ void main() {
             col = f32vec3(1, 1, 1);
         }
     }
+    // col *= 4;
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
