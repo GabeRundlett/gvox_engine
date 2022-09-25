@@ -10,15 +10,23 @@ b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
 }
 
+#define SKY_COL (f32vec3(0.02, 0.05, 0.90) * 2)
+#define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
+
+#define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
+#define SUN_DIR normalize(f32vec3(1.4, -5.1, 3.3))
+
 f32vec3 sample_sky(f32vec3 nrm) {
+    f32 sun_val = dot(nrm, SUN_DIR) * 0.25 + 0.5;
+    sun_val = pow(sun_val, 2) * 0.2;
     f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.5 + 0.5, 0, 1);
-    return mix(f32vec3(0.02, 0.05, 0.90) * 2, f32vec3(0.08, 0.10, 0.54), pow(sky_val, 2)) * 0.3;
+    return mix(SKY_COL + sun_val * SUN_COL, SKY_COL_B, pow(sky_val, 2)) * 0.3;
 }
 
 f32vec3 block_color(u32 block_id) {
     // clang-format off
     switch (block_id) {
-    case BlockID_Debug:           return f32vec3(0.60, 0.00, 0.50); break;
+    case BlockID_Debug:           return f32vec3(0.30, 0.02, 0.30); break;
     case BlockID_Air:             return f32vec3(0.66, 0.67, 0.91); break;
     // case BlockID_Bedrock:         return f32vec3(0.30, 0.30, 0.30); break;
     // case BlockID_Brick:           return f32vec3(0.47, 0.23, 0.20); break;
@@ -38,7 +46,7 @@ f32vec3 block_color(u32 block_id) {
     // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
     case BlockID_Sand:            return f32vec3(0.82, 0.50, 0.19); break;
     case BlockID_Sandstone:       return f32vec3(0.94, 0.65, 0.38); break;
-    case BlockID_Stone:           return f32vec3(0.10, 0.09, 0.08); break;
+    case BlockID_Stone:           return f32vec3(0.11, 0.10, 0.09); break;
     case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
     case BlockID_Water:           return f32vec3(0.10, 0.18, 0.93); break;
     default:                      return f32vec3(0.00, 0.00, 0.00); break;
@@ -46,7 +54,9 @@ f32vec3 block_color(u32 block_id) {
     // clang-format on
 }
 
-TraceRecord trace_scene(in Ray ray) {
+TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
+    complexity = 0;
+
     TraceRecord trace;
     default_init(trace.intersection_record);
     trace.color = sample_sky(ray.nrm);
@@ -82,7 +92,7 @@ TraceRecord trace_scene(in Ray ray) {
         }
     }
 
-    IntersectionRecord b0_hit = intersect_chunk(ray);
+    IntersectionRecord b0_hit = intersect_chunk(ray, complexity);
     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
         trace.intersection_record = b0_hit;
         trace.color = f32vec3(0.5, 1.0, 0.5);
@@ -159,30 +169,32 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     // }
 
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
+    // col = f32vec3(brickmap_depth(hit_pos)) * 0.1;
+
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 
     if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
         // col = f32vec3(1, 1, 1);
 
-        // f32vec3 mask = abs(hit_nrm);
-        // f32vec3 v_pos = hit_pos * VOXEL_SCL - hit_nrm * 0.01;
-        // f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
-        // f32vec3 d1 = mask.zxy / VOXEL_SCL;
-        // f32vec3 d2 = mask.yzx / VOXEL_SCL;
-        // f32vec4 side = f32vec4(
-        //     sample_lod(b_pos + d1, temp_chunk_index) == 0,
-        //     sample_lod(b_pos + d2, temp_chunk_index) == 0,
-        //     sample_lod(b_pos - d1, temp_chunk_index) == 0,
-        //     sample_lod(b_pos - d2, temp_chunk_index) == 0);
-        // f32vec4 corner = f32vec4(
-        //     sample_lod(b_pos + d1 + d2, temp_chunk_index) == 0,
-        //     sample_lod(b_pos - d1 + d2, temp_chunk_index) == 0,
-        //     sample_lod(b_pos - d1 - d2, temp_chunk_index) == 0,
-        //     sample_lod(b_pos + d1 - d2, temp_chunk_index) == 0);
-        // f32vec2 uv = mod(f32vec2(dot(mask * v_pos.yzx, f32vec3(1, 1, 1)), dot(mask * v_pos.zxy, f32vec3(1, 1, 1))), f32vec2(1, 1));
-        // f32vec4 ao = voxel_ao(side, corner);
-        // f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
-        // col *= interp_ao * 0.6 + 0.4;
+        f32vec3 mask = abs(hit_nrm);
+        f32vec3 v_pos = hit_pos * VOXEL_SCL - hit_nrm * 0.01;
+        f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
+        f32vec3 d1 = mask.zxy / VOXEL_SCL;
+        f32vec3 d2 = mask.yzx / VOXEL_SCL;
+        f32vec4 side = f32vec4(
+            sample_lod(b_pos + d1, temp_chunk_index) == 0,
+            sample_lod(b_pos + d2, temp_chunk_index) == 0,
+            sample_lod(b_pos - d1, temp_chunk_index) == 0,
+            sample_lod(b_pos - d2, temp_chunk_index) == 0);
+        f32vec4 corner = f32vec4(
+            sample_lod(b_pos + d1 + d2, temp_chunk_index) == 0,
+            sample_lod(b_pos - d1 + d2, temp_chunk_index) == 0,
+            sample_lod(b_pos - d1 - d2, temp_chunk_index) == 0,
+            sample_lod(b_pos + d1 - d2, temp_chunk_index) == 0);
+        f32vec2 uv = mod(f32vec2(dot(mask * v_pos.yzx, f32vec3(1, 1, 1)), dot(mask * v_pos.zxy, f32vec3(1, 1, 1))), f32vec2(1, 1));
+        f32vec4 ao = voxel_ao(side, corner);
+        f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
+        col *= interp_ao * 0.6 + 0.4;
     }
 
     return col;
@@ -190,8 +202,6 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    const f32vec3 sun_col = f32vec3(1, 0.85, 0.5) * 2;
-
     u32vec3 pixel_i = gl_GlobalInvocationID.xyz;
     if (pixel_i.x >= INPUT.frame_dim.x ||
         pixel_i.y >= INPUT.frame_dim.y)
@@ -214,10 +224,14 @@ void main() {
     Ray view_ray = create_view_ray(uv);
     view_ray.inv_nrm = 1.0 / view_ray.nrm;
 
-    TraceRecord view_trace_record = trace_scene(view_ray);
+    i32 complexity;
+    TraceRecord view_trace_record = trace_scene(view_ray, complexity);
+
     col = view_trace_record.color;
 
-    if (view_trace_record.intersection_record.hit) {
+    if (false) {
+        col = filmic_inv(hsv2rgb(f32vec3(complexity * (12.0 / (BLOCK_NX + BLOCK_NY + BLOCK_NZ)) + 0.5, 1.0, 0.9)));
+    } else if (view_trace_record.intersection_record.hit) {
         f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
         f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
         f32 hit_dist = view_trace_record.intersection_record.dist;
@@ -234,7 +248,7 @@ void main() {
         } break;
         case 1:
         case 2: {
-            bounce_ray.nrm = normalize(f32vec3(1.4, -5.1, 3.3));
+            bounce_ray.nrm = SUN_DIR;
             bounce_ray.o += hit_nrm * 0.001;
             // VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
             // hit_voxel = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
@@ -244,7 +258,8 @@ void main() {
         }
         bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
         f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
-        TraceRecord bounce_trace_record = trace_scene(bounce_ray);
+        i32 temp_i32;
+        TraceRecord bounce_trace_record = trace_scene(bounce_ray, temp_i32);
         switch (view_trace_record.material) {
         case 0: {
             col = bounce_trace_record.color;
@@ -285,7 +300,7 @@ void main() {
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
         } break;
         }
-        col *= (shade * sun_col + sample_sky(hit_nrm) * 1);
+        col *= (shade * SUN_COL + sample_sky(hit_nrm) * 1);
 
         f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
 

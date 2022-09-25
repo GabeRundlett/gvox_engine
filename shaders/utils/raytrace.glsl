@@ -64,7 +64,7 @@ u32 sample_lod(f32vec3 p, in out u32 chunk_index) {
 
     return 7;
 }
-IntersectionRecord dda(Ray ray, in out u32 chunk_index) {
+IntersectionRecord dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
     IntersectionRecord result;
     default_init(result);
     result.dist = 0;
@@ -101,7 +101,6 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index) {
     f32vec3 t_next = t_start;
     b32 outside_bounds = false;
     u32 side = 0;
-    i32 x1_steps;
     for (x1_steps = 0; x1_steps < max_steps; ++x1_steps) {
         current_pos = ray.o + ray.nrm * t_curr;
         if (inside(current_pos + ray.nrm * 0.001, VOXEL_WORLD.box) == false) {
@@ -130,7 +129,7 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index) {
         cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
 
         t_next = (0.5 + sign(ray.nrm) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
-        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0002 / VOXEL_SCL);
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / VOXEL_SCL);
     }
     result.dist = t_curr;
     switch (side) {
@@ -276,12 +275,40 @@ IntersectionRecord intersect_chunk(Ray ray) {
 
     if (result.hit && sample_lod(dda_ray.o, chunk_index) != 0) {
         f32 prev_dist = result.dist;
-        result = dda(dda_ray, chunk_index);
+        i32 x1_steps = 0;
+        result = dda(dda_ray, chunk_index, x1_steps);
         result.dist += prev_dist;
     }
 
     return result;
 }
+
+IntersectionRecord intersect_chunk(Ray ray, in out i32 x1_steps) {
+    IntersectionRecord result;
+    default_init(result);
+    result = intersect(ray, VOXEL_WORLD.box);
+
+    if (inside(ray.o, VOXEL_WORLD.box)) {
+        result.dist = 0;
+        result.hit = true;
+    } else {
+        result = intersect(ray, VOXEL_WORLD.box);
+        result.dist += 0.0001;
+    }
+
+    Ray dda_ray = ray;
+    dda_ray.o = ray.o + ray.nrm * result.dist;
+    u32 chunk_index;
+
+    if (result.hit && sample_lod(dda_ray.o, chunk_index) != 0) {
+        f32 prev_dist = result.dist;
+        result = dda(dda_ray, chunk_index, x1_steps);
+        result.dist += prev_dist;
+    }
+
+    return result;
+}
+
 Ray create_view_ray(f32vec2 uv) {
     Ray result;
 

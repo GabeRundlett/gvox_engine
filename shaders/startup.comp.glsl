@@ -20,14 +20,27 @@ void main() {
         for (i32 yi = 0; yi < CHUNK_NY; ++yi) {
             for (i32 xi = 0; xi < CHUNK_NX; ++xi) {
                 u32 index = get_chunk_index(i32vec3(xi, yi, zi));
+#if USING_BRICKMAP
+#else
                 VOXEL_CHUNKS[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
                 VOXEL_CHUNKS[index].box.bound_max = VOXEL_CHUNKS[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
+#endif
             }
         }
     }
 
+#if USING_BRICKMAP
+    // VOXEL_WORLD.chunk_is_ptr[0] = 0x1;
+
+    VOXEL_WORLD.generation_chunk.box.bound_min = f32vec3(0, 0, 0) * (CHUNK_SIZE / VOXEL_SCL);
+    VOXEL_WORLD.generation_chunk.box.bound_min = VOXEL_WORLD.generation_chunk.box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
+
+    VOXEL_WORLD.box.bound_min = f32vec3(0, 0, 0);
+    VOXEL_WORLD.box.bound_max = f32vec3(CHUNK_NX, CHUNK_NY, CHUNK_NZ) * (CHUNK_SIZE / VOXEL_SCL);
+#else
     VOXEL_WORLD.box.bound_min = VOXEL_CHUNKS[0].box.bound_min;
-    VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max;
+    VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max * 1;
+#endif
 
     PLAYER.edit_radius = 1.0;
 

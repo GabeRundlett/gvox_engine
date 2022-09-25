@@ -201,6 +201,12 @@ void chunk_opt_x8up(in u32 chunk_index) {
         u32 index = uniformity_lod_index(32)(x32_i);
         UNIFORMITY_CHUNKS[chunk_index].lod_x32[index] = result;
     }
+
+#if USING_BRICKMAP
+    if (subgroupElect()) {
+        VOXEL_WORLD.chunk_is_ptr[0] = u32(voxel_uniformity_lod_nonuniform(64)(chunk_index, 0, 0));
+    }
+#endif
 }
 
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;

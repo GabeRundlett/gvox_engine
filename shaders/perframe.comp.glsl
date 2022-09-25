@@ -8,7 +8,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #define PLAYER_HEIGHT 1.8
 #define COLLIDE_DELTA 0.09
 
-#if 0 // REALISTIC
+#if 1 // REALISTIC
 #define PLAYER_SPEED 1.5
 #define PLAYER_ACCEL 10.0
 #define EARTH_JUMP_HEIGHT 0.59
@@ -326,7 +326,11 @@ void perframe_voxel_world() {
             for (u32 xi = 0; xi < CHUNK_NX; ++xi) {
                 i32vec3 chunk_i = i32vec3(xi, yi, zi);
                 u32 i = get_chunk_index(chunk_i);
+#if USING_BRICKMAP
+                f32vec3 box_center = f32vec3(0);
+#else
                 f32vec3 box_center = (VOXEL_CHUNKS[i].box.bound_max + VOXEL_CHUNKS[i].box.bound_min) * 0.5;
+#endif
                 f32vec3 del = VOXEL_WORLD.center_pt - box_center;
                 f32 dist_sq = dot(del, del);
                 u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;

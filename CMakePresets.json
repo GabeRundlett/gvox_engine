@@ -9,12 +9,12 @@
         {
             "name": "defaults",
             "hidden": true,
-            "generator": "Ninja"
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/.out/${presetName}",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
         },
         {
             "name": "debug",
-            "binaryDir": "${sourceDir}/.out/${presetName}",
-            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "inherits": "defaults",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -22,8 +22,6 @@
         },
         {
             "name": "release",
-            "binaryDir": "${sourceDir}/.out/${presetName}",
-            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "inherits": "defaults",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"

@@ -61,7 +61,12 @@ struct DrawCompPush {
 #define GLOBALS push_constant.gpu_globals
 #define SCENE push_constant.gpu_globals.scene
 #define VOXEL_WORLD push_constant.gpu_globals.scene.voxel_world
+
+#if USING_BRICKMAP
+#else
 #define VOXEL_CHUNKS push_constant.gpu_globals.scene.voxel_world.voxel_chunks
+#endif
+
 #define UNIFORMITY_CHUNKS push_constant.gpu_globals.scene.voxel_world.uniformity_chunks
 #define INPUT push_constant.gpu_input
 #define PLAYER push_constant.gpu_globals.player

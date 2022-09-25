@@ -44,6 +44,11 @@ struct VoxelWorldSampleInfo {
     u32vec3 inchunk_voxel_i;
     u32 chunk_index;
     u32 voxel_index;
+
+#if USING_BRICKMAP
+    u32 chunk_is_ptr_index;
+    u32 chunk_is_ptr_mask;
+#endif
 };
 VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
     VoxelWorldSampleInfo result;
@@ -52,11 +57,21 @@ VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
     result.inchunk_voxel_i = get_inchunk_voxel_i(result.voxel_i, result.chunk_i);
     result.chunk_index = get_chunk_index(result.chunk_i);
     result.voxel_index = get_voxel_index(result.inchunk_voxel_i);
+
+#if USING_BRICKMAP
+    result.chunk_is_ptr_index = result.chunk_index / 32;
+    result.chunk_is_ptr_mask = 1 << (result.chunk_index - result.chunk_is_ptr_index * 32);
+#endif
+
     return result;
 }
 
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32 voxel_index) {
+#if USING_BRICKMAP
+    return VOXEL_WORLD.generation_chunk.packed_voxels[voxel_index];
+#else
     return VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index];
+#endif
 }
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_packed_voxel(chunk_index, get_voxel_index(inchunk_voxel_i)); }
 PackedVoxel sample_packed_voxel(f32vec3 p) {
@@ -110,3 +125,17 @@ UNIFORMITY_LOD_INDEX_IMPL(64)
 u32 uniformity_lod_mask(u32vec3 index_within_lod) {
     return 1u << index_within_lod.z;
 }
+
+#if USING_BRICKMAP
+
+u32 brickmap_depth(in f32vec3 p) {
+    VoxelWorldSampleInfo sample_info = get_voxel_world_sample_info(p);
+
+    if ((VOXEL_WORLD.chunk_is_ptr[sample_info.chunk_is_ptr_index] & sample_info.chunk_is_ptr_mask) == 0) {
+        return 1;
+    }
+
+    return 2;
+}
+
+#endif
