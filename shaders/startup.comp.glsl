@@ -2,14 +2,17 @@
 
 DAXA_USE_PUSH_CONSTANT(StartupCompPush)
 
+#include <utils/math.glsl>
 #include <utils/voxel.glsl>
 
 void startup_player() {
-    PLAYER.pos = f32vec3(BLOCK_NX / VOXEL_SCL / 2, -BLOCK_NZ / VOXEL_SCL / 2, BLOCK_NZ / VOXEL_SCL / 2 * 3) + 0.001;
+    f32 p_offset = (BLOCK_NX + BLOCK_NZ) / 2 / VOXEL_SCL / 2;
+    PLAYER.pos = f32vec3(-p_offset, -p_offset, BLOCK_NZ / VOXEL_SCL / 2 * 2.5) + 0.001;
     PLAYER.vel = f32vec3(0, 0, 0);
-    PLAYER.rot = f32vec3(-0.53, 0, 0.003);
+    PLAYER.rot = f32vec3(-0.53, 0, PI / 4);
 
     PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 6)) | (1 << 6);
+    PLAYER.edit_radius = 1.0;
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -41,8 +44,6 @@ void main() {
     VOXEL_WORLD.box.bound_min = VOXEL_CHUNKS[0].box.bound_min;
     VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max * 1;
 #endif
-
-    PLAYER.edit_radius = 1.0;
 
     SCENE.capsule_n++;
     SCENE.capsules[0].r = 0.3;
