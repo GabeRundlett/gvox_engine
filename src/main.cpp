@@ -15,6 +15,11 @@ struct App : BaseApp<App> {
         .push_constant_size = sizeof(StartupCompPush),
         .debug_name = APPNAME_PREFIX("startup_comp_pipeline"),
     }).value();
+    daxa::ComputePipeline optical_depth_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"optical_depth.comp.glsl"}},
+        .push_constant_size = sizeof(OpticalDepthCompPush),
+        .debug_name = APPNAME_PREFIX("optical_depth_comp_pipeline"),
+    }).value();
     daxa::ComputePipeline perframe_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"perframe.comp.glsl"}},
         .push_constant_size = sizeof(PerframeCompPush),
@@ -114,6 +119,17 @@ struct App : BaseApp<App> {
     });
     daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;
 
+    daxa::ImageId optical_depth_image = device.create_image(daxa::ImageInfo{
+        .format = daxa::Format::R32_SFLOAT,
+        .size = {512, 512, 1},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .debug_name = APPNAME_PREFIX("optical_depth_image"),
+    });
+    daxa::TaskImageId task_optical_depth_image;
+    daxa::SamplerId optical_depth_sampler = device.create_sampler(daxa::SamplerInfo{
+        .debug_name = APPNAME_PREFIX("optical_depth_sampler"),
+    });
+
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
@@ -136,6 +152,8 @@ struct App : BaseApp<App> {
     bool battery_saving_mode = false;
     bool should_run_startup = true;
     bool should_regenerate = false;
+    bool should_regen_optical_depth = true;
+
     bool paused = true;
     bool use_vsync = false;
 
@@ -162,6 +180,7 @@ struct App : BaseApp<App> {
     ~App() {
         device.wait_idle();
         device.collect_garbage();
+        device.destroy_image(optical_depth_image);
         device.destroy_buffer(gpu_globals_buffer);
         device.destroy_buffer(gpu_input_buffer);
         device.destroy_buffer(gpu_indirect_dispatch_buffer);
@@ -303,12 +322,16 @@ RIGHT MOUSE BUTTON to place voxels
 
         reload_pipeline(draw_comp_pipeline);
         reload_pipeline(perframe_comp_pipeline);
-        reload_pipeline(chunkgen_comp_pipeline);
         reload_pipeline(chunk_edit_comp_pipeline);
-        reload_pipeline(subchunk_x2x4_comp_pipeline);
-        reload_pipeline(subchunk_x8up_comp_pipeline);
+        auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
+        reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
+        reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
+        if (reloaded_chunkgen_pipe)
+            should_regenerate = true;
         if (reload_pipeline(startup_comp_pipeline))
             should_run_startup = true;
+        if (reload_pipeline(optical_depth_comp_pipeline))
+            should_regen_optical_depth = true;
 
         ui_update();
         submit_task_list();
@@ -353,6 +376,7 @@ RIGHT MOUSE BUTTON to place voxels
         if (key_id == GLFW_KEY_R && action == GLFW_PRESS) {
             if (glfwGetKey(glfw_window_ptr, GLFW_KEY_LEFT_CONTROL) != GLFW_RELEASE) {
                 should_run_startup = true;
+                start = Clock::now();
             } else {
                 should_regenerate = true;
             }
@@ -390,29 +414,12 @@ RIGHT MOUSE BUTTON to place voxels
     }
 
     void record_tasks(daxa::TaskList &new_task_list) {
-        task_render_image = new_task_list.create_task_image({
-            .fetch_callback = [this]() { return render_image; },
-            .debug_name = APPNAME_PREFIX("task_render_image"),
-        });
-
-        task_gpu_input_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]() { return gpu_input_buffer; },
-            .debug_name = APPNAME_PREFIX("task_gpu_input_buffer"),
-        });
-        task_staging_gpu_input_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]() { return staging_gpu_input_buffer; },
-            .debug_name = APPNAME_PREFIX("task_staging_gpu_input_buffer"),
-        });
-
-        task_gpu_globals_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]() { return gpu_globals_buffer; },
-            .debug_name = "task_gpu_globals_buffer",
-        });
-
-        task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]() { return gpu_indirect_dispatch_buffer; },
-            .debug_name = "task_gpu_indirect_dispatch_buffer",
-        });
+        task_render_image = new_task_list.create_task_image({.fetch_callback = [this]() { return render_image; }, .debug_name = APPNAME_PREFIX("task_render_image")});
+        task_gpu_input_buffer = new_task_list.create_task_buffer({.fetch_callback = [this]() { return gpu_input_buffer; }, .debug_name = APPNAME_PREFIX("task_gpu_input_buffer")});
+        task_staging_gpu_input_buffer = new_task_list.create_task_buffer({.fetch_callback = [this]() { return staging_gpu_input_buffer; }, .debug_name = APPNAME_PREFIX("task_staging_gpu_input_buffer")});
+        task_gpu_globals_buffer = new_task_list.create_task_buffer({.fetch_callback = [this]() { return gpu_globals_buffer; }, .debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
+        task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.fetch_callback = [this]() { return gpu_indirect_dispatch_buffer; }, .debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
+        task_optical_depth_image = new_task_list.create_task_image({.fetch_callback = [this]() { return optical_depth_image; }, .debug_name = APPNAME_PREFIX("task_optical_depth_image")});
 
         new_task_list.add_task({
             .used_buffers = {
@@ -504,6 +511,26 @@ RIGHT MOUSE BUTTON to place voxels
                 }
             },
             .debug_name = "Startup (Compute)",
+        });
+
+        new_task_list.add_task({
+            .used_images = {
+                {task_optical_depth_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
+            },
+            .task = [this](daxa::TaskInterface interf) {
+                if (should_regen_optical_depth) {
+                    should_regen_optical_depth = false;
+                    auto cmd_list = interf.get_command_list();
+                    TEMP_BARRIER(cmd_list);
+                    cmd_list.set_pipeline(optical_depth_comp_pipeline);
+                    auto push = OpticalDepthCompPush{
+                        .image_id = optical_depth_image.default_view(),
+                    };
+                    cmd_list.push_constant(push);
+                    cmd_list.dispatch(64, 64, 1);
+                }
+            },
+            .debug_name = "OpticalDepth (Compute)",
         });
 
         new_task_list.add_task({
@@ -603,6 +630,7 @@ RIGHT MOUSE BUTTON to place voxels
             },
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
+                {task_optical_depth_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY},
             },
             .task = [this](daxa::TaskInterface interf) {
                 auto cmd_list = interf.get_command_list();
@@ -612,6 +640,8 @@ RIGHT MOUSE BUTTON to place voxels
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                     .gpu_input = device.buffer_reference(gpu_input_buffer),
                     .image_id = render_image.default_view(),
+                    .optical_depth_image_id = optical_depth_image.default_view(),
+                    .optical_depth_sampler_id = optical_depth_sampler,
                 });
                 cmd_list.dispatch((size_x + 7) / 8, (size_y + 7) / 8);
             },

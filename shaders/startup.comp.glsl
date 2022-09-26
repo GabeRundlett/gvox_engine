@@ -46,4 +46,8 @@ void main() {
 
     SCENE.capsule_n++;
     SCENE.capsules[0].r = 0.3;
+
+    SCENE.box_n++;
+    SCENE.boxes[0].bound_min = f32vec3(-10000, -10000, -1);
+    SCENE.boxes[0].bound_max = f32vec3(+10000, +10000, +0);
 }

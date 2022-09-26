@@ -35,6 +35,9 @@ DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
 struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
+struct OpticalDepthCompPush {
+    ImageViewId image_id;
+};
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
@@ -56,6 +59,8 @@ struct DrawCompPush {
     BufferRef(GpuInput) gpu_input;
 
     ImageViewId image_id;
+    ImageViewId optical_depth_image_id;
+    SamplerId optical_depth_sampler_id;
 };
 
 #define GLOBALS push_constant.gpu_globals
