@@ -11,14 +11,16 @@
 #define BRICKMAP_SUBBRICK_N (BRICKMAP_SIZE * BRICKMAP_SIZE * BRICKMAP_SIZE)
 #define BRICKMAP_MAX_N 262144
 
-#define CHUNK_NX 8
-#define CHUNK_NY 8
-#define CHUNK_NZ 8
+#define CHUNK_NX 1
+#define CHUNK_NY 1
+#define CHUNK_NZ 1
 #define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
 #define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)
 #define BLOCK_NY (CHUNK_NY * CHUNK_SIZE)
 #define BLOCK_NZ (CHUNK_NZ * CHUNK_SIZE)
 #define BLOCK_N (CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
+
+const u32 CHUNK_PTR_U32_N = (CHUNK_N / 32 == 0) ? 1 : CHUNK_N / 32;
 
 struct Voxel {
     f32vec3 col;
@@ -81,7 +83,7 @@ struct VoxelWorld {
     VoxelChunk generation_chunk;
     VoxelBrick voxel_bricks[BRICKMAP_MAX_N];
 
-    u32 chunk_is_ptr[1]; // CHUNK_N / 32
+    u32 chunk_is_ptr[CHUNK_PTR_U32_N];
     PackedVoxel voxel_chunks[CHUNK_N];
 #else
     VoxelChunk voxel_chunks[CHUNK_N];

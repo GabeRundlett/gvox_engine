@@ -10,10 +10,12 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 
 #if 1 // REALISTIC
 #define PLAYER_SPEED 1.5
+#define PLAYER_SPRINT_MUL 2.5
 #define PLAYER_ACCEL 10.0
 #define EARTH_JUMP_HEIGHT 0.59
-#else // MINECRAFT
-#define PLAYER_SPEED 2.5
+#else // MINECRAFT-LIKE
+#define PLAYER_SPEED 4.3
+#define PLAYER_SPRINT_MUL 1.3
 #define PLAYER_ACCEL 10.0
 #define EARTH_JUMP_HEIGHT 1.1
 #endif
@@ -52,17 +54,18 @@ void perframe_player() {
 
     b32 is_flying = ((PLAYER.view_state >> 6) & 0x1) == 1;
 
+    if (PLAYER.pos.z <= 0) {
+        PLAYER.pos.z = 0;
+        PLAYER.on_ground = true;
+        PLAYER.force_vel.z = 0;
+        PLAYER.move_vel.z = 0;
+    }
+
     if (is_flying) {
         PLAYER.speed = PLAYER_SPEED * 30;
         PLAYER.accel_rate = PLAYER_ACCEL * 30;
         PLAYER.on_ground = true;
     } else {
-        if (PLAYER.pos.z <= 0) {
-            PLAYER.pos.z = 0;
-            PLAYER.on_ground = true;
-            PLAYER.force_vel.z = 0;
-            PLAYER.move_vel.z = 0;
-        }
         PLAYER.speed = PLAYER_SPEED;
         PLAYER.accel_rate = PLAYER_ACCEL;
         if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0 && PLAYER.on_ground)
@@ -327,7 +330,7 @@ void perframe_voxel_world() {
                 i32vec3 chunk_i = i32vec3(xi, yi, zi);
                 u32 i = get_chunk_index(chunk_i);
 #if USING_BRICKMAP
-                f32vec3 box_center = f32vec3(0);
+                f32vec3 box_center = (VOXEL_WORLD.generation_chunk.box.bound_max + VOXEL_WORLD.generation_chunk.box.bound_min) * 0.5;
 #else
                 f32vec3 box_center = (VOXEL_CHUNKS[i].box.bound_max + VOXEL_CHUNKS[i].box.bound_min) * 0.5;
 #endif

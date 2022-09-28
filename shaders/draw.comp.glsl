@@ -15,7 +15,7 @@ f32vec3 block_color(u32 block_id) {
     // clang-format off
     switch (block_id) {
     case BlockID_Debug:           return f32vec3(0.30, 0.02, 0.30); break;
-    case BlockID_Air:             return f32vec3(0.66, 0.67, 0.91); break;
+    case BlockID_Air:             return f32vec3(0.16, 0.17, 0.61); break;
     // case BlockID_Bedrock:         return f32vec3(0.30, 0.30, 0.30); break;
     // case BlockID_Brick:           return f32vec3(0.47, 0.23, 0.20); break;
     // case BlockID_Cactus:          return f32vec3(0.36, 0.62, 0.28); break;
@@ -157,7 +157,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     // }
 
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
-    // col = f32vec3(brickmap_depth(hit_pos)) * 0.1;
+    // col += f32vec3(1 - brickmap_depth(hit_pos)) * 0.1;
 
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 

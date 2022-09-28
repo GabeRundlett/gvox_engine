@@ -44,7 +44,7 @@ struct BaseApp : AppWindow<T> {
         .native_window = AppWindow<T>::get_native_handle(),
         .present_mode = daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK,
         .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .debug_name = APPNAME_PREFIX("swpachain"),
+        .debug_name = APPNAME_PREFIX("swapchain"),
     });
 
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({

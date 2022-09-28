@@ -72,7 +72,7 @@ struct App : BaseApp<App> {
                 .gen_origin = {-1000.0f, 50.0f, 0.0f},
                 .gen_amplitude = 1.0f,
                 .gen_persistance = 0.14f,
-                .gen_scale = 0.015f,
+                .gen_scale = 0.144f,
                 .gen_lacunarity = 4.7f,
                 .gen_octaves = 4,
             },

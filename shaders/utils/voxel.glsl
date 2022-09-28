@@ -37,6 +37,20 @@ i32vec3 get_chunk_i(i32vec3 voxel_i) { return voxel_i / CHUNK_SIZE; }
 u32vec3 get_inchunk_voxel_i(i32vec3 voxel_i, i32vec3 chunk_i) { return u32vec3(voxel_i - chunk_i * CHUNK_SIZE); }
 u32 get_voxel_index(u32vec3 inchunk_voxel_i) { return inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE; }
 i32vec3 get_voxel_i(f32vec3 p) { return clamp(i32vec3(get_world_relative_p(p) * VOXEL_SCL), i32vec3(0, 0, 0), i32vec3(BLOCK_NX - 1, BLOCK_NY - 1, BLOCK_NZ - 1)); }
+u32vec3 get_subbrick_i0(u32vec3 inchunk_voxel_i) { return inchunk_voxel_i / BRICKMAP_SIZE; }
+
+struct HasSubbricksInfo {
+    u32 index;
+    u32 mask;
+};
+HasSubbricksInfo get_has_subbricks_info(u32vec3 subbrick_i) {
+    u32 subbrick_index = subbrick_i.x + subbrick_i.y * BRICKMAP_SIZE + subbrick_i.z * BRICKMAP_SIZE * BRICKMAP_SIZE;
+
+    HasSubbricksInfo result;
+    result.index = subbrick_index / 32;
+    result.mask = 1 << (subbrick_index - result.index * 32);
+    return result;
+}
 
 struct VoxelWorldSampleInfo {
     i32vec3 voxel_i;
@@ -48,6 +62,8 @@ struct VoxelWorldSampleInfo {
 #if USING_BRICKMAP
     u32 chunk_is_ptr_index;
     u32 chunk_is_ptr_mask;
+    u32vec3 subbrick_i0;
+    HasSubbricksInfo has_subbricks0;
 #endif
 };
 VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
@@ -61,6 +77,8 @@ VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
 #if USING_BRICKMAP
     result.chunk_is_ptr_index = result.chunk_index / 32;
     result.chunk_is_ptr_mask = 1 << (result.chunk_index - result.chunk_is_ptr_index * 32);
+    result.subbrick_i0 = get_subbrick_i0(result.inchunk_voxel_i);
+    result.has_subbricks0 = get_has_subbricks_info(result.subbrick_i0);
 #endif
 
     return result;
@@ -135,7 +153,11 @@ u32 brickmap_depth(in f32vec3 p) {
         return 1;
     }
 
-    return 2;
+    u32 brick_index = VOXEL_WORLD.voxel_chunks[sample_info.chunk_index].data;
+    u32 has_subbricks = VOXEL_WORLD.voxel_bricks[brick_index].has_subbricks[sample_info.has_subbricks0.index] & sample_info.has_subbricks0.mask;
+    has_subbricks = u32(has_subbricks != 0);
+
+    return has_subbricks;
 }
 
 #endif
