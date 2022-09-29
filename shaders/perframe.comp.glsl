@@ -6,6 +6,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/raytrace.glsl>
 
 #define PLAYER_HEIGHT 1.8
+#define PLAYER_HEAD_RADIUS (0.197 / 2)
 #define COLLIDE_DELTA 0.09
 
 #if 1 // REALISTIC
@@ -16,7 +17,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #else // MINECRAFT-LIKE
 #define PLAYER_SPEED 4.3
 #define PLAYER_SPRINT_MUL 1.3
-#define PLAYER_ACCEL 10.0
+#define PLAYER_ACCEL 30.0
 #define EARTH_JUMP_HEIGHT 1.1
 #endif
 
@@ -39,7 +40,7 @@ void toggle_fly() {
 
 f32vec3 view_vec() {
     switch (PLAYER.view_state & 0xf) {
-    case 0: return PLAYER.forward * 0.32;
+    case 0: return PLAYER.forward * (PLAYER_HEAD_RADIUS + 0.001);
     case 1: return PLAYER.cam.rot_mat * f32vec3(0, -2, 0);
     default: return f32vec3(0, 0, 0);
     }
@@ -182,13 +183,84 @@ void perframe_player() {
 
     PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.0 / VOXEL_SCL, 127.0 / VOXEL_SCL);
 
-    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3) + cam_offset;
+    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
+
+    f32 cam_offset_len = length(cam_offset);
+
+    Ray cam_offset_ray;
+    cam_offset_ray.o = PLAYER.cam.pos;
+    cam_offset_ray.nrm = cam_offset / cam_offset_len;
+    cam_offset_ray.inv_nrm = 1.0 / cam_offset_ray.nrm;
+
+    IntersectionRecord offset_intersection = intersect_chunk(cam_offset_ray);
+    if (offset_intersection.hit)
+        cam_offset_len = min(cam_offset_len, offset_intersection.dist - 0.001);
+    cam_offset = cam_offset_ray.nrm * cam_offset_len;
+
+    PLAYER.cam.pos += cam_offset;
     PLAYER.cam.fov = INPUT.settings.fov * 3.14159 / 180.0;
     PLAYER.cam.tan_half_fov = tan(PLAYER.cam.fov * 0.5);
 
     Ray ray;
     ray.o = PLAYER.pos + f32vec3(0, 0, 0);
     f32vec3 player_ray_o;
+
+    SCENE.capsules[0].r = PLAYER_HEAD_RADIUS;
+    SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEAD_RADIUS);
+    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
+
+    // f32vec3 head_p = PLAYER.pos + f32vec3(0, 0, 1.7);
+    // f32vec3 shoulder_p = PLAYER.pos + f32vec3(0, 0, 1.5);
+    // f32vec3 chest_p = PLAYER.pos + f32vec3(0, 0, 1.4) + PLAYER.forward * 0.01;
+    // f32vec3 waist_p = PLAYER.pos + f32vec3(0, 0, 1.02);
+    // f32vec3 knee_p = PLAYER.pos + f32vec3(0, 0, 0.54);
+    // f32vec3 hand_p = PLAYER.pos + f32vec3(0, 0, 0.8);
+
+    // SCENE.capsules[0].r = PLAYER_HEAD_RADIUS;
+    // SCENE.capsules[0].p0 = head_p - f32vec3(0, 0, PLAYER_HEAD_RADIUS * 0.2);
+    // SCENE.capsules[0].p1 = head_p + f32vec3(0, 0, PLAYER_HEAD_RADIUS * 0.2);
+    // SCENE.capsules[1].r = PLAYER_HEAD_RADIUS * 0.6;
+    // SCENE.capsules[1].p0 = head_p;
+    // SCENE.capsules[1].p1 = waist_p;
+    // SCENE.capsules[2].r = PLAYER_HEAD_RADIUS * 0.7;
+    // SCENE.capsules[2].p0 = shoulder_p - PLAYER.lateral * 0.2;
+    // SCENE.capsules[2].p1 = shoulder_p + PLAYER.lateral * 0.2;
+    // SCENE.capsules[3].r = PLAYER_HEAD_RADIUS * 0.8;
+    // SCENE.capsules[3].p0 = chest_p - PLAYER.lateral * 0.1;
+    // SCENE.capsules[3].p1 = chest_p + PLAYER.lateral * 0.1;
+    // SCENE.capsules[4].r = PLAYER_HEAD_RADIUS * 0.8;
+    // SCENE.capsules[4].p0 = chest_p - PLAYER.lateral * 0.1;
+    // SCENE.capsules[4].p1 = waist_p - PLAYER.lateral * 0.04;
+    // SCENE.capsules[5].r = PLAYER_HEAD_RADIUS * 0.8;
+    // SCENE.capsules[5].p0 = chest_p + PLAYER.lateral * 0.1;
+    // SCENE.capsules[5].p1 = waist_p + PLAYER.lateral * 0.04;
+    // SCENE.capsules[6].r = PLAYER_HEAD_RADIUS * 0.8;
+    // SCENE.capsules[6].p0 = waist_p - PLAYER.lateral * 0.08;
+    // SCENE.capsules[6].p1 = waist_p + PLAYER.lateral * 0.08;
+    // SCENE.capsules[7].r = 0.085;
+    // SCENE.capsules[7].p0 = waist_p - PLAYER.lateral * 0.08 - f32vec3(0, 0, 0.06);
+    // SCENE.capsules[7].p1 = knee_p - PLAYER.lateral * 0.10 + f32vec3(0, 0, 0.05);
+    // SCENE.capsules[8].r = 0.085;
+    // SCENE.capsules[8].p0 = waist_p + PLAYER.lateral * 0.08 - f32vec3(0, 0, 0.06);
+    // SCENE.capsules[8].p1 = knee_p + PLAYER.lateral * 0.10 + f32vec3(0, 0, 0.05);
+    // SCENE.capsules[9].r = 0.07;
+    // SCENE.capsules[9].p0 = knee_p - PLAYER.lateral * 0.10 + f32vec3(0, 0, 0.05);
+    // SCENE.capsules[9].p1 = PLAYER.pos - PLAYER.lateral * 0.08 + f32vec3(0, 0, 0.07);
+    // SCENE.capsules[10].r = 0.07;
+    // SCENE.capsules[10].p0 = knee_p + PLAYER.lateral * 0.10 + f32vec3(0, 0, 0.05);
+    // SCENE.capsules[10].p1 = PLAYER.pos + PLAYER.lateral * 0.08 + f32vec3(0, 0, 0.07);
+    // SCENE.capsules[11].r = 0.05;
+    // SCENE.capsules[11].p0 = shoulder_p - PLAYER.lateral * 0.22;
+    // SCENE.capsules[11].p1 = shoulder_p - PLAYER.lateral * 0.24 - f32vec3(0, 0, 0.25);
+    // SCENE.capsules[12].r = 0.05;
+    // SCENE.capsules[12].p0 = shoulder_p + PLAYER.lateral * 0.22;
+    // SCENE.capsules[12].p1 = shoulder_p + PLAYER.lateral * 0.24 - f32vec3(0, 0, 0.25);
+    // SCENE.capsules[13].r = 0.045;
+    // SCENE.capsules[13].p0 = shoulder_p - PLAYER.lateral * 0.24 - f32vec3(0, 0, 0.25);
+    // SCENE.capsules[13].p1 = hand_p - PLAYER.lateral * 0.22;
+    // SCENE.capsules[14].r = 0.045;
+    // SCENE.capsules[14].p0 = shoulder_p + PLAYER.lateral * 0.24 - f32vec3(0, 0, 0.25);
+    // SCENE.capsules[14].p1 = hand_p + PLAYER.lateral * 0.22;
 
 #if 1
     // TODO: rewrite collisions to be swept AABB
@@ -412,7 +484,4 @@ void main() {
     } else if (GLOBALS.edit_flags != 0 && prev_edit_flags == 0) {
         GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
     }
-
-    SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, 0.3);
-    SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - 0.3);
 }

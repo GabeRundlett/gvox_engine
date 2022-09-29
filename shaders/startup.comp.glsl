@@ -43,6 +43,8 @@ void main() {
     VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max * 1;
 #endif
 
+    // SCENE.capsule_n = MAX_CAPSULES;
+
     SCENE.capsule_n++;
     SCENE.capsules[0].r = 0.3;
 

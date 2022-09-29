@@ -28,6 +28,12 @@ f32 sd_triangular_prism(in f32vec3 p, in f32 h, in f32 s) {
     return length(max(f32vec2(d1, d2), 0.0)) + min(max(d1, d2), 0.);
 }
 
+f32 sd_capsule(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r) {
+    f32vec3 pa = p - a, ba = b - a;
+    f32 h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h) - r;
+}
+
 #if 0
 float dot2(in vec2 v) { return dot(v, v); }
 float dot2(in vec3 v) { return dot(v, v); }

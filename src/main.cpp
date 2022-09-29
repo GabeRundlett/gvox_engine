@@ -72,7 +72,7 @@ struct App : BaseApp<App> {
                 .gen_origin = {-1000.0f, 50.0f, 0.0f},
                 .gen_amplitude = 1.0f,
                 .gen_persistance = 0.14f,
-                .gen_scale = 0.144f,
+                .gen_scale = 0.015f,
                 .gen_lacunarity = 4.7f,
                 .gen_octaves = 4,
             },
@@ -99,9 +99,11 @@ struct App : BaseApp<App> {
     });
     daxa::TaskBufferId task_staging_gpu_input_buffer;
 
+    f32 render_resolution_scl = 1.0f;
+    u32 render_size_x = size_x, render_size_y = size_y;
     daxa::ImageId render_image = device.create_image(daxa::ImageInfo{
         .format = daxa::Format::R8G8B8A8_UNORM,
-        .size = {size_x, size_y, 1},
+        .size = {render_size_x, render_size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .debug_name = APPNAME_PREFIX("render_image"),
     });
@@ -156,6 +158,7 @@ struct App : BaseApp<App> {
 
     bool paused = true;
     bool use_vsync = false;
+    bool use_custom_resolution = false;
 
     bool show_debug_menu = false;
     bool show_help_menu = false;
@@ -212,6 +215,27 @@ struct App : BaseApp<App> {
                         ImGui::SliderFloat("Edit Rate", &gpu_input.settings.edit_rate, 0.01f, 1.0f);
                     ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
                     ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
+
+                    ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
+                    if (use_custom_resolution) {
+                        i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
+                        ImGui::InputInt2("Resolution", custom_res);
+
+                        if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
+                            render_size_x = custom_res[0];
+                            render_size_y = custom_res[1];
+                            recreate_render_images();
+                        }
+                    } else {
+                        auto prev_scl = render_resolution_scl;
+                        ImGui::SliderFloat("Resolution Scale", &render_resolution_scl, 0.1f, 1.0f);
+                        render_resolution_scl = std::round(render_resolution_scl * 40.0f) / 40.0f;
+                        if (prev_scl != render_resolution_scl) {
+                            render_size_x = size_x * render_resolution_scl;
+                            render_size_y = size_y * render_resolution_scl;
+                            recreate_render_images();
+                        }
+                    }
 
                     ImGui::Checkbox("Generation Settings", &show_generation_menu);
 
@@ -270,6 +294,10 @@ struct App : BaseApp<App> {
             fmt_str.clear();
             fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
             ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
+
+            auto device_props = device.properties();
+            ImGui::Text("GPU: %s", device_props.device_name);
+
             ImGui::End();
             ImGui::PopFont();
         }
@@ -313,7 +341,7 @@ RIGHT MOUSE BUTTON to place voxels
         gpu_input.delta_time = std::chrono::duration<f32>(now - prev_time).count();
         prev_time = now;
 
-        gpu_input.frame_dim = {size_x, size_y};
+        gpu_input.frame_dim = {render_size_x, render_size_y};
         set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, paused);
 
         if (battery_saving_mode) {
@@ -344,6 +372,7 @@ RIGHT MOUSE BUTTON to place voxels
         f32vec2 center = {static_cast<f32>(size_x / 2), static_cast<f32>(size_y / 2)};
         gpu_input.mouse.pos = f32vec2{x, y};
         auto offset = gpu_input.mouse.pos - center;
+        gpu_input.mouse.pos = gpu_input.mouse.pos * f32vec2{static_cast<f32>(render_size_x), static_cast<f32>(render_size_y)} / f32vec2{static_cast<f32>(size_x), static_cast<f32>(size_y)};
         if (!paused) {
             gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
             set_mouse_pos(center.x, center.y);
@@ -397,14 +426,21 @@ RIGHT MOUSE BUTTON to place voxels
             swapchain.resize();
             size_x = swapchain.info().width;
             size_y = swapchain.info().height;
-            device.destroy_image(render_image);
-            render_image = device.create_image({
-                .format = daxa::Format::R8G8B8A8_UNORM,
-                .size = {size_x, size_y, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-            });
+            if (!use_custom_resolution) {
+                render_size_x = size_x * render_resolution_scl;
+                render_size_y = size_y * render_resolution_scl;
+                recreate_render_images();
+            }
             on_update();
         }
+    }
+    void recreate_render_images() {
+        device.destroy_image(render_image);
+        render_image = device.create_image({
+            .format = daxa::Format::R8G8B8A8_UNORM,
+            .size = {render_size_x, render_size_y, 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        });
     }
     void toggle_pause() {
         set_mouse_capture(paused);
@@ -643,7 +679,7 @@ RIGHT MOUSE BUTTON to place voxels
                     .optical_depth_image_id = optical_depth_image.default_view(),
                     .optical_depth_sampler_id = optical_depth_sampler,
                 });
-                cmd_list.dispatch((size_x + 7) / 8, (size_y + 7) / 8);
+                cmd_list.dispatch((render_size_x + 7) / 8, (render_size_y + 7) / 8);
             },
             .debug_name = APPNAME_PREFIX("Draw (Compute)"),
         });
@@ -665,7 +701,7 @@ RIGHT MOUSE BUTTON to place voxels
                     .dst_image = swapchain_image,
                     .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
                     .src_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
-                    .src_offsets = {{{0, 0, 0}, {static_cast<i32>(size_x), static_cast<i32>(size_y), 1}}},
+                    .src_offsets = {{{0, 0, 0}, {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y), 1}}},
                     .dst_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
                     .dst_offsets = {{{0, 0, 0}, {static_cast<i32>(size_x), static_cast<i32>(size_y), 1}}},
                 });

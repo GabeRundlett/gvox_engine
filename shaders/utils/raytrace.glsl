@@ -21,6 +21,7 @@ struct TraceRecord {
     IntersectionRecord intersection_record;
     f32vec3 color;
     u32 material;
+    u32 object_i;
 };
 void default_init(out IntersectionRecord result) {
     result.hit = false;
@@ -261,7 +262,7 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
         cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
 
         t_next = (0.5 + sign(ray.nrm) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
-        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / VOXEL_SCL);
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / 8);
     }
     result.dist = t_curr;
     switch (side) {

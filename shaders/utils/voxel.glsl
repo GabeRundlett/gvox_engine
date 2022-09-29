@@ -15,6 +15,9 @@
 #define BlockID_Sandstone 8
 #define BlockID_Gravel 9
 
+#define BlockID_Log 10
+#define BlockID_Leaves 11
+
 PackedVoxel pack_voxel(in Voxel voxel) {
     PackedVoxel result;
     result.data = 0;

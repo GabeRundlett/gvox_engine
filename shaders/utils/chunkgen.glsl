@@ -12,9 +12,9 @@ f32 terrain_noise(f32vec3 p) {
         /* .scale       = */ INPUT.settings.gen_scale,
         /* .lacunarity  = */ INPUT.settings.gen_lacunarity,
         /* .octaves     = */ INPUT.settings.gen_octaves);
-    f32 val = fractal_noise(p - INPUT.settings.gen_origin, noise_conf);
-    val = val - (p.z - WATER_LEVEL - 4) * 0.02;
-    val += smoothstep(-1, 1, -atan((p.z - WATER_LEVEL + 0) * 0.5)) * 0.5;
+    f32 val = fractal_noise(p, noise_conf);
+    val = val - (p.z - WATER_LEVEL - 4) * 0.02 / 8 * VOXEL_SCL;
+    val += smoothstep(-1, 1, -atan((p.z - WATER_LEVEL + 0) * 0.5 / 8 * VOXEL_SCL)) * 0.5;
     val = max(val, 0);
     return val;
 }
@@ -82,6 +82,8 @@ b32 is_block_occluding(u32 block_id) {
 
 Voxel gen_voxel(in f32vec3 voxel_p) {
     Voxel result;
+
+    voxel_p = voxel_p - INPUT.settings.gen_origin;
 
     WorldgenState worldgen_state = get_worldgen_state(voxel_p);
     block_pass0(worldgen_state, voxel_p);

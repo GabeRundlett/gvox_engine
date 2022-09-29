@@ -27,8 +27,8 @@ f32vec3 block_color(u32 block_id) {
     case BlockID_Grass:           return f32vec3(0.05, 0.09, 0.03); break;
     case BlockID_Gravel:          return f32vec3(0.10, 0.08, 0.07); break;
     // case BlockID_Lava:            return f32vec3(0.00, 0.00, 0.00); break;
-    // case BlockID_Leaves:          return f32vec3(0.10, 0.29, 0.10); break;
-    // case BlockID_Log:             return f32vec3(0.23, 0.14, 0.10); break;
+    case BlockID_Leaves:          return f32vec3(0.10, 0.29, 0.10) * 0.08; break;
+    case BlockID_Log:             return f32vec3(0.06, 0.03, 0.02) * 0.5; break;
     // case BlockID_MoltenRock:      return f32vec3(0.20, 0.13, 0.12); break;
     // case BlockID_Planks:          return f32vec3(0.68, 0.47, 0.35); break;
     // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
@@ -49,6 +49,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     default_init(trace.intersection_record);
     trace.color = sample_sky(ray.nrm);
     trace.material = 0;
+    trace.object_i = 0;
 
     for (u32 i = 0; i < SCENE.sphere_n; ++i) {
         Sphere s = SCENE.spheres[i];
@@ -57,6 +58,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.intersection_record = s_hit;
             trace.color = f32vec3(0.5, 0.5, 1.0);
             trace.material = 1;
+            trace.object_i = i;
         }
     }
 
@@ -67,6 +69,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.intersection_record = b_hit;
             trace.color = f32vec3(0.1, 0.1, 0.1);
             trace.material = 1;
+            trace.object_i = i;
         }
     }
 
@@ -77,6 +80,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.intersection_record = c_hit;
             trace.color = f32vec3(1.0, 0.5, 0.5);
             trace.material = 3;
+            trace.object_i = i;
         }
     }
 
@@ -157,7 +161,9 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     // }
 
     // col = f32vec3(sample_lod(hit_pos, temp_chunk_index)) * 0.1;
-    // col += f32vec3(1 - brickmap_depth(hit_pos)) * 0.1;
+#if USING_BRICKMAP
+    col += f32vec3(1 - brickmap_depth(hit_pos)) * 0.1;
+#endif
 
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 
@@ -267,10 +273,11 @@ void main() {
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
         } break;
         case 3: {
-            Capsule c = SCENE.capsules[0];
+            Capsule c = SCENE.capsules[view_trace_record.object_i];
             f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
-            f32vec3 local_pos = (hit_pos - c.p1);
+            f32vec3 local_pos = (hit_pos - c.p1) * 3;
             local_pos.xy = rot_mat * local_pos.xy;
+            // f32vec3 result = f32vec3(0.3, 0.3, 0.3);
             f32vec3 result = f32vec3(0.60, 0.27, 0.20);
             f32vec2 uv = local_pos.xz;
             f32vec2 e1_uv = uv - f32vec2(0.1, 0.0);

@@ -13,6 +13,6 @@ struct Scene {
 
     Sphere spheres[MAX_SPHERES];
     Box boxes[MAX_BOXES];
-    Capsule capsules[MAX_BOXES];
+    Capsule capsules[MAX_CAPSULES];
     VoxelWorld voxel_world;
 };
