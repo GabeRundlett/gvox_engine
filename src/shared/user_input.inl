@@ -34,6 +34,7 @@ struct Settings {
     f32 fov;
     f32 edit_rate;
     f32 jitter_scl;
+    f32 sensitivity;
 
     f32vec3 gen_origin;
     f32 gen_amplitude;

@@ -91,8 +91,8 @@ void perframe_player() {
         PLAYER.view_state &= ~0x20;
     }
 
-    PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * 0.001;
-    PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * 0.001;
+    PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.settings.sensitivity * 0.001;
+    PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * INPUT.settings.sensitivity * 0.001;
 
     const float MAX_ROT = 1.57;
     if (PLAYER.rot.x > MAX_ROT)

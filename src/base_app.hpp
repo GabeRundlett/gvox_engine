@@ -213,11 +213,12 @@ struct BaseApp : AppWindow<T> {
     auto record_loop_task_list() -> daxa::TaskList {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
+            .swapchain = swapchain,
             .debug_name = APPNAME_PREFIX("task_list"),
         });
         task_swapchain_image = new_task_list.create_task_image({
-            .fetch_callback = [this]() { return swapchain_image; },
-            .swapchain_parent = std::pair{swapchain, acquire_semaphore},
+            .image = &swapchain_image,
+            .swapchain_image = true,
             .debug_name = APPNAME_PREFIX("task_swapchain_image"),
         });
 
@@ -225,14 +226,10 @@ struct BaseApp : AppWindow<T> {
 
         new_task_list.add_task({
             .used_images = {
-                {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT},
+                {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageMipArraySlice{}},
             },
-            .task = [this](daxa::TaskInterface interf) {
+            .task = [this](daxa::TaskRuntime interf) {
                 auto cmd_list = interf.get_command_list();
-                cmd_list.pipeline_barrier({
-                    .awaited_pipeline_access = daxa::AccessConsts::READ_WRITE,
-                    .waiting_pipeline_access = daxa::AccessConsts::READ_WRITE,
-                });
                 imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, AppWindow<T>::size_x, AppWindow<T>::size_y);
             },
             .debug_name = APPNAME_PREFIX("ImGui Task"),
@@ -240,7 +237,7 @@ struct BaseApp : AppWindow<T> {
 
         new_task_list.submit(&submit_info);
         new_task_list.present({});
-        new_task_list.compile();
+        new_task_list.complete();
 
         // new_task_list.output_graphviz();
 
