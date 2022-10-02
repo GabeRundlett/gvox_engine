@@ -17,6 +17,7 @@
 
 #define BlockID_Log 10
 #define BlockID_Leaves 11
+#define BlockID_Snow 12
 
 PackedVoxel pack_voxel(in Voxel voxel) {
     PackedVoxel result;

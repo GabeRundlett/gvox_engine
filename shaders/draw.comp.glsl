@@ -37,6 +37,7 @@ f32vec3 block_color(u32 block_id) {
     case BlockID_Stone:           return f32vec3(0.11, 0.10, 0.09); break;
     case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
     case BlockID_Water:           return f32vec3(0.10, 0.18, 0.93); break;
+    case BlockID_Snow:            return f32vec3(0.60, 0.60, 0.60); break;
     default:                      return f32vec3(0.00, 0.00, 0.00); break;
     }
     // clang-format on
@@ -275,7 +276,7 @@ void main() {
         case 3: {
             Capsule c = SCENE.capsules[view_trace_record.object_i];
             f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
-            f32vec3 local_pos = (hit_pos - c.p1) * 3;
+            f32vec3 local_pos = (hit_pos - c.p1) * 1;
             local_pos.xy = rot_mat * local_pos.xy;
             // f32vec3 result = f32vec3(0.3, 0.3, 0.3);
             f32vec3 result = f32vec3(0.60, 0.27, 0.20);
@@ -305,7 +306,10 @@ void main() {
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
         } break;
         }
-        col *= (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
+        f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.01, 0, 1);
+        f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
+        f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
+        col = mix(surface_col, fog_col, fog_factor);
 
         f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
 

@@ -6,7 +6,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/raytrace.glsl>
 
 #define PLAYER_HEIGHT 1.8
-#define PLAYER_HEAD_RADIUS (0.197 / 2)
+#define PLAYER_HEAD_RADIUS (0.6 / 2)
 #define COLLIDE_DELTA 0.09
 
 #if 1 // REALISTIC

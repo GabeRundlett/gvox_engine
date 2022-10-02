@@ -121,10 +121,10 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     // result = sd_castle_wall(p) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
 
     f32vec3 p = voxel_p - pick_pos;
-    result = sd_sphere(p, PLAYER.edit_radius) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
+    // result = sd_sphere(p, PLAYER.edit_radius) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
 
-    // TreeSDF tree_sdf = sd_pine_tree(p);
-    // result = min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
+    TreeSDF tree_sdf = sd_pine_tree(p);
+    result = min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
 
     return result && (sd_box(voxel_p - pick_pos, f32vec3(128.0 / VOXEL_SCL)) < 0.0);
 }
@@ -132,18 +132,29 @@ u32 brush_id_kernel(in f32vec3 voxel_p) {
     // Voxel result = gen_voxel(voxel_p);
     // return result.block_id;
 
-    return PLAYER.edit_voxel_id;
+    // return PLAYER.edit_voxel_id;
 
-    // if (PLAYER.edit_voxel_id == BlockID_Stone) {
-    //     f32vec3 pick_pos = floor(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
-    //     f32vec3 p = voxel_p - pick_pos;
-    //     TreeSDF tree_sdf = sd_pine_tree(p);
-    //     if (tree_sdf.wood < tree_sdf.leaves) {
-    //         return BlockID_Log;
-    //     } else {
-    //         return BlockID_Leaves;
-    //     }
-    // } else {
-    //     return PLAYER.edit_voxel_id;
-    // }
+    if (PLAYER.edit_voxel_id == BlockID_Stone) {
+        f32vec3 pick_pos = floor(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
+        f32vec3 p = voxel_p - pick_pos;
+        TreeSDF tree_sdf = sd_pine_tree(p);
+
+        TreeSDF slope_t0 = sd_pine_tree(p + f32vec3(1, 0, 0) / VOXEL_SCL * 0.01);
+        TreeSDF slope_t1 = sd_pine_tree(p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01);
+        TreeSDF slope_t2 = sd_pine_tree(p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01);
+        f32vec3 leaves_nrm = normalize(f32vec3(slope_t0.leaves, slope_t1.leaves, slope_t2.leaves) - tree_sdf.leaves);
+        f32 leaves_upwards = max(dot(leaves_nrm, f32vec3(0, 0, 1)), 0);
+
+        if (tree_sdf.wood < tree_sdf.leaves) {
+            return BlockID_Log;
+        } else {
+            if (leaves_upwards > 0.0) {
+                return BlockID_Snow;
+            } else {
+                return BlockID_Leaves;
+            }
+        }
+    } else {
+        return PLAYER.edit_voxel_id;
+    }
 }

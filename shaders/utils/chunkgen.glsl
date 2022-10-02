@@ -57,6 +57,12 @@ void block_pass1(in out WorldgenState worldgen_state, f32vec3 voxel_p, in Surrou
         } else {
             if (upwards - rough_depth * 8 > 0) {
                 if (surroundings.depth_below < 1) {
+                    if (upwards + worldgen_state.r * 0.2 > 0.75) {
+                        worldgen_state.block_id = BlockID_Snow;
+                    } else {
+                        worldgen_state.block_id = BlockID_Air;
+                    }
+                } else if (surroundings.depth_below < 2) {
                     switch (int(worldgen_state.r * 2)) {
                     case 0: worldgen_state.block_id = BlockID_Grass; break;
                     case 1: worldgen_state.block_id = BlockID_TallGrass; break;

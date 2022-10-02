@@ -4,21 +4,21 @@
 #define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
 
 #define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
-#define SUN_TIME (2)
+#define SUN_TIME (PI * 0.6)
 #define SUN_DIR normalize(f32vec3(0.8 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
 
 #define USE_OLD_SKY 0
 #define USE_BAKED_OPTICAL_DEPTH 1
 
-#define PLANET_RADIUS 0.75
+#define PLANET_RADIUS 0.95
 #define ATMOSPHERE_RADIUS 1.0
 #define ATMOSPHERE_DENSITY_FALLOFF 4.0
 #define WAVELENGTH_X 700.0
 #define WAVELENGTH_Y 530.0
 #define WAVELENGTH_Z 440.0
-#define SCATTERING_STRENGTH 50.0
+#define SCATTERING_STRENGTH 30.0
 #define SCATTERING_COEFF (f32vec3(pow(400.0 / WAVELENGTH_X, 4), pow(400.0 / WAVELENGTH_Y, 4), pow(400.0 / WAVELENGTH_Z, 4)) * SCATTERING_STRENGTH)
-#define SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0001), 2))
+#define SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.002), 2))
 
 #define IN_SCATTER_N 10
 #define OPTICAL_DEPTH_N 100
@@ -100,7 +100,7 @@ f32vec3 calc_light(Ray ray, f32 ray_length) {
         in_scatter_p += ray.nrm * step_size;
     }
 
-    f32 fac = dot(f32vec3(0, 0, 1), ray.nrm) * 0.4 + 0.5;
+    f32 fac = dot(f32vec3(0, 0, 1), ray.nrm) * 0.4 + 0.4;
     fac = (fac - 0.25) * 2;
     fac = clamp(fac, 0, 1);
     result = mix(f32vec3(0.2, 0.2, 0.2) * SUN_FACTOR, result, fac);
