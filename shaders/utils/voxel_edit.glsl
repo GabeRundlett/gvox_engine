@@ -91,21 +91,18 @@ void sd_branch(in out TreeSDF val, in f32vec3 p, in f32vec3 origin, in f32vec3 d
     val.leaves = min(val.leaves, sd_sphere(p - bp1, 0.15 * scl));
 }
 
-TreeSDF sd_pine_tree(in f32vec3 p) {
+TreeSDF sd_pine_tree(in f32vec3 p, in f32vec3 seed) {
     TreeSDF val = TreeSDF(MAX_SD, MAX_SD);
     val.wood = min(val.wood, sd_capsule(p, f32vec3(0, 0, 0), f32vec3(0, 0, 4.5), 0.15));
     val.leaves = min(val.leaves, sd_capsule(p, f32vec3(0, 0, 4.5), f32vec3(0, 0, 5.0), 0.15));
-
     for (u32 i = 0; i < 5; ++i) {
         f32 scl = 1.0 / (1.0 + i * 0.5);
         f32 scl2 = 1.0 / (1.0 + i * 0.1);
-        sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(+0.2, +1.0, +0.0)) * scl, scl2 * 1.5);
-        sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(+0.2, -1.0, +0.0)) * scl, scl2 * 1.5);
-        sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(+1.0, +0.2, +0.0)) * scl, scl2 * 1.5);
-        sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(-1.0, +0.6, +0.0)) * scl, scl2 * 1.5);
-        sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(-1.0, -0.5, +0.0)) * scl, scl2 * 1.5);
+        for (u32 branch_i = 0; branch_i < 7; ++branch_i) {
+            f32 angle = (1.0 / 7 * branch_i) * 2.0 * PI + rand(seed + i + 1.0 * branch_i) * 0.5;
+            sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
+        }
     }
-
     return val;
 }
 
@@ -123,7 +120,7 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     f32vec3 p = voxel_p - pick_pos;
     // result = sd_sphere(p, PLAYER.edit_radius) + abs(brush_noise_value(voxel_p)) * 0.1 < 0.0;
 
-    TreeSDF tree_sdf = sd_pine_tree(p);
+    TreeSDF tree_sdf = sd_pine_tree(p, pick_pos);
     result = min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
 
     return result && (sd_box(voxel_p - pick_pos, f32vec3(128.0 / VOXEL_SCL)) < 0.0);
@@ -137,18 +134,18 @@ u32 brush_id_kernel(in f32vec3 voxel_p) {
     if (PLAYER.edit_voxel_id == BlockID_Stone) {
         f32vec3 pick_pos = floor(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
         f32vec3 p = voxel_p - pick_pos;
-        TreeSDF tree_sdf = sd_pine_tree(p);
+        TreeSDF tree_sdf = sd_pine_tree(p, pick_pos);
 
-        TreeSDF slope_t0 = sd_pine_tree(p + f32vec3(1, 0, 0) / VOXEL_SCL * 0.01);
-        TreeSDF slope_t1 = sd_pine_tree(p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01);
-        TreeSDF slope_t2 = sd_pine_tree(p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01);
+        TreeSDF slope_t0 = sd_pine_tree(p + f32vec3(1, 0, 0) / VOXEL_SCL * 0.01, pick_pos);
+        TreeSDF slope_t1 = sd_pine_tree(p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01, pick_pos);
+        TreeSDF slope_t2 = sd_pine_tree(p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01, pick_pos);
         f32vec3 leaves_nrm = normalize(f32vec3(slope_t0.leaves, slope_t1.leaves, slope_t2.leaves) - tree_sdf.leaves);
         f32 leaves_upwards = max(dot(leaves_nrm, f32vec3(0, 0, 1)), 0);
 
         if (tree_sdf.wood < tree_sdf.leaves) {
             return BlockID_Log;
         } else {
-            if (leaves_upwards > 0.0) {
+            if (leaves_upwards > 0.5) {
                 return BlockID_Snow;
             } else {
                 return BlockID_Leaves;
