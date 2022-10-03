@@ -20,6 +20,9 @@
 #define BLOCK_NZ (CHUNK_NZ * CHUNK_SIZE)
 #define BLOCK_N (CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
 
+#define MAX_CHUNK_UPDATES_XYZ 3
+#define MAX_CHUNK_UPDATES (MAX_CHUNK_UPDATES_XYZ * MAX_CHUNK_UPDATES_XYZ * MAX_CHUNK_UPDATES_XYZ)
+
 const u32 CHUNK_PTR_U32_N = (CHUNK_N / 32 == 0) ? 1 : CHUNK_N / 32;
 
 struct Voxel {
@@ -72,7 +75,7 @@ struct VoxelWorld {
     Box box;
     f32vec3 center_pt;
     f32 last_update_time;
-    u32 chunk_update_indices[128];
+    u32 chunk_update_indices[MAX_CHUNK_UPDATES];
     u32 chunk_update_n;
     u32 chunkgen_index;
 

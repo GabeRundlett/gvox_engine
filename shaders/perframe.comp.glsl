@@ -359,16 +359,16 @@ void perframe_player() {
 
 u32 calculate_chunk_edit() {
     u32 non_chunkgen_update_n = 0;
-    for (i32 zi = 0; zi < 5; ++zi) {
-        if (VOXEL_WORLD.chunk_update_n >= 128)
+    for (i32 zi = 0; zi < MAX_CHUNK_UPDATES_XYZ; ++zi) {
+        if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
             break;
-        for (i32 yi = 0; yi < 5; ++yi) {
-            if (VOXEL_WORLD.chunk_update_n >= 128)
+        for (i32 yi = 0; yi < MAX_CHUNK_UPDATES_XYZ; ++yi) {
+            if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                 break;
-            for (i32 xi = 0; xi < 5; ++xi) {
-                if (VOXEL_WORLD.chunk_update_n >= 128)
+            for (i32 xi = 0; xi < MAX_CHUNK_UPDATES_XYZ; ++xi) {
+                if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                     break;
-                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 2) * CHUNK_SIZE / VOXEL_SCL)));
+                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - i32(MAX_CHUNK_UPDATES_XYZ / 2)) * CHUNK_SIZE / VOXEL_SCL)));
                 if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) { // TODO: determine if a chunk actually needs to be modified.
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
@@ -378,8 +378,8 @@ u32 calculate_chunk_edit() {
             }
         }
     }
-    if (VOXEL_WORLD.chunk_update_n > 128)
-        VOXEL_WORLD.chunk_update_n = 128;
+    if (VOXEL_WORLD.chunk_update_n > MAX_CHUNK_UPDATES)
+        VOXEL_WORLD.chunk_update_n = MAX_CHUNK_UPDATES;
     return non_chunkgen_update_n;
 }
 

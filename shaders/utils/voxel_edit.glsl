@@ -98,8 +98,9 @@ TreeSDF sd_pine_tree(in f32vec3 p, in f32vec3 seed) {
     for (u32 i = 0; i < 5; ++i) {
         f32 scl = 1.0 / (1.0 + i * 0.5);
         f32 scl2 = 1.0 / (1.0 + i * 0.1);
-        for (u32 branch_i = 0; branch_i < 7; ++branch_i) {
-            f32 angle = (1.0 / 7 * branch_i) * 2.0 * PI + rand(seed + i + 1.0 * branch_i) * 0.5;
+        u32 branch_n = 8 - i;
+        for (u32 branch_i = 0; branch_i < branch_n; ++branch_i) {
+            f32 angle = (1.0 / branch_n * branch_i) * 2.0 * PI + rand(seed + i + 1.0 * branch_i) * 0.5;
             sd_branch(val, p, f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(f32vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
         }
     }
@@ -123,7 +124,7 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     TreeSDF tree_sdf = sd_pine_tree(p, pick_pos);
     result = min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
 
-    return result && (sd_box(voxel_p - pick_pos, f32vec3(128.0 / VOXEL_SCL)) < 0.0);
+    return result && (sd_box(voxel_p - pick_pos, f32vec3(64.0 / VOXEL_SCL)) < 0.0);
 }
 u32 brush_id_kernel(in f32vec3 voxel_p) {
     // Voxel result = gen_voxel(voxel_p);

@@ -309,7 +309,7 @@ void main() {
         f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.01, 0, 1);
         f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
         f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
-        col = mix(surface_col, fog_col, fog_factor);
+        col = surface_col + fog_col * fog_factor;
 
         f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
 

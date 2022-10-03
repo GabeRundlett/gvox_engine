@@ -18,9 +18,9 @@
 #define WAVELENGTH_Z 440.0
 #define SCATTERING_STRENGTH 30.0
 #define SCATTERING_COEFF (f32vec3(pow(400.0 / WAVELENGTH_X, 4), pow(400.0 / WAVELENGTH_Y, 4), pow(400.0 / WAVELENGTH_Z, 4)) * SCATTERING_STRENGTH)
-#define SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.002), 2))
+#define SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0005), 2))
 
-#define IN_SCATTER_N 10
+#define IN_SCATTER_N 4
 #define OPTICAL_DEPTH_N 100
 
 f32 calc_atmosphere_depth(Ray ray) {
