@@ -42,6 +42,7 @@ struct BaseApp : AppWindow<T> {
 
     daxa::Swapchain swapchain = device.create_swapchain({
         .native_window = AppWindow<T>::get_native_handle(),
+        .native_window_platform = AppWindow<T>::get_native_platform(),
         .present_mode = daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK,
         .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
         .debug_name = APPNAME_PREFIX("swapchain"),
@@ -80,21 +81,9 @@ struct BaseApp : AppWindow<T> {
         });
     }
 
-    daxa::BinarySemaphore binary_semaphore = device.create_binary_semaphore({
-        .debug_name = APPNAME_PREFIX("binary_semaphore"),
-    });
-    static inline constexpr u64 FRAMES_IN_FLIGHT = 3;
-    daxa::TimelineSemaphore gpu_framecount_timeline_sema = device.create_timeline_semaphore(daxa::TimelineSemaphoreInfo{
-        .initial_value = 0,
-        .debug_name = APPNAME_PREFIX("gpu_framecount_timeline_sema"),
-    });
-    u64 cpu_framecount = FRAMES_IN_FLIGHT - 1;
-
     Clock::time_point start = Clock::now(), prev_time = start;
     f32 elapsed_s = 1.0f;
 
-    daxa::BinarySemaphore acquire_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("acquire_semaphore")});
-    daxa::BinarySemaphore present_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("present_semaphore")});
     daxa::CommandSubmitInfo submit_info;
 
     daxa::ImageId swapchain_image;
@@ -203,11 +192,10 @@ struct BaseApp : AppWindow<T> {
     }
 
     void submit_task_list() {
-        swapchain_image = swapchain.acquire_next_image(acquire_semaphore);
-        ++cpu_framecount;
-        submit_info.signal_timeline_semaphores = {{gpu_framecount_timeline_sema, cpu_framecount}};
+        swapchain_image = swapchain.acquire_next_image();
+        if (swapchain_image.is_empty())
+            return;
         loop_task_list.execute();
-        gpu_framecount_timeline_sema.wait_for_value(cpu_framecount - FRAMES_IN_FLIGHT);
     }
 
     auto record_loop_task_list() -> daxa::TaskList {

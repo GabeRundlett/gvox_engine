@@ -3,7 +3,7 @@
         {
             "kind": "git",
             "repository": "https://github.com/GabeRundlett/vcpkg-registry",
-            "baseline": "b7a969df94a401843694653a1e08124021dc30cf",
+            "baseline": "6d3e7a1ebeb2d266cf8820f4269b79e847b43924",
             "packages": [
                 "daxa",
                 "fsr2"
