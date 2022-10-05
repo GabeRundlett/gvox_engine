@@ -27,7 +27,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(${PROJECT_NAME} PRIVATE Dwmapi)
 endif()
 
-set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gabe_voxel_game>/vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
+set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gabe_voxel_game>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
 
 set(PACKAGE_VOXEL_GAME true)
