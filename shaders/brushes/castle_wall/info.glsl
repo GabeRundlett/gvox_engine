@@ -1,7 +1,9 @@
 #pragma once
 
-f32vec3 custom_brush_range() {
-    return f32vec3(8.0, 8.0, 8.0);
+Box custom_brush_box() {
+    return Box(
+        f32vec3(-PLAYER.edit_radius),
+        f32vec3(+PLAYER.edit_radius));
 }
 
 f32vec3 custom_brush_origin_offset() {

@@ -183,7 +183,7 @@ void perframe_player() {
         PLAYER.edit_radius /= 1.05;
     }
 
-    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.0 / VOXEL_SCL, 127.0 / VOXEL_SCL);
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.0 / VOXEL_SCL, 64.0 / VOXEL_SCL);
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
 
@@ -483,14 +483,16 @@ void main() {
     Ray pick_ray = create_view_ray(pick_uv);
     GLOBALS.pick_intersection = intersect_voxels(pick_ray);
 
-    GLOBALS.brush_offset = f32vec3(0, 0, 4);
+    GLOBALS.brush_offset = custom_brush_origin_offset();
 
     if (GLOBALS.pick_intersection.hit) {
         GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
     }
 
-    SCENE.pick_box.bound_min = f32vec3(-2, -2, -0.15 - 1.0 / VOXEL_SCL) + GLOBALS.brush_origin - GLOBALS.brush_offset;
-    SCENE.pick_box.bound_max = f32vec3(+2, +2, +5.15 + 1.0 / VOXEL_SCL) + GLOBALS.brush_origin - GLOBALS.brush_offset;
+    Box custom_box = custom_brush_box();
+
+    SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
+    SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
 
     if (prev_edit_flags == 0) {
         GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
