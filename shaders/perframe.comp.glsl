@@ -5,6 +5,8 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/voxel.glsl>
 #include <utils/raytrace.glsl>
 
+#include <brushes/spruce_tree/info.glsl>
+
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_HEAD_RADIUS (0.6 / 2)
 #define COLLIDE_DELTA 0.09
@@ -192,7 +194,7 @@ void perframe_player() {
     cam_offset_ray.nrm = cam_offset / cam_offset_len;
     cam_offset_ray.inv_nrm = 1.0 / cam_offset_ray.nrm;
 
-    IntersectionRecord offset_intersection = intersect_chunk(cam_offset_ray);
+    IntersectionRecord offset_intersection = intersect_voxels(cam_offset_ray);
     if (offset_intersection.hit)
         cam_offset_len = min(cam_offset_len, offset_intersection.dist - 0.001);
     cam_offset = cam_offset_ray.nrm * cam_offset_len;
@@ -272,13 +274,13 @@ void perframe_player() {
             ray.inv_nrm = 1.0 / ray.nrm;
             IntersectionRecord intersections[4];
             ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, -COLLIDE_DELTA, 0);
-            intersections[0] = intersect_chunk(ray);
+            intersections[0] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, -COLLIDE_DELTA, 0);
-            intersections[1] = intersect_chunk(ray);
+            intersections[1] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, +COLLIDE_DELTA, 0);
-            intersections[2] = intersect_chunk(ray);
+            intersections[2] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, +COLLIDE_DELTA, 0);
-            intersections[3] = intersect_chunk(ray);
+            intersections[3] = intersect_voxels(ray);
             IntersectionRecord intersection;
             intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
             intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
@@ -298,13 +300,13 @@ void perframe_player() {
             ray.inv_nrm = 1.0 / ray.nrm;
             IntersectionRecord intersections[4];
             ray.o = player_ray_o + f32vec3(0, -COLLIDE_DELTA, -COLLIDE_DELTA);
-            intersections[0] = intersect_chunk(ray);
+            intersections[0] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(0, +COLLIDE_DELTA, -COLLIDE_DELTA);
-            intersections[1] = intersect_chunk(ray);
+            intersections[1] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(0, -COLLIDE_DELTA, +COLLIDE_DELTA);
-            intersections[2] = intersect_chunk(ray);
+            intersections[2] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(0, +COLLIDE_DELTA, +COLLIDE_DELTA);
-            intersections[3] = intersect_chunk(ray);
+            intersections[3] = intersect_voxels(ray);
             IntersectionRecord intersection;
             intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
             intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
@@ -330,13 +332,13 @@ void perframe_player() {
             ray.inv_nrm = 1.0 / ray.nrm;
             IntersectionRecord intersections[4];
             ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, 0, -COLLIDE_DELTA);
-            intersections[0] = intersect_chunk(ray);
+            intersections[0] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, 0, -COLLIDE_DELTA);
-            intersections[1] = intersect_chunk(ray);
+            intersections[1] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(-COLLIDE_DELTA, 0, +COLLIDE_DELTA);
-            intersections[2] = intersect_chunk(ray);
+            intersections[2] = intersect_voxels(ray);
             ray.o = player_ray_o + f32vec3(+COLLIDE_DELTA, 0, +COLLIDE_DELTA);
-            intersections[3] = intersect_chunk(ray);
+            intersections[3] = intersect_voxels(ray);
             IntersectionRecord intersection;
             intersection.hit = intersections[0].hit || intersections[1].hit || intersections[2].hit || intersections[3].hit;
             intersection.dist = min(min(intersections[0].dist, intersections[1].dist), min(intersections[2].dist, intersections[3].dist));
@@ -359,17 +361,18 @@ void perframe_player() {
 
 u32 calculate_chunk_edit() {
     u32 non_chunkgen_update_n = 0;
-    for (i32 zi = 0; zi < MAX_CHUNK_UPDATES_XYZ; ++zi) {
+    for (i32 zi = 0; zi < CHUNK_NZ; ++zi) {
         if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
             break;
-        for (i32 yi = 0; yi < MAX_CHUNK_UPDATES_XYZ; ++yi) {
+        for (i32 yi = 0; yi < CHUNK_NY; ++yi) {
             if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                 break;
-            for (i32 xi = 0; xi < MAX_CHUNK_UPDATES_XYZ; ++xi) {
+            for (i32 xi = 0; xi < CHUNK_NX; ++xi) {
                 if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                     break;
-                u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - i32(MAX_CHUNK_UPDATES_XYZ / 2)) * CHUNK_SIZE / VOXEL_SCL)));
-                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2) { // TODO: determine if a chunk actually needs to be modified.
+                u32 i = get_chunk_index(i32vec3(xi, yi, zi));
+                Box chunk_box = VOXEL_CHUNKS[i].box;
+                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && overlaps(chunk_box, SCENE.pick_box)) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
                     ++VOXEL_WORLD.chunk_update_n;
@@ -420,26 +423,26 @@ void perframe_voxel_world() {
     }
 
     u32 non_chunkgen_update_n = 0;
-    if (!get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE) || INPUT.time - PLAYER.last_edit_time > INPUT.settings.edit_rate) {
-        if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
-            GLOBALS.edit_flags = 1;
-            non_chunkgen_update_n = calculate_chunk_edit();
-            PLAYER.edit_voxel_id = BlockID_Air;
-            PLAYER.last_edit_time = INPUT.time;
-        } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
-            GLOBALS.edit_flags = 2;
-            non_chunkgen_update_n = calculate_chunk_edit();
-            PLAYER.edit_voxel_id = BlockID_Stone;
-            PLAYER.last_edit_time = INPUT.time;
+
+    if (GLOBALS.pick_intersection.hit) {
+        if (!get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE) || INPUT.time - PLAYER.last_edit_time > INPUT.settings.edit_rate) {
+            if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
+                GLOBALS.edit_flags = 1;
+                non_chunkgen_update_n = calculate_chunk_edit();
+                PLAYER.edit_voxel_id = BlockID_Air;
+                PLAYER.last_edit_time = INPUT.time;
+            } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
+                GLOBALS.edit_flags = 2;
+                non_chunkgen_update_n = calculate_chunk_edit();
+                PLAYER.edit_voxel_id = BlockID_Stone;
+                PLAYER.last_edit_time = INPUT.time;
+            } else {
+                GLOBALS.edit_flags = 0;
+            }
         } else {
             GLOBALS.edit_flags = 0;
         }
-    } else {
-        GLOBALS.edit_flags = 0;
     }
-    if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
-        INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
-        PLAYER.last_edit_time = 0.0;
 
     for (u32 i = 0; i < VOXEL_WORLD.chunk_update_n; ++i) {
         u32 chunk_index = VOXEL_WORLD.chunk_update_indices[i];
@@ -454,6 +457,10 @@ void perframe_voxel_world() {
     INDIRECT.chunk_edit_dispatch.z *= non_chunkgen_update_n;
     INDIRECT.subchunk_x2x4_dispatch.y *= VOXEL_WORLD.chunk_update_n;
     INDIRECT.subchunk_x8up_dispatch.y *= VOXEL_WORLD.chunk_update_n;
+
+    if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
+        INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
+        PLAYER.last_edit_time = 0.0;
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -474,14 +481,18 @@ void main() {
     }
 
     Ray pick_ray = create_view_ray(pick_uv);
-    IntersectionRecord pick_intersection = intersect_chunk(pick_ray);
+    GLOBALS.pick_intersection = intersect_voxels(pick_ray);
 
-    GLOBALS.pick_pos = pick_ray.o + pick_ray.nrm * pick_intersection.dist;
-    GLOBALS.pick_nrm = pick_intersection.nrm;
+    GLOBALS.brush_offset = f32vec3(0, 0, 4);
 
-    if (GLOBALS.edit_flags == 0) {
-        GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
-    } else if (GLOBALS.edit_flags != 0 && prev_edit_flags == 0) {
-        GLOBALS.edit_origin = round(GLOBALS.pick_pos * VOXEL_SCL) / VOXEL_SCL;
+    if (GLOBALS.pick_intersection.hit) {
+        GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
+    }
+
+    SCENE.pick_box.bound_min = f32vec3(-2, -2, -0.15 - 1.0 / VOXEL_SCL) + GLOBALS.brush_origin - GLOBALS.brush_offset;
+    SCENE.pick_box.bound_max = f32vec3(+2, +2, +5.15 + 1.0 / VOXEL_SCL) + GLOBALS.brush_origin - GLOBALS.brush_offset;
+
+    if (prev_edit_flags == 0) {
+        GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
     }
 }

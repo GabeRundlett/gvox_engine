@@ -19,8 +19,9 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     Player player;
     Scene scene;
 
-    f32vec3 pick_pos;
-    f32vec3 pick_nrm;
+    IntersectionRecord pick_intersection;
+    f32vec3 brush_origin;
+    f32vec3 brush_offset;
 
     f32vec3 edit_origin;
     u32 edit_flags;

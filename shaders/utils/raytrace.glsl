@@ -6,17 +6,6 @@
 
 #define MAX_DIST 10000.0
 
-struct Ray {
-    f32vec3 o;
-    f32vec3 nrm;
-    f32vec3 inv_nrm;
-};
-struct IntersectionRecord {
-    b32 hit;
-    f32 internal_fac;
-    f32 dist;
-    f32vec3 nrm;
-};
 struct TraceRecord {
     IntersectionRecord intersection_record;
     f32vec3 color;
@@ -273,7 +262,7 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
     return result;
 }
 
-IntersectionRecord intersect_chunk(Ray ray) {
+IntersectionRecord intersect_voxels(Ray ray) {
     IntersectionRecord result;
     default_init(result);
     result = intersect(ray, VOXEL_WORLD.box);
@@ -299,7 +288,7 @@ IntersectionRecord intersect_chunk(Ray ray) {
 
     return result;
 }
-IntersectionRecord intersect_chunk(Ray ray, in out i32 x1_steps) {
+IntersectionRecord intersect_voxels(Ray ray, in out i32 x1_steps) {
     IntersectionRecord result;
     default_init(result);
     result = intersect(ray, VOXEL_WORLD.box);

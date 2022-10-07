@@ -1,5 +1,7 @@
 #pragma once
 
+#include <shared/shapes.inl>
+
 #define MAX_SD 10000.0
 
 f32 sd_plane(in f32vec3 p) { return p.z; }
@@ -7,6 +9,9 @@ f32 sd_sphere(in f32vec3 p, in f32 r) { return length(p) - r; }
 f32 sd_box(in f32vec3 p, in f32vec3 size) {
     f32vec3 d = abs(p) - size;
     return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
+f32 sd_box(in f32vec3 p, in Box box) {
+    return sd_box(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5);
 }
 f32 sd_cylinder(in f32vec3 p, in f32 h, in f32 r) {
     f32vec2 d = abs(f32vec2(length(p.xy), p.z)) - f32vec2(h, r);

@@ -43,12 +43,13 @@ void main() {
     VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[CHUNK_N - 1].box.bound_max * 1;
 #endif
 
-    // SCENE.capsule_n = MAX_CAPSULES;
+    SCENE.pick_box.bound_min = f32vec3(-1, -1, -1);
+    SCENE.pick_box.bound_max = f32vec3(+1, +1, +1);
 
+    SCENE.capsules[SCENE.capsule_n].r = 0.3;
     SCENE.capsule_n++;
-    SCENE.capsules[0].r = 0.3;
 
+    SCENE.boxes[SCENE.box_n].bound_min = f32vec3(-10000, -10000, -1);
+    SCENE.boxes[SCENE.box_n].bound_max = f32vec3(+10000, +10000, +0);
     SCENE.box_n++;
-    SCENE.boxes[0].bound_min = f32vec3(-10000, -10000, -1);
-    SCENE.boxes[0].bound_max = f32vec3(+10000, +10000, +0);
 }

@@ -4,7 +4,7 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #include <utils/rand.glsl>
 #include <utils/raytrace.glsl>
-#include <utils/voxel_edit.glsl>
+#include <utils/brush_kernel.glsl>
 #include <utils/sky.glsl>
 
 b32 get_flag(u32 index) {
@@ -85,7 +85,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    IntersectionRecord b0_hit = intersect_chunk(ray, complexity);
+    IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
         trace.intersection_record = b0_hit;
         trace.color = f32vec3(0.5, 1.0, 0.5);
@@ -149,7 +149,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     //         for (i32 xi = 0; xi < 3; ++xi) {
     //             if (VOXEL_WORLD.chunk_update_n >= 64)
     //                 break;
-    //             u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.pick_pos + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
+    //             u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.brush_origin + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
     //             if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && i == chunk_info.chunk_index ) {
     //                 col = f32vec3(0.2, 1.0, 0.2);
     //             }
@@ -264,6 +264,7 @@ void main() {
         f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
         i32 temp_i32;
         TraceRecord bounce_trace_record = trace_scene(bounce_ray, temp_i32);
+        f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
         switch (view_trace_record.material) {
         case 0:
         case 1: {
@@ -272,6 +273,10 @@ void main() {
         case 2: {
             col = voxel_color(hit_pos, hit_nrm);
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+            if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
+                col *= f32vec3(4.0, 4.0, 4.0);
+                col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
+            }
         } break;
         case 3: {
             Capsule c = SCENE.capsules[view_trace_record.object_i];
@@ -311,13 +316,6 @@ void main() {
         f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
         col = surface_col + fog_col * fog_factor;
 
-        f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
-
-        if (brush_should_edit(voxel_p)) {
-            col *= f32vec3(4.0, 4.0, 4.0);
-            col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
-        }
-
         // col = hit_pos;
         // col = hit_nrm;
         // col = reflect(view_ray.nrm, hit_nrm);
@@ -333,6 +331,20 @@ void main() {
         // TraceRecord sun_trace_record = trace_scene(sun_ray);
     }
 
+    if (GLOBALS.pick_intersection.hit) {
+        Box b = SCENE.pick_box;
+        IntersectionRecord b_hit = intersect(view_ray, b);
+        if (b_hit.hit) {
+            f32vec3 b_pos = view_ray.o + view_ray.nrm * b_hit.dist;
+            f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
+            f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
+            f32vec3 inside_color = f32vec3(v, v, 0.01);
+            bool is_inside = b_hit.dist > view_trace_record.intersection_record.dist;
+            f32vec3 val = f32vec3(is_inside ? inside_color : outside_color);
+            col = mix(col, val, is_inside ? 0.01 : 0.9);
+        }
+    }
+
     i32vec2 crosshair_uv = abs(i32vec2(pixel_i) - i32vec2(frame_dim / 2));
 
     if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
@@ -341,7 +353,6 @@ void main() {
             col = f32vec3(1, 1, 1);
         }
     }
-    // col *= 4;
 
     imageStore(
         daxa_GetRWImage(image2D, rgba32f, push_constant.image_id),
