@@ -1,6 +1,14 @@
 #include "base_app.hpp"
 #include <map>
 #include <fmt/format.h>
+#include <unordered_map>
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+struct Brush {
+    std::string key;
+    std::string display_name;
+};
 
 struct App : BaseApp<App> {
     // clang-format off
@@ -15,7 +23,10 @@ struct App : BaseApp<App> {
         .debug_name = APPNAME_PREFIX("optical_depth_comp_pipeline"),
     }).value();
     daxa::ComputePipeline perframe_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {.source = daxa::ShaderFile{"perframe.comp.glsl"}},
+        .shader_info = {
+            .source = daxa::ShaderFile{"perframe.comp.glsl"},
+            .compile_options = {.root_paths = {"shaders/brushes/spruce_tree"}},
+        },
         .push_constant_size = sizeof(PerframeCompPush),
         .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
     }).value();
@@ -45,7 +56,10 @@ struct App : BaseApp<App> {
         .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
     }).value();
     daxa::ComputePipeline chunk_edit_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {.source = daxa::ShaderFile{"chunk_edit.comp.glsl"}},
+        .shader_info = {
+            .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
+            .compile_options = {.root_paths = {"shaders/brushes/spruce_tree"}},
+        },
         .push_constant_size = sizeof(ChunkEditCompPush),
         .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
     }).value();
@@ -130,6 +144,9 @@ struct App : BaseApp<App> {
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
+    std::unordered_map<std::string, Brush> brushes;
+    std::string current_brush_key = "spruce_tree";
+
     std::array<i32, GAME_KEY_LAST + 1> keys{
         GLFW_KEY_W,
         GLFW_KEY_A,
@@ -173,6 +190,50 @@ struct App : BaseApp<App> {
         mouse_bindings[GLFW_MOUSE_BUTTON_3] = GAME_MOUSE_BUTTON_3;
         mouse_bindings[GLFW_MOUSE_BUTTON_4] = GAME_MOUSE_BUTTON_4;
         mouse_bindings[GLFW_MOUSE_BUTTON_5] = GAME_MOUSE_BUTTON_5;
+
+        load_brushes();
+    }
+
+    void load_brushes() {
+        auto load_file_to_string = [](auto const &path) {
+            std::ifstream f = std::ifstream(path);
+            std::stringstream buffer;
+            buffer << f.rdbuf();
+            return buffer.str();
+        };
+
+        std::filesystem::path const brushes_root = "shaders/brushes";
+        for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
+            if (brushes_file.is_directory()) {
+                auto path = brushes_file.path();
+                auto name = path.filename().string();
+                auto &result = brushes[name];
+                result.key = name;
+                result.display_name = name;
+
+                if (!std::filesystem::exists(path / "config.json")) {
+                    std::cout << "Failed to find the config.json file associated with brush '" << result.display_name << "'" << std::endl;
+                    continue;
+                }
+
+                auto config_json_str = load_file_to_string(path / "config.json");
+                nlohmann::json config_json = nlohmann::json::parse(config_json_str);
+
+                if (config_json.contains("display_name"))
+                    result.display_name = config_json["display_name"];
+
+                if (!std::filesystem::exists(path / "info.glsl")) {
+                    std::cout << "Failed to find the info.glsl file associated with brush '" << result.display_name << "'" << std::endl;
+                    continue;
+                }
+                if (!std::filesystem::exists(path / "kernel.glsl")) {
+                    std::cout << "Failed to find the kernel.glsl file associated with brush '" << result.display_name << "'" << std::endl;
+                    continue;
+                }
+
+                std::cout << " " << std::endl;
+            }
+        }
     }
 
     ~App() {
@@ -238,6 +299,17 @@ struct App : BaseApp<App> {
                     if (ImGui::Button("Reset Settings")) {
                         gpu_input = default_gpu_input();
                     }
+
+                    if (ImGui::TreeNode("Brushes")) {
+                        for (auto const &[key, brush] : brushes) {
+                            if (ImGui::Button(brush.display_name.c_str())) {
+                                current_brush_key = key;
+                                break;
+                            }
+                        }
+                        ImGui::TreePop();
+                    }
+
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Help")) {
@@ -262,18 +334,7 @@ struct App : BaseApp<App> {
                 ImGui::PopStyleVar();
             }
 
-            // const ImGuiViewport *viewport = ImGui::GetMainViewport();
-            // ImVec2 pos = {viewport->WorkPos.x, viewport->WorkPos.y};
-            // ImVec2 dim = {200.0f, viewport->WorkSize.y};
-            // ImGui::SetNextWindowPos(pos);
-            // ImGui::SetNextWindowSize(dim);
-
-            // ImGui::PushFont(menu_font);
-            // ImGui::Begin("Sidebar", nullptr, ImGuiWindowFlags_NoDecoration);
-            // if (ImGui::Button("Resume"))
-            //     toggle_pause();
-            // ImGui::End();
-            // ImGui::PopFont();
+            ImGui::ShowDemoWindow();
         }
 
         if (show_debug_menu) {
@@ -304,6 +365,7 @@ struct App : BaseApp<App> {
             ImGui::Text(R"(Keybinds:
 F1 for help
 F3 to see debug info
+F5 to change cameras
 WASD to move
 F to toggle fly
 R to reload chunks
@@ -324,8 +386,6 @@ RIGHT MOUSE BUTTON to place voxels
             ImGui::End();
             ImGui::PopStyleVar();
         }
-
-        // ImGui::ShowDemoWindow();
 
         ImGui::PopFont();
         ImGui::Render();

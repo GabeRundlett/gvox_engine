@@ -13,6 +13,7 @@
         "glfw3",
         "glm",
         "stb",
+        "nlohmann-json",
         {
             "name": "imgui",
             "features": [

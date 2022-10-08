@@ -5,7 +5,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/voxel.glsl>
 #include <utils/raytrace.glsl>
 
-#include <brushes/spruce_tree/info.glsl>
+#include <brush_info.glsl>
 
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_HEAD_RADIUS (0.6 / 2)

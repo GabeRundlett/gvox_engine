@@ -22,7 +22,7 @@ f32 brush_noise_value(in f32vec3 voxel_p) {
     return fractal_noise(voxel_p, noise_conf);
 }
 
-#include <brushes/spruce_tree/kernel.glsl>
+#include <kernel.glsl>
 
 b32 brush_should_edit(in f32vec3 voxel_p) {
     voxel_p = voxel_p;

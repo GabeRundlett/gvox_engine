@@ -4,7 +4,6 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #include <utils/rand.glsl>
 #include <utils/raytrace.glsl>
-#include <utils/brush_kernel.glsl>
 #include <utils/sky.glsl>
 
 b32 get_flag(u32 index) {
@@ -273,10 +272,10 @@ void main() {
         case 2: {
             col = voxel_color(hit_pos, hit_nrm);
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
-            if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
-                col *= f32vec3(4.0, 4.0, 4.0);
-                col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
-            }
+            // if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
+            //     col *= f32vec3(4.0, 4.0, 4.0);
+            //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
+            // }
         } break;
         case 3: {
             Capsule c = SCENE.capsules[view_trace_record.object_i];
