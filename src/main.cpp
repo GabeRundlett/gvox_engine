@@ -8,6 +8,8 @@
 struct Brush {
     std::string key;
     std::string display_name;
+    daxa::ComputePipeline perframe_comp_pipeline;
+    daxa::ComputePipeline chunk_edit_comp_pipeline;
 };
 
 struct App : BaseApp<App> {
@@ -21,14 +23,6 @@ struct App : BaseApp<App> {
         .shader_info = {.source = daxa::ShaderFile{"optical_depth.comp.glsl"}},
         .push_constant_size = sizeof(OpticalDepthCompPush),
         .debug_name = APPNAME_PREFIX("optical_depth_comp_pipeline"),
-    }).value();
-    daxa::ComputePipeline perframe_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {
-            .source = daxa::ShaderFile{"perframe.comp.glsl"},
-            .compile_options = {.root_paths = {"shaders/brushes/spruce_tree"}},
-        },
-        .push_constant_size = sizeof(PerframeCompPush),
-        .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
     }).value();
     daxa::ComputePipeline chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
@@ -54,14 +48,6 @@ struct App : BaseApp<App> {
         },
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
-    }).value();
-    daxa::ComputePipeline chunk_edit_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {
-            .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-            .compile_options = {.root_paths = {"shaders/brushes/spruce_tree"}},
-        },
-        .push_constant_size = sizeof(ChunkEditCompPush),
-        .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
     }).value();
     daxa::ComputePipeline draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
@@ -204,35 +190,57 @@ struct App : BaseApp<App> {
 
         std::filesystem::path const brushes_root = "shaders/brushes";
         for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
-            if (brushes_file.is_directory()) {
-                auto path = brushes_file.path();
-                auto name = path.filename().string();
-                auto &result = brushes[name];
-                result.key = name;
-                result.display_name = name;
-
-                if (!std::filesystem::exists(path / "config.json")) {
-                    std::cout << "Failed to find the config.json file associated with brush '" << result.display_name << "'" << std::endl;
-                    continue;
-                }
-
-                auto config_json_str = load_file_to_string(path / "config.json");
-                nlohmann::json config_json = nlohmann::json::parse(config_json_str);
-
-                if (config_json.contains("display_name"))
-                    result.display_name = config_json["display_name"];
-
-                if (!std::filesystem::exists(path / "info.glsl")) {
-                    std::cout << "Failed to find the info.glsl file associated with brush '" << result.display_name << "'" << std::endl;
-                    continue;
-                }
-                if (!std::filesystem::exists(path / "kernel.glsl")) {
-                    std::cout << "Failed to find the kernel.glsl file associated with brush '" << result.display_name << "'" << std::endl;
-                    continue;
-                }
-
-                std::cout << " " << std::endl;
+            if (!brushes_file.is_directory())
+                continue;
+            auto path = brushes_file.path();
+            auto name = path.filename().string();
+            if (brushes.contains(name)) {
+                std::cout << "Found 2 folders with the same name..?" << std::endl;
+                continue;
             }
+            auto display_name = name;
+            if (!std::filesystem::exists(path / "config.json")) {
+                std::cout << "Failed to find the config.json file associated with brush '" << display_name << "'" << std::endl;
+                continue;
+            }
+            auto config_json_str = load_file_to_string(path / "config.json");
+            nlohmann::json config_json = nlohmann::json::parse(config_json_str);
+            if (config_json.contains("display_name"))
+                display_name = config_json["display_name"];
+            if (!std::filesystem::exists(path / "brush_info.glsl")) {
+                std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
+                continue;
+            }
+            if (!std::filesystem::exists(path / "kernel.glsl")) {
+                std::cout << "Failed to find the kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
+                continue;
+            }
+
+            auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
+                .shader_info = {
+                    .source = daxa::ShaderFile{"perframe.comp.glsl"},
+                    .compile_options = {.root_paths = {"shaders/brushes/" + name}},
+                },
+                .push_constant_size = sizeof(PerframeCompPush),
+                .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
+            });
+            auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
+                .shader_info = {
+                    .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
+                    .compile_options = {.root_paths = {"shaders/brushes/" + name}},
+                },
+                .push_constant_size = sizeof(ChunkEditCompPush),
+                .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
+            });
+
+            brushes.emplace(
+                name,
+                Brush{
+                    .key = name,
+                    .display_name = display_name,
+                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
+                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
+                });
         }
     }
 
@@ -301,6 +309,7 @@ struct App : BaseApp<App> {
                     }
 
                     if (ImGui::TreeNode("Brushes")) {
+                        std::cout << current_brush_key << std::endl;
                         for (auto const &[key, brush] : brushes) {
                             if (ImGui::Button(brush.display_name.c_str())) {
                                 current_brush_key = key;
@@ -333,8 +342,6 @@ struct App : BaseApp<App> {
                 ImGui::End();
                 ImGui::PopStyleVar();
             }
-
-            ImGui::ShowDemoWindow();
         }
 
         if (show_debug_menu) {
@@ -405,8 +412,10 @@ RIGHT MOUSE BUTTON to place voxels
         }
 
         reload_pipeline(draw_comp_pipeline);
-        reload_pipeline(perframe_comp_pipeline);
-        reload_pipeline(chunk_edit_comp_pipeline);
+        // reload_pipeline(perframe_comp_pipeline);
+        // reload_pipeline(chunk_edit_comp_pipeline);
+        reload_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
+        reload_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
         auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
         reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
         reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
@@ -628,7 +637,8 @@ RIGHT MOUSE BUTTON to place voxels
             },
             .task = [this](daxa::TaskRuntime interf) {
                 auto cmd_list = interf.get_command_list();
-                cmd_list.set_pipeline(perframe_comp_pipeline);
+                // cmd_list.set_pipeline(perframe_comp_pipeline);
+                cmd_list.set_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
                 auto push = PerframeCompPush{
                     .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
                     .gpu_input = this->device.buffer_reference(gpu_input_buffer),
@@ -665,7 +675,8 @@ RIGHT MOUSE BUTTON to place voxels
             },
             .task = [this](daxa::TaskRuntime interf) {
                 auto cmd_list = interf.get_command_list();
-                cmd_list.set_pipeline(chunk_edit_comp_pipeline);
+                // cmd_list.set_pipeline(chunk_edit_comp_pipeline);
+                cmd_list.set_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
                 cmd_list.push_constant(ChunkEditCompPush{
                     .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                     .gpu_input = this->device.buffer_reference(gpu_input_buffer),
