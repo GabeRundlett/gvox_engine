@@ -88,7 +88,6 @@ struct BaseApp : AppWindow<T> {
 
     daxa::ImageId swapchain_image;
     daxa::TaskImageId task_swapchain_image;
-    daxa::TaskList loop_task_list = record_loop_task_list();
 
     BaseApp() : AppWindow<T>(APPNAME) {
         constexpr auto ColorFromBytes = [](u8 r, u8 g, u8 b, u8 a = 255) {
@@ -191,13 +190,6 @@ struct BaseApp : AppWindow<T> {
         return false;
     }
 
-    void submit_task_list() {
-        swapchain_image = swapchain.acquire_next_image();
-        if (swapchain_image.is_empty())
-            return;
-        loop_task_list.execute();
-    }
-
     auto record_loop_task_list() -> daxa::TaskList {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
@@ -212,17 +204,6 @@ struct BaseApp : AppWindow<T> {
         });
 
         reinterpret_cast<T *>(this)->record_tasks(new_task_list);
-
-        new_task_list.add_task({
-            .used_images = {
-                {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageMipArraySlice{}},
-            },
-            .task = [this](daxa::TaskRuntime interf) {
-                auto cmd_list = interf.get_command_list();
-                imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, AppWindow<T>::size_x, AppWindow<T>::size_y);
-            },
-            .debug_name = APPNAME_PREFIX("ImGui Task"),
-        });
 
         new_task_list.submit(&submit_info);
         new_task_list.present({});

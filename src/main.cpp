@@ -8,8 +8,14 @@
 struct Brush {
     std::string key;
     std::string display_name;
+
     daxa::ComputePipeline perframe_comp_pipeline;
     daxa::ComputePipeline chunk_edit_comp_pipeline;
+
+    std::string thumbnail_image_path; // TODO: auto generated images don't have paths
+    bool thumbnail_needs_updating;
+    daxa::ImageId preview_thumbnail;
+    daxa::TaskImageId task_preview_thumbnail;
 };
 
 struct App : BaseApp<App> {
@@ -130,8 +136,10 @@ struct App : BaseApp<App> {
     std::map<i32, usize> mouse_bindings;
     std::map<i32, usize> key_bindings;
 
-    std::unordered_map<std::string, Brush> brushes;
+    std::unordered_map<std::string, Brush> brushes = load_brushes();
     std::string current_brush_key = "spruce_tree";
+
+    std::chrono::file_clock::time_point last_seen_brushes_folder_update = std::chrono::file_clock::now();
 
     std::array<i32, GAME_KEY_LAST + 1> keys{
         GLFW_KEY_W,
@@ -162,9 +170,14 @@ struct App : BaseApp<App> {
     bool show_help_menu = false;
     bool show_generation_menu = false;
 
+    bool show_tool_menu = true;
+    bool show_tool_properties_menu = true;
+
     std::array<float, 40> frametimes = {};
     u64 frametime_rotation_index = 0;
     std::string fmt_str;
+
+    daxa::TaskList loop_task_list = record_loop_task_list();
 
     App() : BaseApp<App>() {
         for (usize i = 0; i < keys.size(); ++i) {
@@ -176,11 +189,11 @@ struct App : BaseApp<App> {
         mouse_bindings[GLFW_MOUSE_BUTTON_3] = GAME_MOUSE_BUTTON_3;
         mouse_bindings[GLFW_MOUSE_BUTTON_4] = GAME_MOUSE_BUTTON_4;
         mouse_bindings[GLFW_MOUSE_BUTTON_5] = GAME_MOUSE_BUTTON_5;
-
-        load_brushes();
     }
 
-    void load_brushes() {
+    auto load_brushes() -> std::unordered_map<std::string, Brush> {
+        std::unordered_map<std::string, Brush> result;
+
         auto load_file_to_string = [](auto const &path) {
             std::ifstream f = std::ifstream(path);
             std::stringstream buffer;
@@ -188,13 +201,13 @@ struct App : BaseApp<App> {
             return buffer.str();
         };
 
-        std::filesystem::path const brushes_root = "shaders/brushes";
+        std::filesystem::path const brushes_root = "assets/brushes";
         for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
             if (!brushes_file.is_directory())
                 continue;
             auto path = brushes_file.path();
             auto name = path.filename().string();
-            if (brushes.contains(name)) {
+            if (result.contains(name)) {
                 std::cout << "Found 2 folders with the same name..?" << std::endl;
                 continue;
             }
@@ -211,15 +224,25 @@ struct App : BaseApp<App> {
                 std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
                 continue;
             }
-            if (!std::filesystem::exists(path / "kernel.glsl")) {
-                std::cout << "Failed to find the kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
+            if (!std::filesystem::exists(path / "brush_kernel.glsl")) {
+                std::cout << "Failed to find the brush_kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
                 continue;
             }
+
+            auto thumbnail_path = std::string("assets/brushes/default_thumbnail.png");
+            if (config_json.contains("custom_image"))
+                thumbnail_path = "assets/brushes/" + name + std::string("/") + std::string(config_json["custom_image"]);
+
+            auto image = device.create_image({
+                .format = daxa::Format::R8G8B8A8_UNORM,
+                .size = {1, 1, 1},
+                .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+            });
 
             auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
                 .shader_info = {
                     .source = daxa::ShaderFile{"perframe.comp.glsl"},
-                    .compile_options = {.root_paths = {"shaders/brushes/" + name}},
+                    .compile_options = {.root_paths = {"assets/brushes/" + name}},
                 },
                 .push_constant_size = sizeof(PerframeCompPush),
                 .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
@@ -227,21 +250,26 @@ struct App : BaseApp<App> {
             auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
                 .shader_info = {
                     .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-                    .compile_options = {.root_paths = {"shaders/brushes/" + name}},
+                    .compile_options = {.root_paths = {"assets/brushes/" + name}},
                 },
                 .push_constant_size = sizeof(ChunkEditCompPush),
                 .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
             });
 
-            brushes.emplace(
+            result.emplace(
                 name,
                 Brush{
                     .key = name,
                     .display_name = display_name,
                     .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
                     .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
+                    .thumbnail_image_path = thumbnail_path,
+                    .thumbnail_needs_updating = true,
+                    .preview_thumbnail = image,
                 });
         }
+
+        return result;
     }
 
     ~App() {
@@ -253,6 +281,9 @@ struct App : BaseApp<App> {
         device.destroy_buffer(gpu_indirect_dispatch_buffer);
         device.destroy_buffer(staging_gpu_input_buffer);
         device.destroy_image(render_image);
+        for (auto &[key, brush] : brushes) {
+            device.destroy_image(brush.preview_thumbnail);
+        }
     }
 
     void ui_update() {
@@ -262,6 +293,17 @@ struct App : BaseApp<App> {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::PushFont(base_font);
+
+        auto HelpMarker = [](const char *const desc) {
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted(desc);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        };
+
         if (paused) {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("Settings")) {
@@ -272,11 +314,6 @@ struct App : BaseApp<App> {
                     //     device.wait_idle();
                     //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
                     // }
-                    bool limit_edit_rate = get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE);
-                    ImGui::Checkbox("Limit Edit Rate", &limit_edit_rate);
-                    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, limit_edit_rate);
-                    if (limit_edit_rate)
-                        ImGui::SliderFloat("Edit Rate", &gpu_input.settings.edit_rate, 0.01f, 1.0f);
                     ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
                     ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
                     ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
@@ -308,17 +345,6 @@ struct App : BaseApp<App> {
                         gpu_input = default_gpu_input();
                     }
 
-                    if (ImGui::TreeNode("Brushes")) {
-                        std::cout << current_brush_key << std::endl;
-                        for (auto const &[key, brush] : brushes) {
-                            if (ImGui::Button(brush.display_name.c_str())) {
-                                current_brush_key = key;
-                                break;
-                            }
-                        }
-                        ImGui::TreePop();
-                    }
-
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Help")) {
@@ -326,6 +352,37 @@ struct App : BaseApp<App> {
                     ImGui::EndMenu();
                 }
                 ImGui::EndMainMenuBar();
+            }
+
+            if (show_tool_menu) {
+                // const ImGuiViewport *viewport = ImGui::GetMainViewport();
+                // auto pos = viewport->WorkPos;
+                // auto size = viewport->WorkSize;
+                // ImGui::SetNextWindowPos(pos);
+                // auto min_size = ImVec2(80, size.y);
+                // auto max_size = ImVec2(size.x, size.y);
+                // ImGui::SetNextWindowSizeConstraints(min_size, max_size);
+                ImGui::Begin("Tools");
+                if (ImGui::TreeNode("Brushes")) {
+                    bool limit_edit_rate = get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE);
+                    ImGui::Checkbox("Limit Edit Rate", &limit_edit_rate);
+                    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, limit_edit_rate);
+                    if (limit_edit_rate)
+                        ImGui::SliderFloat("Edit Rate", &gpu_input.settings.edit_rate, 0.01f, 1.0f);
+                    for (auto const &[key, brush] : brushes) {
+                        if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), ImVec2(64, 64))) {
+                            current_brush_key = key;
+                            break;
+                        }
+                        HelpMarker(brush.display_name.c_str());
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::End();
+            }
+
+            if (show_tool_properties_menu) {
+                ImGui::ShowDemoWindow();
             }
 
             if (show_generation_menu) {
@@ -407,6 +464,11 @@ RIGHT MOUSE BUTTON to place voxels
         gpu_input.frame_dim = {render_size_x, render_size_y};
         set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, paused);
 
+        // auto current_brushes_write_time = std::filesystem::last_write_time("assets/brushes");
+        // if (current_brushes_write_time - last_seen_brushes_folder_update < 0.5s) {
+        //     std::cout << "bruh" << std::endl;
+        // }
+
         if (battery_saving_mode) {
             std::this_thread::sleep_for(10ms);
         }
@@ -479,6 +541,10 @@ RIGHT MOUSE BUTTON to place voxels
             show_help_menu = !show_help_menu;
         if (key_id == GLFW_KEY_F3 && action == GLFW_PRESS)
             show_debug_menu = !show_debug_menu;
+        if (key_id == GLFW_KEY_T && action == GLFW_PRESS)
+            show_tool_menu = !show_tool_menu;
+        if (key_id == GLFW_KEY_N && action == GLFW_PRESS)
+            show_tool_properties_menu = !show_tool_properties_menu;
 
         if (!paused && key_bindings.contains(key_id)) {
             auto index = key_bindings[key_id];
@@ -514,6 +580,13 @@ RIGHT MOUSE BUTTON to place voxels
         paused = !paused;
     }
 
+    void submit_task_list() {
+        swapchain_image = swapchain.acquire_next_image();
+        if (swapchain_image.is_empty())
+            return;
+        loop_task_list.execute();
+    }
+
     void record_tasks(daxa::TaskList &new_task_list) {
         task_render_image = new_task_list.create_task_image({.image = &render_image, .debug_name = APPNAME_PREFIX("task_render_image")});
         task_gpu_input_buffer = new_task_list.create_task_buffer({.buffer = &gpu_input_buffer, .debug_name = APPNAME_PREFIX("task_gpu_input_buffer")});
@@ -521,6 +594,61 @@ RIGHT MOUSE BUTTON to place voxels
         task_gpu_globals_buffer = new_task_list.create_task_buffer({.buffer = &gpu_globals_buffer, .debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
         task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.buffer = &gpu_indirect_dispatch_buffer, .debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
         task_optical_depth_image = new_task_list.create_task_image({.image = &optical_depth_image, .debug_name = APPNAME_PREFIX("task_optical_depth_image")});
+
+        daxa::UsedTaskImages thumbnail_upload_task_usages;
+        daxa::UsedTaskImages imgui_task_usages;
+        for (auto &[key, brush] : brushes) {
+            brush.task_preview_thumbnail = new_task_list.create_task_image({.image = &brush.preview_thumbnail});
+            thumbnail_upload_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::TRANSFER_WRITE, {}});
+            imgui_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::SHADER_READ_ONLY, {}});
+        }
+
+        new_task_list.add_task({
+            .used_images = thumbnail_upload_task_usages,
+            .task = [=, this](daxa::TaskRuntime runtime) {
+                auto cmd_list = runtime.get_command_list();
+                auto image_staging_buffer = device.create_buffer({
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .size = static_cast<u32>((4 * 512 * 512) * brushes.size()),
+                });
+                cmd_list.destroy_buffer_deferred(image_staging_buffer);
+                auto *buffer_ptr = device.map_memory_as<u8>(image_staging_buffer);
+                u32 offset = 0;
+                for (auto &[key, brush] : brushes) {
+                    if (!brush.thumbnail_needs_updating)
+                        continue;
+                    i32 thumbnail_sx, thumbnail_sy;
+                    u8 *thumbnail_data = stbi_load(brush.thumbnail_image_path.c_str(), &thumbnail_sx, &thumbnail_sy, 0, 4);
+                    if (thumbnail_sx * thumbnail_sy > 512 * 512) {
+                        // std::cout << "Image was too big! skipping...";
+                        brush.thumbnail_needs_updating = false;
+                        stbi_image_free(thumbnail_data);
+                        continue;
+                    }
+                    device.destroy_image(brush.preview_thumbnail);
+                    brush.preview_thumbnail = device.create_image({
+                        .format = daxa::Format::R8G8B8A8_SRGB,
+                        .size = {static_cast<u32>(thumbnail_sx), static_cast<u32>(thumbnail_sy), 1},
+                        .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+                    });
+                    auto data_size = thumbnail_sx * thumbnail_sy * 4;
+                    memcpy(buffer_ptr + offset, thumbnail_data, data_size);
+                    stbi_image_free(thumbnail_data);
+                    cmd_list.copy_buffer_to_image({
+                        .buffer = image_staging_buffer,
+                        .buffer_offset = offset,
+                        .image = brush.preview_thumbnail,
+                        .image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        .image_extent = {static_cast<u32>(thumbnail_sx), static_cast<u32>(thumbnail_sy), 1},
+                    });
+                    offset += data_size;
+                    brush.thumbnail_needs_updating = false;
+                }
+
+                device.unmap_memory(image_staging_buffer);
+            },
+            .debug_name = APPNAME_PREFIX("Upload brush thumbnails"),
+        });
 
         new_task_list.add_task({
             .used_buffers = {
@@ -762,6 +890,17 @@ RIGHT MOUSE BUTTON to place voxels
                 });
             },
             .debug_name = APPNAME_PREFIX("Blit (render to swapchain)"),
+        });
+
+        imgui_task_usages.push_back({task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageMipArraySlice{}});
+
+        new_task_list.add_task({
+            .used_images = imgui_task_usages,
+            .task = [this](daxa::TaskRuntime interf) {
+                auto cmd_list = interf.get_command_list();
+                imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
+            },
+            .debug_name = APPNAME_PREFIX("ImGui Task"),
         });
     }
 };
