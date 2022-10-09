@@ -16,6 +16,7 @@ struct Scene {
     Capsule capsules[MAX_CAPSULES];
 
     Box pick_box;
+    Sphere brush_origin_sphere;
     VoxelWorld voxel_world;
 };
 

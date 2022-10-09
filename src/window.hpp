@@ -20,6 +20,39 @@ using namespace daxa::types;
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+char const *get_key_string(i32 glfw_key_id) {
+    auto result = glfwGetKeyName(glfw_key_id, 0);
+    if (!result) {
+        switch (glfw_key_id) {
+        case GLFW_KEY_SPACE: result = "space"; break;
+        case GLFW_KEY_LEFT_SHIFT: result = "left shift"; break;
+        case GLFW_KEY_LEFT_CONTROL: result = "left ctrl"; break;
+        case GLFW_KEY_LEFT_ALT: result = "left alt"; break;
+        case GLFW_KEY_RIGHT_SHIFT: result = "right shift"; break;
+        case GLFW_KEY_RIGHT_CONTROL: result = "right ctrl"; break;
+        case GLFW_KEY_RIGHT_ALT: result = "right alt"; break;
+        case GLFW_KEY_UP: result = "arrow up"; break;
+        case GLFW_KEY_DOWN: result = "arrow down"; break;
+        case GLFW_KEY_LEFT: result = "arrow left"; break;
+        case GLFW_KEY_RIGHT: result = "arrow right"; break;
+        case GLFW_KEY_F1: result = "function 1"; break;
+        case GLFW_KEY_F2: result = "function 2"; break;
+        case GLFW_KEY_F3: result = "function 3"; break;
+        case GLFW_KEY_F4: result = "function 4"; break;
+        case GLFW_KEY_F5: result = "function 5"; break;
+        case GLFW_KEY_F6: result = "function 6"; break;
+        case GLFW_KEY_F7: result = "function 7"; break;
+        case GLFW_KEY_F8: result = "function 8"; break;
+        case GLFW_KEY_F9: result = "function 9"; break;
+        case GLFW_KEY_F10: result = "function 10"; break;
+        case GLFW_KEY_F11: result = "function 11"; break;
+        case GLFW_KEY_F12: result = "function 12"; break;
+        default: result = "Unknown Key"; break;
+        }
+    }
+    return result;
+}
+
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;

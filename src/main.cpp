@@ -5,18 +5,36 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
+struct BrushSettings {
+    bool limit_edit_rate;
+    f32 edit_rate;
+};
+
 struct Brush {
     std::string key;
     std::string display_name;
-
-    daxa::ComputePipeline perframe_comp_pipeline;
-    daxa::ComputePipeline chunk_edit_comp_pipeline;
 
     std::string thumbnail_image_path; // TODO: auto generated images don't have paths
     bool thumbnail_needs_updating;
     daxa::ImageId preview_thumbnail;
     daxa::TaskImageId task_preview_thumbnail;
+
+    daxa::ComputePipeline perframe_comp_pipeline;
+    daxa::ComputePipeline chunk_edit_comp_pipeline;
+
+    BrushSettings settings;
 };
+
+// auto load_file_to_string(auto const &path) {
+//     auto f = std::ifstream(path);
+//     std::stringstream buffer;
+//     buffer << f.rdbuf();
+//     return buffer.str();
+// }
+// auto save_string_to_file(auto const &path, auto const &str) {
+//     auto f = std::ofstream(path);
+//     f << str;
+// }
 
 struct App : BaseApp<App> {
     // clang-format off
@@ -133,45 +151,55 @@ struct App : BaseApp<App> {
         .debug_name = APPNAME_PREFIX("optical_depth_sampler"),
     });
 
-    std::map<i32, usize> mouse_bindings;
-    std::map<i32, usize> key_bindings;
-
     std::unordered_map<std::string, Brush> brushes = load_brushes();
     std::string current_brush_key = "spruce_tree";
 
     std::chrono::file_clock::time_point last_seen_brushes_folder_update = std::chrono::file_clock::now();
 
-    std::array<i32, GAME_KEY_LAST + 1> keys{
-        GLFW_KEY_W,
-        GLFW_KEY_A,
-        GLFW_KEY_S,
-        GLFW_KEY_D,
-        GLFW_KEY_R,
-        GLFW_KEY_F,
-        GLFW_KEY_Q,
-        GLFW_KEY_E,
-        GLFW_KEY_SPACE,
-        GLFW_KEY_LEFT_CONTROL,
-        GLFW_KEY_LEFT_SHIFT,
-        GLFW_KEY_LEFT_ALT,
-        GLFW_KEY_F5,
+    std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
+        "Move Forward",
+        "Strafe Left",
+        "Move Backward",
+        "Strafe Right",
+        "Reload Chunks",
+        "Toggle Fly",
+        "Interact 1",
+        "Interact 0",
+        "Jump",
+        "Crouch",
+        "Sprint",
+        "Walk",
+        "Change Camera",
+    };
+    std::array<i32, GAME_KEY_LAST + 1> keys = {};
+    std::array<i32, GAME_MOUSE_BUTTON_LAST + 1> mouse_buttons = {
+        GLFW_MOUSE_BUTTON_1,
+        GLFW_MOUSE_BUTTON_2,
+        GLFW_MOUSE_BUTTON_3,
+        GLFW_MOUSE_BUTTON_4,
+        GLFW_MOUSE_BUTTON_5,
     };
 
+    bool paused = false;
     bool battery_saving_mode = false;
     bool should_run_startup = true;
     bool should_regenerate = false;
     bool should_regen_optical_depth = true;
 
-    bool paused = true;
     bool use_vsync = false;
     bool use_custom_resolution = false;
 
+    bool show_menus = true;
     bool show_debug_menu = false;
     bool show_help_menu = false;
     bool show_generation_menu = false;
-
     bool show_tool_menu = true;
-    bool show_tool_properties_menu = true;
+    bool show_tool_settings_menu = true;
+
+    i32 new_key_id, prev_key_id;
+    usize new_key_index = GAME_KEY_LAST + 1;
+    usize old_key_index = GAME_KEY_LAST + 1;
+    bool controls_popup_is_open = false;
 
     std::array<float, 40> frametimes = {};
     u64 frametime_rotation_index = 0;
@@ -180,26 +208,49 @@ struct App : BaseApp<App> {
     daxa::TaskList loop_task_list = record_loop_task_list();
 
     App() : BaseApp<App>() {
-        for (usize i = 0; i < keys.size(); ++i) {
-            key_bindings[keys[i]] = i;
-        }
+        load_settings();
+    }
 
-        mouse_bindings[GLFW_MOUSE_BUTTON_1] = GAME_MOUSE_BUTTON_1;
-        mouse_bindings[GLFW_MOUSE_BUTTON_2] = GAME_MOUSE_BUTTON_2;
-        mouse_bindings[GLFW_MOUSE_BUTTON_3] = GAME_MOUSE_BUTTON_3;
-        mouse_bindings[GLFW_MOUSE_BUTTON_4] = GAME_MOUSE_BUTTON_4;
-        mouse_bindings[GLFW_MOUSE_BUTTON_5] = GAME_MOUSE_BUTTON_5;
+    void save_settings() {
+        auto json = nlohmann::json{};
+        for (i32 i = 0; i < GAME_KEY_LAST + 1; ++i) {
+            auto str = fmt::format("key_{}", i);
+            json[str] = keys[i];
+        }
+        auto f = std::ofstream("assets/settings.json");
+        f << std::setw(4) << json;
+    }
+    void load_settings() {
+        auto json = nlohmann::json::parse(std::ifstream("assets/settings.json"));
+        for (i32 i = 0; i < GAME_KEY_LAST + 1; ++i) {
+            auto str = fmt::format("key_{}", i);
+            if (json.contains(str)) {
+                keys[i] = json[str];
+            }
+        }
+    }
+    void reset_settings() {
+        keys = {
+            GLFW_KEY_W,
+            GLFW_KEY_A,
+            GLFW_KEY_S,
+            GLFW_KEY_D,
+            GLFW_KEY_R,
+            GLFW_KEY_F,
+            GLFW_KEY_Q,
+            GLFW_KEY_E,
+            GLFW_KEY_SPACE,
+            GLFW_KEY_LEFT_CONTROL,
+            GLFW_KEY_LEFT_SHIFT,
+            GLFW_KEY_LEFT_ALT,
+            GLFW_KEY_F5,
+        };
+        gpu_input = default_gpu_input();
+        save_settings();
     }
 
     auto load_brushes() -> std::unordered_map<std::string, Brush> {
         std::unordered_map<std::string, Brush> result;
-
-        auto load_file_to_string = [](auto const &path) {
-            std::ifstream f = std::ifstream(path);
-            std::stringstream buffer;
-            buffer << f.rdbuf();
-            return buffer.str();
-        };
 
         std::filesystem::path const brushes_root = "assets/brushes";
         for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
@@ -216,8 +267,7 @@ struct App : BaseApp<App> {
                 std::cout << "Failed to find the config.json file associated with brush '" << display_name << "'" << std::endl;
                 continue;
             }
-            auto config_json_str = load_file_to_string(path / "config.json");
-            nlohmann::json config_json = nlohmann::json::parse(config_json_str);
+            auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
             if (config_json.contains("display_name"))
                 display_name = config_json["display_name"];
             if (!std::filesystem::exists(path / "brush_info.glsl")) {
@@ -261,11 +311,19 @@ struct App : BaseApp<App> {
                 Brush{
                     .key = name,
                     .display_name = display_name,
-                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
-                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
+
                     .thumbnail_image_path = thumbnail_path,
                     .thumbnail_needs_updating = true,
                     .preview_thumbnail = image,
+                    .task_preview_thumbnail = {},
+
+                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
+                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
+
+                    .settings = {
+                        .limit_edit_rate = false,
+                        .edit_rate = 0.0f,
+                    },
                 });
         }
 
@@ -304,8 +362,23 @@ struct App : BaseApp<App> {
             }
         };
 
-        if (paused) {
-            if (ImGui::BeginMainMenuBar()) {
+        if (show_menus) {
+            ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
+            const ImGuiViewport *viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(viewport->WorkSize);
+            ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+            ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+            ImGui::PopStyleVar(3);
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+            if (ImGui::BeginMenuBar()) {
                 if (ImGui::BeginMenu("Settings")) {
                     ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
                     // auto prev_vsync = use_vsync;
@@ -317,12 +390,10 @@ struct App : BaseApp<App> {
                     ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
                     ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
                     ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
-
                     ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
                     if (use_custom_resolution) {
                         i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
                         ImGui::InputInt2("Resolution", custom_res);
-
                         if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
                             render_size_x = custom_res[0];
                             render_size_y = custom_res[1];
@@ -338,37 +409,115 @@ struct App : BaseApp<App> {
                             recreate_render_images();
                         }
                     }
-
                     ImGui::Checkbox("Generation Settings", &show_generation_menu);
-
+                    if (ImGui::Button("Help")) {
+                        show_help_menu = !show_help_menu;
+                    }
                     if (ImGui::Button("Reset Settings")) {
-                        gpu_input = default_gpu_input();
+                        reset_settings();
+                    }
+
+                    if (ImGui::TreeNode("Controls")) {
+                        if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, 250))) {
+                            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
+                            ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
+                            ImGui::TableHeadersRow();
+                            for (usize i = 0; i < keys.size(); ++i) {
+                                ImGui::TableNextRow(ImGuiTableRowFlags_None);
+                                if (ImGui::TableSetColumnIndex(0)) {
+                                    ImGui::Text(control_strings[i].data());
+                                }
+
+                                if (ImGui::TableSetColumnIndex(1)) {
+                                    if (i == new_key_index) {
+                                        ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
+                                        if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                                            new_key_index = GAME_KEY_LAST + 1;
+                                        } else {
+                                            for (i32 key_i = 0; key_i < 512; ++key_i) {
+                                                auto key_state = glfwGetKey(glfw_window_ptr, key_i);
+                                                if (key_state != GLFW_RELEASE && !controls_popup_is_open) {
+                                                    new_key_id = key_i;
+                                                    auto key_find_iter = std::find(keys.begin(), keys.end(), key_i);
+                                                    if (key_find_iter != keys.end()) {
+                                                        prev_key_id = keys[new_key_index];
+                                                        old_key_index = key_find_iter - keys.begin();
+                                                        if (old_key_index != new_key_index) {
+                                                            // new key to set, but already in bindings
+                                                            ImGui::OpenPopup("controls_popup_id");
+                                                            controls_popup_is_open = true;
+                                                        } else {
+                                                            // same key was pressed
+                                                            keys[new_key_index] = new_key_id;
+                                                            new_key_index = GAME_KEY_LAST + 1;
+                                                            save_settings();
+                                                        }
+                                                    } else {
+                                                        // new key to set
+                                                        keys[new_key_index] = new_key_id;
+                                                        new_key_index = GAME_KEY_LAST + 1;
+                                                        save_settings();
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        auto key_name = get_key_string(keys[i]);
+                                        if (ImGui::Button(key_name, ImVec2(-FLT_MIN, 0.0f))) {
+                                            if (new_key_index == GAME_KEY_LAST + 1)
+                                                new_key_index = i;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (ImGui::BeginPopupModal("controls_popup_id", nullptr, ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
+                                ImGui::Text("You're about to overwrite the binding of another key, Would you like to swap these keys?");
+                                if (ImGui::Button("YES") || ImGui::IsKeyDown(ImGuiKey_Enter)) {
+                                    keys[old_key_index] = prev_key_id;
+                                    keys[new_key_index] = new_key_id;
+                                    save_settings();
+                                    new_key_index = GAME_KEY_LAST + 1;
+                                    ImGui::CloseCurrentPopup();
+                                    controls_popup_is_open = false;
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::Button("CANCEL") || ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                                    new_key_index = GAME_KEY_LAST + 1;
+                                    ImGui::CloseCurrentPopup();
+                                    controls_popup_is_open = false;
+                                }
+                                ImGui::EndPopup();
+                            }
+
+                            ImGui::EndTable();
+                        }
+
+                        ImGui::TreePop();
                     }
 
                     ImGui::EndMenu();
                 }
-                if (ImGui::BeginMenu("Help")) {
-                    show_help_menu = true;
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMainMenuBar();
+                ImGui::EndMenuBar();
             }
+            ImGui::End();
+
+            auto generation_settings = [this]() {
+                ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
+                ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
+                ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
+                ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
+                ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
+                if (ImGui::Button("Regenerate"))
+                    should_regenerate = true;
+                ImGui::End();
+            };
 
             if (show_tool_menu) {
-                // const ImGuiViewport *viewport = ImGui::GetMainViewport();
-                // auto pos = viewport->WorkPos;
-                // auto size = viewport->WorkSize;
-                // ImGui::SetNextWindowPos(pos);
-                // auto min_size = ImVec2(80, size.y);
-                // auto max_size = ImVec2(size.x, size.y);
-                // ImGui::SetNextWindowSizeConstraints(min_size, max_size);
                 ImGui::Begin("Tools");
                 if (ImGui::TreeNode("Brushes")) {
-                    bool limit_edit_rate = get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE);
-                    ImGui::Checkbox("Limit Edit Rate", &limit_edit_rate);
-                    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, limit_edit_rate);
-                    if (limit_edit_rate)
-                        ImGui::SliderFloat("Edit Rate", &gpu_input.settings.edit_rate, 0.01f, 1.0f);
                     for (auto const &[key, brush] : brushes) {
                         if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), ImVec2(64, 64))) {
                             current_brush_key = key;
@@ -381,22 +530,32 @@ struct App : BaseApp<App> {
                 ImGui::End();
             }
 
-            if (show_tool_properties_menu) {
-                ImGui::ShowDemoWindow();
+            if (show_tool_settings_menu) {
+                auto &current_brush = brushes.at(current_brush_key);
+                // std::string tool_window_name = fmt::format(, current_brush.display_name);
+                ImGui::Begin("Tool Settings");
+
+                ImGui::Image(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128));
+
+                // Tool specific UI (Only brush for now..)
+                ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
+                set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
+                if (current_brush.settings.limit_edit_rate)
+                    ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
+                gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
+
+                if (current_brush.key == "chunkgen") {
+                    ImGui::Text("Generation Settings");
+                    generation_settings();
+                }
+
+                ImGui::End();
             }
 
             if (show_generation_menu) {
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 240.f});
                 ImGui::Begin("Generation", &show_generation_menu);
-                ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
-                ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
-                ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
-                ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
-                ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
-                if (ImGui::Button("Regenerate"))
-                    should_regenerate = true;
-                ImGui::End();
+                generation_settings();
                 ImGui::PopStyleVar();
             }
         }
@@ -415,10 +574,8 @@ struct App : BaseApp<App> {
             fmt_str.clear();
             fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
             ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
-
             auto device_props = device.properties();
             ImGui::Text("GPU: %s", device_props.device_name);
-
             ImGui::End();
             ImGui::PopFont();
         }
@@ -426,24 +583,15 @@ struct App : BaseApp<App> {
         if (show_help_menu) {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 360.f});
             ImGui::Begin("Help", &show_help_menu);
-            ImGui::Text(R"(Keybinds:
+            ImGui::Text(R"(Controls:
+ESCAPE to toggle pause (lock/unlock camera)
 F1 for help
 F3 to see debug info
-F5 to change cameras
-WASD to move
-F to toggle fly
-R to reload chunks
 CTRL+R to reload the game
 
-(when flying)
-    SPACEBAR to ascend
-    LEFT CONTROL to descend
-(not flying)
-    SPACEBAR to jump
-
-ESCAPE to toggle pause (lock/unlock camera)
+* Brush Controls:
+E Place Edit Origin (important for some brushes, like the Castle Wall)
 SCROLL to increase/decrease brush size
-
 LEFT MOUSE BUTTON to destroy voxels
 RIGHT MOUSE BUTTON to place voxels
 )");
@@ -462,7 +610,7 @@ RIGHT MOUSE BUTTON to place voxels
         prev_time = now;
 
         gpu_input.frame_dim = {render_size_x, render_size_y};
-        set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, paused);
+        set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, show_menus);
 
         // auto current_brushes_write_time = std::filesystem::last_write_time("assets/brushes");
         // if (current_brushes_write_time - last_seen_brushes_folder_update < 0.5s) {
@@ -500,7 +648,7 @@ RIGHT MOUSE BUTTON to place voxels
         gpu_input.mouse.pos = f32vec2{x, y};
         auto offset = gpu_input.mouse.pos - center;
         gpu_input.mouse.pos = gpu_input.mouse.pos * f32vec2{static_cast<f32>(render_size_x), static_cast<f32>(render_size_y)} / f32vec2{static_cast<f32>(size_x), static_cast<f32>(size_y)};
-        if (!paused) {
+        if (!show_menus) {
             gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
             set_mouse_pos(center.x, center.y);
         }
@@ -517,18 +665,19 @@ RIGHT MOUSE BUTTON to place voxels
         if (io.WantCaptureMouse)
             return;
 
-        if (mouse_bindings.contains(button_id)) {
-            auto index = mouse_bindings[button_id];
+        auto mb_find_iter = std::find(mouse_buttons.begin(), mouse_buttons.end(), button_id);
+        if (mb_find_iter != mouse_buttons.end()) {
+            auto index = mb_find_iter - mouse_buttons.begin();
             gpu_input.mouse.buttons[index] = action;
         }
     }
     void on_key(i32 key_id, i32 action) {
         auto &io = ImGui::GetIO();
-        if (io.WantCaptureKeyboard)
+        if (io.WantCaptureKeyboard || new_key_index != GAME_KEY_LAST + 1)
             return;
 
         if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-            toggle_pause();
+            toggle_menus();
         if (key_id == GLFW_KEY_R && action == GLFW_PRESS) {
             if (glfwGetKey(glfw_window_ptr, GLFW_KEY_LEFT_CONTROL) != GLFW_RELEASE) {
                 should_run_startup = true;
@@ -544,10 +693,13 @@ RIGHT MOUSE BUTTON to place voxels
         if (key_id == GLFW_KEY_T && action == GLFW_PRESS)
             show_tool_menu = !show_tool_menu;
         if (key_id == GLFW_KEY_N && action == GLFW_PRESS)
-            show_tool_properties_menu = !show_tool_properties_menu;
+            show_tool_settings_menu = !show_tool_settings_menu;
+        if (key_id == GLFW_KEY_G && action == GLFW_PRESS)
+            show_generation_menu = !show_generation_menu;
 
-        if (!paused && key_bindings.contains(key_id)) {
-            auto index = key_bindings[key_id];
+        auto key_find_iter = std::find(keys.begin(), keys.end(), key_id);
+        if (key_find_iter != keys.end()) {
+            auto index = key_find_iter - keys.begin();
             gpu_input.keyboard.keys[index] = action;
         }
     }
@@ -573,11 +725,11 @@ RIGHT MOUSE BUTTON to place voxels
             .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         });
     }
-    void toggle_pause() {
-        set_mouse_capture(paused);
+    void toggle_menus() {
+        set_mouse_capture(show_menus);
         gpu_input.mouse = {};
         gpu_input.keyboard = {};
-        paused = !paused;
+        show_menus = !show_menus;
     }
 
     void submit_task_list() {

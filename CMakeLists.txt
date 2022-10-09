@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(gabe_voxel_game VERSION 0.1.8)
+project(gabe_voxel_game VERSION 0.1.9)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(daxa CONFIG REQUIRED)
@@ -30,27 +30,38 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DA
 set(PACKAGE_VOXEL_GAME true)
 
 if(PACKAGE_VOXEL_GAME)
-    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw)
     endif()
 
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin)
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
     install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
+    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
 
-    set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+    # set(CPACK_VERBATIM_VARIABLES true)
+    set(CPACK_PACKAGE_NAME "GabeVoxelGame")
+    set(CPACK_PACKAGE_VENDOR "Gabe-Rundlett")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Gabe Voxel Game is a simple app developed my Gabe Rundlett")
+    set(CPACK_PACKAGE_DESCRIPTION "Gabe Voxel Game is a simple app developed my Gabe Rundlett. It is in very early development, and is being documented on Gabe's YouTube channel 'Gabe Rundlett'.")
+    set(CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/packaging/infos/welcome.txt")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/packaging/infos/license.txt")
+    set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/packaging/infos/readme.txt")
+    # set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/appicon.png")
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         configure_file("packaging/main.rc.in" "${CMAKE_BINARY_DIR}/main.rc")
         target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_BINARY_DIR}/main.rc")
-        set(CPACK_NSIS_CREATE_ICONS_EXTRA "SetOutPath '$INSTDIR\\\\bin'\nCreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\gabe_voxel_game.lnk' '$INSTDIR\\\\bin\\\\gabe_voxel_game.exe'")
+        set(CPACK_NSIS_INSTALL_ROOT "C:\\\\GabeVoxelGame")
+        set(CPACK_NSIS_CREATE_ICONS_EXTRA "SetOutPath '$INSTDIR\\\\bin'\nCreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Gabe\\ Voxel\\ Game.lnk' '$INSTDIR\\\\bin\\\\gabe_voxel_game.exe'")
         set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\gabe_voxel_game.lnk'")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+        set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/packaging/appicon.ico")
+        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/packaging/appicon.ico")
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         # TODO: Find a better way to package, though tar.gz works for now
         # install(FILES "${CMAKE_SOURCE_DIR}/packaging/gabe_voxel_game.desktop" DESTINATION share/applications)

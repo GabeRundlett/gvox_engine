@@ -76,23 +76,6 @@ void perframe_player() {
     }
     PLAYER.sprint_speed = 2.5;
 
-    if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
-        if ((PLAYER.view_state & 0x10) == 0) {
-            PLAYER.view_state |= 0x10;
-            toggle_view();
-        }
-    } else {
-        PLAYER.view_state &= ~0x10;
-    }
-    if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
-        if ((PLAYER.view_state & 0x20) == 0) {
-            PLAYER.view_state |= 0x20;
-            toggle_fly();
-        }
-    } else {
-        PLAYER.view_state &= ~0x20;
-    }
-
     PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.settings.sensitivity * 0.001;
     PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * INPUT.settings.sensitivity * 0.001;
 
@@ -123,27 +106,48 @@ void perframe_player() {
     PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
     PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
 
-    if (INPUT.keyboard.keys[GAME_KEY_MOVE_FORWARD] != 0)
-        move_vec += PLAYER.forward;
-    if (INPUT.keyboard.keys[GAME_KEY_MOVE_BACKWARD] != 0)
-        move_vec -= PLAYER.forward;
-    if (INPUT.keyboard.keys[GAME_KEY_MOVE_LEFT] != 0)
-        move_vec -= PLAYER.lateral;
-    if (INPUT.keyboard.keys[GAME_KEY_MOVE_RIGHT] != 0)
-        move_vec += PLAYER.lateral;
+    f32 applied_accel = PLAYER.accel_rate;
 
-    if (is_flying) {
-        if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0)
-            move_vec += f32vec3(0, 0, 1);
-        if (INPUT.keyboard.keys[GAME_KEY_CROUCH] != 0)
-            move_vec -= f32vec3(0, 0, 1);
+    if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
+        if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
+            if ((PLAYER.view_state & 0x10) == 0) {
+                PLAYER.view_state |= 0x10;
+                toggle_view();
+            }
+        } else {
+            PLAYER.view_state &= ~0x10;
+        }
+        if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
+            if ((PLAYER.view_state & 0x20) == 0) {
+                PLAYER.view_state |= 0x20;
+                toggle_fly();
+            }
+        } else {
+            PLAYER.view_state &= ~0x20;
+        }
+
+        if (INPUT.keyboard.keys[GAME_KEY_MOVE_FORWARD] != 0)
+            move_vec += PLAYER.forward;
+        if (INPUT.keyboard.keys[GAME_KEY_MOVE_BACKWARD] != 0)
+            move_vec -= PLAYER.forward;
+        if (INPUT.keyboard.keys[GAME_KEY_MOVE_LEFT] != 0)
+            move_vec -= PLAYER.lateral;
+        if (INPUT.keyboard.keys[GAME_KEY_MOVE_RIGHT] != 0)
+            move_vec += PLAYER.lateral;
+
+        if (is_flying) {
+            if (INPUT.keyboard.keys[GAME_KEY_JUMP] != 0)
+                move_vec += f32vec3(0, 0, 1);
+            if (INPUT.keyboard.keys[GAME_KEY_CROUCH] != 0)
+                move_vec -= f32vec3(0, 0, 1);
+        }
+
+        if (INPUT.keyboard.keys[GAME_KEY_SPRINT] != 0)
+            PLAYER.max_speed += INPUT.delta_time * PLAYER.accel_rate;
+        else
+            PLAYER.max_speed -= INPUT.delta_time * PLAYER.accel_rate;
     }
 
-    f32 applied_accel = PLAYER.accel_rate;
-    if (INPUT.keyboard.keys[GAME_KEY_SPRINT] != 0)
-        PLAYER.max_speed += INPUT.delta_time * PLAYER.accel_rate;
-    else
-        PLAYER.max_speed -= INPUT.delta_time * PLAYER.accel_rate;
     PLAYER.max_speed = clamp(PLAYER.max_speed, PLAYER.speed, PLAYER.speed * PLAYER.sprint_speed);
 
     f32 move_magsq = dot(move_vec, move_vec);
@@ -494,7 +498,10 @@ void main() {
     SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
     SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
 
-    if (prev_edit_flags == 0) {
+    if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
         GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
     }
+
+    SCENE.brush_origin_sphere.o = GLOBALS.edit_origin;
+    SCENE.brush_origin_sphere.r = 0.25;
 }

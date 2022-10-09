@@ -46,10 +46,13 @@ void main() {
     SCENE.pick_box.bound_min = f32vec3(-1, -1, -1);
     SCENE.pick_box.bound_max = f32vec3(+1, +1, +1);
 
-    SCENE.capsules[SCENE.capsule_n].r = 0.3;
+    SCENE.brush_origin_sphere.o = f32vec3(0, 0, 0);
+    SCENE.brush_origin_sphere.r = 0.1;
+
+    SCENE.capsules[SCENE.capsule_n].r = 0.05;
     SCENE.capsule_n++;
 
-    SCENE.boxes[SCENE.box_n].bound_min = f32vec3(-10000, -10000, -1);
-    SCENE.boxes[SCENE.box_n].bound_max = f32vec3(+10000, +10000, +0);
-    SCENE.box_n++;
+    // SCENE.boxes[SCENE.box_n].bound_min = f32vec3(-10000, -10000, -1);
+    // SCENE.boxes[SCENE.box_n].bound_max = f32vec3(+10000, +10000, +0);
+    // SCENE.box_n++;
 }

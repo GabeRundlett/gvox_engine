@@ -94,6 +94,8 @@ struct BaseApp : AppWindow<T> {
             return ImVec4((f32)r / 255.0f, (f32)g / 255.0f, (f32)b / 255.0f, (f32)a / 255.0f);
         };
         auto &style = ImGui::GetStyle();
+        auto &io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         ImVec4 *colors = style.Colors;
         const ImVec4 bgColor = ColorFromBytes(37, 37, 38);
         const ImVec4 lightBgColor = ColorFromBytes(82, 82, 85);
@@ -150,7 +152,7 @@ struct BaseApp : AppWindow<T> {
         colors[ImGuiCol_TabUnfocused] = bgColor;
         colors[ImGuiCol_TabUnfocusedActive] = panelActiveColor;
         colors[ImGuiCol_TabHovered] = panelHoverColor;
-        style.WindowRounding = 0.0f;
+        style.WindowRounding = 4.0f;
         style.ChildRounding = 4.0f;
         style.FrameRounding = 4.0f;
         style.GrabRounding = 4.0f;

@@ -330,17 +330,26 @@ void main() {
         // TraceRecord sun_trace_record = trace_scene(sun_ray);
     }
 
-    if (GLOBALS.pick_intersection.hit) {
-        Box b = SCENE.pick_box;
+    {
+        Sphere b = SCENE.brush_origin_sphere;
         IntersectionRecord b_hit = intersect(view_ray, b);
         if (b_hit.hit) {
-            f32vec3 b_pos = view_ray.o + view_ray.nrm * b_hit.dist;
-            f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
-            f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
-            f32vec3 inside_color = f32vec3(v, v, 0.01);
-            bool is_inside = b_hit.dist > view_trace_record.intersection_record.dist;
-            f32vec3 val = f32vec3(is_inside ? inside_color : outside_color);
-            col = mix(col, val, is_inside ? 0.01 : 0.9);
+            col = mix(col, f32vec3(1, 0, 1), 0.8);
+        }
+    }
+    if (GLOBALS.pick_intersection.hit) {
+        {
+            Box b = SCENE.pick_box;
+            IntersectionRecord b_hit = intersect(view_ray, b);
+            if (b_hit.hit) {
+                f32vec3 b_pos = view_ray.o + view_ray.nrm * b_hit.dist;
+                f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
+                f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
+                f32vec3 inside_color = f32vec3(v, v, 0.01);
+                bool is_inside = b_hit.dist > view_trace_record.intersection_record.dist;
+                f32vec3 val = f32vec3(is_inside ? inside_color : outside_color);
+                col = mix(col, val, is_inside ? 0.01 : 0.9);
+            }
         }
     }
 
