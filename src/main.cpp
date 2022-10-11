@@ -3,7 +3,9 @@
 #include <fmt/format.h>
 #include <unordered_map>
 #include <fstream>
+
 #include <nlohmann/json.hpp>
+#include <sago/platform_folders.h>
 
 struct BrushSettings {
     bool limit_edit_rate;
@@ -207,7 +209,12 @@ struct App : BaseApp<App> {
 
     daxa::TaskList loop_task_list = record_loop_task_list();
 
+    std::filesystem::path data_directory = std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame";
+
     App() : BaseApp<App>() {
+        if (!std::filesystem::exists(data_directory)) {
+            std::filesystem::create_directory(data_directory);
+        }
         load_settings();
     }
 
@@ -221,7 +228,10 @@ struct App : BaseApp<App> {
         f << std::setw(4) << json;
     }
     void load_settings() {
-        auto json = nlohmann::json::parse(std::ifstream("assets/settings.json"));
+        if (!std::filesystem::exists(data_directory / "settings.json")) {
+            std::filesystem::copy("assets/default_settings.json", data_directory / "settings.json");
+        }
+        auto json = nlohmann::json::parse(std::ifstream(data_directory / "settings.json"));
         for (i32 i = 0; i < GAME_KEY_LAST + 1; ++i) {
             auto str = fmt::format("key_{}", i);
             if (json.contains(str)) {

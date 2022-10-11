@@ -1,1 +1,1 @@
-IDI_ICON1 ICON "${CMAKE_SOURCE_DIR}/appicon.ico"
+IDI_ICON1 ICON "${CMAKE_SOURCE_DIR}/packaging/appicon.ico"

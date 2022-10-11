@@ -8,10 +8,18 @@ find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(platform_folders CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} "src/main.cpp")
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa fmt::fmt nlohmann_json::nlohmann_json glm::glm glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    daxa::daxa
+    fmt::fmt
+    nlohmann_json::nlohmann_json
+    sago::platform_folders
+    glm::glm
+    glfw
+)
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
 
@@ -36,12 +44,13 @@ if(PACKAGE_VOXEL_GAME)
 
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
+    set(USER_PERMS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_WRITE WORLD_EXECUTE SETUID SETGID)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
     install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
-    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
+    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin PERMISSIONS ${USER_PERMS})
 
     # set(CPACK_VERBATIM_VARIABLES true)
     set(CPACK_PACKAGE_NAME "GabeVoxelGame")
@@ -51,17 +60,19 @@ if(PACKAGE_VOXEL_GAME)
     set(CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/packaging/infos/welcome.txt")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/packaging/infos/license.txt")
     set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/packaging/infos/readme.txt")
-    # set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/appicon.png")
+    set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/appicon.png")
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         configure_file("packaging/main.rc.in" "${CMAKE_BINARY_DIR}/main.rc")
         target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_BINARY_DIR}/main.rc")
-        set(CPACK_NSIS_INSTALL_ROOT "C:\\\\GabeVoxelGame")
-        set(CPACK_NSIS_CREATE_ICONS_EXTRA "SetOutPath '$INSTDIR\\\\bin'\nCreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Gabe\\ Voxel\\ Game.lnk' '$INSTDIR\\\\bin\\\\gabe_voxel_game.exe'")
-        set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$START_MENU\\\\gabe_voxel_game.lnk'")
-        set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-        set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/packaging/appicon.ico")
-        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/packaging/appicon.ico")
+
+        set(CPACK_GENERATOR WIX)
+        set(CPACK_WIX_UPGRADE_GUID 186207C7-9FC3-4F45-9FB1-6C515E0A93CC)
+        set(CPACK_PACKAGE_EXECUTABLES ${PROJECT_NAME} "Gabe Voxel Game")
+        set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/appicon.png")
+
+        # Set the installation directory. In this case it becomes C:/Program Files/GabeVoxelGame
+        set(CPACK_PACKAGE_INSTALL_DIRECTORY "GabeVoxelGame")
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         # TODO: Find a better way to package, though tar.gz works for now
         # install(FILES "${CMAKE_SOURCE_DIR}/packaging/gabe_voxel_game.desktop" DESTINATION share/applications)
