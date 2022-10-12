@@ -17,10 +17,9 @@ using namespace daxa::types;
 #endif
 #include <GLFW/glfw3native.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-char const *get_key_string(i32 glfw_key_id) {
+inline char const *get_key_string(i32 glfw_key_id) {
     auto result = glfwGetKeyName(glfw_key_id, 0);
     if (!result) {
         switch (glfw_key_id) {
@@ -35,18 +34,18 @@ char const *get_key_string(i32 glfw_key_id) {
         case GLFW_KEY_DOWN: result = "arrow down"; break;
         case GLFW_KEY_LEFT: result = "arrow left"; break;
         case GLFW_KEY_RIGHT: result = "arrow right"; break;
-        case GLFW_KEY_F1: result = "function 1"; break;
-        case GLFW_KEY_F2: result = "function 2"; break;
-        case GLFW_KEY_F3: result = "function 3"; break;
-        case GLFW_KEY_F4: result = "function 4"; break;
-        case GLFW_KEY_F5: result = "function 5"; break;
-        case GLFW_KEY_F6: result = "function 6"; break;
-        case GLFW_KEY_F7: result = "function 7"; break;
-        case GLFW_KEY_F8: result = "function 8"; break;
-        case GLFW_KEY_F9: result = "function 9"; break;
-        case GLFW_KEY_F10: result = "function 10"; break;
-        case GLFW_KEY_F11: result = "function 11"; break;
-        case GLFW_KEY_F12: result = "function 12"; break;
+        case GLFW_KEY_F1: result = "f1"; break;
+        case GLFW_KEY_F2: result = "f2"; break;
+        case GLFW_KEY_F3: result = "f3"; break;
+        case GLFW_KEY_F4: result = "f4"; break;
+        case GLFW_KEY_F5: result = "f5"; break;
+        case GLFW_KEY_F6: result = "f6"; break;
+        case GLFW_KEY_F7: result = "f7"; break;
+        case GLFW_KEY_F8: result = "f8"; break;
+        case GLFW_KEY_F9: result = "f9"; break;
+        case GLFW_KEY_F10: result = "f10"; break;
+        case GLFW_KEY_F11: result = "f11"; break;
+        case GLFW_KEY_F12: result = "f12"; break;
         default: result = "Unknown Key"; break;
         }
     }

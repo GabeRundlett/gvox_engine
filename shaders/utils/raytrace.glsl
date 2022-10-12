@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utils/math.glsl>
+
 #if !defined(RAYTRACE_NO_VOXELS)
 #include <utils/voxel.glsl>
 #endif

@@ -10,7 +10,7 @@ find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} "src/main.cpp")
+add_executable(${PROJECT_NAME} "src/main.cpp" "src/app.cpp")
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
