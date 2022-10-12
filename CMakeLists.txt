@@ -44,15 +44,13 @@ if(PACKAGE_VOXEL_GAME)
 
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
-    set(USER_PERMS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_WRITE WORLD_EXECUTE SETUID SETGID)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders FILE_PERMISSIONS ${USER_PERMS} DIRECTORY_PERMISSIONS ${USER_PERMS})
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
     install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
-    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin PERMISSIONS ${USER_PERMS})
+    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
 
-    # set(CPACK_VERBATIM_VARIABLES true)
     set(CPACK_PACKAGE_NAME "GabeVoxelGame")
     set(CPACK_PACKAGE_VENDOR "Gabe-Rundlett")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Gabe Voxel Game is a simple app developed my Gabe Rundlett")
@@ -71,7 +69,7 @@ if(PACKAGE_VOXEL_GAME)
         set(CPACK_PACKAGE_EXECUTABLES ${PROJECT_NAME} "Gabe Voxel Game")
         set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/appicon.png")
 
-        # Set the installation directory. In this case it becomes C:/Program Files/GabeVoxelGame
+        # Set the default installation directory. In this case it becomes C:/Program Files/GabeVoxelGame
         set(CPACK_PACKAGE_INSTALL_DIRECTORY "GabeVoxelGame")
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         # TODO: Find a better way to package, though tar.gz works for now

@@ -13,10 +13,10 @@ struct BrushSettings {
 };
 
 struct Brush {
-    std::string key;
+    std::filesystem::path key;
     std::string display_name;
 
-    std::string thumbnail_image_path; // TODO: auto generated images don't have paths
+    std::filesystem::path thumbnail_image_path; // TODO: auto generated images don't have paths
     bool thumbnail_needs_updating;
     daxa::ImageId preview_thumbnail;
     daxa::TaskImageId task_preview_thumbnail;
@@ -153,8 +153,9 @@ struct App : BaseApp<App> {
         .debug_name = APPNAME_PREFIX("optical_depth_sampler"),
     });
 
-    std::unordered_map<std::string, Brush> brushes = load_brushes();
-    std::string current_brush_key = "spruce_tree";
+    std::filesystem::path data_directory = std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame";
+    std::unordered_map<std::filesystem::path, Brush> brushes = load_brushes();
+    std::filesystem::path current_brush_key = "assets/brushes/spruce_tree";
 
     std::chrono::file_clock::time_point last_seen_brushes_folder_update = std::chrono::file_clock::now();
 
@@ -209,8 +210,6 @@ struct App : BaseApp<App> {
 
     daxa::TaskList loop_task_list = record_loop_task_list();
 
-    std::filesystem::path data_directory = std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame";
-
     App() : BaseApp<App>() {
         if (!std::filesystem::exists(data_directory)) {
             std::filesystem::create_directory(data_directory);
@@ -259,85 +258,102 @@ struct App : BaseApp<App> {
         save_settings();
     }
 
-    auto load_brushes() -> std::unordered_map<std::string, Brush> {
-        std::unordered_map<std::string, Brush> result;
+    auto load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
+        std::unordered_map<std::filesystem::path, Brush> result;
 
-        std::filesystem::path const brushes_root = "assets/brushes";
-        for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
-            if (!brushes_file.is_directory())
-                continue;
-            auto path = brushes_file.path();
-            auto name = path.filename().string();
-            if (result.contains(name)) {
-                std::cout << "Found 2 folders with the same name..?" << std::endl;
-                continue;
+        std::array<std::filesystem::path, 2> const brushes_roots = {
+            "assets/brushes",
+            data_directory / "brushes",
+        };
+        for (auto const &brushes_root : brushes_roots) {
+            if (!std::filesystem::exists(brushes_root)) {
+                std::filesystem::create_directory(brushes_root);
             }
-            auto display_name = name;
-            if (!std::filesystem::exists(path / "config.json")) {
-                std::cout << "Failed to find the config.json file associated with brush '" << display_name << "'" << std::endl;
-                continue;
-            }
-            auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
-            if (config_json.contains("display_name"))
-                display_name = config_json["display_name"];
-            if (!std::filesystem::exists(path / "brush_info.glsl")) {
-                std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
-                continue;
-            }
-            if (!std::filesystem::exists(path / "brush_kernel.glsl")) {
-                std::cout << "Failed to find the brush_kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
-                continue;
-            }
+            for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
+                if (!brushes_file.is_directory())
+                    continue;
+                auto path = brushes_file.path();
+                auto name = path; // path.filename().string();
+                if (result.contains(name)) {
+                    std::cout << "Found 2 folders with the same name..?" << std::endl;
+                    continue;
+                }
+                auto display_name = name.string();
+                if (!std::filesystem::exists(path / "config.json")) {
+                    std::cout << "Failed to find the config.json file associated with brush '" << display_name << "'" << std::endl;
+                    continue;
+                }
+                auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
+                if (config_json.contains("display_name"))
+                    display_name = config_json["display_name"];
+                if (!std::filesystem::exists(path / "brush_info.glsl")) {
+                    std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
+                    continue;
+                }
+                if (!std::filesystem::exists(path / "brush_kernel.glsl")) {
+                    std::cout << "Failed to find the brush_kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
+                    continue;
+                }
 
-            auto thumbnail_path = std::string("assets/brushes/default_thumbnail.png");
-            if (config_json.contains("custom_image"))
-                thumbnail_path = "assets/brushes/" + name + std::string("/") + std::string(config_json["custom_image"]);
+                auto thumbnail_path = std::filesystem::path("assets/brushes/default_thumbnail.png");
+                if (config_json.contains("custom_image"))
+                    thumbnail_path = name / std::string(config_json["custom_image"]);
 
-            auto image = device.create_image({
-                .format = daxa::Format::R8G8B8A8_UNORM,
-                .size = {1, 1, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
-            });
-
-            auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"perframe.comp.glsl"},
-                    .compile_options = {.root_paths = {"assets/brushes/" + name}},
-                },
-                .push_constant_size = sizeof(PerframeCompPush),
-                .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
-            });
-            auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-                    .compile_options = {.root_paths = {"assets/brushes/" + name}},
-                },
-                .push_constant_size = sizeof(ChunkEditCompPush),
-                .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
-            });
-
-            result.emplace(
-                name,
-                Brush{
-                    .key = name,
-                    .display_name = display_name,
-
-                    .thumbnail_image_path = thumbnail_path,
-                    .thumbnail_needs_updating = true,
-                    .preview_thumbnail = image,
-                    .task_preview_thumbnail = {},
-
-                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
-                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
-
-                    .settings = {
-                        .limit_edit_rate = false,
-                        .edit_rate = 0.0f,
-                    },
+                auto image = device.create_image({
+                    .format = daxa::Format::R8G8B8A8_UNORM,
+                    .size = {1, 1, 1},
+                    .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 });
+
+                auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
+                    .shader_info = {
+                        .source = daxa::ShaderFile{"perframe.comp.glsl"},
+                        .compile_options = {.root_paths = {path}},
+                    },
+                    .push_constant_size = sizeof(PerframeCompPush),
+                    .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
+                });
+                auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
+                    .shader_info = {
+                        .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
+                        .compile_options = {.root_paths = {path}},
+                    },
+                    .push_constant_size = sizeof(ChunkEditCompPush),
+                    .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
+                });
+
+                result.emplace(
+                    name,
+                    Brush{
+                        .key = name,
+                        .display_name = display_name,
+
+                        .thumbnail_image_path = thumbnail_path,
+                        .thumbnail_needs_updating = true,
+                        .preview_thumbnail = image,
+                        .task_preview_thumbnail = {},
+
+                        .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
+                        .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
+
+                        .settings = {
+                            .limit_edit_rate = false,
+                            .edit_rate = 0.0f,
+                        },
+                    });
+            }
         }
 
         return result;
+    }
+    void reload_brushes() {
+        device.wait_idle();
+        for (auto &[key, brush] : brushes) {
+            device.destroy_image(brush.preview_thumbnail);
+        }
+        brushes.clear();
+        brushes = std::move(load_brushes());
+        loop_task_list = std::move(record_loop_task_list());
     }
 
     ~App() {
@@ -528,6 +544,9 @@ struct App : BaseApp<App> {
             if (show_tool_menu) {
                 ImGui::Begin("Tools");
                 if (ImGui::TreeNode("Brushes")) {
+                    if (ImGui::Button("Reload Brushes")) {
+                        reload_brushes();
+                    }
                     for (auto const &[key, brush] : brushes) {
                         if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), ImVec2(64, 64))) {
                             current_brush_key = key;
@@ -632,8 +651,6 @@ RIGHT MOUSE BUTTON to place voxels
         }
 
         reload_pipeline(draw_comp_pipeline);
-        // reload_pipeline(perframe_comp_pipeline);
-        // reload_pipeline(chunk_edit_comp_pipeline);
         reload_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
         reload_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
         auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
@@ -780,7 +797,7 @@ RIGHT MOUSE BUTTON to place voxels
                     if (!brush.thumbnail_needs_updating)
                         continue;
                     i32 thumbnail_sx, thumbnail_sy;
-                    u8 *thumbnail_data = stbi_load(brush.thumbnail_image_path.c_str(), &thumbnail_sx, &thumbnail_sy, 0, 4);
+                    u8 *thumbnail_data = stbi_load(brush.thumbnail_image_path.string().c_str(), &thumbnail_sx, &thumbnail_sy, 0, 4);
                     if (thumbnail_sx * thumbnail_sy > 512 * 512) {
                         // std::cout << "Image was too big! skipping...";
                         brush.thumbnail_needs_updating = false;
