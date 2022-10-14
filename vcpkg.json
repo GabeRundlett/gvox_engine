@@ -4,11 +4,11 @@
     "dependencies": [
         "daxa"
     ],
-    "builtin-baseline": "678c0ea99b778c7871e648182d61e1db7cee8892",
+    "builtin-baseline": "a1737683a6f8ec5d8673890581c2a8c55838d411",
     "overrides": [
         {
             "name": "daxa",
-            "version": "0.1.0"
+            "version-string": "0.0.1"
         }
     ]
 }
