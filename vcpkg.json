@@ -22,5 +22,12 @@
                 "docking-experimental"
             ]
         }
+    ],
+    "builtin-baseline": "a1737683a6f8ec5d8673890581c2a8c55838d411",
+    "overrides": [
+        {
+            "name": "daxa",
+            "version-string": "nightly"
+        }
     ]
 }

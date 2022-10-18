@@ -39,6 +39,84 @@ auto default_gpu_input() -> GpuInput {
     };
 }
 
+#define ENABLE_THREADPOOL 1
+
+void ThreadPool::thread_loop() {
+#if ENABLE_THREADPOOL
+    while (true) {
+        std::function<void()> job;
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            mutex_condition.wait(lock, [this] {
+                return !jobs.empty() || should_terminate;
+            });
+            if (should_terminate) {
+                return;
+            }
+            job = jobs.front();
+            jobs.pop();
+        }
+        job();
+    }
+#endif
+}
+void ThreadPool::start() {
+#if ENABLE_THREADPOOL
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    threads.resize(num_threads);
+    for (uint32_t i = 0; i < num_threads; i++) {
+        threads.at(i) = std::thread(&ThreadPool::thread_loop, this);
+    }
+#endif
+}
+void ThreadPool::enqueue(std::function<void()> const &job) {
+#if ENABLE_THREADPOOL
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        jobs.push(job);
+    }
+    mutex_condition.notify_one();
+#else
+    job();
+#endif
+}
+auto ThreadPool::busy() -> bool {
+#if ENABLE_THREADPOOL
+    bool poolbusy;
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        poolbusy = !jobs.empty();
+    }
+    return poolbusy;
+#else
+    return false;
+#endif
+}
+void ThreadPool::stop() {
+#if ENABLE_THREADPOOL
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        should_terminate = true;
+    }
+    mutex_condition.notify_all();
+    for (std::thread &active_thread : threads) {
+        active_thread.join();
+    }
+    threads.clear();
+#endif
+}
+
+using Clock = std::chrono::high_resolution_clock;
+
+struct Timer {
+    Clock::time_point start = Clock::now();
+
+    ~Timer() {
+        auto now = Clock::now();
+        std::cout << "elapsed: " << std::chrono::duration<float>(now - start).count() << std::endl;
+    }
+};
+
 auto App::get_flag(u32 index) -> bool {
     return (gpu_input.settings.flags >> index) & 0x01;
 }
@@ -92,6 +170,8 @@ App::App()
           GLFW_MOUSE_BUTTON_5,
       },
       loop_task_list{record_loop_task_list()} {
+
+    thread_pool.start();
 
     // clang-format off
     startup_comp_pipeline = pipeline_compiler.create_compute_pipeline({
@@ -282,6 +362,10 @@ void App::reload_brushes() {
 }
 
 App::~App() {
+    while (thread_pool.busy()) {
+        std::this_thread::sleep_for(1ms);
+    }
+    thread_pool.stop();
     device.wait_idle();
     device.collect_garbage();
     device.destroy_image(optical_depth_image);
@@ -375,7 +459,7 @@ void App::ui_update() {
                         for (usize i = 0; i < keys.size(); ++i) {
                             ImGui::TableNextRow(ImGuiTableRowFlags_None);
                             if (ImGui::TableSetColumnIndex(0)) {
-                                ImGui::Text(control_strings[i].data());
+                                ImGui::Text("%s", control_strings[i].data());
                             }
 
                             if (ImGui::TableSetColumnIndex(1)) {
@@ -462,7 +546,6 @@ void App::ui_update() {
             ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
             if (ImGui::Button("Regenerate"))
                 should_regenerate = true;
-            ImGui::End();
         };
 
         if (show_tool_menu) {
@@ -491,13 +574,15 @@ void App::ui_update() {
             ImGui::Image(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128));
 
             // Tool specific UI (Only brush for now..)
+            ImGui::Text("Brush Settings");
+            ImGui::ColorEdit3("Brush Color", reinterpret_cast<f32 *>(&gpu_input.settings.brush_color));
             ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
             set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
             if (current_brush.settings.limit_edit_rate)
                 ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
             gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
 
-            if (current_brush.key == "chunkgen") {
+            if (current_brush.key.filename() == "chunkgen") {
                 ImGui::Text("Generation Settings");
                 generation_settings();
             }
@@ -509,6 +594,7 @@ void App::ui_update() {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 240.f});
             ImGui::Begin("Generation", &show_generation_menu);
             generation_settings();
+            ImGui::End();
             ImGui::PopStyleVar();
         }
     }

@@ -11,20 +11,20 @@ void chunk_edit(in u32 chunk_index, in u32vec3 voxel_i) {
     f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_WORLD.generation_chunk.box.bound_min;
 
     if (brush_should_edit(voxel_p)) {
-        Voxel result;
-        result.col = f32vec3(1, 0.5, 0.8);
-        result.nrm = f32vec3(0, 0, 1);
-        result.block_id = brush_id_kernel(voxel_p);
+        Voxel result = brush_kernel(voxel_p);
+        // result.col = pow(INPUT.settings.brush_color, f32vec3(2.0));
+        // result.nrm = f32vec3(0, 0, 1);
+        // result.block_id = brush_id_kernel(voxel_p);
         VOXEL_WORLD.generation_chunk.packed_voxels[voxel_index] = pack_voxel(result);
     }
 #else
     f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_CHUNKS[chunk_index].box.bound_min;
 
     if (brush_should_edit(voxel_p)) {
-        Voxel result;
-        result.col = f32vec3(1, 0.5, 0.8);
-        result.nrm = f32vec3(0, 0, 1);
-        result.block_id = brush_id_kernel(voxel_p);
+        Voxel result = brush_kernel(voxel_p);
+        // result.nrm = f32vec3(0, 0, 1);
+        // result.block_id = brush_id_kernel(voxel_p);
+        // result.col = result.block_id == BlockID_Air ? block_color(BlockID_Air) : pow(INPUT.settings.brush_color, f32vec3(2.0));
         VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
     }
 #endif

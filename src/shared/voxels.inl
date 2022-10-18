@@ -26,7 +26,7 @@ const u32 CHUNK_PTR_U32_N = (CHUNK_N / 32 == 0) ? 1 : CHUNK_N / 32;
 
 struct Voxel {
     f32vec3 col;
-    f32vec3 nrm;
+    // f32vec3 nrm;
     u32 block_id;
 };
 struct PackedVoxel {

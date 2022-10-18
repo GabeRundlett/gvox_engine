@@ -51,6 +51,6 @@ b32 custom_brush_should_edit(in BrushInput brush) {
     return wall_value - 0.1 < 0.0;
 }
 
-u32 custom_brush_id_kernel(in BrushInput brush) {
-    return BlockID_Stone;
+Voxel custom_brush_kernel(in BrushInput brush) {
+    return Voxel(block_color(BlockID_Stone), BlockID_Stone);
 }

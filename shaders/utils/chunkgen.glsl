@@ -150,8 +150,8 @@ Voxel gen_voxel(in f32vec3 voxel_p) {
 
     block_pass1(worldgen_state, voxel_p, surroundings);
 
-    result.col = f32vec3(1, 0.5, 0.8);
-    result.nrm = surroundings.nrm;
+    result.col = block_color(worldgen_state.block_id);
+    // result.nrm = surroundings.nrm;
     result.block_id = worldgen_state.block_id;
 
     return result;

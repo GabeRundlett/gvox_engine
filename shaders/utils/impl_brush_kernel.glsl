@@ -10,6 +10,7 @@ struct BrushInput {
     f32vec3 p;
     f32vec3 origin;
     f32vec3 begin_p;
+    Voxel prev_voxel;
 };
 
 f32 brush_noise_value(in f32vec3 voxel_p) {
@@ -37,14 +38,15 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     return (sd_box(voxel_p, SCENE.pick_box) < 0.0) && custom_brush_should_edit(brush);
 }
 
-u32 brush_id_kernel(in f32vec3 voxel_p) {
-    if (PLAYER.edit_voxel_id == BlockID_Stone) {
+Voxel brush_kernel(in f32vec3 voxel_p) {
+    if (PLAYER.edit_voxel_id == BlockID_Air) {
+        return Voxel(block_color(BlockID_Air), PLAYER.edit_voxel_id);
+    } else {
         BrushInput brush;
         brush.origin = floor((GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
         brush.p = voxel_p - brush.origin;
         brush.begin_p = GLOBALS.edit_origin - brush.origin;
-        return custom_brush_id_kernel(brush);
-    } else {
-        return PLAYER.edit_voxel_id;
+        brush.prev_voxel = unpack_voxel(sample_packed_voxel(voxel_p));
+        return custom_brush_kernel(brush);
     }
 }

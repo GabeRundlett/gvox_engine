@@ -36,6 +36,8 @@ struct Settings {
     f32 jitter_scl;
     f32 sensitivity;
 
+    f32vec3 brush_color;
+
     f32vec3 gen_origin;
     f32 gen_amplitude;
     f32 gen_persistance;

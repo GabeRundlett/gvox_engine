@@ -53,3 +53,8 @@ u32 custom_brush_id_kernel(in BrushInput brush) {
         }
     }
 }
+
+Voxel custom_brush_kernel(in BrushInput brush) {
+    u32 result_id = custom_brush_id_kernel(brush);
+    return Voxel(block_color(result_id), result_id);
+}

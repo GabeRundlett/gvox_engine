@@ -10,38 +10,6 @@ b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
 }
 
-f32vec3 block_color(u32 block_id) {
-    // clang-format off
-    switch (block_id) {
-    case BlockID_Debug:           return f32vec3(0.30, 0.02, 0.30); break;
-    case BlockID_Air:             return f32vec3(0.16, 0.17, 0.61); break;
-    // case BlockID_Bedrock:         return f32vec3(0.30, 0.30, 0.30); break;
-    // case BlockID_Brick:           return f32vec3(0.47, 0.23, 0.20); break;
-    // case BlockID_Cactus:          return f32vec3(0.36, 0.62, 0.28); break;
-    // case BlockID_Cobblestone:     return f32vec3(0.32, 0.31, 0.31); break;
-    // case BlockID_CompressedStone: return f32vec3(0.32, 0.31, 0.31); break;
-    // case BlockID_DiamondOre:      return f32vec3(0.18, 0.67, 0.69); break;
-    case BlockID_Dirt:            return f32vec3(0.08, 0.05, 0.03); break;
-    // case BlockID_DriedShrub:      return f32vec3(0.52, 0.36, 0.27); break;
-    case BlockID_Grass:           return f32vec3(0.05, 0.09, 0.03); break;
-    case BlockID_Gravel:          return f32vec3(0.10, 0.08, 0.07); break;
-    // case BlockID_Lava:            return f32vec3(0.00, 0.00, 0.00); break;
-    case BlockID_Leaves:          return f32vec3(0.10, 0.29, 0.10) * 0.08; break;
-    case BlockID_Log:             return f32vec3(0.06, 0.03, 0.02) * 0.5; break;
-    // case BlockID_MoltenRock:      return f32vec3(0.20, 0.13, 0.12); break;
-    // case BlockID_Planks:          return f32vec3(0.68, 0.47, 0.35); break;
-    // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
-    case BlockID_Sand:            return f32vec3(0.82, 0.50, 0.19); break;
-    case BlockID_Sandstone:       return f32vec3(0.94, 0.65, 0.38); break;
-    case BlockID_Stone:           return f32vec3(0.11, 0.10, 0.09); break;
-    case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
-    case BlockID_Water:           return f32vec3(0.10, 0.18, 0.93); break;
-    case BlockID_Snow:            return f32vec3(0.60, 0.60, 0.60); break;
-    default:                      return f32vec3(0.00, 0.00, 0.00); break;
-    }
-    // clang-format on
-}
-
 TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     complexity = 0;
 
@@ -134,8 +102,8 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
     VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
-    u32 block_id = sample_voxel_id(chunk_info.chunk_index, chunk_info.voxel_index);
-    col = block_color(block_id);
+    Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+    col = vox.col;
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
     //     col = f32vec3(0.2, 1.0, 0.2);
 

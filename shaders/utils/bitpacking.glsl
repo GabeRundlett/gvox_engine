@@ -27,6 +27,7 @@ BITPACKING_MAP_UNMAP_RANGE_TEMPLATE(f32vec3)
 BITPACKING_MAP_UNMAP_RANGE_TEMPLATE(f32vec4)
 
 u32 bitpacking_pack_f32(in u32 X, in u32 BIT_N, in u32 packed_data, in f32 value) {
+    value = sqrt(value);
     u32 MASK = ~(bitpacking_create_mask(X, BIT_N));
     packed_data &= MASK;
     packed_data |= u32(value * ((1u << BIT_N) - 1)) << X;
@@ -36,7 +37,7 @@ f32 bitpacking_unpack_f32(in u32 X, in u32 BIT_N, in u32 packed_data) {
     f32 value;
     u32 MASK = bitpacking_create_mask(X, BIT_N);
     value = ((packed_data & MASK) >> X) * 1.0 / ((1u << BIT_N) - 1);
-    return value;
+    return value * value;
 }
 u32 bitpacking_pack_f32vec2(in u32 X, in u32 BIT_N, in u32 packed_data, in f32vec2 value) {
     packed_data = bitpacking_pack_f32(X + BIT_N * 0, BIT_N, packed_data, value.x);

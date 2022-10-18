@@ -2,6 +2,7 @@
 
 #include "base_app.hpp"
 #include <unordered_map>
+#include <queue>
 
 struct BrushSettings {
     bool limit_edit_rate;
@@ -20,7 +21,25 @@ struct Brush {
     BrushSettings settings;
 };
 
+struct ThreadPool {
+    void start();
+    void enqueue(std::function<void()> const &job);
+    void stop();
+    auto busy() -> bool;
+
+  private:
+    void thread_loop();
+
+    bool should_terminate = false;
+    std::mutex queue_mutex;
+    std::condition_variable mutex_condition;
+    std::vector<std::thread> threads;
+    std::queue<std::function<void()>> jobs;
+};
+
 struct App : BaseApp<App> {
+    ThreadPool thread_pool;
+
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
     daxa::ComputePipeline chunkgen_comp_pipeline;
