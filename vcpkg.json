@@ -12,6 +12,7 @@
         "fmt",
         "glfw3",
         "glm",
+        "gvox",
         "stb",
         "nlohmann-json",
         "platform-folders",

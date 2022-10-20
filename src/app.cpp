@@ -6,6 +6,8 @@
 #include <nlohmann/json.hpp>
 #include <sago/platform_folders.h>
 
+#include <gvox/gvox.h>
+
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
     "Strafe Left",
