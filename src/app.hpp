@@ -4,9 +4,12 @@
 #include <unordered_map>
 #include <queue>
 
+#include <gvox/gvox.h>
+
 struct BrushSettings {
     bool limit_edit_rate;
     f32 edit_rate;
+    f32vec3 color;
 };
 
 struct Brush {
@@ -97,6 +100,13 @@ struct App : BaseApp<App> {
     u64 frametime_rotation_index = 0;
     std::string fmt_str;
     daxa::TaskList loop_task_list;
+
+    GVoxContext *gvox_ctx;
+    GVoxScene gvox_model;
+    daxa::BufferId gvox_model_buffer;
+    daxa::TaskBufferId task_gvox_model_buffer;
+    u32 gvox_model_size;
+    bool should_upload_gvox_model = true;
 
     App();
     ~App();

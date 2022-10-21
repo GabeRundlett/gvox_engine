@@ -76,7 +76,7 @@ f32vec4 voxel_ao(f32vec4 side, f32vec4 corner) {
     return 1.0 - ao;
 }
 
-#define TONEMAPPER 0
+#define TONEMAPPER 2
 
 f32vec3 filmic(f32vec3 color) {
 #if TONEMAPPER == 0

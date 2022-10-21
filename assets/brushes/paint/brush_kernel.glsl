@@ -6,7 +6,9 @@ b32 custom_brush_should_edit(in BrushInput brush) {
 
 Voxel custom_brush_kernel(in BrushInput brush) {
     Voxel result = brush.prev_voxel;
-    if (brush.prev_voxel.block_id == BlockID_Stone)
-        result.col = INPUT.settings.brush_color;
+    // if (brush.prev_voxel.block_id == BlockID_Stone)
+    //     result.col = INPUT.settings.brush_color;
+    if (brush.prev_voxel.block_id != BlockID_Air)
+        result.col = pow(INPUT.settings.brush_color, f32vec3(1.0));
     return result;
 }

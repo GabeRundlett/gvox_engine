@@ -33,6 +33,18 @@ DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
     u32vec3 subchunk_x8up_dispatch;
 });
 
+struct GVoxModelVoxel {
+    f32vec3 col;
+    u32 id;
+};
+
+DAXA_DECL_BUFFER_STRUCT(GpuGVoxModel, {
+    u32 size_x;
+    u32 size_y;
+    u32 size_z;
+    GVoxModelVoxel voxels[256 * 256 * 256];
+});
+
 struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
@@ -54,6 +66,7 @@ struct ChunkOptCompPush {
 struct ChunkEditCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    BufferRef(GpuGVoxModel) gpu_gvox_model;
 };
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;

@@ -6,8 +6,6 @@
 #include <nlohmann/json.hpp>
 #include <sago/platform_folders.h>
 
-#include <gvox/gvox.h>
-
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
     "Strafe Left",
@@ -172,6 +170,16 @@ App::App()
           GLFW_MOUSE_BUTTON_5,
       },
       loop_task_list{record_loop_task_list()} {
+
+    gvox_ctx = gvox_create_context();
+    gvox_register_root_path(gvox_ctx, "assets");
+    gvox_register_root_path(gvox_ctx, data_directory.string().c_str());
+    gvox_model = gvox_load_raw(gvox_ctx, "sponge.vox", "magicavoxel");
+    gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
+    gvox_model_buffer = device.create_buffer({
+        .size = gvox_model_size,
+        .debug_name = APPNAME_PREFIX("gvox_model_buffer"),
+    });
 
     thread_pool.start();
 
@@ -346,6 +354,7 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
                     .settings = {
                         .limit_edit_rate = false,
                         .edit_rate = 0.0f,
+                        .color = {1.0f, 0.2f, 0.2f},
                     },
                 });
         }
@@ -364,6 +373,7 @@ void App::reload_brushes() {
 }
 
 App::~App() {
+    gvox_destroy_context(gvox_ctx);
     while (thread_pool.busy()) {
         std::this_thread::sleep_for(1ms);
     }
@@ -371,6 +381,7 @@ App::~App() {
     device.wait_idle();
     device.collect_garbage();
     device.destroy_image(optical_depth_image);
+    device.destroy_buffer(gvox_model_buffer);
     device.destroy_buffer(gpu_globals_buffer);
     device.destroy_buffer(gpu_input_buffer);
     device.destroy_buffer(gpu_indirect_dispatch_buffer);
@@ -577,7 +588,13 @@ void App::ui_update() {
 
             // Tool specific UI (Only brush for now..)
             ImGui::Text("Brush Settings");
-            ImGui::ColorEdit3("Brush Color", reinterpret_cast<f32 *>(&gpu_input.settings.brush_color));
+            ImGui::ColorEdit3("Brush Color", reinterpret_cast<f32 *>(&current_brush.settings.color));
+            gpu_input.settings.brush_color = current_brush.settings.color;
+            // gpu_input.settings.brush_color = f32vec3{
+            //     std::powf(current_brush.settings.color.x, 2.0f),
+            //     std::powf(current_brush.settings.color.y, 2.0f),
+            //     std::powf(current_brush.settings.color.z, 2.0f),
+            // };
             ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
             set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
             if (current_brush.settings.limit_edit_rate)
@@ -784,6 +801,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     task_gpu_globals_buffer = new_task_list.create_task_buffer({.buffer = &gpu_globals_buffer, .debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
     task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.buffer = &gpu_indirect_dispatch_buffer, .debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
     task_optical_depth_image = new_task_list.create_task_image({.image = &optical_depth_image, .debug_name = APPNAME_PREFIX("task_optical_depth_image")});
+    task_gvox_model_buffer = new_task_list.create_task_buffer({.buffer = &gvox_model_buffer, .debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
 
     daxa::UsedTaskImages thumbnail_upload_task_usages;
     daxa::UsedTaskImages imgui_task_usages;
@@ -792,6 +810,43 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         thumbnail_upload_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::TRANSFER_WRITE, {}});
         imgui_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::SHADER_READ_ONLY, {}});
     }
+
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+        },
+        .task = [=, this](daxa::TaskRuntime runtime) {
+            if (should_upload_gvox_model) {
+                auto cmd_list = runtime.get_command_list();
+                auto staging_gvox_model_buffer = device.create_buffer({
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .size = gvox_model_size,
+                    .debug_name = APPNAME_PREFIX("staging_gvox_model_buffer"),
+                });
+                cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
+                GpuGVoxModel *buffer_ptr = device.map_memory_as<GpuGVoxModel>(staging_gvox_model_buffer);
+                buffer_ptr->size_x = static_cast<u32>(gvox_model.nodes[0].size_x);
+                buffer_ptr->size_y = static_cast<u32>(gvox_model.nodes[0].size_y);
+                buffer_ptr->size_z = static_cast<u32>(gvox_model.nodes[0].size_z);
+                for (usize i = 0; i < buffer_ptr->size_x * buffer_ptr->size_y * buffer_ptr->size_z; ++i) {
+                    auto &i_vox = gvox_model.nodes[0].voxels[i];
+                    auto &o_vox = buffer_ptr->voxels[i];
+                    o_vox.col.x = i_vox.color.x;
+                    o_vox.col.y = i_vox.color.y;
+                    o_vox.col.z = i_vox.color.z;
+                    o_vox.id = i_vox.id;
+                }
+                device.unmap_memory(staging_gvox_model_buffer);
+                cmd_list.copy_buffer_to_buffer({
+                    .src_buffer = staging_gvox_model_buffer,
+                    .dst_buffer = gvox_model_buffer,
+                    .size = gvox_model_size,
+                });
+                should_upload_gvox_model = false;
+            }
+        },
+        .debug_name = APPNAME_PREFIX("Upload brush thumbnails"),
+    });
 
     new_task_list.add_task({
         .used_images = thumbnail_upload_task_usages,
@@ -834,7 +889,6 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 offset += data_size;
                 brush.thumbnail_needs_updating = false;
             }
-
             device.unmap_memory(image_staging_buffer);
         },
         .debug_name = APPNAME_PREFIX("Upload brush thumbnails"),
@@ -997,7 +1051,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.set_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_input = device.buffer_reference(gpu_input_buffer),
+                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
         },
