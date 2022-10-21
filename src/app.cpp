@@ -273,8 +273,8 @@ void App::reset_settings() {
     save_settings();
 }
 
-auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
-    std::unordered_map<std::filesystem::path, Brush> result;
+auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
+    std::unordered_map<std::string, Brush> result;
 
     std::array<std::filesystem::path, 2> const brushes_roots = {
         "assets/brushes",
@@ -289,7 +289,7 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
                 continue;
             auto path = brushes_file.path();
             auto name = path; // path.filename().string();
-            if (result.contains(name)) {
+            if (result.contains(name.string())) {
                 std::cout << "Found 2 folders with the same name..?" << std::endl;
                 continue;
             }
@@ -341,7 +341,7 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
             result.emplace(
                 name,
                 Brush{
-                    .key = name,
+                    .path = name,
                     .display_name = display_name,
 
                     .thumbnail_image_path = thumbnail_path,
@@ -603,12 +603,12 @@ void App::ui_update() {
                 ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
             gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
 
-            if (current_brush.key.filename() == "chunkgen") {
+            if (current_brush.path.filename() == "chunkgen") {
                 ImGui::Text("Generation Settings");
                 generation_settings();
             }
 
-            if (current_brush.key.filename() == "model") {
+            if (current_brush.path.filename() == "model") {
                 ImGui::Text("Model Settings");
                 ImGui::InputText("File", &gvox_model_path);
                 ImGui::InputText("File Type", &gvox_model_type);
@@ -914,7 +914,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .format = daxa::Format::R8G8B8A8_SRGB,
                     .size = {static_cast<u32>(thumbnail_sx), static_cast<u32>(thumbnail_sy), 1},
                     .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_DST,
-                    .debug_name = brush.key.string() + " thumbnail image",
+                    .debug_name = brush.path.string() + " thumbnail image",
                 });
                 runtime.add_runtime_image(brush.task_preview_thumbnail, brush.preview_thumbnail);
                 cmd_list.pipeline_barrier_image_transition({
