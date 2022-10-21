@@ -96,17 +96,18 @@ struct App : BaseApp<App> {
     bool show_tool_menu = true;
     bool show_tool_settings_menu = true;
 
+    GVoxContext *gvox_ctx;
+    GVoxScene gvox_model = {};
+    daxa::BufferId gvox_model_buffer = {};
+    daxa::TaskBufferId task_gvox_model_buffer = {};
+    std::string gvox_model_path, gvox_model_type;
+    u32 gvox_model_size;
+    bool should_upload_gvox_model = true;
+
     std::array<float, 40> frametimes = {};
     u64 frametime_rotation_index = 0;
     std::string fmt_str;
     daxa::TaskList loop_task_list;
-
-    GVoxContext *gvox_ctx;
-    GVoxScene gvox_model;
-    daxa::BufferId gvox_model_buffer;
-    daxa::TaskBufferId task_gvox_model_buffer;
-    u32 gvox_model_size;
-    bool should_upload_gvox_model = true;
 
     App();
     ~App();

@@ -54,7 +54,7 @@ f32 optical_depth_baked(Ray ray) {
     f32 height_above_surface = length(ray.o) - PLANET_RADIUS;
     f32 height_normalized = clamp(height_above_surface / (ATMOSPHERE_RADIUS - PLANET_RADIUS), 0, 1);
     f32 angle = 1.0 - (dot(normalize(ray.o), ray.nrm) * 0.5 + 0.5);
-    return texture(sampler2D(daxa_GetImage(texture2D, push_constant.optical_depth_image_id), daxa_GetSampler(sampler, push_constant.optical_depth_sampler_id)), f32vec2(angle, height_normalized)).r;
+    return texture(sampler2D(daxa_access_Image(texture2D, push_constant.optical_depth_image_id), daxa_access_Sampler(sampler, push_constant.optical_depth_sampler_id)), f32vec2(angle, height_normalized)).r;
 }
 
 f32 optical_depth_baked2(Ray ray, f32 ray_length) {

@@ -6,6 +6,8 @@
 #include <nlohmann/json.hpp>
 #include <sago/platform_folders.h>
 
+#include <imgui_stdlib.h>
+
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
     "Strafe Left",
@@ -171,15 +173,13 @@ App::App()
       },
       loop_task_list{record_loop_task_list()} {
 
+    gvox_model_path = "sponge.vox";
+    gvox_model_type = "magicavoxel";
+
     gvox_ctx = gvox_create_context();
     gvox_register_root_path(gvox_ctx, "assets");
     gvox_register_root_path(gvox_ctx, data_directory.string().c_str());
-    gvox_model = gvox_load_raw(gvox_ctx, "sponge.vox", "magicavoxel");
-    gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
-    gvox_model_buffer = device.create_buffer({
-        .size = gvox_model_size,
-        .debug_name = APPNAME_PREFIX("gvox_model_buffer"),
-    });
+    // gvox_register_root_path(gvox_ctx, "C:/Users/gabe/Downloads/MagicaVoxel-0.99.6.4-win64/vox");
 
     thread_pool.start();
 
@@ -238,7 +238,7 @@ void App::save_settings() {
         auto str = fmt::format("key_{}", i);
         json[str] = keys[i];
     }
-    auto f = std::ofstream("assets/settings.json");
+    auto f = std::ofstream(data_directory / "settings.json");
     f << std::setw(4) << json;
 }
 void App::load_settings() {
@@ -315,9 +315,10 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
                 thumbnail_path = name / std::string(config_json["custom_image"]);
 
             auto image = device.create_image({
-                .format = daxa::Format::R8G8B8A8_UNORM,
+                .format = daxa::Format::R8G8B8A8_SRGB,
                 .size = {1, 1, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+                .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_DST,
+                .debug_name = path.string() + " thumbnail image",
             });
 
             auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
@@ -381,6 +382,7 @@ App::~App() {
     device.wait_idle();
     device.collect_garbage();
     device.destroy_image(optical_depth_image);
+    device.destroy_sampler(optical_depth_sampler);
     device.destroy_buffer(gvox_model_buffer);
     device.destroy_buffer(gpu_globals_buffer);
     device.destroy_buffer(gpu_input_buffer);
@@ -606,6 +608,14 @@ void App::ui_update() {
                 generation_settings();
             }
 
+            if (current_brush.key.filename() == "model") {
+                ImGui::Text("Model Settings");
+                ImGui::InputText("File", &gvox_model_path);
+                ImGui::InputText("File Type", &gvox_model_type);
+                if (ImGui::Button("Reload Model"))
+                    should_upload_gvox_model = true;
+            }
+
             ImGui::End();
         }
 
@@ -774,12 +784,15 @@ void App::on_resize(u32 sx, u32 sy) {
     }
 }
 void App::recreate_render_images() {
+    loop_task_list.remove_runtime_image(task_render_image, render_image);
     device.destroy_image(render_image);
     render_image = device.create_image({
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {render_size_x, render_size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .debug_name = APPNAME_PREFIX("render_image"),
     });
+    loop_task_list.add_runtime_image(task_render_image, render_image);
 }
 void App::toggle_menus() {
     set_mouse_capture(show_menus);
@@ -789,24 +802,32 @@ void App::toggle_menus() {
 }
 
 void App::submit_task_list() {
+    loop_task_list.remove_runtime_image(task_swapchain_image, swapchain_image);
     swapchain_image = swapchain.acquire_next_image();
+    loop_task_list.add_runtime_image(task_swapchain_image, swapchain_image);
     if (swapchain_image.is_empty())
         return;
     loop_task_list.execute();
 }
 
 void App::record_tasks(daxa::TaskList &new_task_list) {
-    task_render_image = new_task_list.create_task_image({.image = &render_image, .debug_name = APPNAME_PREFIX("task_render_image")});
-    task_gpu_input_buffer = new_task_list.create_task_buffer({.buffer = &gpu_input_buffer, .debug_name = APPNAME_PREFIX("task_gpu_input_buffer")});
-    task_gpu_globals_buffer = new_task_list.create_task_buffer({.buffer = &gpu_globals_buffer, .debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
-    task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.buffer = &gpu_indirect_dispatch_buffer, .debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
-    task_optical_depth_image = new_task_list.create_task_image({.image = &optical_depth_image, .debug_name = APPNAME_PREFIX("task_optical_depth_image")});
-    task_gvox_model_buffer = new_task_list.create_task_buffer({.buffer = &gvox_model_buffer, .debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
+    task_render_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_render_image")});
+    new_task_list.add_runtime_image(task_render_image, render_image);
+    task_gpu_input_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_input_buffer")});
+    new_task_list.add_runtime_buffer(task_gpu_input_buffer, gpu_input_buffer);
+    task_gpu_globals_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
+    new_task_list.add_runtime_buffer(task_gpu_globals_buffer, gpu_globals_buffer);
+    task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
+    new_task_list.add_runtime_buffer(task_gpu_indirect_dispatch_buffer, gpu_indirect_dispatch_buffer);
+    task_optical_depth_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_optical_depth_image")});
+    new_task_list.add_runtime_image(task_optical_depth_image, optical_depth_image);
+    task_gvox_model_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
 
     daxa::UsedTaskImages thumbnail_upload_task_usages;
     daxa::UsedTaskImages imgui_task_usages;
     for (auto &[key, brush] : brushes) {
-        brush.task_preview_thumbnail = new_task_list.create_task_image({.image = &brush.preview_thumbnail});
+        brush.task_preview_thumbnail = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("brush.task_preview_thumbnail")}),
+        new_task_list.add_runtime_image(brush.task_preview_thumbnail, brush.preview_thumbnail);
         thumbnail_upload_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::TRANSFER_WRITE, {}});
         imgui_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::SHADER_READ_ONLY, {}});
     }
@@ -818,6 +839,21 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [=, this](daxa::TaskRuntime runtime) {
             if (should_upload_gvox_model) {
                 auto cmd_list = runtime.get_command_list();
+                if (!gvox_model_buffer.is_empty()) {
+                    runtime.remove_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
+                    cmd_list.destroy_buffer_deferred(gvox_model_buffer);
+                }
+                gvox_destroy_scene(gvox_model);
+                gvox_model = gvox_load_raw(gvox_ctx, gvox_model_path.c_str(), gvox_model_type.c_str());
+                gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
+                gvox_model_buffer = device.create_buffer({
+                    .size = gvox_model_size,
+                    .debug_name = APPNAME_PREFIX("gvox_model_buffer"),
+                });
+                runtime.add_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
+                cmd_list.pipeline_barrier({
+                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                });
                 auto staging_gvox_model_buffer = device.create_buffer({
                     .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .size = gvox_model_size,
@@ -845,7 +881,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 should_upload_gvox_model = false;
             }
         },
-        .debug_name = APPNAME_PREFIX("Upload brush thumbnails"),
+        .debug_name = APPNAME_PREFIX("Upload GVOX Model"),
     });
 
     new_task_list.add_task({
@@ -870,11 +906,23 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     stbi_image_free(thumbnail_data);
                     continue;
                 }
-                device.destroy_image(brush.preview_thumbnail);
+                runtime.remove_runtime_image(brush.task_preview_thumbnail, brush.preview_thumbnail);
+                if (!brush.preview_thumbnail.is_empty()) {
+                    cmd_list.destroy_image_deferred(brush.preview_thumbnail);
+                }
                 brush.preview_thumbnail = device.create_image({
                     .format = daxa::Format::R8G8B8A8_SRGB,
                     .size = {static_cast<u32>(thumbnail_sx), static_cast<u32>(thumbnail_sy), 1},
-                    .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+                    .usage = daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_DST,
+                    .debug_name = brush.key.string() + " thumbnail image",
+                });
+                runtime.add_runtime_image(brush.task_preview_thumbnail, brush.preview_thumbnail);
+                cmd_list.pipeline_barrier_image_transition({
+                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                    .before_layout = daxa::ImageLayout::UNDEFINED,
+                    .after_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    .image_slice = {},
+                    .image_id = brush.preview_thumbnail,
                 });
                 auto data_size = thumbnail_sx * thumbnail_sy * 4;
                 memcpy(buffer_ptr + offset, thumbnail_data, data_size);
@@ -1044,6 +1092,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();

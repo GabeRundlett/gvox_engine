@@ -24,7 +24,7 @@ using Clock = std::chrono::high_resolution_clock;
 template <typename T>
 struct BaseApp : AppWindow<T> {
     daxa::Context daxa_ctx = daxa::create_context({
-        .enable_validation = false,
+        .enable_validation = true,
     });
     daxa::Device device = daxa_ctx.create_device({
         .selector = [](daxa::DeviceProperties const &device_props) -> i32 {
@@ -195,15 +195,14 @@ struct BaseApp : AppWindow<T> {
     auto record_loop_task_list() -> daxa::TaskList {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
-            .dont_use_split_barriers = true,
             .swapchain = swapchain,
             .debug_name = APPNAME_PREFIX("task_list"),
         });
         task_swapchain_image = new_task_list.create_task_image({
-            .image = &swapchain_image,
             .swapchain_image = true,
             .debug_name = APPNAME_PREFIX("task_swapchain_image"),
         });
+        new_task_list.add_runtime_image(task_swapchain_image, swapchain_image);
 
         reinterpret_cast<T *>(this)->record_tasks(new_task_list);
 

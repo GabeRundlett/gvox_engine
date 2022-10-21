@@ -1,5 +1,7 @@
 #pragma once
 
+#define DAXA_SHADER_NO_NAMESPACE
+
 #include <shared/user_input.inl>
 #include <shared/player.inl>
 #include <shared/scene.inl>
@@ -49,7 +51,7 @@ struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
 struct OpticalDepthCompPush {
-    ImageViewId image_id;
+    daxa_ImageViewId image_id;
 };
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
@@ -72,9 +74,9 @@ struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
 
-    ImageViewId image_id;
-    ImageViewId optical_depth_image_id;
-    SamplerId optical_depth_sampler_id;
+    daxa_ImageViewId image_id;
+    daxa_ImageViewId optical_depth_image_id;
+    daxa_SamplerId optical_depth_sampler_id;
 };
 
 #define GLOBALS push_constant.gpu_globals
