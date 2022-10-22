@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <fstream>
+#include <numbers>
 
 #include <nlohmann/json.hpp>
 #include <sago/platform_folders.h>
