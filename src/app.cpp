@@ -283,6 +283,9 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
         data_directory / "brushes",
     };
     for (auto const &brushes_root : brushes_roots) {
+        if (!std::filesystem::exists(data_directory)) {
+            std::filesystem::create_directory(data_directory);
+        }
         if (!std::filesystem::exists(brushes_root)) {
             std::filesystem::create_directory(brushes_root);
         }
