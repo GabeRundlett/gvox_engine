@@ -177,9 +177,9 @@ App::App()
     gvox_model_type = "magicavoxel";
 
     gvox_ctx = gvox_create_context();
-    gvox_register_root_path(gvox_ctx, "assets");
-    gvox_register_root_path(gvox_ctx, data_directory.string().c_str());
-    // gvox_register_root_path(gvox_ctx, "C:/Users/gabe/Downloads/MagicaVoxel-0.99.6.4-win64/vox");
+    gvox_push_root_path(gvox_ctx, "assets");
+    gvox_push_root_path(gvox_ctx, data_directory.string().c_str());
+    // gvox_push_root_path(gvox_ctx, "C:/Users/gabe/Downloads/MagicaVoxel-0.99.6.4-win64/vox");
 
     thread_pool.start();
 
