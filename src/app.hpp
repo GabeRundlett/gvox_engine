@@ -3,8 +3,6 @@
 #include "base_app.hpp"
 #include <unordered_map>
 #include <queue>
-#include <mutex>
-#include <condition_variable>
 
 #include <gvox/gvox.h>
 
@@ -15,7 +13,7 @@ struct BrushSettings {
 };
 
 struct Brush {
-    std::filesystem::path path;
+    std::filesystem::path key;
     std::string display_name;
     std::filesystem::path thumbnail_image_path; // TODO: auto generated images don't have paths
     bool thumbnail_needs_updating;
@@ -72,7 +70,7 @@ struct App : BaseApp<App> {
     daxa::SamplerId optical_depth_sampler;
 
     std::filesystem::path data_directory;
-    std::unordered_map<std::string, Brush> brushes;
+    std::unordered_map<std::filesystem::path, Brush> brushes;
     std::filesystem::path current_brush_key;
     std::chrono::file_clock::time_point last_seen_brushes_folder_update;
 
@@ -118,7 +116,7 @@ struct App : BaseApp<App> {
     void save_settings();
     void reset_settings();
 
-    auto load_brushes() -> std::unordered_map<std::string, Brush>;
+    auto load_brushes() -> std::unordered_map<std::filesystem::path, Brush>;
     void reload_brushes();
 
     auto get_flag(u32 index) -> bool;

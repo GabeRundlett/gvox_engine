@@ -195,7 +195,6 @@ struct BaseApp : AppWindow<T> {
     auto record_loop_task_list() -> daxa::TaskList {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
-            .dont_use_split_barriers = true,
             .swapchain = swapchain,
             .debug_name = APPNAME_PREFIX("task_list"),
         });
