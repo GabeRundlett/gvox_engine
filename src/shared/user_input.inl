@@ -35,6 +35,7 @@ struct Settings {
     f32 edit_rate;
     f32 jitter_scl;
     f32 sensitivity;
+    f32 daylight_cycle_time;
 
     f32vec3 brush_color;
 

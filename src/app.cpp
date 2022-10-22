@@ -30,6 +30,7 @@ auto default_gpu_input() -> GpuInput {
             .fov = 90.0f,
             .jitter_scl = 1.0f,
             .sensitivity = 1.0f,
+            .daylight_cycle_time = std::numbers::pi_v<f32> * 0.6f,
 
             .gen_origin = {-1000.0f, 50.0f, 0.0f},
             .gen_amplitude = 1.0f,
@@ -437,6 +438,7 @@ void App::ui_update() {
                 //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
                 // }
                 ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
+                ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
                 ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
                 ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
                 ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);

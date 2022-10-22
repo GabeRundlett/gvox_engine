@@ -4,7 +4,7 @@
 #define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
 
 #define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
-#define SUN_TIME (PI * 0.6)
+#define SUN_TIME INPUT.settings.daylight_cycle_time
 #define SUN_DIR normalize(f32vec3(0.8 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
 
 #define USE_OLD_SKY 0
