@@ -160,7 +160,7 @@ App::App()
       })},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"},
       brushes{load_brushes()},
-      current_brush_key{"assets/brushes/spruce_tree"},
+      current_brush_key{absolute(std::filesystem::path("assets/brushes/spruce_tree")).string()},
       last_seen_brushes_folder_update{std::chrono::file_clock::now()},
       keys{},
       // clang-format on
@@ -273,8 +273,8 @@ void App::reset_settings() {
     save_settings();
 }
 
-auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
-    std::unordered_map<std::filesystem::path, Brush> result;
+auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
+    std::unordered_map<std::string, Brush> result;
 
     std::array<std::filesystem::path, 2> const brushes_roots = {
         "assets/brushes",
@@ -287,9 +287,9 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
         for (auto const &brushes_file : std::filesystem::directory_iterator{brushes_root}) {
             if (!brushes_file.is_directory())
                 continue;
-            auto path = brushes_file.path();
+            auto path = absolute(brushes_file.path());
             auto name = path; // path.filename().string();
-            if (result.contains(name)) {
+            if (result.contains(name.string())) {
                 std::cout << "Found 2 folders with the same name..?" << std::endl;
                 continue;
             }
@@ -339,7 +339,7 @@ auto App::load_brushes() -> std::unordered_map<std::filesystem::path, Brush> {
             });
 
             result.emplace(
-                name,
+                name.string(),
                 Brush{
                     .key = name,
                     .display_name = display_name,
@@ -990,15 +990,6 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 });
                 should_regenerate = false;
             }
-        },
-        .debug_name = "Startup (GenState Clear)",
-    });
-
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
             if (should_run_startup) {
                 auto cmd_list = interf.get_command_list();
                 cmd_list.clear_buffer({
