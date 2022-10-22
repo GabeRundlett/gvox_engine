@@ -5,6 +5,7 @@
 #include <thread>
 using namespace std::chrono_literals;
 #include <iostream>
+#include <filesystem>
 #include <cmath>
 
 #include <daxa/utils/imgui.hpp>
@@ -67,12 +68,27 @@ struct BaseApp : AppWindow<T> {
         ImGuiIO &io = ImGui::GetIO();
         mono_font = io.Fonts->AddFontDefault();
 #if defined(_WIN32)
-        base_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 16.0f);
-        menu_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 32.0f);
+        if (std::filesystem::exists("C:/Windows/Fonts/segoeui.ttf")) {
+            base_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 16.0f);
+            menu_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 32.0f);
+        } else {
+            base_font = io.Fonts->AddFontDefault();
+            menu_font = io.Fonts->AddFontDefault();
+        }
 #elif defined(__linux__)
-        base_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16.0f);
-        menu_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32.0f);
+        if (std::filesystem::exists("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+            base_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16.0f);
+            menu_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32.0f);
+        } else {
+            base_font = io.Fonts->AddFontDefault();
+            menu_font = io.Fonts->AddFontDefault();
+        }
 #endif
+        if (!base_font)
+            base_font = io.Fonts->AddFontDefault();
+        if (!menu_font)
+            menu_font = io.Fonts->AddFontDefault();
+
         ImGui_ImplGlfw_InitForVulkan(AppWindow<T>::glfw_window_ptr, true);
         return daxa::ImGuiRenderer({
             .device = device,
