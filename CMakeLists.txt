@@ -28,7 +28,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
 set(GVOX_FORMATS
     gvox_simple
     gvox_u32
-    gvox_u32_delta
+    gvox_u32_palette
     magicavoxel
 )
 foreach(FORMAT_NAME ${GVOX_FORMATS})

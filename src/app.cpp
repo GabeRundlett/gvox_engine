@@ -178,10 +178,18 @@ App::App()
     gvox_model_path = "sponge.vox";
     gvox_model_type = "magicavoxel";
 
+    // gvox_model_path = "compare_scene0_gvox_u32.gvox";
+    // gvox_model_type = "gvox";
+
+    // gvox_model_path = "compare_scene0_magicavoxel.vox";
+    // gvox_model_type = "magicavoxel";
+
     gvox_ctx = gvox_create_context();
     gvox_push_root_path(gvox_ctx, "assets");
     gvox_push_root_path(gvox_ctx, data_directory.string().c_str());
+
     // gvox_push_root_path(gvox_ctx, "C:/Users/gabe/Downloads/MagicaVoxel-0.99.6.4-win64/vox");
+    // gvox_push_root_path(gvox_ctx, "C:/dev/projects/c++/gvox/tests/simple");
 
     thread_pool.start();
 
@@ -850,7 +858,12 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     cmd_list.destroy_buffer_deferred(gvox_model_buffer);
                 }
                 gvox_destroy_scene(gvox_model);
-                gvox_model = gvox_load_raw(gvox_ctx, gvox_model_path.c_str(), gvox_model_type.c_str());
+                if (gvox_model_type == "gvox") {
+                    gvox_model = gvox_load(gvox_ctx, gvox_model_path.c_str());
+                } else {
+                    gvox_model = gvox_load_raw(gvox_ctx, gvox_model_path.c_str(), gvox_model_type.c_str());
+                }
+
                 gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
                 gvox_model_buffer = device.create_buffer({
                     .size = gvox_model_size,
