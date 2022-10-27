@@ -30,15 +30,16 @@ auto default_gpu_input() -> GpuInput {
         .settings{
             .fov = 90.0f,
             .jitter_scl = 1.0f,
+            .frame_blending = 0.3f,
             .sensitivity = 1.0f,
             .daylight_cycle_time = std::numbers::pi_v<f32> * 0.6f,
 
             .gen_origin = {-1000.0f, 50.0f, 0.0f},
             .gen_amplitude = 1.0f,
-            .gen_persistance = 0.14f,
-            .gen_scale = 0.015f,
-            .gen_lacunarity = 4.7f,
-            .gen_octaves = 4,
+            .gen_persistance = 0.33f,
+            .gen_scale = 0.011f,
+            .gen_lacunarity = 2.726f,
+            .gen_octaves = 7,
         },
     };
 }
@@ -138,7 +139,7 @@ App::App()
           .debug_name = APPNAME_PREFIX("gpu_input_buffer"),
       })},
       render_image{device.create_image(daxa::ImageInfo{
-          .format = daxa::Format::R8G8B8A8_UNORM,
+          .format = daxa::Format::R16G16B16A16_SFLOAT,
           .size = {render_size_x, render_size_y, 1},
           .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
           .debug_name = APPNAME_PREFIX("render_image"),
@@ -188,7 +189,6 @@ App::App()
     gvox_push_root_path(gvox_ctx, "assets");
     gvox_push_root_path(gvox_ctx, data_directory.string().c_str());
 
-    // gvox_push_root_path(gvox_ctx, "C:/Users/gabe/Downloads/MagicaVoxel-0.99.6.4-win64/vox");
     // gvox_push_root_path(gvox_ctx, "C:/dev/projects/c++/gvox/tests/simple");
 
     thread_pool.start();
@@ -453,6 +453,7 @@ void App::ui_update() {
                 ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
                 ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
                 ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
+                ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
                 ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
                 if (use_custom_resolution) {
                     i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
@@ -801,7 +802,7 @@ void App::recreate_render_images() {
     loop_task_list.remove_runtime_image(task_render_image, render_image);
     device.destroy_image(render_image);
     render_image = device.create_image({
-        .format = daxa::Format::R8G8B8A8_UNORM,
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {render_size_x, render_size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .debug_name = APPNAME_PREFIX("render_image"),

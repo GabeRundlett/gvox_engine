@@ -1,7 +1,8 @@
 #pragma once
 
 b32 custom_brush_should_edit(in BrushInput brush) {
-    return length(brush.p) < PLAYER.edit_radius;
+    f32 r = 1; // rand(brush.p + brush.origin + INPUT.time);
+    return length(brush.p) < PLAYER.edit_radius && r > 0.99;
 }
 
 Voxel custom_brush_kernel(in BrushInput brush) {

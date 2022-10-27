@@ -6,6 +6,10 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 #include <utils/raytrace.glsl>
 #include <utils/sky.glsl>
 
+#define RENDER_SHADOWS 1
+#define RENDER_SHADING 1
+#define RENDER_FOG 1
+
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
 }
@@ -228,18 +232,28 @@ void main() {
         } break;
         }
         bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
+#if RENDER_SHADING
         f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
+#else
+        f32 shade = max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
+#endif
         i32 temp_i32;
+#if RENDER_SHADOWS
         TraceRecord bounce_trace_record = trace_scene(bounce_ray, temp_i32);
+#endif
         f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
         switch (view_trace_record.material) {
         case 0:
         case 1: {
+#if RENDER_SHADOWS
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+#endif
         } break;
         case 2: {
             col = voxel_color(hit_pos, hit_nrm);
+#if RENDER_SHADOWS
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+#endif
             // if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
             //     col *= f32vec3(4.0, 4.0, 4.0);
             //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
@@ -251,7 +265,7 @@ void main() {
             f32vec3 local_pos = (hit_pos - c.p1) * 1;
             local_pos.xy = rot_mat * local_pos.xy;
             // f32vec3 result = f32vec3(0.3, 0.3, 0.3);
-            f32vec3 result = f32vec3(0.60, 0.27, 0.20);
+            f32vec3 result = f32vec3(0.50, 0.33, 0.30);
             f32vec2 uv = local_pos.xz;
             f32vec2 e1_uv = uv - f32vec2(0.1, 0.0);
             f32 e1 = f32(dot(e1_uv, e1_uv) > 0.001);
@@ -269,19 +283,26 @@ void main() {
             f32 belt_fac = f32(fract(radial * 20) < 0.8 && local_pos.z > -0.64 && local_pos.z < -0.62);
             f32vec2 shirt_uv = f32vec2(local_pos.x, (local_pos.z + 0.40) * 4);
             f32 shirt_fac = f32(shirt_uv.y > 0 || (dot(shirt_uv, shirt_uv) < 0.1 + local_pos.y * 0.1));
-            result = mix(f32vec3(0.4, 0.05, 0.042), result, shirt_fac);
+            result = mix(f32vec3(0.4, 0.08, 0.07), result, shirt_fac);
             result = mix(f32vec3(0.04, 0.04, 0.12), result, pants_fac);
             result = mix(result, f32vec3(0.03, 0.03, 0.10), f32(b_pockets_fac != 0.0 || f_pockets_fac != 0.0 || (f_pocket_pos.x > 0.045 && local_pos.z < -0.68 && local_pos.z > -1.5)));
             result = mix(f32vec3(0.0, 0.0, 0.0), result, face_fac);
             result = mix(result, f32vec3(0.04, 0.02, 0.01), belt_fac);
             col = result;
+#if RENDER_SHADOWS
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+#endif
         } break;
         }
-        f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.01, 0, 1);
+
         f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
+#if RENDER_FOG
+        f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.02, 0, 1);
         f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
-        col = surface_col + fog_col * fog_factor;
+        col = mix(surface_col, fog_col, fog_factor);
+#else
+        col = surface_col;
+#endif
 
         // col = hit_pos;
         // col = hit_nrm;
@@ -330,8 +351,19 @@ void main() {
         }
     }
 
+    f32vec3 prev_col = filmic_inv(
+        imageLoad(
+            daxa_access_RWImage(image2D, rgba32f, push_constant.image_id),
+            i32vec2(pixel_i.xy))
+            .rgb);
+
+    prev_col = clamp(prev_col, f32vec3(0), f32vec3(1));
+    col = clamp(col, f32vec3(0), f32vec3(1));
+
+    f32 blending = INPUT.settings.frame_blending;
+
     imageStore(
         daxa_access_RWImage(image2D, rgba32f, push_constant.image_id),
         i32vec2(pixel_i.xy),
-        f32vec4(filmic(col), 1));
+        f32vec4(filmic((col * (1.0 - blending) + prev_col * blending)), 1));
 }

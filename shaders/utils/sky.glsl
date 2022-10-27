@@ -1,14 +1,19 @@
 #pragma once
 
+#define DISABLE_SKY 0
+#define USE_OLD_SKY 0
+#define USE_BAKED_OPTICAL_DEPTH 1
+
 #define SKY_COL (f32vec3(0.02, 0.05, 0.90))
 #define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
 
+#if DISABLE_SKY
+#define SUN_COL (f32vec3(1, 1, 1))
+#else
 #define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
+#endif
 #define SUN_TIME INPUT.settings.daylight_cycle_time
 #define SUN_DIR normalize(f32vec3(0.8 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
-
-#define USE_OLD_SKY 0
-#define USE_BAKED_OPTICAL_DEPTH 1
 
 #define PLANET_RADIUS 0.95
 #define ATMOSPHERE_RADIUS 1.0
@@ -109,7 +114,9 @@ f32vec3 calc_light(Ray ray, f32 ray_length) {
 }
 
 f32vec3 sample_sky_ambient(f32vec3 nrm) {
-#if USE_OLD_SKY
+#if DISABLE_SKY
+    return f32vec3(0.5);
+#elif USE_OLD_SKY
     f32 sun_val = dot(nrm, SUN_DIR) * 0.25 + 0.5;
     sun_val = pow(sun_val, 2) * 0.2;
     f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.5 + 0.5, 0, 1);
@@ -127,12 +134,13 @@ f32vec3 sample_sky_ambient(f32vec3 nrm) {
 }
 
 f32vec3 sample_sky(f32vec3 nrm) {
+    f32vec3 light = sample_sky_ambient(nrm);
+#if !DISABLE_SKY
     f32 sun_val = dot(nrm, SUN_DIR) * 0.5 + 0.5;
     sun_val = sun_val * 1000 - 999;
     sun_val = pow(clamp(sun_val * 1.5, 0, 1), 20);
-
-    f32vec3 light = sample_sky_ambient(nrm);
-    light += sun_val * SUN_COL;
+    light += sun_val * SUN_COL * 1.0;
+#endif
     return light;
 }
 

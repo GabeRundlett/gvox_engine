@@ -46,11 +46,7 @@ u32 custom_brush_id_kernel(in BrushInput brush) {
     if (tree_sdf.wood < tree_sdf.leaves) {
         return BlockID_Log;
     } else {
-        if (leaves_upwards > 0.5) {
-            return BlockID_Snow;
-        } else {
-            return BlockID_Leaves;
-        }
+        return BlockID_Leaves;
     }
 }
 

@@ -34,6 +34,7 @@ struct Settings {
     f32 fov;
     f32 edit_rate;
     f32 jitter_scl;
+    f32 frame_blending;
     f32 sensitivity;
     f32 daylight_cycle_time;
 

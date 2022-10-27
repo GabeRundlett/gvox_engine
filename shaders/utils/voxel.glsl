@@ -14,10 +14,11 @@
 #define BlockID_Sand 7
 #define BlockID_Sandstone 8
 #define BlockID_Gravel 9
+#define BlockID_Cobblestone 10
 
-#define BlockID_Log 10
-#define BlockID_Leaves 11
-#define BlockID_Snow 12
+#define BlockID_Log 11
+#define BlockID_Leaves 12
+#define BlockID_Snow 13
 
 f32vec3 block_color(u32 block_id) {
     // clang-format off
@@ -27,7 +28,7 @@ f32vec3 block_color(u32 block_id) {
     // case BlockID_Bedrock:         return f32vec3(0.30, 0.30, 0.30); break;
     // case BlockID_Brick:           return f32vec3(0.47, 0.23, 0.20); break;
     // case BlockID_Cactus:          return f32vec3(0.36, 0.62, 0.28); break;
-    // case BlockID_Cobblestone:     return f32vec3(0.32, 0.31, 0.31); break;
+    case BlockID_Cobblestone:     return f32vec3(0.32, 0.31, 0.31); break;
     // case BlockID_CompressedStone: return f32vec3(0.32, 0.31, 0.31); break;
     // case BlockID_DiamondOre:      return f32vec3(0.18, 0.67, 0.69); break;
     case BlockID_Dirt:            return f32vec3(0.08, 0.05, 0.03); break;
@@ -40,11 +41,11 @@ f32vec3 block_color(u32 block_id) {
     // case BlockID_MoltenRock:      return f32vec3(0.20, 0.13, 0.12); break;
     // case BlockID_Planks:          return f32vec3(0.68, 0.47, 0.35); break;
     // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
-    case BlockID_Sand:            return f32vec3(0.82, 0.50, 0.19); break;
-    case BlockID_Sandstone:       return f32vec3(0.94, 0.65, 0.38); break;
+    case BlockID_Sand:            return f32vec3(0.33, 0.31, 0.29); break;
+    case BlockID_Sandstone:       return f32vec3(0.44, 0.42, 0.41); break;
     case BlockID_Stone:           return f32vec3(0.11, 0.10, 0.09); break;
     case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
-    case BlockID_Water:           return f32vec3(0.10, 0.18, 0.93); break;
+    case BlockID_Water:           return f32vec3(0.20, 0.28, 0.93); break;
     case BlockID_Snow:            return f32vec3(0.60, 0.60, 0.60); break;
     default:                      return f32vec3(0.00, 0.00, 0.00); break;
     }
