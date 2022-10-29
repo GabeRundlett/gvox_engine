@@ -19,6 +19,8 @@ using namespace daxa::types;
 
 #include <stb_image.h>
 
+// #include <iostream>
+
 inline char const *get_key_string(i32 glfw_key_id) {
     auto result = glfwGetKeyName(glfw_key_id, 0);
     if (!result) {
@@ -100,16 +102,55 @@ struct AppWindow {
         stbi_image_free(images[0].pixels);
 
 #if defined(_WIN32)
+        auto is_windows11_or_greater = []() -> bool {
+            OSVERSIONINFOEX osvi;
+            ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+            osvi.dwMajorVersion = 10;
+            osvi.dwMinorVersion = 0;
+            osvi.dwBuildNumber = 22000;
+            DWORDLONG dwlConditionMask = 0;
+            VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_EQUAL);
+            VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_EQUAL);
+            VER_SET_CONDITION(dwlConditionMask, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+            bool cond1 = VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask);
+            ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+            osvi.dwMajorVersion = 10;
+            osvi.dwMinorVersion = 0;
+            osvi.dwBuildNumber = 0;
+            dwlConditionMask = 0;
+            VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_EQUAL);
+            VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_GREATER);
+            VER_SET_CONDITION(dwlConditionMask, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+            bool cond2 = VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask);
+            ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+            osvi.dwMajorVersion = 10;
+            osvi.dwMinorVersion = 0;
+            osvi.dwBuildNumber = 0;
+            dwlConditionMask = 0;
+            VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_GREATER);
+            VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+            VER_SET_CONDITION(dwlConditionMask, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+            bool cond3 = VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask);
+            return cond1 || cond2 || cond3;
+        };
         {
             auto hwnd = static_cast<HWND>(get_native_handle());
             BOOL value = TRUE;
             DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
-            PostMessage(hwnd, WM_NCACTIVATE, FALSE, 0);
-            PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
-            MSG msg;
-            while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
+            if (!is_windows11_or_greater()) {
+                // std::cout << "win 10" << std::endl;
+                PostMessage(hwnd, WM_NCACTIVATE, FALSE, 0);
+                PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
+                MSG msg;
+                while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
+            } else {
+                // std::cout << "win 11" << std::endl;
             }
         }
 #endif
