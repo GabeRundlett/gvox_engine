@@ -206,7 +206,7 @@ App::App()
     }).value();
     chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
-        .push_constant_size = sizeof(ChunkgenCompPush),
+        .push_constant_size = sizeof(ChunkEditCompPush),
         .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
     }).value();
     subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
@@ -367,7 +367,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
 
                     .settings = {
                         .limit_edit_rate = false,
-                        .edit_rate = 0.0f,
+                        .edit_rate = 0.5f,
                         .color = {1.0f, 0.2f, 0.2f},
                     },
                 });
@@ -1090,9 +1090,10 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(chunkgen_comp_pipeline);
-            cmd_list.push_constant(ChunkgenCompPush{
+            cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
         },

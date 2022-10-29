@@ -58,10 +58,6 @@ struct PerframeCompPush {
     BufferRef(GpuInput) gpu_input;
     BufferRef(GpuIndirectDispatch) gpu_indirect_dispatch;
 };
-struct ChunkgenCompPush {
-    BufferRef(GpuGlobals) gpu_globals;
-    BufferRef(GpuInput) gpu_input;
-};
 struct ChunkOptCompPush {
     BufferRef(GpuGlobals) gpu_globals;
 };
@@ -90,5 +86,6 @@ struct DrawCompPush {
 
 #define UNIFORMITY_CHUNKS push_constant.gpu_globals.scene.voxel_world.uniformity_chunks
 #define INPUT push_constant.gpu_input
+#define MODEL push_constant.gpu_gvox_model
 #define PLAYER push_constant.gpu_globals.player
 #define INDIRECT push_constant.gpu_indirect_dispatch

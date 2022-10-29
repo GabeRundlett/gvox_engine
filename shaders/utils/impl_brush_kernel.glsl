@@ -1,32 +1,9 @@
 #pragma once
 
-#include <utils/voxel.glsl>
-#include <utils/noise.glsl>
-#include <utils/sd_shapes.glsl>
-
-#include <utils/chunkgen.glsl>
-
-struct BrushInput {
-    f32vec3 p;
-    f32vec3 origin;
-    f32vec3 begin_p;
-    Voxel prev_voxel;
-};
-
-f32 brush_noise_value(in f32vec3 voxel_p) {
-    FractalNoiseConfig noise_conf = FractalNoiseConfig(
-        /* .amplitude   = */ 1.0,
-        /* .persistance = */ 0.5,
-        /* .scale       = */ 1.0,
-        /* .lacunarity  = */ 2.0,
-        /* .octaves     = */ 4);
-    return fractal_noise(voxel_p, noise_conf);
-}
-
+#include <utils/impl_brush_header.glsl>
 #include <brush_kernel.glsl>
 
 b32 brush_should_edit(in f32vec3 voxel_p) {
-    voxel_p = voxel_p;
     b32 result = false;
     BrushInput brush;
     brush.origin = floor((GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;

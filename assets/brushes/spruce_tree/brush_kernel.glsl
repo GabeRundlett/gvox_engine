@@ -31,18 +31,24 @@ TreeSDF sd_spruce_tree(in f32vec3 p, in f32vec3 seed) {
     return val;
 }
 
+#if defined(CHUNKGEN)
+#define OFFSET (f32vec3(BLOCK_NX, BLOCK_NY, 0) * 0.5 / VOXEL_SCL)
+#else
+#define OFFSET f32vec3(0, 0, 0)
+#endif
+
 b32 custom_brush_should_edit(in BrushInput brush) {
-    TreeSDF tree_sdf = sd_spruce_tree(brush.p, brush.origin);
+    TreeSDF tree_sdf = sd_spruce_tree(brush.p - OFFSET, brush.origin);
     return min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
 }
 
 u32 custom_brush_id_kernel(in BrushInput brush) {
-    TreeSDF tree_sdf = sd_spruce_tree(brush.p, brush.origin);
-    TreeSDF slope_t0 = sd_spruce_tree(brush.p + f32vec3(1, 0, 0) / VOXEL_SCL * 0.01, brush.origin);
-    TreeSDF slope_t1 = sd_spruce_tree(brush.p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01, brush.origin);
-    TreeSDF slope_t2 = sd_spruce_tree(brush.p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01, brush.origin);
-    f32vec3 leaves_nrm = normalize(f32vec3(slope_t0.leaves, slope_t1.leaves, slope_t2.leaves) - tree_sdf.leaves);
-    f32 leaves_upwards = max(dot(leaves_nrm, f32vec3(0, 0, 1)), 0);
+    TreeSDF tree_sdf = sd_spruce_tree(brush.p - OFFSET, brush.origin);
+    // TreeSDF slope_t0 = sd_spruce_tree(brush.p + f32vec3(1, 0, 0) / VOXEL_SCL * 0.01, brush.origin);
+    // TreeSDF slope_t1 = sd_spruce_tree(brush.p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01, brush.origin);
+    // TreeSDF slope_t2 = sd_spruce_tree(brush.p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01, brush.origin);
+    // f32vec3 leaves_nrm = normalize(f32vec3(slope_t0.leaves, slope_t1.leaves, slope_t2.leaves) - tree_sdf.leaves);
+    // f32 leaves_upwards = max(dot(leaves_nrm, f32vec3(0, 0, 1)), 0);
     if (tree_sdf.wood < tree_sdf.leaves) {
         return BlockID_Log;
     } else {

@@ -53,6 +53,7 @@ struct BaseApp : AppWindow<T> {
         .shader_compile_options = {
             .root_paths = {
                 DAXA_SHADER_INCLUDE_DIR,
+                "assets",
                 "shaders",
                 "src",
             },
