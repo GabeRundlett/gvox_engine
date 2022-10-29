@@ -16,6 +16,7 @@
         "stb",
         "nlohmann-json",
         "platform-folders",
+        "libsoundio",
         {
             "name": "imgui",
             "features": [

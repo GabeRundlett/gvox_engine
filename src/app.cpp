@@ -6,6 +6,7 @@
 
 #include <nlohmann/json.hpp>
 #include <sago/platform_folders.h>
+#include <soundio/soundio.h>
 
 #include <imgui_stdlib.h>
 
@@ -280,6 +281,7 @@ void App::reset_settings() {
         GLFW_KEY_F5,
     };
     gpu_input = default_gpu_input();
+    
     save_settings();
 }
 

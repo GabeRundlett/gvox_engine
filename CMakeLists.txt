@@ -10,12 +10,14 @@ find_package(gvox CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
+find_package(libsoundio CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} "src/main.cpp" "src/app.cpp")
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
     fmt::fmt
+    libsoundio::libsoundio
     nlohmann_json::nlohmann_json
     sago::platform_folders
     glm::glm

@@ -100,8 +100,18 @@ struct AppWindow {
         stbi_image_free(images[0].pixels);
 
 #if defined(_WIN32)
-        BOOL value = TRUE;
-        ::DwmSetWindowAttribute(static_cast<HWND>(get_native_handle()), DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+        {
+            auto hwnd = static_cast<HWND>(get_native_handle());
+            BOOL value = TRUE;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+            PostMessage(hwnd, WM_NCACTIVATE, FALSE, 0);
+            PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
+            MSG msg;
+            while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
 #endif
     }
 
@@ -114,10 +124,9 @@ struct AppWindow {
 #if defined(_WIN32)
         return glfwGetWin32Window(glfw_window_ptr);
 #elif defined(__linux__)
-        // TODO(grundlett): switch which to return based on the window "platform"
         switch (get_native_platform()) {
         case daxa::NativeWindowPlatform::WAYLAND_API:
-            return nullptr; // reinterpret_cast<daxa::NativeWindowHandle>(glfwGetWaylandWindow(glfw_window_ptr));
+            return reinterpret_cast<daxa::NativeWindowHandle>(glfwGetWaylandWindow(glfw_window_ptr));
         case daxa::NativeWindowPlatform::XLIB_API:
         default:
             return reinterpret_cast<daxa::NativeWindowHandle>(glfwGetX11Window(glfw_window_ptr));
@@ -126,14 +135,12 @@ struct AppWindow {
     }
 
     auto get_native_platform() -> daxa::NativeWindowPlatform {
-        // switch(glfwGetPlatform())
-        // {
-        // case GLFW_PLATFORM_WIN32: return daxa::NativeWindowPlatform::WIN32_API;
-        // case GLFW_PLATFORM_X11: return daxa::NativeWindowPlatform::XLIB_API;
-        // case GLFW_PLATFORM_WAYLAND: return daxa::NativeWindowPlatform::WAYLAND_API;
-        // default: return daxa::NativeWindowPlatform::UNKNOWN;
-        // }
-        return daxa::NativeWindowPlatform::UNKNOWN;
+        switch (glfwGetPlatform()) {
+        case GLFW_PLATFORM_WIN32: return daxa::NativeWindowPlatform::WIN32_API;
+        case GLFW_PLATFORM_X11: return daxa::NativeWindowPlatform::XLIB_API;
+        case GLFW_PLATFORM_WAYLAND: return daxa::NativeWindowPlatform::WAYLAND_API;
+        default: return daxa::NativeWindowPlatform::UNKNOWN;
+        }
     }
 
     inline void set_mouse_pos(f32 x, f32 y) {
