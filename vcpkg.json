@@ -30,6 +30,10 @@
         {
             "name": "daxa",
             "version-string": "nightly"
+        },
+        {
+            "name": "glfw3",
+            "version-string": "custom"
         }
     ]
 }

@@ -6,6 +6,7 @@
             "repository": "https://github.com/GabeRundlett/vcpkg-registry",
             "packages": [
                 "daxa",
+                "glfw3",
                 "fsr2",
                 "gvox"
             ]
