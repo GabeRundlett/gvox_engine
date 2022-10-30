@@ -40,8 +40,8 @@ b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
 }
 
 #if defined(CHUNKGEN)
-#define OFFSET (f32vec3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) * 0.5 / VOXEL_SCL)
-#define BRUSH_SCL (min(BLOCK_NX, min(BLOCK_NY, BLOCK_NZ)) * 0.5 / VOXEL_SCL)
+#define OFFSET (f32vec3(WORLD_BLOCK_NX, WORLD_BLOCK_NY, WORLD_BLOCK_NZ) * 0.5 / VOXEL_SCL)
+#define BRUSH_SCL (min(WORLD_BLOCK_NX, min(WORLD_BLOCK_NY, WORLD_BLOCK_NZ)) * 0.5 / VOXEL_SCL)
 #else
 #define OFFSET f32vec3(0, 0, 0)
 #define BRUSH_SCL PLAYER.edit_radius

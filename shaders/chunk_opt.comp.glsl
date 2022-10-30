@@ -110,10 +110,6 @@ void chunk_opt_x8up(in u32 chunk_index) {
                 at_least_one_occluding = at_least_one_occluding || occluding || (sample_voxel_id(chunk_index, local_i * 4) != base_id_x4);
             }
 
-#if USING_BRICKMAP
-    VoxelBrick brick;
-#endif
-
     u32 result = 0;
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x8_i);
@@ -127,13 +123,6 @@ void chunk_opt_x8up(in u32 chunk_index) {
         u32 index = uniformity_lod_index(8)(x8_i);
         UNIFORMITY_CHUNKS[chunk_index].lod_x8[index] = result;
         local_x8_copy[index] = result;
-
-#if USING_BRICKMAP
-        // u32 has_subbrick = u32(result != 0);
-        // HasSubbricksInfo has_subbricks_info = get_has_subbricks_info(x8_i);
-        // brick.has_subbricks[has_subbricks_info.index] &= ~has_subbricks_info.mask;
-        // brick.has_subbricks[has_subbricks_info.index] |= has_subbricks_info.mask * has_subbrick;
-#endif
     }
 
     subgroupBarrier();
@@ -212,42 +201,6 @@ void chunk_opt_x8up(in u32 chunk_index) {
         u32 index = uniformity_lod_index(32)(x32_i);
         UNIFORMITY_CHUNKS[chunk_index].lod_x32[index] = result;
     }
-
-#if USING_BRICKMAP
-    if (subgroupElect()) {
-        // TODO: sort out how to decide these indices
-        u32 is_ptr = u32(voxel_uniformity_lod_nonuniform(64)(chunk_index, 0, 0));
-        VOXEL_WORLD.chunk_is_ptr[0] = is_ptr;
-
-        if (is_ptr != 0) {
-            // this one too!
-            u32 brick_index = 0;
-            VOXEL_WORLD.voxel_chunks[0] = PackedVoxel(brick_index);
-
-            for (u32 zi = 0; zi < BRICKMAP_SIZE; ++zi) {
-                for (u32 yi = 0; yi < BRICKMAP_SIZE; ++yi) {
-                    for (u32 xi = 0; xi < BRICKMAP_SIZE; ++xi) {
-                        u32vec3 x8_i = u32vec3(xi, yi, zi);
-
-                        u32 lod_index_x8 = uniformity_lod_index(8)(x8_i);
-                        u32 lod_mask_x8 = uniformity_lod_mask(x8_i);
-
-                        // u32 has_subbrick = u32(xi % 2);
-                        u32 has_subbrick = u32(voxel_uniformity_lod_nonuniform(8)(chunk_index, lod_index_x8, lod_mask_x8));
-
-                        HasSubbricksInfo has_subbricks_info = get_has_subbricks_info(x8_i);
-                        brick.has_subbricks[has_subbricks_info.index] &= ~has_subbricks_info.mask;
-                        brick.has_subbricks[has_subbricks_info.index] |= has_subbricks_info.mask * has_subbrick;
-                    }
-                }
-            }
-
-            VOXEL_WORLD.voxel_bricks[brick_index] = brick;
-        } else {
-            VOXEL_WORLD.voxel_chunks[0] = PackedVoxel(base_id_x16);
-        }
-    }
-#endif
 }
 
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;

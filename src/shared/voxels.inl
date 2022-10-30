@@ -5,22 +5,29 @@
 #define CHUNK_SIZE 64
 #define VOXEL_SCL 8
 
-#define USING_BRICKMAP 0
+#define WORLD_CHUNK_NX 19
+#define WORLD_CHUNK_NY 19
+#define WORLD_CHUNK_NZ 5
+#define WORLD_CHUNK_N (WORLD_CHUNK_NX * WORLD_CHUNK_NY * WORLD_CHUNK_NZ)
 
-#define BRICKMAP_SIZE 8
-#define BRICKMAP_SUBBRICK_N (BRICKMAP_SIZE * BRICKMAP_SIZE * BRICKMAP_SIZE)
-#define BRICKMAP_MAX_N 262144
+#define WORLD_BLOCK_NX (WORLD_CHUNK_NX * CHUNK_SIZE)
+#define WORLD_BLOCK_NY (WORLD_CHUNK_NY * CHUNK_SIZE)
+#define WORLD_BLOCK_NZ (WORLD_CHUNK_NZ * CHUNK_SIZE)
+#define WORLD_BLOCK_N (WORLD_CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
 
-#define CHUNK_NX 16
-#define CHUNK_NY 16
-#define CHUNK_NZ 4
-#define CHUNK_N (CHUNK_NX * CHUNK_NY * CHUNK_NZ)
-#define BLOCK_NX (CHUNK_NX * CHUNK_SIZE)
-#define BLOCK_NY (CHUNK_NY * CHUNK_SIZE)
-#define BLOCK_NZ (CHUNK_NZ * CHUNK_SIZE)
-#define BLOCK_N (CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
+#define BRUSH_CHUNK_NX 4
+#define BRUSH_CHUNK_NY 4
+#define BRUSH_CHUNK_NZ 4
+#define BRUSH_CHUNK_N (BRUSH_CHUNK_NX * BRUSH_CHUNK_NY * BRUSH_CHUNK_NZ)
 
-#define MAX_CHUNK_UPDATES 64
+#define BRUSH_BLOCK_NX (BRUSH_CHUNK_NX * CHUNK_SIZE)
+#define BRUSH_BLOCK_NY (BRUSH_CHUNK_NY * CHUNK_SIZE)
+#define BRUSH_BLOCK_NZ (BRUSH_CHUNK_NZ * CHUNK_SIZE)
+#define BRUSH_BLOCK_N (BRUSH_CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
+
+#define CHUNK_N (WORLD_CHUNK_N + BRUSH_CHUNK_N)
+
+#define MAX_CHUNK_UPDATES ((BRUSH_CHUNK_NX + 1) * (BRUSH_CHUNK_NY + 1) * (BRUSH_CHUNK_NZ + 1))
 
 const u32 CHUNK_PTR_U32_N = (CHUNK_N / 32 == 0) ? 1 : CHUNK_N / 32;
 
@@ -57,11 +64,6 @@ struct VoxelChunk {
     PackedVoxel packed_voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
 
-struct VoxelBrick {
-    u32 has_subbricks[BRICKMAP_SUBBRICK_N / 32];
-    PackedVoxel subbricks[BRICKMAP_SUBBRICK_N];
-};
-
 struct VoxelUniformityChunk {
     u32 lod_x2[1024];
     u32 lod_x4[256];
@@ -77,17 +79,10 @@ struct VoxelWorld {
     u32 chunk_update_indices[MAX_CHUNK_UPDATES];
     u32 chunk_update_n;
     u32 chunkgen_index;
+    u32 brush_chunkgen_index;
 
     VoxelUniformityChunk uniformity_chunks[CHUNK_N];
     ChunkGenState chunks_genstate[CHUNK_N];
 
-#if USING_BRICKMAP
-    VoxelChunk generation_chunk;
-    VoxelBrick voxel_bricks[BRICKMAP_MAX_N];
-
-    u32 chunk_is_ptr[CHUNK_PTR_U32_N];
-    PackedVoxel voxel_chunks[CHUNK_N];
-#else
     VoxelChunk voxel_chunks[CHUNK_N];
-#endif
 };

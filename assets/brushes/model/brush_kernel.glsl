@@ -27,5 +27,5 @@ Voxel custom_brush_kernel(in BrushInput brush) {
     u32 i = p.x + p.y * MODEL.size_x + p.z * MODEL.size_x * MODEL.size_y;
     GVoxModelVoxel vox = MODEL.voxels[i];
 
-    return Voxel(pow(vox.col, f32vec3(1.0)), BlockID_Stone);
+    return Voxel(pow(vox.col, f32vec3(2.2)), BlockID_Stone);
 }

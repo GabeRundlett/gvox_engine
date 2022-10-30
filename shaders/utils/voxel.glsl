@@ -68,26 +68,15 @@ Voxel unpack_voxel(in PackedVoxel packed_voxel) {
     return result;
 }
 
-u32 get_chunk_index(i32vec3 chunk_i) { return chunk_i.x + chunk_i.y * CHUNK_NX + chunk_i.z * CHUNK_NX * CHUNK_NY; }
-f32vec3 get_world_relative_p(f32vec3 p) { return p - VOXEL_WORLD.box.bound_min; }
+u32 get_chunk_index(i32vec3 chunk_i) { return chunk_i.x + chunk_i.y * WORLD_CHUNK_NX + chunk_i.z * WORLD_CHUNK_NX * WORLD_CHUNK_NY; }
+u32 get_brush_chunk_index(i32vec3 chunk_i) { return WORLD_CHUNK_N + chunk_i.x + chunk_i.y * BRUSH_CHUNK_NX + chunk_i.z * BRUSH_CHUNK_NX * BRUSH_CHUNK_NY; }
+f32vec3 get_world_relative_p(f32vec3 p) { return p; }
 i32vec3 get_chunk_i(i32vec3 voxel_i) { return voxel_i / CHUNK_SIZE; }
 u32vec3 get_inchunk_voxel_i(i32vec3 voxel_i, i32vec3 chunk_i) { return u32vec3(voxel_i - chunk_i * CHUNK_SIZE); }
 u32 get_voxel_index(u32vec3 inchunk_voxel_i) { return inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE; }
-i32vec3 get_voxel_i(f32vec3 p) { return clamp(i32vec3(get_world_relative_p(p) * VOXEL_SCL), i32vec3(0, 0, 0), i32vec3(BLOCK_NX - 1, BLOCK_NY - 1, BLOCK_NZ - 1)); }
-u32vec3 get_subbrick_i0(u32vec3 inchunk_voxel_i) { return inchunk_voxel_i / BRICKMAP_SIZE; }
-
-struct HasSubbricksInfo {
-    u32 index;
-    u32 mask;
-};
-HasSubbricksInfo get_has_subbricks_info(u32vec3 subbrick_i) {
-    u32 subbrick_index = subbrick_i.x + subbrick_i.y * BRICKMAP_SIZE + subbrick_i.z * BRICKMAP_SIZE * BRICKMAP_SIZE;
-
-    HasSubbricksInfo result;
-    result.index = subbrick_index / 32;
-    result.mask = 1 << (subbrick_index - result.index * 32);
-    return result;
-}
+i32vec3 get_voxel_i(f32vec3 p) { return clamp(i32vec3(get_world_relative_p(p) * VOXEL_SCL), i32vec3(0, 0, 0), i32vec3(WORLD_BLOCK_NX - 1, WORLD_BLOCK_NY - 1, WORLD_BLOCK_NZ - 1)); }
+f32vec3 get_brush_relative_p(f32vec3 p) { return p; }
+i32vec3 get_brush_voxel_i(f32vec3 p) { return clamp(i32vec3(get_brush_relative_p(p) * VOXEL_SCL), i32vec3(0, 0, 0), i32vec3(BRUSH_BLOCK_NX - 1, BRUSH_BLOCK_NY - 1, BRUSH_BLOCK_NZ - 1)); }
 
 struct VoxelWorldSampleInfo {
     i32vec3 voxel_i;
@@ -95,13 +84,6 @@ struct VoxelWorldSampleInfo {
     u32vec3 inchunk_voxel_i;
     u32 chunk_index;
     u32 voxel_index;
-
-#if USING_BRICKMAP
-    u32 chunk_is_ptr_index;
-    u32 chunk_is_ptr_mask;
-    u32vec3 subbrick_i0;
-    HasSubbricksInfo has_subbricks0;
-#endif
 };
 VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
     VoxelWorldSampleInfo result;
@@ -110,23 +92,20 @@ VoxelWorldSampleInfo get_voxel_world_sample_info(f32vec3 p) {
     result.inchunk_voxel_i = get_inchunk_voxel_i(result.voxel_i, result.chunk_i);
     result.chunk_index = get_chunk_index(result.chunk_i);
     result.voxel_index = get_voxel_index(result.inchunk_voxel_i);
-
-#if USING_BRICKMAP
-    result.chunk_is_ptr_index = result.chunk_index / 32;
-    result.chunk_is_ptr_mask = 1 << (result.chunk_index - result.chunk_is_ptr_index * 32);
-    result.subbrick_i0 = get_subbrick_i0(result.inchunk_voxel_i);
-    result.has_subbricks0 = get_has_subbricks_info(result.subbrick_i0);
-#endif
-
+    return result;
+}
+VoxelWorldSampleInfo get_voxel_brush_sample_info(f32vec3 p) {
+    VoxelWorldSampleInfo result;
+    result.voxel_i = get_brush_voxel_i(p);
+    result.chunk_i = get_chunk_i(result.voxel_i);
+    result.inchunk_voxel_i = get_inchunk_voxel_i(result.voxel_i, result.chunk_i);
+    result.chunk_index = get_brush_chunk_index(result.chunk_i);
+    result.voxel_index = get_voxel_index(result.inchunk_voxel_i);
     return result;
 }
 
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32 voxel_index) {
-#if USING_BRICKMAP
-    return VOXEL_WORLD.generation_chunk.packed_voxels[voxel_index];
-#else
     return VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index];
-#endif
 }
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_packed_voxel(chunk_index, get_voxel_index(inchunk_voxel_i)); }
 PackedVoxel sample_packed_voxel(f32vec3 p) {
@@ -180,21 +159,3 @@ UNIFORMITY_LOD_INDEX_IMPL(64)
 u32 uniformity_lod_mask(u32vec3 index_within_lod) {
     return 1u << index_within_lod.z;
 }
-
-#if USING_BRICKMAP
-
-u32 brickmap_depth(in f32vec3 p) {
-    VoxelWorldSampleInfo sample_info = get_voxel_world_sample_info(p);
-
-    if ((VOXEL_WORLD.chunk_is_ptr[sample_info.chunk_is_ptr_index] & sample_info.chunk_is_ptr_mask) == 0) {
-        return 1;
-    }
-
-    u32 brick_index = VOXEL_WORLD.voxel_chunks[sample_info.chunk_index].data;
-    u32 has_subbricks = VOXEL_WORLD.voxel_bricks[brick_index].has_subbricks[sample_info.has_subbricks0.index] & sample_info.has_subbricks0.mask;
-    has_subbricks = u32(has_subbricks != 0);
-
-    return has_subbricks;
-}
-
-#endif

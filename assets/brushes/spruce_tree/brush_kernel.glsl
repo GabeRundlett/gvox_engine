@@ -32,7 +32,7 @@ TreeSDF sd_spruce_tree(in f32vec3 p, in f32vec3 seed) {
 }
 
 #if defined(CHUNKGEN)
-#define OFFSET (f32vec3(BLOCK_NX, BLOCK_NY, 0) * 0.5 / VOXEL_SCL)
+#define OFFSET (f32vec3(32, 32, 0) * 0.5 / VOXEL_SCL)
 #else
 #define OFFSET f32vec3(0, 0, 0)
 #endif

@@ -193,7 +193,7 @@ IntersectionRecord dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
     default_init(result);
     result.dist = 0;
 
-    const u32 max_steps = BLOCK_NX + BLOCK_NY + BLOCK_NZ;
+    const u32 max_steps = WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ;
     f32vec3 delta = f32vec3(
         ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
         ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
@@ -310,6 +310,153 @@ IntersectionRecord intersect_voxels(Ray ray, in out i32 x1_steps) {
     if (result.hit && sample_lod(dda_ray.o, chunk_index) != 0) {
         f32 prev_dist = result.dist;
         result = dda(dda_ray, chunk_index, x1_steps);
+        result.dist += prev_dist;
+    }
+
+    return result;
+}
+
+u32 sample_brush_lod(f32vec3 p, in out u32 chunk_index) {
+    VoxelWorldSampleInfo chunk_info = get_voxel_brush_sample_info(p);
+    chunk_index = chunk_info.chunk_index;
+
+    u32 lod_index_x2 = uniformity_lod_index(2)(chunk_info.inchunk_voxel_i / 2);
+    u32 lod_mask_x2 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 2);
+    u32 lod_index_x4 = uniformity_lod_index(4)(chunk_info.inchunk_voxel_i / 4);
+    u32 lod_mask_x4 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 4);
+    u32 lod_index_x8 = uniformity_lod_index(8)(chunk_info.inchunk_voxel_i / 8);
+    u32 lod_mask_x8 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 8);
+    u32 lod_index_x16 = uniformity_lod_index(16)(chunk_info.inchunk_voxel_i / 16);
+    u32 lod_mask_x16 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 16);
+    u32 lod_index_x32 = uniformity_lod_index(32)(chunk_info.inchunk_voxel_i / 32);
+    u32 lod_mask_x32 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 32);
+    u32 lod_index_x64 = uniformity_lod_index(64)(chunk_info.inchunk_voxel_i / 64);
+    u32 lod_mask_x64 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 64);
+
+    // u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
+    // if (chunk_edit_stage != 2 && chunk_edit_stage != 3)
+    //     return 7;
+    if (sample_voxel_id(chunk_index, chunk_info.inchunk_voxel_i) != BlockID_Air)
+        return 0;
+    if (voxel_uniformity_lod_nonuniform(2)(chunk_index, lod_index_x2, lod_mask_x2))
+        return 1;
+    if (voxel_uniformity_lod_nonuniform(4)(chunk_index, lod_index_x4, lod_mask_x4))
+        return 2;
+    if (voxel_uniformity_lod_nonuniform(8)(chunk_index, lod_index_x8, lod_mask_x8))
+        return 3;
+    if (voxel_uniformity_lod_nonuniform(16)(chunk_index, lod_index_x16, lod_mask_x16))
+        return 4;
+    if (voxel_uniformity_lod_nonuniform(32)(chunk_index, lod_index_x32, lod_mask_x32))
+        return 5;
+    if (voxel_uniformity_lod_nonuniform(64)(chunk_index, lod_index_x64, lod_mask_x64))
+        return 6;
+
+    return 7;
+}
+
+IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
+    Box brush_box = SCENE.pick_box;
+    brush_box.bound_min -= SCENE.pick_box.bound_min;
+    brush_box.bound_max -= SCENE.pick_box.bound_min;
+
+    IntersectionRecord result;
+    default_init(result);
+    result.dist = 0;
+
+    const u32 max_steps = BRUSH_BLOCK_NX + BRUSH_BLOCK_NY + BRUSH_BLOCK_NZ;
+    f32vec3 delta = f32vec3(
+        ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
+        ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
+        ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
+    u32 lod = sample_brush_lod(ray.o, chunk_index);
+    if (lod == 0) {
+        result.hit = true;
+        return result;
+    }
+    f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
+    f32vec3 t_start;
+    if (ray.nrm.x < 0) {
+        t_start.x = (ray.o.x / cell_size - floor(ray.o.x / cell_size)) * cell_size * delta.x;
+    } else {
+        t_start.x = (ceil(ray.o.x / cell_size) - ray.o.x / cell_size) * cell_size * delta.x;
+    }
+    if (ray.nrm.y < 0) {
+        t_start.y = (ray.o.y / cell_size - floor(ray.o.y / cell_size)) * cell_size * delta.y;
+    } else {
+        t_start.y = (ceil(ray.o.y / cell_size) - ray.o.y / cell_size) * cell_size * delta.y;
+    }
+    if (ray.nrm.z < 0) {
+        t_start.z = (ray.o.z / cell_size - floor(ray.o.z / cell_size)) * cell_size * delta.z;
+    } else {
+        t_start.z = (ceil(ray.o.z / cell_size) - ray.o.z / cell_size) * cell_size * delta.z;
+    }
+    f32 t_curr = min(min(t_start.x, t_start.y), t_start.z);
+    f32vec3 current_pos;
+    f32vec3 t_next = t_start;
+    b32 outside_bounds = false;
+    u32 side = 0;
+    for (x1_steps = 0; x1_steps < max_steps; ++x1_steps) {
+        current_pos = ray.o + ray.nrm * t_curr;
+        if (inside(current_pos + ray.nrm * 0.001, brush_box) == false) {
+            outside_bounds = true;
+            result.hit = false;
+            break;
+        }
+        lod = sample_brush_lod(current_pos, chunk_index);
+        if (lod == 0) {
+            result.hit = true;
+            if (t_next.x < t_next.y) {
+                if (t_next.x < t_next.z) {
+                    side = 0;
+                } else {
+                    side = 2;
+                }
+            } else {
+                if (t_next.y < t_next.z) {
+                    side = 1;
+                } else {
+                    side = 2;
+                }
+            }
+            break;
+        }
+        cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
+
+        t_next = (0.5 + sign(ray.nrm) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / 8);
+    }
+    result.dist = t_curr;
+    switch (side) {
+    case 0: result.nrm = f32vec3(ray.nrm.x < 0 ? 1 : -1, 0, 0); break;
+    case 1: result.nrm = f32vec3(0, ray.nrm.y < 0 ? 1 : -1, 0); break;
+    case 2: result.nrm = f32vec3(0, 0, ray.nrm.z < 0 ? 1 : -1); break;
+    }
+    return result;
+}
+
+IntersectionRecord intersect_brush_voxels(Ray ray) {
+    IntersectionRecord result;
+    Box brush_box = SCENE.pick_box;
+
+    default_init(result);
+    result = intersect(ray, brush_box);
+
+    if (inside(ray.o, brush_box)) {
+        result.dist = 0;
+        result.hit = true;
+    } else {
+        result = intersect(ray, brush_box);
+        result.dist += 0.0001;
+    }
+
+    Ray dda_ray = ray;
+    dda_ray.o = ray.o + ray.nrm * result.dist - SCENE.pick_box.bound_min;
+    u32 chunk_index;
+
+    if (result.hit && sample_brush_lod(dda_ray.o, chunk_index) != 0) {
+        f32 prev_dist = result.dist;
+        i32 x1_steps = 0;
+        result = brush_dda(dda_ray, chunk_index, x1_steps);
         result.dist += prev_dist;
     }
 

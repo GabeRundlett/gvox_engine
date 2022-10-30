@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(CHUNKGEN)
-#define OFFSET (f32vec3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) * 0.5 / VOXEL_SCL)
+#define OFFSET (f32vec3(WORLD_BLOCK_NX, WORLD_BLOCK_NY, WORLD_BLOCK_NZ) * 0.5 / VOXEL_SCL)
 #else
 #define OFFSET f32vec3(0, 0, 0)
 #endif

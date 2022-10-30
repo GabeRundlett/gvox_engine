@@ -48,7 +48,7 @@ f32 sd_castle_wall(in f32vec3 p) {
 }
 
 #if defined(CHUNKGEN)
-#define OFFSET (f32vec3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) * 0.5 / VOXEL_SCL)
+#define OFFSET (f32vec3(WORLD_BLOCK_NX, WORLD_BLOCK_NY, WORLD_BLOCK_NZ) * 0.5 / VOXEL_SCL)
 #else
 #define OFFSET brush.begin_p
 #endif

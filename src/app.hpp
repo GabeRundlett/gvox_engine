@@ -48,8 +48,11 @@ struct App : BaseApp<App> {
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
     daxa::ComputePipeline chunkgen_comp_pipeline;
+    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
     daxa::ComputePipeline subchunk_x8up_comp_pipeline;
+    daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
+    daxa::ComputePipeline subchunk_brush_x8up_comp_pipeline;
     daxa::ComputePipeline draw_comp_pipeline;
 
     GpuInput gpu_input;

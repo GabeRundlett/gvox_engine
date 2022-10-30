@@ -177,14 +177,11 @@ App::App()
       },
       loop_task_list{record_loop_task_list()} {
 
-    gvox_model_path = "sponge.vox";
-    gvox_model_type = "magicavoxel";
-
-    // gvox_model_path = "compare_scene0_gvox_u32.gvox";
-    // gvox_model_type = "gvox";
-
-    // gvox_model_path = "compare_scene0_magicavoxel.vox";
+    // gvox_model_path = "sponge.vox";
     // gvox_model_type = "magicavoxel";
+
+    gvox_model_path = "mansion.gvox";
+    gvox_model_type = "gvox";
 
     gvox_ctx = gvox_create_context();
     gvox_push_root_path(gvox_ctx, "assets");
@@ -210,6 +207,11 @@ App::App()
         .push_constant_size = sizeof(ChunkEditCompPush),
         .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
     }).value();
+    brush_chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"}},
+        .push_constant_size = sizeof(ChunkEditCompPush),
+        .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
+    }).value();
     subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
@@ -229,6 +231,26 @@ App::App()
         },
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
+    }).value();
+    subchunk_brush_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {
+            .source = daxa::ShaderFile{"chunk_opt_brush.comp.glsl"}, 
+            .compile_options = {
+                .defines = {{.name = "SUBCHUNK_X2X4", .value = "1"}},
+            },
+        },
+        .push_constant_size = sizeof(ChunkOptCompPush),
+        .debug_name = APPNAME_PREFIX("subchunk_brush_x2x4_comp_pipeline"),
+    }).value();
+    subchunk_brush_x8up_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {
+            .source = daxa::ShaderFile{"chunk_opt_brush.comp.glsl"}, 
+            .compile_options = {
+                .defines = {{.name = "SUBCHUNK_X8UP", .value = "1"}},
+            },
+        },
+        .push_constant_size = sizeof(ChunkOptCompPush),
+        .debug_name = APPNAME_PREFIX("subchunk_brush_x8up_comp_pipeline"),
     }).value();
     draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
@@ -281,7 +303,7 @@ void App::reset_settings() {
         GLFW_KEY_F5,
     };
     gpu_input = default_gpu_input();
-    
+
     save_settings();
 }
 
@@ -712,6 +734,9 @@ void App::on_update() {
     auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
+    reload_pipeline(brush_chunkgen_comp_pipeline);
+    reload_pipeline(subchunk_brush_x2x4_comp_pipeline);
+    reload_pipeline(subchunk_brush_x8up_comp_pipeline);
     if (reloaded_chunkgen_pipe)
         should_regenerate = true;
     if (reload_pipeline(startup_comp_pipeline))
@@ -1106,6 +1131,24 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+        },
+        .task = [this](daxa::TaskRuntime interf) {
+            auto cmd_list = interf.get_command_list();
+            cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
+            cmd_list.push_constant(ChunkEditCompPush{
+                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+            });
+            cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
+        },
+        .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
+    });
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
@@ -1148,6 +1191,34 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch)});
+        },
+        .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
+    });
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+        },
+        .task = [this](daxa::TaskRuntime interf) {
+            auto cmd_list = interf.get_command_list();
+            cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
+            cmd_list.push_constant(ChunkOptCompPush{
+                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+            });
+            cmd_list.dispatch(1, 64, 1);
+        },
+        .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
+    });
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+        },
+        .task = [this](daxa::TaskRuntime interf) {
+            auto cmd_list = interf.get_command_list();
+            cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
+            cmd_list.push_constant(ChunkOptCompPush{
+                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+            });
+            cmd_list.dispatch(1, 1, 1);
         },
         .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
     });
