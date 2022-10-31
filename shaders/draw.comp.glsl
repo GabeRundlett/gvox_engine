@@ -56,21 +56,21 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    if (GLOBALS.pick_intersection.hit) {
-        IntersectionRecord b0_hit = intersect_brush_voxels(ray);
-        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
-            trace.intersection_record = b0_hit;
-            trace.color = f32vec3(0.5, 0.5, 0.5);
-            trace.material = 4;
-        }
-    }
-
     {
         IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
         if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
             trace.intersection_record = b0_hit;
             trace.color = f32vec3(0.5, 1.0, 0.5);
             trace.material = 3;
+        }
+    }
+
+    if (GLOBALS.pick_intersection.hit) {
+        IntersectionRecord b0_hit = intersect_brush_voxels(ray);
+        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.01) {
+            trace.intersection_record = b0_hit;
+            trace.color = f32vec3(0.5, 0.5, 0.5);
+            trace.material = 4;
         }
     }
 
