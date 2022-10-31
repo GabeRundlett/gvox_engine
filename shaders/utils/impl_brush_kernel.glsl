@@ -12,7 +12,7 @@ b32 brush_should_edit(in f32vec3 voxel_p) {
     }
     brush.p = voxel_p - brush.origin;
     brush.begin_p = GLOBALS.edit_origin - brush.origin;
-    return (sd_box(voxel_p, SCENE.pick_box) < 0.0) && custom_brush_should_edit(brush);
+    return (sd_box(voxel_p, VOXEL_BRUSH.box) < 0.0) && custom_brush_should_edit(brush);
 }
 
 Voxel brush_kernel(in f32vec3 voxel_p) {

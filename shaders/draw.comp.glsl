@@ -177,13 +177,13 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
-    VoxelWorldSampleInfo chunk_info = get_voxel_brush_sample_info(hit_pos - SCENE.pick_box.bound_min - hit_nrm * 0.01);
-    Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+    VoxelWorldSampleInfo chunk_info = get_voxel_brush_sample_info(hit_pos - VOXEL_BRUSH.box.bound_min - hit_nrm * 0.01);
+    Voxel vox = unpack_voxel(sample_brush_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
-    f32vec3 b_pos = hit_pos - SCENE.pick_box.bound_min;
+    f32vec3 b_pos = hit_pos - VOXEL_BRUSH.box.bound_min;
     f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
     f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
-    col = mix(col, outside_color, 0.1);
+    col = mix(col, outside_color, 0.5);
     return col;
 }
 
@@ -256,7 +256,7 @@ void main() {
 #if RENDER_SHADING
         f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
 #else
-        f32 shade = max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
+        f32 shade = 1; // max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
 #endif
         i32 temp_i32;
 #if RENDER_SHADOWS
@@ -324,7 +324,6 @@ void main() {
             //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
             // }
         } break;
-        
         }
 
         f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);

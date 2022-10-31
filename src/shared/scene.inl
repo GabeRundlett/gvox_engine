@@ -17,7 +17,6 @@ struct Scene {
 
     Box pick_box;
     Sphere brush_origin_sphere;
-    VoxelWorld voxel_world;
 };
 
 struct Ray {

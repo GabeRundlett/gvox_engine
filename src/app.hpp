@@ -23,6 +23,7 @@ struct Brush {
     daxa::TaskImageId task_preview_thumbnail;
     daxa::ComputePipeline perframe_comp_pipeline;
     daxa::ComputePipeline chunk_edit_comp_pipeline;
+    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     BrushSettings settings;
 };
 
@@ -48,7 +49,6 @@ struct App : BaseApp<App> {
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
     daxa::ComputePipeline chunkgen_comp_pipeline;
-    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
     daxa::ComputePipeline subchunk_x8up_comp_pipeline;
     daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
@@ -66,6 +66,12 @@ struct App : BaseApp<App> {
 
     daxa::BufferId gpu_globals_buffer;
     daxa::TaskBufferId task_gpu_globals_buffer;
+
+    daxa::BufferId gpu_voxel_world_buffer;
+    daxa::TaskBufferId task_gpu_voxel_world_buffer;
+
+    daxa::BufferId gpu_voxel_brush_buffer;
+    daxa::TaskBufferId task_gpu_voxel_brush_buffer;
 
     BufferId gpu_indirect_dispatch_buffer;
     daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;

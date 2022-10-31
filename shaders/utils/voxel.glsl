@@ -69,7 +69,7 @@ Voxel unpack_voxel(in PackedVoxel packed_voxel) {
 }
 
 u32 get_chunk_index(i32vec3 chunk_i) { return chunk_i.x + chunk_i.y * WORLD_CHUNK_NX + chunk_i.z * WORLD_CHUNK_NX * WORLD_CHUNK_NY; }
-u32 get_brush_chunk_index(i32vec3 chunk_i) { return WORLD_CHUNK_N + chunk_i.x + chunk_i.y * BRUSH_CHUNK_NX + chunk_i.z * BRUSH_CHUNK_NX * BRUSH_CHUNK_NY; }
+u32 get_brush_chunk_index(i32vec3 chunk_i) { return min(chunk_i.x + chunk_i.y * BRUSH_CHUNK_NX + chunk_i.z * BRUSH_CHUNK_NX * BRUSH_CHUNK_NY, 62); }
 f32vec3 get_world_relative_p(f32vec3 p) { return p; }
 i32vec3 get_chunk_i(i32vec3 voxel_i) { return voxel_i / CHUNK_SIZE; }
 u32vec3 get_inchunk_voxel_i(i32vec3 voxel_i, i32vec3 chunk_i) { return u32vec3(voxel_i - chunk_i * CHUNK_SIZE); }
@@ -105,7 +105,7 @@ VoxelWorldSampleInfo get_voxel_brush_sample_info(f32vec3 p) {
 }
 
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32 voxel_index) {
-    return VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index];
+    return VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index];
 }
 PackedVoxel sample_packed_voxel(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_packed_voxel(chunk_index, get_voxel_index(inchunk_voxel_i)); }
 PackedVoxel sample_packed_voxel(f32vec3 p) {
@@ -121,25 +121,55 @@ u32 sample_voxel_id(f32vec3 p) {
     return sample_voxel_id(get_chunk_index(chunk_i), get_inchunk_voxel_i(voxel_i, chunk_i));
 }
 
-#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                       \
-    b32 VoxelUniformityChunk_lod_nonuniform_##N(u32 chunk_index, u32 index, u32 mask) { \
-        return (UNIFORMITY_CHUNKS[chunk_index].lod_x##N[index] & mask) != 0;            \
-    }
-
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(2)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(4)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(8)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(16)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(32)
-
-b32 VoxelUniformityChunk_lod_nonuniform_64(u32 chunk_index, u32 index, u32 mask) {
-    return (u32(UNIFORMITY_CHUNKS[chunk_index].lod_x32[0] != 0) |
-            u32(UNIFORMITY_CHUNKS[chunk_index].lod_x32[1] != 0) |
-            u32(UNIFORMITY_CHUNKS[chunk_index].lod_x32[2] != 0) |
-            u32(UNIFORMITY_CHUNKS[chunk_index].lod_x32[3] != 0)) != 0;
+PackedVoxel sample_brush_packed_voxel(u32 chunk_index, u32 voxel_index) {
+    return VOXEL_BRUSH.voxel_chunks[chunk_index].packed_voxels[voxel_index];
+}
+PackedVoxel sample_brush_packed_voxel(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_brush_packed_voxel(chunk_index, get_voxel_index(inchunk_voxel_i)); }
+PackedVoxel sample_brush_packed_voxel(f32vec3 p) {
+    i32vec3 voxel_i = get_brush_voxel_i(p);
+    i32vec3 chunk_i = get_chunk_i(voxel_i);
+    return sample_brush_packed_voxel(get_brush_chunk_index(chunk_i), get_inchunk_voxel_i(voxel_i, chunk_i));
+}
+u32 sample_brush_voxel_id(u32 chunk_index, u32 voxel_index) { return unpack_voxel(sample_brush_packed_voxel(chunk_index, voxel_index)).block_id; }
+u32 sample_brush_voxel_id(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_brush_voxel_id(chunk_index, get_voxel_index(inchunk_voxel_i)); }
+u32 sample_brush_voxel_id(f32vec3 p) {
+    i32vec3 voxel_i = get_brush_voxel_i(p);
+    i32vec3 chunk_i = get_chunk_i(voxel_i);
+    return sample_brush_voxel_id(get_brush_chunk_index(chunk_i), get_inchunk_voxel_i(voxel_i, chunk_i));
 }
 
-#define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_lod_nonuniform_##N
+#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(STRUCT_NAME, N)                                          \
+    b32 VoxelUniformityChunk_##STRUCT_NAME##_lod_nonuniform_##N(u32 chunk_index, u32 index, u32 mask) { \
+        return (STRUCT_NAME.uniformity_chunks[chunk_index].lod_x##N[index] & mask) != 0;                \
+    }
+
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_WORLD, 2)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_WORLD, 4)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_WORLD, 8)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_WORLD, 16)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_WORLD, 32)
+
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_BRUSH, 2)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_BRUSH, 4)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_BRUSH, 8)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_BRUSH, 16)
+VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(VOXEL_BRUSH, 32)
+
+b32 VoxelUniformityChunk_VOXEL_WORLD_lod_nonuniform_64(u32 chunk_index, u32 index, u32 mask) {
+    return (u32(VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x32[0] != 0) |
+            u32(VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x32[1] != 0) |
+            u32(VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x32[2] != 0) |
+            u32(VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x32[3] != 0)) != 0;
+}
+b32 VoxelUniformityChunk_VOXEL_BRUSH_lod_nonuniform_64(u32 chunk_index, u32 index, u32 mask) {
+    return (u32(VOXEL_BRUSH.uniformity_chunks[chunk_index].lod_x32[0] != 0) |
+            u32(VOXEL_BRUSH.uniformity_chunks[chunk_index].lod_x32[1] != 0) |
+            u32(VOXEL_BRUSH.uniformity_chunks[chunk_index].lod_x32[2] != 0) |
+            u32(VOXEL_BRUSH.uniformity_chunks[chunk_index].lod_x32[3] != 0)) != 0;
+}
+
+#define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_VOXEL_WORLD_lod_nonuniform_##N
+#define brush_voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_VOXEL_BRUSH_lod_nonuniform_##N
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \
     u32 uniformity_lod_index_##N(u32vec3 index_within_lod) {          \

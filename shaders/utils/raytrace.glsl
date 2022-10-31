@@ -336,28 +336,28 @@ u32 sample_brush_lod(f32vec3 p, in out u32 chunk_index) {
     // u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
     // if (chunk_edit_stage != 2 && chunk_edit_stage != 3)
     //     return 7;
-    if (sample_voxel_id(chunk_index, chunk_info.inchunk_voxel_i) != BlockID_Air)
+    if (sample_brush_voxel_id(chunk_index, chunk_info.inchunk_voxel_i) != BlockID_Air)
         return 0;
-    if (voxel_uniformity_lod_nonuniform(2)(chunk_index, lod_index_x2, lod_mask_x2))
+    if (brush_voxel_uniformity_lod_nonuniform(2)(chunk_index, lod_index_x2, lod_mask_x2))
         return 1;
-    if (voxel_uniformity_lod_nonuniform(4)(chunk_index, lod_index_x4, lod_mask_x4))
+    if (brush_voxel_uniformity_lod_nonuniform(4)(chunk_index, lod_index_x4, lod_mask_x4))
         return 2;
-    if (voxel_uniformity_lod_nonuniform(8)(chunk_index, lod_index_x8, lod_mask_x8))
+    if (brush_voxel_uniformity_lod_nonuniform(8)(chunk_index, lod_index_x8, lod_mask_x8))
         return 3;
-    if (voxel_uniformity_lod_nonuniform(16)(chunk_index, lod_index_x16, lod_mask_x16))
+    if (brush_voxel_uniformity_lod_nonuniform(16)(chunk_index, lod_index_x16, lod_mask_x16))
         return 4;
-    if (voxel_uniformity_lod_nonuniform(32)(chunk_index, lod_index_x32, lod_mask_x32))
+    if (brush_voxel_uniformity_lod_nonuniform(32)(chunk_index, lod_index_x32, lod_mask_x32))
         return 5;
-    if (voxel_uniformity_lod_nonuniform(64)(chunk_index, lod_index_x64, lod_mask_x64))
+    if (brush_voxel_uniformity_lod_nonuniform(64)(chunk_index, lod_index_x64, lod_mask_x64))
         return 6;
 
     return 7;
 }
 
 IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
-    Box brush_box = SCENE.pick_box;
-    brush_box.bound_min -= SCENE.pick_box.bound_min;
-    brush_box.bound_max -= SCENE.pick_box.bound_min;
+    Box brush_box = VOXEL_BRUSH.box;
+    brush_box.bound_min -= VOXEL_BRUSH.box.bound_min;
+    brush_box.bound_max -= VOXEL_BRUSH.box.bound_min;
 
     IntersectionRecord result;
     default_init(result);
@@ -436,7 +436,7 @@ IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_step
 
 IntersectionRecord intersect_brush_voxels(Ray ray) {
     IntersectionRecord result;
-    Box brush_box = SCENE.pick_box;
+    Box brush_box = VOXEL_BRUSH.box;
 
     default_init(result);
     result = intersect(ray, brush_box);
@@ -450,7 +450,7 @@ IntersectionRecord intersect_brush_voxels(Ray ray) {
     }
 
     Ray dda_ray = ray;
-    dda_ray.o = ray.o + ray.nrm * result.dist - SCENE.pick_box.bound_min;
+    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_BRUSH.box.bound_min;
     u32 chunk_index;
 
     if (result.hit && sample_brush_lod(dda_ray.o, chunk_index) != 0) {
