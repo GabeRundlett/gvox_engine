@@ -152,7 +152,7 @@ IntersectionRecord intersect(Ray ray, Capsule cap) {
 
 #if !defined(RAYTRACE_NO_VOXELS)
 u32 sample_lod(f32vec3 p, in out u32 chunk_index) {
-    VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(p);
+    VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(p);
     chunk_index = chunk_info.chunk_index;
 
     u32 lod_index_x2 = uniformity_lod_index(2)(chunk_info.inchunk_voxel_i / 2);
@@ -317,7 +317,7 @@ IntersectionRecord intersect_voxels(Ray ray, in out i32 x1_steps) {
 }
 
 u32 sample_brush_lod(f32vec3 p, in out u32 chunk_index) {
-    VoxelWorldSampleInfo chunk_info = get_voxel_brush_sample_info(p);
+    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(p);
     chunk_index = chunk_info.chunk_index;
 
     u32 lod_index_x2 = uniformity_lod_index(2)(chunk_info.inchunk_voxel_i / 2);

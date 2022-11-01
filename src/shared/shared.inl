@@ -88,8 +88,6 @@ struct DrawCompPush {
 #define GLOBALS push_constant.gpu_globals
 #define SCENE push_constant.gpu_globals.scene
 #define VOXEL_WORLD push_constant.voxel_world
-#define VOXEL_CHUNKS push_constant.voxel_world.voxel_chunks
-#define UNIFORMITY_CHUNKS push_constant.voxel_world.uniformity_chunks
 #define INPUT push_constant.gpu_input
 #define MODEL push_constant.gpu_gvox_model
 #define PLAYER push_constant.gpu_globals.player

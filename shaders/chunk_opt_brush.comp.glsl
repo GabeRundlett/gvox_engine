@@ -33,7 +33,7 @@ void chunk_opt_x2x4(in u32 chunk_index, in u32 chunk_local_workgroup) {
     u32 or_result = subgroupOr(result);
     if (subgroupElect()) {
         u32 index = uniformity_lod_index(2)(x2_i);
-        UNIFORMITY_CHUNKS[chunk_index].lod_x2[index] = or_result;
+        VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x2[index] = or_result;
         local_x2_copy[x2_in_group_location.x][x2_in_group_location.y] = or_result;
     }
     subgroupBarrier();
@@ -70,7 +70,7 @@ void chunk_opt_x2x4(in u32 chunk_index, in u32 chunk_local_workgroup) {
     }
     if ((gl_SubgroupInvocationID & 0xF /* = %16 */) == 0) {
         u32 index = uniformity_lod_index(4)(x4_i);
-        UNIFORMITY_CHUNKS[chunk_index].lod_x4[index] = result;
+        VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x4[index] = result;
     }
 }
 
@@ -103,7 +103,7 @@ void chunk_opt_x8up(in u32 chunk_index) {
                 i32vec3 local_i = i32vec3(x4_i) + i32vec3(x, y, z); // x4 space
                 u32 index = uniformity_lod_index(4)(local_i);
                 u32 mask = uniformity_lod_mask(local_i);
-                b32 occluding = (UNIFORMITY_CHUNKS[chunk_index].lod_x4[index] & mask) != 0;
+                b32 occluding = (VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x4[index] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || occluding || (sample_voxel_id(chunk_index, local_i * 4) != base_id_x4);
             }
 
@@ -118,7 +118,7 @@ void chunk_opt_x8up(in u32 chunk_index) {
     }
     if ((gl_SubgroupInvocationID & 0x7 /* == % 8*/) == 0) {
         u32 index = uniformity_lod_index(8)(x8_i);
-        UNIFORMITY_CHUNKS[chunk_index].lod_x8[index] = result;
+        VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x8[index] = result;
         local_x8_copy[index] = result;
     }
 
@@ -157,7 +157,7 @@ void chunk_opt_x8up(in u32 chunk_index) {
     }
     if ((gl_SubgroupInvocationID & 0x3) == 0) {
         u32 index = uniformity_lod_index(16)(x16_i);
-        UNIFORMITY_CHUNKS[chunk_index].lod_x16[index] = result;
+        VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x16[index] = result;
         local_x16_copy[index] = result;
     }
 
@@ -196,7 +196,7 @@ void chunk_opt_x8up(in u32 chunk_index) {
     }
     if ((gl_SubgroupInvocationID & 0x1) == 0) {
         u32 index = uniformity_lod_index(32)(x32_i);
-        UNIFORMITY_CHUNKS[chunk_index].lod_x32[index] = result;
+        VOXEL_WORLD.uniformity_chunks[chunk_index].lod_x32[index] = result;
     }
 }
 

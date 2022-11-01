@@ -13,6 +13,9 @@ void startup_player() {
 
     PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 6)) | (1 << 6);
     PLAYER.edit_radius = 1.0;
+
+    // Toggle brush on by default
+    PLAYER.view_state |= 1 << 8;
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -22,26 +25,25 @@ void main() {
     for (i32 zi = 0; zi < WORLD_CHUNK_NZ; ++zi) {
         for (i32 yi = 0; yi < WORLD_CHUNK_NY; ++yi) {
             for (i32 xi = 0; xi < WORLD_CHUNK_NX; ++xi) {
-                u32 index = get_chunk_index(i32vec3(xi, yi, zi));
-                VOXEL_CHUNKS[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
-                VOXEL_CHUNKS[index].box.bound_max = VOXEL_CHUNKS[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
+                u32 index = get_chunk_index_WORLD(i32vec3(xi, yi, zi));
+                VOXEL_WORLD.voxel_chunks[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
+                VOXEL_WORLD.voxel_chunks[index].box.bound_max = VOXEL_WORLD.voxel_chunks[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
             }
         }
     }
 
-    for (i32 zi = 0; zi < BRUSH_CHUNK_NZ; ++zi) {
-        for (i32 yi = 0; yi < BRUSH_CHUNK_NY; ++yi) {
-            for (i32 xi = 0; xi < BRUSH_CHUNK_NX; ++xi) {
-                u32 index = get_brush_chunk_index(i32vec3(xi, yi, zi));
-                VOXEL_CHUNKS[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
-                VOXEL_CHUNKS[index].box.bound_max = VOXEL_CHUNKS[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
-                // VOXEL_WORLD.chunks_genstate[index].edit_stage = 1;
-            }
-        }
-    }
+    // for (i32 zi = 0; zi < BRUSH_CHUNK_NZ; ++zi) {
+    //     for (i32 yi = 0; yi < BRUSH_CHUNK_NY; ++yi) {
+    //         for (i32 xi = 0; xi < BRUSH_CHUNK_NX; ++xi) {
+    //             u32 index = get_chunk_index_BRUSH(i32vec3(xi, yi, zi));
+    //             VOXEL_WORLD.voxel_chunks[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
+    //             VOXEL_WORLD.voxel_chunks[index].box.bound_max = VOXEL_WORLD.voxel_chunks[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
+    //         }
+    //     }
+    // }
 
-    VOXEL_WORLD.box.bound_min = VOXEL_CHUNKS[0].box.bound_min;
-    VOXEL_WORLD.box.bound_max = VOXEL_CHUNKS[WORLD_CHUNK_N - 1].box.bound_max;
+    VOXEL_WORLD.box.bound_min = VOXEL_WORLD.voxel_chunks[0].box.bound_min;
+    VOXEL_WORLD.box.bound_max = VOXEL_WORLD.voxel_chunks[WORLD_CHUNK_N - 1].box.bound_max;
 
     SCENE.pick_box.bound_min = f32vec3(-1, -1, -1);
     SCENE.pick_box.bound_max = f32vec3(+1, +1, +1);

@@ -21,12 +21,13 @@
 #define GAME_KEY_TOGGLE_FLY         5
 #define GAME_KEY_INTERACT1          6
 #define GAME_KEY_INTERACT0          7
-#define GAME_KEY_JUMP               (GAME_KEY_INTERACT0 + 1)
-#define GAME_KEY_CROUCH             (GAME_KEY_INTERACT0 + 2)
-#define GAME_KEY_SPRINT             (GAME_KEY_INTERACT0 + 3)
-#define GAME_KEY_WALK               (GAME_KEY_INTERACT0 + 4)
-#define GAME_KEY_CYCLE_VIEW         (GAME_KEY_INTERACT0 + 5)
-#define GAME_KEY_LAST               GAME_KEY_CYCLE_VIEW
+#define GAME_KEY_JUMP               8
+#define GAME_KEY_CROUCH             9
+#define GAME_KEY_SPRINT             10
+#define GAME_KEY_WALK               11
+#define GAME_KEY_CYCLE_VIEW         12
+#define GAME_KEY_TOGGLE_BRUSH       13
+#define GAME_KEY_LAST               GAME_KEY_TOGGLE_BRUSH
 // clang-format on
 
 struct Settings {

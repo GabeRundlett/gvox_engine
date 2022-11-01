@@ -16,7 +16,7 @@ void main() {
     u32vec3 voxel_i = gl_GlobalInvocationID.xyz;
     u32 voxel_index = voxel_i.x + voxel_i.y * CHUNK_SIZE + voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
 
-    f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_CHUNKS[chunk_index].box.bound_min;
+    f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_WORLD.voxel_chunks[chunk_index].box.bound_min;
 
     Voxel air_voxel;
     air_voxel.block_id = BlockID_Air;
@@ -34,5 +34,5 @@ void main() {
         result = custom_brush_kernel(brush);
     }
 
-    VOXEL_CHUNKS[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+    VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
 }

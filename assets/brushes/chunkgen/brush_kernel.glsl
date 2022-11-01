@@ -84,8 +84,14 @@ b32 custom_brush_should_edit(in BrushInput brush) {
     return true;
 }
 
+#if defined(CHUNKGEN)
+#define OFFSET f32vec3(0, 0, 0)
+#else
+#define OFFSET brush.origin
+#endif
+
 Voxel custom_brush_kernel(in BrushInput brush) {
-    f32vec3 voxel_p = brush.p;
+    f32vec3 voxel_p = brush.p + OFFSET;
 
     Voxel result;
 

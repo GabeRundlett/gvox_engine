@@ -24,6 +24,7 @@ static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings
     "Sprint",
     "Walk",
     "Change Camera",
+    "Toggle Brush Placement",
 };
 
 auto default_gpu_input() -> GpuInput {
@@ -1033,6 +1034,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             if (!should_run_startup && should_regenerate) {
@@ -1153,28 +1155,28 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
     });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
-            cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
-            });
-            cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
-        },
-        .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
-    });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
+    //         cmd_list.push_constant(ChunkEditCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //             .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+    //         });
+    //         cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
+    // });
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
@@ -1237,42 +1239,42 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
     });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
-            cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-            });
-            cmd_list.dispatch(1, 64, 1);
-        },
-        .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
-    });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
-            cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-            });
-            cmd_list.dispatch(1, 1, 1);
-        },
-        .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
-    });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
+    //         cmd_list.push_constant(ChunkOptCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //         });
+    //         cmd_list.dispatch(1, 64, 1);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
+    // });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
+    //         cmd_list.push_constant(ChunkOptCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //         });
+    //         cmd_list.dispatch(1, 1, 1);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
+    // });
 
     new_task_list.add_task({
         .used_buffers = {

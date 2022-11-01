@@ -21,6 +21,9 @@ Voxel brush_kernel(in f32vec3 voxel_p) {
     } else {
         BrushInput brush;
         brush.origin = floor((GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        if (GLOBALS.edit_flags == 2) {
+            brush.origin += GLOBALS.pick_intersection.nrm * 1.0 / VOXEL_SCL;
+        }
         brush.p = voxel_p - brush.origin;
         brush.begin_p = GLOBALS.edit_origin - brush.origin;
         brush.prev_voxel = unpack_voxel(sample_packed_voxel(voxel_p));

@@ -39,6 +39,10 @@ void toggle_fly() {
     u32 is_flying = (PLAYER.view_state >> 6) & 0x1;
     PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 6)) | ((1 - is_flying) << 6);
 }
+void toggle_brush() {
+    u32 brush_enabled = (PLAYER.view_state >> 8) & 0x1;
+    PLAYER.view_state = (PLAYER.view_state & ~(0x1 << 8)) | ((1 - brush_enabled) << 8);
+}
 
 f32vec3 view_vec() {
     switch (PLAYER.view_state & 0xf) {
@@ -108,22 +112,31 @@ void perframe_player() {
 
     f32 applied_accel = PLAYER.accel_rate;
 
+    if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_BRUSH] != 0) {
+        if ((PLAYER.view_state & (1 << 7)) == 0) {
+            PLAYER.view_state |= (1 << 7);
+            toggle_brush();
+        }
+    } else {
+        PLAYER.view_state &= ~(1 << 7);
+    }
+
     if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
         if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
-            if ((PLAYER.view_state & 0x10) == 0) {
-                PLAYER.view_state |= 0x10;
+            if ((PLAYER.view_state & (1 << 4)) == 0) {
+                PLAYER.view_state |= (1 << 4);
                 toggle_view();
             }
         } else {
-            PLAYER.view_state &= ~0x10;
+            PLAYER.view_state &= ~(1 << 4);
         }
         if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
-            if ((PLAYER.view_state & 0x20) == 0) {
-                PLAYER.view_state |= 0x20;
+            if ((PLAYER.view_state & (1 << 5)) == 0) {
+                PLAYER.view_state |= (1 << 5);
                 toggle_fly();
             }
         } else {
-            PLAYER.view_state &= ~0x20;
+            PLAYER.view_state &= ~(1 << 5);
         }
 
         if (INPUT.keyboard.keys[GAME_KEY_MOVE_FORWARD] != 0)
@@ -374,8 +387,8 @@ u32 calculate_chunk_edit() {
             for (i32 xi = 0; xi < WORLD_CHUNK_NX; ++xi) {
                 if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                     break;
-                u32 i = get_chunk_index(i32vec3(xi, yi, zi));
-                Box chunk_box = VOXEL_CHUNKS[i].box;
+                u32 i = get_chunk_index_WORLD(i32vec3(xi, yi, zi));
+                Box chunk_box = VOXEL_WORLD.voxel_chunks[i].box;
                 if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && overlaps(chunk_box, SCENE.pick_box)) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
@@ -407,8 +420,8 @@ void perframe_voxel_world() {
         for (u32 yi = 0; yi < WORLD_CHUNK_NY; ++yi) {
             for (u32 xi = 0; xi < WORLD_CHUNK_NX; ++xi) {
                 i32vec3 chunk_i = i32vec3(xi, yi, zi);
-                u32 i = get_chunk_index(chunk_i);
-                f32vec3 box_center = (VOXEL_CHUNKS[i].box.bound_max + VOXEL_CHUNKS[i].box.bound_min) * 0.5;
+                u32 i = get_chunk_index_WORLD(chunk_i);
+                f32vec3 box_center = (VOXEL_WORLD.voxel_chunks[i].box.bound_max + VOXEL_WORLD.voxel_chunks[i].box.bound_min) * 0.5;
                 f32vec3 del = VOXEL_WORLD.center_pt - box_center;
                 f32 dist_sq = dot(del, del);
                 u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
@@ -437,8 +450,9 @@ void perframe_voxel_world() {
     // }
 
     u32 non_chunkgen_update_n = 0;
+    b32 brush_enabled = ((PLAYER.view_state >> 8) & 0x1) == 1;
 
-    if (GLOBALS.pick_intersection.hit) {
+    if (GLOBALS.pick_intersection.hit && brush_enabled) {
         if (!get_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE) || INPUT.time - PLAYER.last_edit_time > INPUT.settings.edit_rate) {
             if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
                 GLOBALS.edit_flags = 1;
@@ -484,40 +498,44 @@ void main() {
     perframe_player();
     perframe_voxel_world();
 
-    f32vec2 pick_uv = f32vec2(0.0, 0.0);
-    if (get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
-        f32vec2 pixel_p = INPUT.mouse.pos;
-        f32vec2 frame_dim = INPUT.frame_dim;
-        f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
-        f32 aspect = frame_dim.x * inv_frame_dim.y;
-        pick_uv = pixel_p * inv_frame_dim;
-        pick_uv = (pick_uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
+    b32 brush_enabled = ((PLAYER.view_state >> 8) & 0x1) == 1;
+
+    if (brush_enabled) {
+        f32vec2 pick_uv = f32vec2(0.0, 0.0);
+        if (get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
+            f32vec2 pixel_p = INPUT.mouse.pos;
+            f32vec2 frame_dim = INPUT.frame_dim;
+            f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
+            f32 aspect = frame_dim.x * inv_frame_dim.y;
+            pick_uv = pixel_p * inv_frame_dim;
+            pick_uv = (pick_uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
+        }
+
+        Ray pick_ray = create_view_ray(pick_uv);
+        GLOBALS.pick_intersection = intersect_voxels(pick_ray);
+
+        GLOBALS.brush_offset = custom_brush_origin_offset();
+
+        if (GLOBALS.pick_intersection.hit) {
+            GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
+        }
+
+        Box custom_box = custom_brush_box();
+
+        // SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
+        // SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
+
+        // SCENE.pick_box.bound_min = floor((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        // SCENE.pick_box.bound_max = floor((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+
+        SCENE.pick_box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        SCENE.pick_box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+
+        if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
+            GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
+        }
+
+        SCENE.brush_origin_sphere.o = GLOBALS.edit_origin;
+        SCENE.brush_origin_sphere.r = 0.25;
     }
-
-    Ray pick_ray = create_view_ray(pick_uv);
-    GLOBALS.pick_intersection = intersect_voxels(pick_ray);
-
-    GLOBALS.brush_offset = custom_brush_origin_offset();
-
-    if (GLOBALS.pick_intersection.hit) {
-        GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
-    }
-
-    Box custom_box = custom_brush_box();
-
-    // SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
-    // SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
-
-    // SCENE.pick_box.bound_min = floor((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-    // SCENE.pick_box.bound_max = floor((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-
-    SCENE.pick_box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-    SCENE.pick_box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-
-    if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
-        GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
-    }
-
-    SCENE.brush_origin_sphere.o = GLOBALS.edit_origin;
-    SCENE.brush_origin_sphere.r = 0.25;
 }

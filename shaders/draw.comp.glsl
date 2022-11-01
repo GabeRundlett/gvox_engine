@@ -116,7 +116,7 @@ f32vec3 filmic_inv(f32vec3 color) {
 f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
-    VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
+    VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
     Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
@@ -131,7 +131,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     //         for (i32 xi = 0; xi < 3; ++xi) {
     //             if (VOXEL_WORLD.chunk_update_n >= 64)
     //                 break;
-    //             u32 i = get_chunk_index(get_chunk_i(get_voxel_i(GLOBALS.brush_origin + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
+    //             u32 i = get_chunk_index_WORLD(get_chunk_i(get_voxel_i_WORLD(GLOBALS.brush_origin + (i32vec3(xi, yi, zi) - 1) * CHUNK_SIZE / VOXEL_SCL)));
     //             if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && i == chunk_info.chunk_index ) {
     //                 col = f32vec3(0.2, 1.0, 0.2);
     //             }
@@ -177,7 +177,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
-    VoxelWorldSampleInfo chunk_info = get_voxel_brush_sample_info(hit_pos - SCENE.pick_box.bound_min - hit_nrm * 0.01);
+    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(hit_pos - SCENE.pick_box.bound_min - hit_nrm * 0.01);
     Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
     f32vec3 b_pos = hit_pos - SCENE.pick_box.bound_min;
@@ -246,7 +246,7 @@ void main() {
             // bounce_ray.o = floor(bounce_ray.o * VOXEL_SCL) / VOXEL_SCL;
             // bounce_ray.o += hit_nrm * 0.001;
 
-            // VoxelWorldSampleInfo chunk_info = get_voxel_world_sample_info(hit_pos - hit_nrm * 0.01);
+            // VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
             // hit_voxel = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
             // hit_voxel.nrm = hit_nrm;
             // hit_voxel.nrm *= -1;
@@ -324,7 +324,6 @@ void main() {
             //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
             // }
         } break;
-        
         }
 
         f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
