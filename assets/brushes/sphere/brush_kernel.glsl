@@ -7,10 +7,11 @@
 #endif
 
 b32 custom_brush_should_edit(in BrushInput brush) {
+    f32 l = length(brush.p - OFFSET) / PLAYER.edit_radius;
     f32 r = 1;
     b32 has_surrounding = true;
 
-    // r = rand(brush.p + brush.origin + INPUT.time);
+    // r = rand(brush.p + brush.origin + INPUT.time) - l;
 
     // f32vec3 voxel_p = brush.p + brush.origin;
     // Voxel v[6];
@@ -28,7 +29,7 @@ b32 custom_brush_should_edit(in BrushInput brush) {
     //     v[4].block_id != BlockID_Air ||
     //     v[5].block_id != BlockID_Air;
 
-    return length(brush.p - OFFSET) < PLAYER.edit_radius && r > 0.99 && has_surrounding;
+    return l < 1 && r > 0.5 && has_surrounding;
 }
 
 Voxel custom_brush_kernel(in BrushInput brush) {

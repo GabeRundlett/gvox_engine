@@ -17,6 +17,7 @@ static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings
     "Strafe Right",
     "Reload Chunks",
     "Toggle Fly",
+    "Toggle Brush",
     "Interact 1",
     "Interact 0",
     "Jump",
@@ -1137,10 +1138,11 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
 
     new_task_list.add_task({
         .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
@@ -1158,12 +1160,12 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     });
     new_task_list.add_task({
         .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
@@ -1183,10 +1185,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();

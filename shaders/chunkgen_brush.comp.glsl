@@ -14,8 +14,8 @@ void chunk_edit(in u32 chunk_index, in u32vec3 voxel_i) {
         VOXEL_BRUSH.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
     } else {
         Voxel result;
-        result.block_id = BlockID_Air;
-        result.col = block_color(BlockID_Air);
+        result.block_id = BlockID_Debug;
+        result.col = block_color(BlockID_Debug);
         VOXEL_BRUSH.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
     }
 }
