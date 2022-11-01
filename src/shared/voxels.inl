@@ -72,7 +72,7 @@ struct VoxelUniformityChunk {
     u32 lod_x32[4];
 };
 
-struct VoxelWorld {
+DAXA_DECL_BUFFER_STRUCT(VoxelWorld, {
     Box box;
     f32vec3 center_pt;
     f32 last_update_time;
@@ -85,4 +85,4 @@ struct VoxelWorld {
     ChunkGenState chunks_genstate[CHUNK_N];
 
     VoxelChunk voxel_chunks[CHUNK_N];
-};
+});

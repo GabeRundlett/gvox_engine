@@ -49,6 +49,8 @@ DAXA_DECL_BUFFER_STRUCT(GpuGVoxModel, {
 
 struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
+    BufferRef(VoxelWorld) voxel_world;
+    // BufferRef(VoxelWorld) voxel_brush;
 };
 struct OpticalDepthCompPush {
     daxa_ImageViewId image_id;
@@ -56,19 +58,27 @@ struct OpticalDepthCompPush {
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    BufferRef(VoxelWorld) voxel_world;
+    // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuIndirectDispatch) gpu_indirect_dispatch;
 };
 struct ChunkOptCompPush {
     BufferRef(GpuGlobals) gpu_globals;
+    BufferRef(VoxelWorld) voxel_world;
+    // BufferRef(VoxelWorld) voxel_brush;
 };
 struct ChunkEditCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    BufferRef(VoxelWorld) voxel_world;
+    // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuGVoxModel) gpu_gvox_model;
 };
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    BufferRef(VoxelWorld) voxel_world;
+    // BufferRef(VoxelWorld) voxel_brush;
 
     daxa_ImageViewId image_id;
     daxa_ImageViewId optical_depth_image_id;
@@ -77,9 +87,9 @@ struct DrawCompPush {
 
 #define GLOBALS push_constant.gpu_globals
 #define SCENE push_constant.gpu_globals.scene
-#define VOXEL_WORLD push_constant.gpu_globals.scene.voxel_world
-#define VOXEL_CHUNKS push_constant.gpu_globals.scene.voxel_world.voxel_chunks
-#define UNIFORMITY_CHUNKS push_constant.gpu_globals.scene.voxel_world.uniformity_chunks
+#define VOXEL_WORLD push_constant.voxel_world
+#define VOXEL_CHUNKS push_constant.voxel_world.voxel_chunks
+#define UNIFORMITY_CHUNKS push_constant.voxel_world.uniformity_chunks
 #define INPUT push_constant.gpu_input
 #define MODEL push_constant.gpu_gvox_model
 #define PLAYER push_constant.gpu_globals.player

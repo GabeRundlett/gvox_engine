@@ -67,6 +67,12 @@ struct App : BaseApp<App> {
     daxa::BufferId gpu_globals_buffer;
     daxa::TaskBufferId task_gpu_globals_buffer;
 
+    daxa::BufferId gpu_voxel_world_buffer;
+    daxa::TaskBufferId task_gpu_voxel_world_buffer;
+
+    // daxa::BufferId gpu_voxel_brush_buffer;
+    // daxa::TaskBufferId task_gpu_voxel_brush_buffer;
+
     BufferId gpu_indirect_dispatch_buffer;
     daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;
 

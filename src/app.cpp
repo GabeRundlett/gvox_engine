@@ -149,6 +149,14 @@ App::App()
           .size = sizeof(GpuGlobals),
           .debug_name = "gpu_globals_buffer",
       })},
+      gpu_voxel_world_buffer{device.create_buffer({
+          .size = sizeof(VoxelWorld),
+          .debug_name = "gpu_voxel_world_buffer",
+      })},
+    //   gpu_voxel_brush_buffer{device.create_buffer({
+    //       .size = sizeof(VoxelBrush),
+    //       .debug_name = "gpu_voxel_brush_buffer",
+    //   })},
       gpu_indirect_dispatch_buffer{device.create_buffer({
           .size = sizeof(GpuIndirectDispatch),
           .debug_name = "gpu_indirect_dispatch_buffer",
@@ -422,6 +430,8 @@ App::~App() {
     device.destroy_sampler(optical_depth_sampler);
     device.destroy_buffer(gvox_model_buffer);
     device.destroy_buffer(gpu_globals_buffer);
+    device.destroy_buffer(gpu_voxel_world_buffer);
+    // device.destroy_buffer(gpu_voxel_brush_buffer);
     device.destroy_buffer(gpu_input_buffer);
     device.destroy_buffer(gpu_indirect_dispatch_buffer);
     device.destroy_image(render_image);
@@ -859,6 +869,10 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_runtime_buffer(task_gpu_input_buffer, gpu_input_buffer);
     task_gpu_globals_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_globals_buffer")});
     new_task_list.add_runtime_buffer(task_gpu_globals_buffer, gpu_globals_buffer);
+    task_gpu_voxel_world_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_voxel_world_buffer")});
+    new_task_list.add_runtime_buffer(task_gpu_voxel_world_buffer, gpu_voxel_world_buffer);
+    // task_gpu_voxel_brush_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_voxel_brush_buffer")});
+    // new_task_list.add_runtime_buffer(task_gpu_voxel_brush_buffer, gpu_voxel_brush_buffer);
     task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
     new_task_list.add_runtime_buffer(task_gpu_indirect_dispatch_buffer, gpu_indirect_dispatch_buffer);
     task_optical_depth_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_optical_depth_image")});
@@ -1024,15 +1038,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             if (!should_run_startup && should_regenerate) {
                 auto cmd_list = interf.get_command_list();
                 cmd_list.clear_buffer({
-                    .buffer = gpu_globals_buffer,
-                    .offset = offsetof(GpuGlobals, scene) + offsetof(Scene, voxel_world) + offsetof(VoxelWorld, chunk_update_indices),
+                    .buffer = gpu_voxel_world_buffer,
+                    .offset = offsetof(VoxelWorld, chunk_update_indices),
                     .size = offsetof(VoxelWorld, voxel_chunks) - offsetof(VoxelWorld, chunk_update_indices),
-                    .clear_value = 0,
-                });
-                cmd_list.clear_buffer({
-                    .buffer = gpu_globals_buffer,
-                    .offset = offsetof(GpuGlobals, scene) + offsetof(Scene, voxel_world) + offsetof(VoxelWorld, chunks_genstate),
-                    .size = sizeof(VoxelWorld::chunks_genstate),
                     .clear_value = 0,
                 });
                 should_regenerate = false;
@@ -1045,6 +1053,12 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .size = sizeof(GpuGlobals),
                     .clear_value = 0,
                 });
+                // cmd_list.clear_buffer({
+                //     .buffer = gpu_voxel_brush_buffer,
+                //     .offset = 0,
+                //     .size = sizeof(VoxelBrush),
+                //     .clear_value = 0,
+                // });
             }
         },
         .debug_name = "Startup (Globals Clear)",
@@ -1052,6 +1066,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             if (should_run_startup) {
@@ -1060,6 +1076,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 cmd_list.set_pipeline(startup_comp_pipeline);
                 auto push = StartupCompPush{
                     .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
+                    .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                    // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 };
                 cmd_list.push_constant(push);
                 cmd_list.dispatch(1, 1, 1);
@@ -1091,6 +1109,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
@@ -1100,6 +1120,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto push = PerframeCompPush{
                 .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_indirect_dispatch = this->device.buffer_reference(gpu_indirect_dispatch_buffer),
             };
             cmd_list.push_constant(push);
@@ -1112,6 +1134,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .task = [this](daxa::TaskRuntime interf) {
@@ -1120,6 +1145,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
@@ -1130,6 +1157,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .task = [this](daxa::TaskRuntime interf) {
@@ -1138,6 +1167,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
@@ -1148,6 +1179,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
@@ -1158,6 +1191,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = device.buffer_reference(gpu_input_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
@@ -1168,12 +1203,16 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch)});
         },
@@ -1183,12 +1222,16 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch)});
         },
@@ -1197,12 +1240,16 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch(1, 64, 1);
         },
@@ -1211,12 +1258,16 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch(1, 1, 1);
         },
@@ -1227,6 +1278,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
             {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
@@ -1238,6 +1291,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.push_constant(DrawCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = device.buffer_reference(gpu_input_buffer),
+                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .image_id = render_image.default_view(),
                 .optical_depth_image_id = optical_depth_image.default_view(),
                 .optical_depth_sampler_id = optical_depth_sampler,
