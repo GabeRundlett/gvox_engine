@@ -476,7 +476,7 @@ void perframe_voxel_world() {
             VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage = 1;
     }
 
-    VOXEL_BRUSH.chunk_update_n = 6; // (BRUSH_CHUNK_N - 1);
+    VOXEL_BRUSH.chunk_update_n = 62; // (BRUSH_CHUNK_N - 1);
 
     if (GLOBALS.edit_flags != 0)
         VOXEL_BRUSH.chunk_update_n = (BRUSH_CHUNK_N - 1);
@@ -541,11 +541,11 @@ void main() {
         // VOXEL_BRUSH.box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
         // VOXEL_BRUSH.box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
 
-        VOXEL_BRUSH.box.bound_min = f32vec3(80, 0, 0);
-        VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + f32vec3(BRUSH_BLOCK_NX - 1, BRUSH_BLOCK_NY - 1, BRUSH_BLOCK_NZ - 1) / VOXEL_SCL;
+        // VOXEL_BRUSH.box.bound_min = f32vec3(80, 0, 0);
+        // VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + f32vec3(BRUSH_BLOCK_NX - 1, BRUSH_BLOCK_NY - 1, BRUSH_BLOCK_NZ - 1) / VOXEL_SCL;
 
-        // VOXEL_BRUSH.box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-        // VOXEL_BRUSH.box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        VOXEL_BRUSH.box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        VOXEL_BRUSH.box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
 
         if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
             GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;

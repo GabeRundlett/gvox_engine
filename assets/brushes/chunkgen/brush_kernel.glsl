@@ -3,7 +3,7 @@
 #include <utils/noise.glsl>
 #include <utils/voxel.glsl>
 
-#define WATER_LEVEL 4
+#define WATER_LEVEL -3
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
