@@ -517,7 +517,11 @@ void main() {
         GLOBALS.brush_offset = custom_brush_origin_offset();
 
         if (GLOBALS.pick_intersection.hit) {
-            GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
+            f32vec3 p0 = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist;
+            f32vec3 p1 = p0 - GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            p0 = p0 + GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            GLOBALS.brush_origin = p0 + GLOBALS.brush_offset;
+            GLOBALS.pick_intersection.hit = custom_brush_enable(p0, p1);
         }
 
         Box custom_box = custom_brush_box();
