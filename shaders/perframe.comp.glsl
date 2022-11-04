@@ -112,13 +112,15 @@ void perframe_player() {
 
     f32 applied_accel = PLAYER.accel_rate;
 
-    if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_BRUSH] != 0) {
-        if ((PLAYER.view_state & (1 << 7)) == 0) {
-            PLAYER.view_state |= (1 << 7);
-            toggle_brush();
+    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH) {
+        if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_BRUSH] != 0) {
+            if ((PLAYER.view_state & (1 << 7)) == 0) {
+                PLAYER.view_state |= (1 << 7);
+                toggle_brush();
+            }
+        } else {
+            PLAYER.view_state &= ~(1 << 7);
         }
-    } else {
-        PLAYER.view_state &= ~(1 << 7);
     }
 
     if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
