@@ -7,11 +7,11 @@
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
-        /* .amplitude   = */ INPUT.settings.gen_amplitude,
-        /* .persistance = */ INPUT.settings.gen_persistance,
-        /* .scale       = */ INPUT.settings.gen_scale,
-        /* .lacunarity  = */ INPUT.settings.gen_lacunarity,
-        /* .octaves     = */ INPUT.settings.gen_octaves);
+        /* .amplitude   = */ BRUSH_SETTINGS.amplitude,
+        /* .persistance = */ BRUSH_SETTINGS.persistance,
+        /* .scale       = */ BRUSH_SETTINGS.scale,
+        /* .lacunarity  = */ BRUSH_SETTINGS.lacunarity,
+        /* .octaves     = */ BRUSH_SETTINGS.octaves);
     f32 val = fractal_noise(p, noise_conf);
     val = val - (p.z - WATER_LEVEL - 4) * 0.02 / 8 * VOXEL_SCL;
     val += smoothstep(-1, 1, -atan((p.z - WATER_LEVEL + 0) * 0.5 / 8 * VOXEL_SCL)) * 0.5;
@@ -95,7 +95,7 @@ Voxel custom_brush_kernel(in BrushInput brush) {
 
     Voxel result;
 
-    voxel_p = voxel_p - INPUT.settings.gen_origin;
+    voxel_p = voxel_p - BRUSH_SETTINGS.origin;
 
     WorldgenState worldgen_state = get_worldgen_state(voxel_p);
     block_pass0(worldgen_state, voxel_p);

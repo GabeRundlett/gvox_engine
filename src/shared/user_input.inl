@@ -40,13 +40,6 @@ struct Settings {
     f32 daylight_cycle_time;
 
     f32vec3 brush_color;
-
-    f32vec3 gen_origin;
-    f32 gen_amplitude;
-    f32 gen_persistance;
-    f32 gen_scale;
-    f32 gen_lacunarity;
-    i32 gen_octaves;
 };
 
 struct MouseInput {

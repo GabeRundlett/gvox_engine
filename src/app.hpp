@@ -1,6 +1,8 @@
 #pragma once
 
 #include "base_app.hpp"
+#include "custom_ui_components.hpp"
+
 #include <unordered_map>
 #include <queue>
 #include <mutex>
@@ -24,6 +26,13 @@ struct Brush {
     daxa::ComputePipeline perframe_comp_pipeline;
     daxa::ComputePipeline chunk_edit_comp_pipeline;
     BrushSettings settings;
+
+    std::vector<CustomBrushParameter> custom_brush_settings;
+    daxa::BufferId custom_brush_settings_buffer;
+    usize custom_buffer_size;
+    u8 *custom_brush_settings_data;
+
+    void cleanup(daxa::Device & device);
 };
 
 struct ThreadPool {
@@ -58,6 +67,8 @@ struct App : BaseApp<App> {
     GpuInput gpu_input;
     daxa::BufferId gpu_input_buffer;
     daxa::TaskBufferId task_gpu_input_buffer;
+
+    daxa::TaskBufferId task_gpu_brush_settings_buffer;
 
     f32 render_resolution_scl = 1.0f;
     u32 render_size_x = size_x, render_size_y = size_y;
@@ -103,7 +114,6 @@ struct App : BaseApp<App> {
     bool show_menus = true;
     bool show_debug_menu = false;
     bool show_help_menu = false;
-    bool show_generation_menu = false;
     bool show_tool_menu = true;
     bool show_tool_settings_menu = true;
 

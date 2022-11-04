@@ -4,6 +4,7 @@ DAXA_USE_PUSH_CONSTANT(ChunkEditCompPush)
 
 #define CHUNKGEN
 
+#include <brushes/terrain/brush_input.glsl>
 #include <utils/impl_brush_header.glsl>
 #include <brushes/terrain/brush_kernel.glsl>
 

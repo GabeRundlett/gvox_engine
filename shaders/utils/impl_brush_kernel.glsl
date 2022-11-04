@@ -1,7 +1,7 @@
 #pragma once
 
+#include <brush_input.glsl>
 #include <utils/impl_brush_header.glsl>
-// #include <brush_info.glsl>
 #include <brush_kernel.glsl>
 
 b32 brush_should_edit(in f32vec3 voxel_p) {

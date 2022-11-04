@@ -1,29 +1,41 @@
 {
     "display_name": "Terrain",
     "custom_image": "image.png",
-    "input": {
-        "Origin": {
-            "type": "slider_f32vec3"
+    "input": [
+        {
+            "name": "Origin",
+            "type": "input_f32vec3",
+            "default_value": [-1000.0, 50.0, 0.0]
         },
-        "Amplitude": {
+        {
+            "name": "Amplitude",
             "type": "slider_f32",
+            "default_value": 1.0,
+            "slider_range": [0.001, 1]
+        },
+        {
+            "name": "Persistance",
+            "type": "slider_f32",
+            "default_value": 0.33,
             "slider_range": [0, 1]
         },
-        "Persistance": {
+        {
+            "name": "Scale",
             "type": "slider_f32",
+            "default_value": 0.011,
             "slider_range": [0, 1]
         },
-        "Scale": {
+        {
+            "name": "Lacunarity",
             "type": "slider_f32",
+            "default_value": 2.726,
             "slider_range": [0, 1]
         },
-        "Lacunarity": {
-            "type": "slider_f32",
-            "slider_range": [0, 1]
-        },
-        "Octaves": {
+        {
+            "name": "Octaves",
             "type": "slider_u32",
+            "default_value": 7,
             "slider_range": [1, 8]
         }
-    }
+    ]
 }

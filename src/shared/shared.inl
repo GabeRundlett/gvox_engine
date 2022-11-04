@@ -58,6 +58,7 @@ struct OpticalDepthCompPush {
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    u64 brush_settings;
     BufferRef(VoxelWorld) voxel_world;
     // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuIndirectDispatch) gpu_indirect_dispatch;
@@ -70,6 +71,7 @@ struct ChunkOptCompPush {
 struct ChunkEditCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    u64 brush_settings;
     BufferRef(VoxelWorld) voxel_world;
     // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuGVoxModel) gpu_gvox_model;
