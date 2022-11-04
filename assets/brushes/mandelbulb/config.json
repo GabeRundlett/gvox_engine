@@ -5,7 +5,7 @@
         {
             "name": "Color",
             "type": "color",
-            "default_value": [0.2, 0.4, 0.9]
+            "default_value": [ 0.869, 0.541, 0.008 ]
         }
     ]
 }

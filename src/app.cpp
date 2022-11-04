@@ -312,6 +312,7 @@ void App::reset_settings() {
         GLFW_KEY_LEFT_SHIFT,
         GLFW_KEY_LEFT_ALT,
         GLFW_KEY_F5,
+        GLFW_KEY_B,
     };
     gpu_input = default_gpu_input();
 
@@ -480,23 +481,6 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                 .debug_name = path.string() + " thumbnail image",
             });
 
-            auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"perframe.comp.glsl"},
-                    .compile_options = {.root_paths = {path}},
-                },
-                .push_constant_size = sizeof(PerframeCompPush),
-                .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
-            });
-            auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-                    .compile_options = {.root_paths = {path}},
-                },
-                .push_constant_size = sizeof(ChunkEditCompPush),
-                .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
-            });
-
             result.emplace(
                 name.string(),
                 Brush{
@@ -508,9 +492,25 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                     .preview_thumbnail = image,
                     .task_preview_thumbnail = {},
 
-                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
-                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
-
+                    .pipelines = {
+                        .pipeline_compiler = pipeline_compiler,
+                        .perframe_comp_info = {
+                            .shader_info = {
+                                .source = daxa::ShaderFile{"perframe.comp.glsl"},
+                                .compile_options = {.root_paths = {path}},
+                            },
+                            .push_constant_size = sizeof(PerframeCompPush),
+                            .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
+                        },
+                        .chunk_edit_comp_info = {
+                            .shader_info = {
+                                .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
+                                .compile_options = {.root_paths = {path}},
+                            },
+                            .push_constant_size = sizeof(ChunkEditCompPush),
+                            .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
+                        },
+                    },
                     .settings = {
                         .limit_edit_rate = false,
                         .edit_rate = 0.5f,
@@ -559,6 +559,228 @@ App::~App() {
     }
 }
 
+void imgui_help_marker(const char *const desc) {
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+};
+
+void App::settings_ui() {
+    ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
+    // auto prev_vsync = use_vsync;
+    // ImGui::Checkbox("VSYNC", &use_vsync);
+    // if (prev_vsync != use_vsync) {
+    //     device.wait_idle();
+    //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
+    // }
+    ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
+    ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
+    ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
+    ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
+    ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
+    ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
+    if (use_custom_resolution) {
+        i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
+        ImGui::InputInt2("Resolution", custom_res);
+        if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
+            render_size_x = custom_res[0];
+            render_size_y = custom_res[1];
+            recreate_render_images();
+        }
+    } else {
+        auto prev_scl = render_resolution_scl;
+        ImGui::SliderFloat("Resolution Scale", &render_resolution_scl, 0.1f, 1.0f);
+        render_resolution_scl = std::round(render_resolution_scl * 40.0f) / 40.0f;
+        if (prev_scl != render_resolution_scl) {
+            render_size_x = size_x * render_resolution_scl;
+            render_size_y = size_y * render_resolution_scl;
+            recreate_render_images();
+        }
+    }
+    if (ImGui::Button("Help")) {
+        show_help_menu = !show_help_menu;
+    }
+    if (ImGui::Button("Reset Settings")) {
+        reset_settings();
+    }
+
+    if (ImGui::TreeNode("Controls")) {
+        if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, 250))) {
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
+            ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
+            ImGui::TableHeadersRow();
+            for (usize i = 0; i < keys.size(); ++i) {
+                ImGui::TableNextRow(ImGuiTableRowFlags_None);
+                if (ImGui::TableSetColumnIndex(0)) {
+                    ImGui::Text("%s", control_strings[i].data());
+                }
+
+                if (ImGui::TableSetColumnIndex(1)) {
+                    if (i == new_key_index) {
+                        ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
+                        if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                            new_key_index = GAME_KEY_LAST + 1;
+                        } else {
+                            for (i32 key_i = 0; key_i < 512; ++key_i) {
+                                auto key_state = glfwGetKey(glfw_window_ptr, key_i);
+                                if (key_state != GLFW_RELEASE && !controls_popup_is_open) {
+                                    new_key_id = key_i;
+                                    auto key_find_iter = std::find(keys.begin(), keys.end(), key_i);
+                                    if (key_find_iter != keys.end()) {
+                                        prev_key_id = keys[new_key_index];
+                                        old_key_index = key_find_iter - keys.begin();
+                                        if (old_key_index != new_key_index) {
+                                            // new key to set, but already in bindings
+                                            ImGui::OpenPopup("controls_popup_id");
+                                            controls_popup_is_open = true;
+                                        } else {
+                                            // same key was pressed
+                                            keys[new_key_index] = new_key_id;
+                                            new_key_index = GAME_KEY_LAST + 1;
+                                            save_settings();
+                                        }
+                                    } else {
+                                        // new key to set
+                                        keys[new_key_index] = new_key_id;
+                                        new_key_index = GAME_KEY_LAST + 1;
+                                        save_settings();
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        auto key_name = get_key_string(keys[i]);
+                        if (ImGui::Button(key_name, ImVec2(-FLT_MIN, 0.0f))) {
+                            if (new_key_index == GAME_KEY_LAST + 1)
+                                new_key_index = i;
+                        }
+                    }
+                }
+            }
+
+            if (ImGui::BeginPopupModal("controls_popup_id", nullptr, ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
+                ImGui::Text("You're about to overwrite the binding of another key, Would you like to swap these keys?");
+                if (ImGui::Button("YES") || ImGui::IsKeyDown(ImGuiKey_Enter)) {
+                    keys[old_key_index] = prev_key_id;
+                    keys[new_key_index] = new_key_id;
+                    save_settings();
+                    new_key_index = GAME_KEY_LAST + 1;
+                    ImGui::CloseCurrentPopup();
+                    controls_popup_is_open = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("CANCEL") || ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                    new_key_index = GAME_KEY_LAST + 1;
+                    ImGui::CloseCurrentPopup();
+                    controls_popup_is_open = false;
+                }
+                ImGui::EndPopup();
+            }
+
+            ImGui::EndTable();
+        }
+
+        ImGui::TreePop();
+    }
+}
+
+void App::brush_tool_ui() {
+    auto &current_brush = brushes.at(current_brush_key);
+
+    if (ImGui::Button("Reload Brushes")) {
+        reload_brushes();
+    }
+
+    if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
+        ImGui::OpenPopup("brush_selection_popup");
+
+    ImGui::SetNextWindowSize(ImVec2(420, 0));
+    if (ImGui::BeginPopup("brush_selection_popup")) {
+        float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        ImGuiStyle &style = ImGui::GetStyle();
+        auto brush_n = brushes.size();
+        usize n = 0;
+        for (auto const &[key, brush] : brushes) {
+            auto button_sz = ImVec2(64, 64);
+            ImGui::PushID(n);
+            if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), button_sz)) {
+                current_brush_key = key;
+                ImGui::CloseCurrentPopup();
+            }
+            imgui_help_marker(brush.display_name.c_str());
+            float last_button_x2 = ImGui::GetItemRectMax().x;
+            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x;
+            if (n + 1 < brush_n && next_button_x2 < window_visible_x2)
+                ImGui::SameLine();
+            ImGui::PopID();
+            ++n;
+        }
+        ImGui::EndPopup();
+    }
+
+    // Tool specific UI (Only brush for now..)
+    ImGui::Text("Brush Settings");
+    ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
+    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
+    if (current_brush.settings.limit_edit_rate)
+        ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
+    gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
+
+    if (current_brush.key.filename() == "model") {
+        ImGui::Text("%s Settings", current_brush.display_name.c_str());
+        ImGui::InputText("File", &gvox_model_path);
+        ImGui::InputText("File Type", &gvox_model_type);
+        if (ImGui::Button("Reload Model"))
+            should_upload_gvox_model = true;
+    } else if (current_brush.custom_brush_settings.size() > 0) {
+        ImGui::Text("%s Settings", current_brush.display_name.c_str());
+    }
+
+    usize parameter_offset = 0;
+    for (auto const &parameter : current_brush.custom_brush_settings) {
+        switch (parameter.id) {
+        case UiComponentID::COLOR: {
+            f32vec3 &p_color = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            ImGui::ColorEdit3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_color));
+        } break;
+        case UiComponentID::SLIDER_I32: {
+            i32 &p_i32 = *reinterpret_cast<i32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomBrush_slider_i32>(parameter.type_data);
+            ImGui::SliderInt(parameter.name.c_str(), &p_i32, type_data.min, type_data.max);
+        } break;
+        case UiComponentID::SLIDER_U32: {
+            u32 &p_u32 = *reinterpret_cast<u32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomBrush_slider_u32>(parameter.type_data);
+            i32 temp = static_cast<i32>(p_u32);
+            ImGui::SliderInt(parameter.name.c_str(), &temp, type_data.min, type_data.max);
+            p_u32 = static_cast<u32>(temp);
+        } break;
+        case UiComponentID::SLIDER_F32: {
+            f32 &p_f32 = *reinterpret_cast<f32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomBrush_slider_f32>(parameter.type_data);
+            ImGui::SliderFloat(parameter.name.c_str(), &p_f32, type_data.min, type_data.max);
+        } break;
+        case UiComponentID::SLIDER_F32VEC3: {
+            f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomBrush_slider_f32vec3>(parameter.type_data);
+            ImGui::SliderFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3), type_data.min, type_data.max);
+        } break;
+        case UiComponentID::INPUT_F32VEC3: {
+            f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            ImGui::InputFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3));
+        } break;
+        }
+        parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
+    }
+
+    ImGui::End();
+}
+
 void App::ui_update() {
     frametimes[frametime_rotation_index] = gpu_input.delta_time;
     frametime_rotation_index = (frametime_rotation_index + 1) % frametimes.size();
@@ -566,16 +788,6 @@ void App::ui_update() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::PushFont(base_font);
-
-    auto HelpMarker = [](const char *const desc) {
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(desc);
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
 
     if (show_menus) {
         ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
@@ -595,124 +807,7 @@ void App::ui_update() {
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Settings")) {
-                ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
-                // auto prev_vsync = use_vsync;
-                // ImGui::Checkbox("VSYNC", &use_vsync);
-                // if (prev_vsync != use_vsync) {
-                //     device.wait_idle();
-                //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
-                // }
-                ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
-                ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
-                ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
-                ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
-                ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
-                ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
-                if (use_custom_resolution) {
-                    i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
-                    ImGui::InputInt2("Resolution", custom_res);
-                    if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
-                        render_size_x = custom_res[0];
-                        render_size_y = custom_res[1];
-                        recreate_render_images();
-                    }
-                } else {
-                    auto prev_scl = render_resolution_scl;
-                    ImGui::SliderFloat("Resolution Scale", &render_resolution_scl, 0.1f, 1.0f);
-                    render_resolution_scl = std::round(render_resolution_scl * 40.0f) / 40.0f;
-                    if (prev_scl != render_resolution_scl) {
-                        render_size_x = size_x * render_resolution_scl;
-                        render_size_y = size_y * render_resolution_scl;
-                        recreate_render_images();
-                    }
-                }
-                if (ImGui::Button("Help")) {
-                    show_help_menu = !show_help_menu;
-                }
-                if (ImGui::Button("Reset Settings")) {
-                    reset_settings();
-                }
-
-                if (ImGui::TreeNode("Controls")) {
-                    if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, 250))) {
-                        ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
-                        ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
-                        ImGui::TableHeadersRow();
-                        for (usize i = 0; i < keys.size(); ++i) {
-                            ImGui::TableNextRow(ImGuiTableRowFlags_None);
-                            if (ImGui::TableSetColumnIndex(0)) {
-                                ImGui::Text("%s", control_strings[i].data());
-                            }
-
-                            if (ImGui::TableSetColumnIndex(1)) {
-                                if (i == new_key_index) {
-                                    ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
-                                    if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
-                                        new_key_index = GAME_KEY_LAST + 1;
-                                    } else {
-                                        for (i32 key_i = 0; key_i < 512; ++key_i) {
-                                            auto key_state = glfwGetKey(glfw_window_ptr, key_i);
-                                            if (key_state != GLFW_RELEASE && !controls_popup_is_open) {
-                                                new_key_id = key_i;
-                                                auto key_find_iter = std::find(keys.begin(), keys.end(), key_i);
-                                                if (key_find_iter != keys.end()) {
-                                                    prev_key_id = keys[new_key_index];
-                                                    old_key_index = key_find_iter - keys.begin();
-                                                    if (old_key_index != new_key_index) {
-                                                        // new key to set, but already in bindings
-                                                        ImGui::OpenPopup("controls_popup_id");
-                                                        controls_popup_is_open = true;
-                                                    } else {
-                                                        // same key was pressed
-                                                        keys[new_key_index] = new_key_id;
-                                                        new_key_index = GAME_KEY_LAST + 1;
-                                                        save_settings();
-                                                    }
-                                                } else {
-                                                    // new key to set
-                                                    keys[new_key_index] = new_key_id;
-                                                    new_key_index = GAME_KEY_LAST + 1;
-                                                    save_settings();
-                                                }
-                                                break;
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    auto key_name = get_key_string(keys[i]);
-                                    if (ImGui::Button(key_name, ImVec2(-FLT_MIN, 0.0f))) {
-                                        if (new_key_index == GAME_KEY_LAST + 1)
-                                            new_key_index = i;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (ImGui::BeginPopupModal("controls_popup_id", nullptr, ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
-                            ImGui::Text("You're about to overwrite the binding of another key, Would you like to swap these keys?");
-                            if (ImGui::Button("YES") || ImGui::IsKeyDown(ImGuiKey_Enter)) {
-                                keys[old_key_index] = prev_key_id;
-                                keys[new_key_index] = new_key_id;
-                                save_settings();
-                                new_key_index = GAME_KEY_LAST + 1;
-                                ImGui::CloseCurrentPopup();
-                                controls_popup_is_open = false;
-                            }
-                            ImGui::SameLine();
-                            if (ImGui::Button("CANCEL") || ImGui::IsKeyDown(ImGuiKey_Escape)) {
-                                new_key_index = GAME_KEY_LAST + 1;
-                                ImGui::CloseCurrentPopup();
-                                controls_popup_is_open = false;
-                            }
-                            ImGui::EndPopup();
-                        }
-
-                        ImGui::EndTable();
-                    }
-
-                    ImGui::TreePop();
-                }
-
+                settings_ui();
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
@@ -721,85 +816,12 @@ void App::ui_update() {
 
         if (show_tool_menu) {
             ImGui::Begin("Tools");
-            if (ImGui::TreeNode("Brushes")) {
-                if (ImGui::Button("Reload Brushes")) {
-                    reload_brushes();
-                }
-                for (auto const &[key, brush] : brushes) {
-                    if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), ImVec2(64, 64))) {
-                        current_brush_key = key;
-                        break;
-                    }
-                    HelpMarker(brush.display_name.c_str());
-                }
-                ImGui::TreePop();
-            }
             ImGui::End();
         }
 
         if (show_tool_settings_menu) {
-            auto &current_brush = brushes.at(current_brush_key);
-            // std::string tool_window_name = fmt::format(, current_brush.display_name);
             ImGui::Begin("Tool Settings");
-
-            ImGui::Image(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128));
-
-            // Tool specific UI (Only brush for now..)
-            ImGui::Text("Brush Settings");
-            ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
-            set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
-            if (current_brush.settings.limit_edit_rate)
-                ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
-            gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
-
-            if (current_brush.key.filename() == "model") {
-                ImGui::Text("%s Settings", current_brush.display_name.c_str());
-                ImGui::InputText("File", &gvox_model_path);
-                ImGui::InputText("File Type", &gvox_model_type);
-                if (ImGui::Button("Reload Model"))
-                    should_upload_gvox_model = true;
-            } else if (current_brush.custom_brush_settings.size() > 0) {
-                ImGui::Text("%s Settings", current_brush.display_name.c_str());
-            }
-
-            usize parameter_offset = 0;
-            for (auto const &parameter : current_brush.custom_brush_settings) {
-                switch (parameter.id) {
-                case UiComponentID::COLOR: {
-                    f32vec3 &p_color = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    ImGui::ColorEdit3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_color));
-                } break;
-                case UiComponentID::SLIDER_I32: {
-                    i32 &p_i32 = *reinterpret_cast<i32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    auto &type_data = std::get<CustomBrush_slider_i32>(parameter.type_data);
-                    ImGui::SliderInt(parameter.name.c_str(), &p_i32, type_data.min, type_data.max);
-                } break;
-                case UiComponentID::SLIDER_U32: {
-                    u32 &p_u32 = *reinterpret_cast<u32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    auto &type_data = std::get<CustomBrush_slider_u32>(parameter.type_data);
-                    i32 temp = static_cast<i32>(p_u32);
-                    ImGui::SliderInt(parameter.name.c_str(), &temp, type_data.min, type_data.max);
-                    p_u32 = static_cast<u32>(temp);
-                } break;
-                case UiComponentID::SLIDER_F32: {
-                    f32 &p_f32 = *reinterpret_cast<f32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    auto &type_data = std::get<CustomBrush_slider_f32>(parameter.type_data);
-                    ImGui::SliderFloat(parameter.name.c_str(), &p_f32, type_data.min, type_data.max);
-                } break;
-                case UiComponentID::SLIDER_F32VEC3: {
-                    f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    auto &type_data = std::get<CustomBrush_slider_f32vec3>(parameter.type_data);
-                    ImGui::SliderFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3), type_data.min, type_data.max);
-                } break;
-                case UiComponentID::INPUT_F32VEC3: {
-                    f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
-                    ImGui::InputFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3));
-                } break;
-                }
-                parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
-            }
-
-            ImGui::End();
+            brush_tool_ui();
         }
     }
 
@@ -865,8 +887,8 @@ void App::on_update() {
     }
 
     reload_pipeline(draw_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
+    reload_pipeline(brushes.at(current_brush_key).pipelines.get_perframe_comp());
+    reload_pipeline(brushes.at(current_brush_key).pipelines.get_chunk_edit_comp());
     auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
@@ -1298,7 +1320,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
             // cmd_list.set_pipeline(perframe_comp_pipeline);
-            cmd_list.set_pipeline(current_brush.perframe_comp_pipeline);
+            cmd_list.set_pipeline(current_brush.pipelines.get_perframe_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
@@ -1382,7 +1404,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
             // cmd_list.set_pipeline(chunk_edit_comp_pipeline);
-            cmd_list.set_pipeline(current_brush.chunk_edit_comp_pipeline);
+            cmd_list.set_pipeline(current_brush.pipelines.get_chunk_edit_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);

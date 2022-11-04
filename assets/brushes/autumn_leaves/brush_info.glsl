@@ -2,8 +2,8 @@
 
 Box custom_brush_box() {
     return Box(
-        f32vec3(-PLAYER.edit_radius),
-        f32vec3(+PLAYER.edit_radius));
+        f32vec3(-PLAYER.edit_radius * 0.5),
+        f32vec3(+PLAYER.edit_radius * 0.5));
 }
 
 f32vec3 custom_brush_origin_offset() {

@@ -16,6 +16,35 @@ struct BrushSettings {
     f32vec3 color;
 };
 
+struct BrushPipelines {
+    daxa::PipelineCompiler pipeline_compiler;
+
+    bool compiled = false;
+
+    daxa::ComputePipelineInfo perframe_comp_info;
+    daxa::ComputePipeline perframe_comp;
+
+    daxa::ComputePipelineInfo chunk_edit_comp_info;
+    daxa::ComputePipeline chunk_edit_comp;
+
+    void compile() {
+        if (!compiled) {
+            perframe_comp = pipeline_compiler.create_compute_pipeline(perframe_comp_info).value();
+            chunk_edit_comp = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info).value();
+            compiled = true;
+        }
+    }
+
+    auto &get_perframe_comp() {
+        compile();
+        return perframe_comp;
+    }
+    auto &get_chunk_edit_comp() {
+        compile();
+        return chunk_edit_comp;
+    }
+};
+
 struct Brush {
     std::filesystem::path key;
     std::string display_name;
@@ -23,8 +52,7 @@ struct Brush {
     bool thumbnail_needs_updating;
     daxa::ImageId preview_thumbnail;
     daxa::TaskImageId task_preview_thumbnail;
-    daxa::ComputePipeline perframe_comp_pipeline;
-    daxa::ComputePipeline chunk_edit_comp_pipeline;
+    BrushPipelines pipelines;
     BrushSettings settings;
 
     std::vector<CustomBrushParameter> custom_brush_settings;
@@ -32,7 +60,7 @@ struct Brush {
     usize custom_buffer_size;
     u8 *custom_brush_settings_data;
 
-    void cleanup(daxa::Device & device);
+    void cleanup(daxa::Device &device);
 };
 
 struct ThreadPool {
@@ -142,6 +170,9 @@ struct App : BaseApp<App> {
 
     auto get_flag(u32 index) -> bool;
     void set_flag(u32 index, bool value);
+
+    void brush_tool_ui();
+    void settings_ui();
 
     void ui_update();
     void on_update();
