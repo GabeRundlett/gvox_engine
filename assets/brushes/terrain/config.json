@@ -1,0 +1,29 @@
+{
+    "display_name": "Terrain",
+    "custom_image": "image.png",
+    "input": {
+        "Origin": {
+            "type": "slider_f32vec3"
+        },
+        "Amplitude": {
+            "type": "slider_f32",
+            "slider_range": [0, 1]
+        },
+        "Persistance": {
+            "type": "slider_f32",
+            "slider_range": [0, 1]
+        },
+        "Scale": {
+            "type": "slider_f32",
+            "slider_range": [0, 1]
+        },
+        "Lacunarity": {
+            "type": "slider_f32",
+            "slider_range": [0, 1]
+        },
+        "Octaves": {
+            "type": "slider_u32",
+            "slider_range": [1, 8]
+        }
+    }
+}

@@ -10,6 +10,8 @@
 
 #include <imgui_stdlib.h>
 
+#include "ui_components.hpp"
+
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
     "Strafe Left",
@@ -653,7 +655,7 @@ void App::ui_update() {
                 ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
             gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
 
-            if (current_brush.key.filename() == "chunkgen") {
+            if (current_brush.key.filename() == "terrain") {
                 ImGui::Text("Generation Settings");
                 generation_settings();
             }
