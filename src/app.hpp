@@ -55,7 +55,7 @@ struct Brush {
     BrushPipelines pipelines;
     BrushSettings settings;
 
-    std::vector<CustomBrushParameter> custom_brush_settings;
+    std::vector<CustomUIParameter> custom_brush_settings;
     daxa::BufferId custom_brush_settings_buffer;
     usize custom_buffer_size;
     u8 *custom_brush_settings_data;
@@ -123,6 +123,8 @@ struct App : BaseApp<App> {
     std::unordered_map<std::string, Brush> brushes;
     std::string current_brush_key;
     std::chrono::file_clock::time_point last_seen_brushes_folder_update;
+
+    u32 current_tool = GAME_TOOL_BRUSH;
 
     std::array<i32, GAME_KEY_LAST + 1> keys;
     std::array<i32, GAME_MOUSE_BUTTON_LAST + 1> mouse_buttons;

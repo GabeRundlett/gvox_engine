@@ -31,39 +31,39 @@ static constexpr std::array<usize, static_cast<usize>(UiComponentID::LAST)> ui_c
     sizeof(f32vec3),
 };
 
-struct CustomBrush_color {
+struct CustomUI_color {
     f32vec3 default_value;
 };
-struct CustomBrush_slider_i32 {
+struct CustomUI_slider_i32 {
     i32 default_value;
     i32 min, max;
 };
-struct CustomBrush_slider_u32 {
+struct CustomUI_slider_u32 {
     u32 default_value;
     u32 min, max;
 };
-struct CustomBrush_slider_f32 {
+struct CustomUI_slider_f32 {
     f32 default_value;
     f32 min, max;
 };
-struct CustomBrush_slider_f32vec3 {
+struct CustomUI_slider_f32vec3 {
     f32vec3 default_value;
     f32 min, max;
 };
-struct CustomBrush_input_f32vec3 {
+struct CustomUI_input_f32vec3 {
     f32vec3 default_value;
 };
 
-using CustomBrushParameterTypeData = std::variant<
-    CustomBrush_color,
-    CustomBrush_slider_i32,
-    CustomBrush_slider_u32,
-    CustomBrush_slider_f32,
-    CustomBrush_slider_f32vec3,
-    CustomBrush_input_f32vec3>;
+using CustomUIParameterTypeData = std::variant<
+    CustomUI_color,
+    CustomUI_slider_i32,
+    CustomUI_slider_u32,
+    CustomUI_slider_f32,
+    CustomUI_slider_f32vec3,
+    CustomUI_input_f32vec3>;
 
-struct CustomBrushParameter {
+struct CustomUIParameter {
     UiComponentID id;
     std::string name;
-    CustomBrushParameterTypeData type_data;
+    CustomUIParameterTypeData type_data;
 };

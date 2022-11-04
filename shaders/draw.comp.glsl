@@ -56,7 +56,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    if (GLOBALS.pick_intersection.hit) {
+    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
         IntersectionRecord b0_hit = intersect_brush_voxels(ray);
         if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
             trace.intersection_record = b0_hit;

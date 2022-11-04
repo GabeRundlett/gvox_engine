@@ -28,10 +28,15 @@
 #define GAME_KEY_CYCLE_VIEW         12
 #define GAME_KEY_TOGGLE_BRUSH       13
 #define GAME_KEY_LAST               GAME_KEY_TOGGLE_BRUSH
+
+#define GAME_TOOL_NONE 0
+#define GAME_TOOL_BRUSH 1
+#define GAME_TOOL_LAST GAME_TOOL_BRUSH
 // clang-format on
 
 struct Settings {
     u32 flags;
+    u32 tool_id;
     f32 fov;
     f32 edit_rate;
     f32 jitter_scl;

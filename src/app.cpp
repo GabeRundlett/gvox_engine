@@ -27,6 +27,11 @@ static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings
     "Toggle Brush Placement",
 };
 
+static constexpr std::array<std::string_view, GAME_TOOL_LAST + 1> tool_strings{
+    "None",
+    "Brush",
+};
+
 auto default_gpu_input() -> GpuInput {
     return {
         .settings{
@@ -350,7 +355,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
             auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
             if (config_json.contains("display_name"))
                 display_name = config_json["display_name"];
-            auto custom_brush_settings = std::vector<CustomBrushParameter>{};
+            auto custom_brush_settings = std::vector<CustomUIParameter>{};
             usize custom_buffer_size = 0;
             if (config_json.contains("input")) {
                 auto const &input = config_json["input"];
@@ -361,10 +366,10 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                     auto id = static_cast<UiComponentID>(type_iter - ui_component_strings.begin());
                     auto type_size = ui_component_sizes[static_cast<usize>(id)];
                     custom_buffer_size += type_size;
-                    CustomBrushParameterTypeData type_data;
+                    CustomUIParameterTypeData type_data;
                     switch (id) {
                     case UiComponentID::COLOR: {
-                        type_data = CustomBrush_color{
+                        type_data = CustomUI_color{
                             .default_value = {
                                 item["default_value"][0],
                                 item["default_value"][1],
@@ -373,28 +378,28 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                         };
                     } break;
                     case UiComponentID::SLIDER_I32: {
-                        type_data = CustomBrush_slider_i32{
+                        type_data = CustomUI_slider_i32{
                             .default_value = item["default_value"],
                             .min = item["slider_range"][0],
                             .max = item["slider_range"][1],
                         };
                     } break;
                     case UiComponentID::SLIDER_U32: {
-                        type_data = CustomBrush_slider_u32{
+                        type_data = CustomUI_slider_u32{
                             .default_value = item["default_value"],
                             .min = item["slider_range"][0],
                             .max = item["slider_range"][1],
                         };
                     } break;
                     case UiComponentID::SLIDER_F32: {
-                        type_data = CustomBrush_slider_f32{
+                        type_data = CustomUI_slider_f32{
                             .default_value = item["default_value"],
                             .min = item["slider_range"][0],
                             .max = item["slider_range"][1],
                         };
                     } break;
                     case UiComponentID::SLIDER_F32VEC3: {
-                        type_data = CustomBrush_slider_f32vec3{
+                        type_data = CustomUI_slider_f32vec3{
                             .default_value = {
                                 item["default_value"][0],
                                 item["default_value"][1],
@@ -405,7 +410,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                         };
                     } break;
                     case UiComponentID::INPUT_F32VEC3: {
-                        type_data = CustomBrush_input_f32vec3{
+                        type_data = CustomUI_input_f32vec3{
                             .default_value = {
                                 item["default_value"][0],
                                 item["default_value"][1],
@@ -414,7 +419,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                         };
                     } break;
                     }
-                    custom_brush_settings.push_back(CustomBrushParameter{
+                    custom_brush_settings.push_back(CustomUIParameter{
                         .id = id,
                         .name = name_str,
                         .type_data = type_data,
@@ -435,27 +440,27 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                     switch (parameter.id) {
                     case UiComponentID::COLOR: {
                         f32vec3 &p_color = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
-                        p_color = std::get<CustomBrush_color>(parameter.type_data).default_value;
+                        p_color = std::get<CustomUI_color>(parameter.type_data).default_value;
                     } break;
                     case UiComponentID::SLIDER_I32: {
                         i32 &p_i32 = *reinterpret_cast<i32 *>(custom_brush_settings_data + parameter_offset);
-                        p_i32 = std::get<CustomBrush_slider_i32>(parameter.type_data).default_value;
+                        p_i32 = std::get<CustomUI_slider_i32>(parameter.type_data).default_value;
                     } break;
                     case UiComponentID::SLIDER_U32: {
                         u32 &p_u32 = *reinterpret_cast<u32 *>(custom_brush_settings_data + parameter_offset);
-                        p_u32 = std::get<CustomBrush_slider_u32>(parameter.type_data).default_value;
+                        p_u32 = std::get<CustomUI_slider_u32>(parameter.type_data).default_value;
                     } break;
                     case UiComponentID::SLIDER_F32: {
                         f32 &p_f32 = *reinterpret_cast<f32 *>(custom_brush_settings_data + parameter_offset);
-                        p_f32 = std::get<CustomBrush_slider_f32>(parameter.type_data).default_value;
+                        p_f32 = std::get<CustomUI_slider_f32>(parameter.type_data).default_value;
                     } break;
                     case UiComponentID::SLIDER_F32VEC3: {
                         f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
-                        p_f32vec3 = std::get<CustomBrush_slider_f32vec3>(parameter.type_data).default_value;
+                        p_f32vec3 = std::get<CustomUI_slider_f32vec3>(parameter.type_data).default_value;
                     } break;
                     case UiComponentID::INPUT_F32VEC3: {
                         f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
-                        p_f32vec3 = std::get<CustomBrush_input_f32vec3>(parameter.type_data).default_value;
+                        p_f32vec3 = std::get<CustomUI_input_f32vec3>(parameter.type_data).default_value;
                     } break;
                     }
                     parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
@@ -750,24 +755,24 @@ void App::brush_tool_ui() {
         } break;
         case UiComponentID::SLIDER_I32: {
             i32 &p_i32 = *reinterpret_cast<i32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-            auto &type_data = std::get<CustomBrush_slider_i32>(parameter.type_data);
+            auto &type_data = std::get<CustomUI_slider_i32>(parameter.type_data);
             ImGui::SliderInt(parameter.name.c_str(), &p_i32, type_data.min, type_data.max);
         } break;
         case UiComponentID::SLIDER_U32: {
             u32 &p_u32 = *reinterpret_cast<u32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-            auto &type_data = std::get<CustomBrush_slider_u32>(parameter.type_data);
+            auto &type_data = std::get<CustomUI_slider_u32>(parameter.type_data);
             i32 temp = static_cast<i32>(p_u32);
             ImGui::SliderInt(parameter.name.c_str(), &temp, type_data.min, type_data.max);
             p_u32 = static_cast<u32>(temp);
         } break;
         case UiComponentID::SLIDER_F32: {
             f32 &p_f32 = *reinterpret_cast<f32 *>(current_brush.custom_brush_settings_data + parameter_offset);
-            auto &type_data = std::get<CustomBrush_slider_f32>(parameter.type_data);
+            auto &type_data = std::get<CustomUI_slider_f32>(parameter.type_data);
             ImGui::SliderFloat(parameter.name.c_str(), &p_f32, type_data.min, type_data.max);
         } break;
         case UiComponentID::SLIDER_F32VEC3: {
             f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
-            auto &type_data = std::get<CustomBrush_slider_f32vec3>(parameter.type_data);
+            auto &type_data = std::get<CustomUI_slider_f32vec3>(parameter.type_data);
             ImGui::SliderFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3), type_data.min, type_data.max);
         } break;
         case UiComponentID::INPUT_F32VEC3: {
@@ -816,12 +821,18 @@ void App::ui_update() {
 
         if (show_tool_menu) {
             ImGui::Begin("Tools");
+            for (u32 tool_i = 0; tool_i < GAME_TOOL_LAST + 1; ++tool_i) {
+                if (ImGui::Button(tool_strings[tool_i].data())) {
+                    current_tool = tool_i;
+                }
+            }
             ImGui::End();
         }
 
         if (show_tool_settings_menu) {
             ImGui::Begin("Tool Settings");
-            brush_tool_ui();
+            if (current_tool == GAME_TOOL_BRUSH)
+                brush_tool_ui();
         }
     }
 
@@ -875,6 +886,7 @@ void App::on_update() {
     prev_time = now;
 
     gpu_input.frame_dim = {render_size_x, render_size_y};
+    gpu_input.settings.tool_id = current_tool;
     set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, show_menus);
 
     // auto current_brushes_write_time = std::filesystem::last_write_time("assets/brushes");

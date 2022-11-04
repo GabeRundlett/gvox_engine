@@ -498,7 +498,7 @@ void main() {
     perframe_player();
     perframe_voxel_world();
 
-    b32 brush_enabled = ((PLAYER.view_state >> 8) & 0x1) == 1;
+    b32 brush_enabled = INPUT.settings.tool_id == GAME_TOOL_BRUSH && ((PLAYER.view_state >> 8) & 0x1) == 1;
 
     if (brush_enabled) {
         f32vec2 pick_uv = f32vec2(0.0, 0.0);
