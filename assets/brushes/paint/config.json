@@ -1,4 +1,11 @@
 {
     "display_name": "Paint",
-    "custom_image": "image.png"
+    "custom_image": "image.png",
+    "input": [
+        {
+            "name": "Color",
+            "type": "color",
+            "default_value": [0.5, 0.5, 0.5]
+        }
+    ]
 }

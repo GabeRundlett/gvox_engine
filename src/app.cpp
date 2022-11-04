@@ -746,18 +746,21 @@ void App::ui_update() {
 
             // Tool specific UI (Only brush for now..)
             ImGui::Text("Brush Settings");
-            ImGui::ColorEdit3("Brush Color", reinterpret_cast<f32 *>(&current_brush.settings.color));
-            gpu_input.settings.brush_color = current_brush.settings.color;
-            // gpu_input.settings.brush_color = f32vec3{
-            //     std::powf(current_brush.settings.color.x, 2.0f),
-            //     std::powf(current_brush.settings.color.y, 2.0f),
-            //     std::powf(current_brush.settings.color.z, 2.0f),
-            // };
             ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
             set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
             if (current_brush.settings.limit_edit_rate)
                 ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
             gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
+
+            if (current_brush.key.filename() == "model") {
+                ImGui::Text("%s Settings", current_brush.display_name.c_str());
+                ImGui::InputText("File", &gvox_model_path);
+                ImGui::InputText("File Type", &gvox_model_type);
+                if (ImGui::Button("Reload Model"))
+                    should_upload_gvox_model = true;
+            } else if (current_brush.custom_brush_settings.size() > 0) {
+                ImGui::Text("%s Settings", current_brush.display_name.c_str());
+            }
 
             usize parameter_offset = 0;
             for (auto const &parameter : current_brush.custom_brush_settings) {
@@ -794,14 +797,6 @@ void App::ui_update() {
                 } break;
                 }
                 parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
-            }
-
-            if (current_brush.key.filename() == "model") {
-                ImGui::Text("Model Settings");
-                ImGui::InputText("File", &gvox_model_path);
-                ImGui::InputText("File Type", &gvox_model_type);
-                if (ImGui::Button("Reload Model"))
-                    should_upload_gvox_model = true;
             }
 
             ImGui::End();

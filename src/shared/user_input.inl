@@ -38,8 +38,6 @@ struct Settings {
     f32 frame_blending;
     f32 sensitivity;
     f32 daylight_cycle_time;
-
-    f32vec3 brush_color;
 };
 
 struct MouseInput {
