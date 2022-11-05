@@ -361,7 +361,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                 auto const &input = config_json["input"];
                 for (auto const &item : input) {
                     auto const &name_str = item["name"];
-                    auto const &type_str = item["type"];
+                    auto const type_str = (std::string)item["type"];
                     auto type_iter = std::find(ui_component_strings.begin(), ui_component_strings.end(), std::string_view(type_str));
                     auto id = static_cast<UiComponentID>(type_iter - ui_component_strings.begin());
                     auto type_size = ui_component_sizes[static_cast<usize>(id)];
