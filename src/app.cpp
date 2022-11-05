@@ -574,6 +574,14 @@ void imgui_help_marker(const char *const desc) {
     }
 };
 
+void imgui_align_centered_for_width(float width, float alignment = 0.5f) {
+    ImGuiStyle &style = ImGui::GetStyle();
+    float avail = ImGui::GetContentRegionAvail().x;
+    float off = (avail - width) * alignment;
+    if (off > 0.0f)
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
+
 void App::settings_ui() {
     ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
     // auto prev_vsync = use_vsync;
@@ -697,10 +705,7 @@ void App::settings_ui() {
 void App::brush_tool_ui() {
     auto &current_brush = brushes.at(current_brush_key);
 
-    if (ImGui::Button("Reload Brushes")) {
-        reload_brushes();
-    }
-
+    imgui_align_centered_for_width(128.0f);
     if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
         ImGui::OpenPopup("brush_selection_popup");
 
@@ -726,6 +731,11 @@ void App::brush_tool_ui() {
             ++n;
         }
         ImGui::EndPopup();
+    }
+
+    imgui_align_centered_for_width(ImGui::CalcTextSize("Reload Brushes").x);
+    if (ImGui::Button("Reload Brushes")) {
+        reload_brushes();
     }
 
     // Tool specific UI (Only brush for now..)
@@ -782,8 +792,6 @@ void App::brush_tool_ui() {
         }
         parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
     }
-
-    ImGui::End();
 }
 
 void App::ui_update() {
@@ -793,6 +801,8 @@ void App::ui_update() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::PushFont(base_font);
+
+    // ImGui::ShowDemoWindow();
 
     if (show_menus) {
         ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
@@ -833,6 +843,7 @@ void App::ui_update() {
             ImGui::Begin("Tool Settings");
             if (current_tool == GAME_TOOL_BRUSH)
                 brush_tool_ui();
+            ImGui::End();
         }
     }
 

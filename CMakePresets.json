@@ -79,77 +79,17 @@
         }
     ],
     "buildPresets": [
-        {
-            "name": "clang-x86_64-windows-msvc-debug",
-            "displayName": "Clang x86_64 Windows (MSVC ABI) Debug",
-            "configurePreset": "clang-x86_64-windows-msvc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "clang-x86_64-windows-msvc-relwithdebinfo",
-            "displayName": "Clang x86_64 Windows (MSVC ABI) RelWithDebInfo",
-            "configurePreset": "clang-x86_64-windows-msvc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "clang-x86_64-windows-msvc-release",
-            "displayName": "Clang x86_64 Windows (MSVC ABI) Release",
-            "configurePreset": "clang-x86_64-windows-msvc",
-            "configuration": "Release"
-        },
-        {
-            "name": "cl-x86_64-windows-msvc-debug",
-            "displayName": "CL.exe x86_64 Windows (MSVC ABI) Debug",
-            "configurePreset": "cl-x86_64-windows-msvc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "cl-x86_64-windows-msvc-relwithdebinfo",
-            "displayName": "CL.exe x86_64 Windows (MSVC ABI) RelWithDebInfo",
-            "configurePreset": "cl-x86_64-windows-msvc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "cl-x86_64-windows-msvc-release",
-            "displayName": "CL.exe x86_64 Windows (MSVC ABI) Release",
-            "configurePreset": "cl-x86_64-windows-msvc",
-            "configuration": "Release"
-        },
-        {
-            "name": "gcc-x86_64-linux-gnu-debug",
-            "displayName": "G++ x86_64 Linux (GNU ABI) Debug",
-            "configurePreset": "gcc-x86_64-linux-gnu",
-            "configuration": "Debug"
-        },
-        {
-            "name": "gcc-x86_64-linux-gnu-relwithdebinfo",
-            "displayName": "G++ x86_64 Linux (GNU ABI) RelWithDebInfo",
-            "configurePreset": "gcc-x86_64-linux-gnu",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "gcc-x86_64-linux-gnu-release",
-            "displayName": "G++ x86_64 Linux (GNU ABI) Release",
-            "configurePreset": "gcc-x86_64-linux-gnu",
-            "configuration": "Release"
-        },
-        {
-            "name": "clang-x86_64-linux-gnu-debug",
-            "displayName": "Clang x86_64 Linux (GNU ABI) Debug",
-            "configurePreset": "clang-x86_64-linux-gnu",
-            "configuration": "Debug"
-        },
-        {
-            "name": "clang-x86_64-linux-gnu-relwithdebinfo",
-            "displayName": "Clang x86_64 Linux (GNU ABI) RelWithDebInfo",
-            "configurePreset": "clang-x86_64-linux-gnu",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "clang-x86_64-linux-gnu-release",
-            "displayName": "Clang x86_64 Linux (GNU ABI) Release",
-            "configurePreset": "clang-x86_64-linux-gnu",
-            "configuration": "Release"
-        }
+        { "name": "clang-x86_64-windows-msvc-debug", "displayName": "Clang x86_64 Windows (MSVC ABI) Debug", "configurePreset": "clang-x86_64-windows-msvc", "configuration": "Debug" },
+        { "name": "clang-x86_64-windows-msvc-relwithdebinfo", "displayName": "Clang x86_64 Windows (MSVC ABI) RelWithDebInfo", "configurePreset": "clang-x86_64-windows-msvc", "configuration": "RelWithDebInfo" },
+        { "name": "clang-x86_64-windows-msvc-release", "displayName": "Clang x86_64 Windows (MSVC ABI) Release", "configurePreset": "clang-x86_64-windows-msvc", "configuration": "Release" },
+        { "name": "cl-x86_64-windows-msvc-debug", "displayName": "CL.exe x86_64 Windows (MSVC ABI) Debug", "configurePreset": "cl-x86_64-windows-msvc", "configuration": "Debug" },
+        { "name": "cl-x86_64-windows-msvc-relwithdebinfo", "displayName": "CL.exe x86_64 Windows (MSVC ABI) RelWithDebInfo", "configurePreset": "cl-x86_64-windows-msvc", "configuration": "RelWithDebInfo" },
+        { "name": "cl-x86_64-windows-msvc-release", "displayName": "CL.exe x86_64 Windows (MSVC ABI) Release", "configurePreset": "cl-x86_64-windows-msvc", "configuration": "Release" },
+        { "name": "gcc-x86_64-linux-gnu-debug", "displayName": "G++ x86_64 Linux (GNU ABI) Debug", "configurePreset": "gcc-x86_64-linux-gnu", "configuration": "Debug" },
+        { "name": "gcc-x86_64-linux-gnu-relwithdebinfo", "displayName": "G++ x86_64 Linux (GNU ABI) RelWithDebInfo", "configurePreset": "gcc-x86_64-linux-gnu", "configuration": "RelWithDebInfo" },
+        { "name": "gcc-x86_64-linux-gnu-release", "displayName": "G++ x86_64 Linux (GNU ABI) Release", "configurePreset": "gcc-x86_64-linux-gnu", "configuration": "Release" },
+        { "name": "clang-x86_64-linux-gnu-debug", "displayName": "Clang x86_64 Linux (GNU ABI) Debug", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "Debug" },
+        { "name": "clang-x86_64-linux-gnu-relwithdebinfo", "displayName": "Clang x86_64 Linux (GNU ABI) RelWithDebInfo", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "RelWithDebInfo" },
+        { "name": "clang-x86_64-linux-gnu-release", "displayName": "Clang x86_64 Linux (GNU ABI) Release", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "Release" }
     ]
 }

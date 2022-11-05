@@ -230,6 +230,9 @@ void perframe_player() {
     SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEAD_RADIUS);
     SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
 
+    // PLAYER.rot.z = INPUT.time * 0.25;
+    // PLAYER.pos = GLOBALS.edit_origin + f32vec3(0, 0, 20) - PLAYER.forward * 60;
+
     // f32vec3 head_p = PLAYER.pos + f32vec3(0, 0, 1.7);
     // f32vec3 shoulder_p = PLAYER.pos + f32vec3(0, 0, 1.5);
     // f32vec3 chest_p = PLAYER.pos + f32vec3(0, 0, 1.4) + PLAYER.forward * 0.01;
