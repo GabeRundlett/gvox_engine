@@ -1,4 +1,11 @@
 {
     "display_name": "Mandelbulb",
-    "custom_image": "image.png"
+    "custom_image": "image.png",
+    "input": [
+        {
+            "name": "Color",
+            "type": "color",
+            "default_value": [ 0.869, 0.541, 0.008 ]
+        }
+    ]
 }

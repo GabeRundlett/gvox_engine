@@ -33,10 +33,6 @@ DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
     u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
     u32vec3 subchunk_x8up_dispatch;
-
-    u32vec3 brush_chunk_dispatch;
-    u32vec3 brush_subchunk_x2x4_dispatch;
-    u32vec3 brush_subchunk_x8up_dispatch;
 });
 
 struct GVoxModelVoxel {
@@ -54,7 +50,7 @@ DAXA_DECL_BUFFER_STRUCT(GpuGVoxModel, {
 struct StartupCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(VoxelWorld) voxel_world;
-    BufferRef(VoxelWorld) voxel_brush;
+    // BufferRef(VoxelWorld) voxel_brush;
 };
 struct OpticalDepthCompPush {
     daxa_ImageViewId image_id;
@@ -62,27 +58,29 @@ struct OpticalDepthCompPush {
 struct PerframeCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    u64 brush_settings;
     BufferRef(VoxelWorld) voxel_world;
-    BufferRef(VoxelWorld) voxel_brush;
+    // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuIndirectDispatch) gpu_indirect_dispatch;
 };
 struct ChunkOptCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(VoxelWorld) voxel_world;
-    BufferRef(VoxelWorld) voxel_brush;
+    // BufferRef(VoxelWorld) voxel_brush;
 };
 struct ChunkEditCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
+    u64 brush_settings;
     BufferRef(VoxelWorld) voxel_world;
-    BufferRef(VoxelWorld) voxel_brush;
+    // BufferRef(VoxelWorld) voxel_brush;
     BufferRef(GpuGVoxModel) gpu_gvox_model;
 };
 struct DrawCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
     BufferRef(VoxelWorld) voxel_world;
-    BufferRef(VoxelWorld) voxel_brush;
+    // BufferRef(VoxelWorld) voxel_brush;
 
     daxa_ImageViewId image_id;
     daxa_ImageViewId optical_depth_image_id;
@@ -92,7 +90,6 @@ struct DrawCompPush {
 #define GLOBALS push_constant.gpu_globals
 #define SCENE push_constant.gpu_globals.scene
 #define VOXEL_WORLD push_constant.voxel_world
-#define VOXEL_BRUSH push_constant.voxel_brush
 #define INPUT push_constant.gpu_input
 #define MODEL push_constant.gpu_gvox_model
 #define PLAYER push_constant.gpu_globals.player

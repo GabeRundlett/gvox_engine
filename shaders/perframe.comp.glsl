@@ -112,23 +112,25 @@ void perframe_player() {
 
     f32 applied_accel = PLAYER.accel_rate;
 
-    if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_BRUSH] != 0) {
-        if ((PLAYER.view_state & (1 << 7)) == 0) {
-            PLAYER.view_state |= (1 << 7);
-            toggle_brush();
+    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH) {
+        if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_BRUSH] != 0) {
+            if ((PLAYER.view_state & (1 << 7)) == 0) {
+                PLAYER.view_state |= (1 << 7);
+                toggle_brush();
+            }
+        } else {
+            PLAYER.view_state &= ~(1 << 7);
         }
-    } else {
-        PLAYER.view_state &= ~(1 << 7);
     }
 
     if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
         if (INPUT.keyboard.keys[GAME_KEY_CYCLE_VIEW] != 0) {
-            if ((PLAYER.view_state & 0x10) == 0) {
-                PLAYER.view_state |= 0x10;
+            if ((PLAYER.view_state & (1 << 4)) == 0) {
+                PLAYER.view_state |= (1 << 4);
                 toggle_view();
             }
         } else {
-            PLAYER.view_state &= ~0x10;
+            PLAYER.view_state &= ~(1 << 4);
         }
         if (INPUT.keyboard.keys[GAME_KEY_TOGGLE_FLY] != 0) {
             if ((PLAYER.view_state & (1 << 5)) == 0) {
@@ -227,6 +229,9 @@ void perframe_player() {
     SCENE.capsules[0].r = PLAYER_HEAD_RADIUS;
     SCENE.capsules[0].p0 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEAD_RADIUS);
     SCENE.capsules[0].p1 = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
+
+    // PLAYER.rot.z = INPUT.time * 0.25;
+    // PLAYER.pos = GLOBALS.edit_origin + f32vec3(0, 0, 20) - PLAYER.forward * 60;
 
     // f32vec3 head_p = PLAYER.pos + f32vec3(0, 0, 1.7);
     // f32vec3 shoulder_p = PLAYER.pos + f32vec3(0, 0, 1.5);
@@ -387,9 +392,9 @@ u32 calculate_chunk_edit() {
             for (i32 xi = 0; xi < WORLD_CHUNK_NX; ++xi) {
                 if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                     break;
-                u32 i = get_chunk_index(i32vec3(xi, yi, zi));
+                u32 i = get_chunk_index_WORLD(i32vec3(xi, yi, zi));
                 Box chunk_box = VOXEL_WORLD.voxel_chunks[i].box;
-                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && overlaps(chunk_box, VOXEL_BRUSH.box)) {
+                if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && overlaps(chunk_box, SCENE.pick_box)) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
                     ++VOXEL_WORLD.chunk_update_n;
@@ -420,7 +425,7 @@ void perframe_voxel_world() {
         for (u32 yi = 0; yi < WORLD_CHUNK_NY; ++yi) {
             for (u32 xi = 0; xi < WORLD_CHUNK_NX; ++xi) {
                 i32vec3 chunk_i = i32vec3(xi, yi, zi);
-                u32 i = get_chunk_index(chunk_i);
+                u32 i = get_chunk_index_WORLD(chunk_i);
                 f32vec3 box_center = (VOXEL_WORLD.voxel_chunks[i].box.bound_max + VOXEL_WORLD.voxel_chunks[i].box.bound_min) * 0.5;
                 f32vec3 del = VOXEL_WORLD.center_pt - box_center;
                 f32 dist_sq = dot(del, del);
@@ -434,6 +439,8 @@ void perframe_voxel_world() {
             }
         }
     }
+
+    VOXEL_WORLD.brush_chunkgen_index = (VOXEL_WORLD.brush_chunkgen_index - WORLD_CHUNK_N + 1) % BRUSH_CHUNK_N + WORLD_CHUNK_N;
 
     // if (VOXEL_WORLD.chunk_update_n == 0) {
     //     for (u32 i = WORLD_CHUNK_N; i < WORLD_CHUNK_N + BRUSH_CHUNK_N; ++i) {
@@ -476,16 +483,6 @@ void perframe_voxel_world() {
             VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage = 1;
     }
 
-    VOXEL_BRUSH.chunk_update_n = 62; // (BRUSH_CHUNK_N - 1);
-
-    if (GLOBALS.edit_flags != 0)
-        VOXEL_BRUSH.chunk_update_n = (BRUSH_CHUNK_N - 1);
-
-    for (u32 i = 0; i < VOXEL_BRUSH.chunk_update_n; ++i) {
-        VOXEL_BRUSH.chunk_update_indices[i] = VOXEL_BRUSH.chunkgen_index;
-        VOXEL_BRUSH.chunkgen_index = (VOXEL_BRUSH.chunkgen_index + 1) % (BRUSH_CHUNK_N - 1);
-    }
-
     INDIRECT.chunk_edit_dispatch = u32vec3((CHUNK_SIZE + 7) / 8);
     INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 1);
     INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 1);
@@ -493,14 +490,6 @@ void perframe_voxel_world() {
     INDIRECT.chunk_edit_dispatch.z *= non_chunkgen_update_n;
     INDIRECT.subchunk_x2x4_dispatch.y *= VOXEL_WORLD.chunk_update_n;
     INDIRECT.subchunk_x8up_dispatch.y *= VOXEL_WORLD.chunk_update_n;
-
-    INDIRECT.brush_chunk_dispatch = u32vec3((CHUNK_SIZE + 7) / 8);
-    INDIRECT.brush_subchunk_x2x4_dispatch = u32vec3(1, 64, 1);
-    INDIRECT.brush_subchunk_x8up_dispatch = u32vec3(1, 1, 1);
-
-    INDIRECT.brush_chunk_dispatch.z *= VOXEL_BRUSH.chunk_update_n;
-    INDIRECT.brush_subchunk_x2x4_dispatch.y *= VOXEL_BRUSH.chunk_update_n;
-    INDIRECT.brush_subchunk_x8up_dispatch.y *= VOXEL_BRUSH.chunk_update_n;
 
     if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
         INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
@@ -514,7 +503,7 @@ void main() {
     perframe_player();
     perframe_voxel_world();
 
-    b32 brush_enabled = ((PLAYER.view_state >> 8) & 0x1) == 1;
+    b32 brush_enabled = INPUT.settings.tool_id == GAME_TOOL_BRUSH && ((PLAYER.view_state >> 8) & 0x1) == 1;
 
     if (brush_enabled) {
         f32vec2 pick_uv = f32vec2(0.0, 0.0);
@@ -533,19 +522,23 @@ void main() {
         GLOBALS.brush_offset = custom_brush_origin_offset();
 
         if (GLOBALS.pick_intersection.hit) {
-            GLOBALS.brush_origin = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist + GLOBALS.brush_offset;
+            f32vec3 p0 = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist;
+            f32vec3 p1 = p0 - GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            p0 = p0 + GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            GLOBALS.brush_origin = p0 + GLOBALS.brush_offset;
+            GLOBALS.pick_intersection.hit = custom_brush_enable(p0, p1);
         }
 
         Box custom_box = custom_brush_box();
 
-        // VOXEL_BRUSH.box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
-        // VOXEL_BRUSH.box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
+        // SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
+        // SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
 
-        // VOXEL_BRUSH.box.bound_min = f32vec3(80, 0, 0);
-        // VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + f32vec3(BRUSH_BLOCK_NX - 1, BRUSH_BLOCK_NY - 1, BRUSH_BLOCK_NZ - 1) / VOXEL_SCL;
+        // SCENE.pick_box.bound_min = floor((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        // SCENE.pick_box.bound_max = floor((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
 
-        VOXEL_BRUSH.box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-        VOXEL_BRUSH.box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        SCENE.pick_box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
+        SCENE.pick_box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
 
         if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
             GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;

@@ -22,16 +22,16 @@ b32 custom_brush_should_edit(in BrushInput brush) {
     v[4] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(-1, 0, 0) / VOXEL_SCL));
     v[5] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(+1, 0, 0) / VOXEL_SCL));
     has_surrounding =
-        v[0].block_id != BlockID_Air ||
-        v[1].block_id != BlockID_Air ||
-        v[2].block_id != BlockID_Air ||
-        v[3].block_id != BlockID_Air ||
-        v[4].block_id != BlockID_Air ||
-        v[5].block_id != BlockID_Air;
+        v[0].block_id == BlockID_Grass || v[0].block_id == BlockID_Leaves ||
+        v[1].block_id == BlockID_Grass || v[1].block_id == BlockID_Leaves ||
+        v[2].block_id == BlockID_Grass || v[2].block_id == BlockID_Leaves ||
+        v[3].block_id == BlockID_Grass || v[3].block_id == BlockID_Leaves ||
+        v[4].block_id == BlockID_Grass || v[4].block_id == BlockID_Leaves ||
+        v[5].block_id == BlockID_Grass || v[5].block_id == BlockID_Leaves;
 
     return l < 1 && r > 0.95 && has_surrounding && unpack_voxel(sample_packed_voxel(voxel_p)).block_id == BlockID_Air;
 }
 
 Voxel custom_brush_kernel(in BrushInput brush) {
-    return Voxel(INPUT.settings.brush_color, BlockID_Stone);
+    return Voxel(pow(BRUSH_SETTINGS.color, f32vec3(2.2)), BlockID_Leaves);
 }

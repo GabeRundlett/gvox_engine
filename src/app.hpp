@@ -1,6 +1,8 @@
 #pragma once
 
 #include "base_app.hpp"
+#include "custom_ui_components.hpp"
+
 #include <unordered_map>
 #include <queue>
 #include <mutex>
@@ -14,6 +16,35 @@ struct BrushSettings {
     f32vec3 color;
 };
 
+struct BrushPipelines {
+    daxa::PipelineCompiler pipeline_compiler;
+
+    bool compiled = false;
+
+    daxa::ComputePipelineInfo perframe_comp_info;
+    daxa::ComputePipeline perframe_comp;
+
+    daxa::ComputePipelineInfo chunk_edit_comp_info;
+    daxa::ComputePipeline chunk_edit_comp;
+
+    void compile() {
+        if (!compiled) {
+            perframe_comp = pipeline_compiler.create_compute_pipeline(perframe_comp_info).value();
+            chunk_edit_comp = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info).value();
+            compiled = true;
+        }
+    }
+
+    auto &get_perframe_comp() {
+        compile();
+        return perframe_comp;
+    }
+    auto &get_chunk_edit_comp() {
+        compile();
+        return chunk_edit_comp;
+    }
+};
+
 struct Brush {
     std::filesystem::path key;
     std::string display_name;
@@ -21,10 +52,15 @@ struct Brush {
     bool thumbnail_needs_updating;
     daxa::ImageId preview_thumbnail;
     daxa::TaskImageId task_preview_thumbnail;
-    daxa::ComputePipeline perframe_comp_pipeline;
-    daxa::ComputePipeline chunk_edit_comp_pipeline;
-    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
+    BrushPipelines pipelines;
     BrushSettings settings;
+
+    std::vector<CustomUIParameter> custom_brush_settings;
+    daxa::BufferId custom_brush_settings_buffer;
+    usize custom_buffer_size;
+    u8 *custom_brush_settings_data;
+
+    void cleanup(daxa::Device &device);
 };
 
 struct ThreadPool {
@@ -49,6 +85,7 @@ struct App : BaseApp<App> {
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
     daxa::ComputePipeline chunkgen_comp_pipeline;
+    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
     daxa::ComputePipeline subchunk_x8up_comp_pipeline;
     daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
@@ -58,6 +95,8 @@ struct App : BaseApp<App> {
     GpuInput gpu_input;
     daxa::BufferId gpu_input_buffer;
     daxa::TaskBufferId task_gpu_input_buffer;
+
+    daxa::TaskBufferId task_gpu_brush_settings_buffer;
 
     f32 render_resolution_scl = 1.0f;
     u32 render_size_x = size_x, render_size_y = size_y;
@@ -70,8 +109,8 @@ struct App : BaseApp<App> {
     daxa::BufferId gpu_voxel_world_buffer;
     daxa::TaskBufferId task_gpu_voxel_world_buffer;
 
-    daxa::BufferId gpu_voxel_brush_buffer;
-    daxa::TaskBufferId task_gpu_voxel_brush_buffer;
+    // daxa::BufferId gpu_voxel_brush_buffer;
+    // daxa::TaskBufferId task_gpu_voxel_brush_buffer;
 
     BufferId gpu_indirect_dispatch_buffer;
     daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;
@@ -84,6 +123,8 @@ struct App : BaseApp<App> {
     std::unordered_map<std::string, Brush> brushes;
     std::string current_brush_key;
     std::chrono::file_clock::time_point last_seen_brushes_folder_update;
+
+    u32 current_tool = GAME_TOOL_BRUSH;
 
     std::array<i32, GAME_KEY_LAST + 1> keys;
     std::array<i32, GAME_MOUSE_BUTTON_LAST + 1> mouse_buttons;
@@ -103,7 +144,6 @@ struct App : BaseApp<App> {
     bool show_menus = true;
     bool show_debug_menu = false;
     bool show_help_menu = false;
-    bool show_generation_menu = false;
     bool show_tool_menu = true;
     bool show_tool_settings_menu = true;
 
@@ -132,6 +172,9 @@ struct App : BaseApp<App> {
 
     auto get_flag(u32 index) -> bool;
     void set_flag(u32 index, bool value);
+
+    void brush_tool_ui();
+    void settings_ui();
 
     void ui_update();
     void on_update();

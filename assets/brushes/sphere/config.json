@@ -1,3 +1,10 @@
 {
-    "display_name": "Sphere"
+    "display_name": "Sphere",
+    "input": [
+        {
+            "name": "Color",
+            "type": "color",
+            "default_value": [ 0.5, 0.5, 0.5 ]
+        }
+    ]
 }

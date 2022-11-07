@@ -17,7 +17,6 @@ static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings
     "Strafe Right",
     "Reload Chunks",
     "Toggle Fly",
-    "Toggle Brush",
     "Interact 1",
     "Interact 0",
     "Jump",
@@ -25,6 +24,12 @@ static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings
     "Sprint",
     "Walk",
     "Change Camera",
+    "Toggle Brush Placement",
+};
+
+static constexpr std::array<std::string_view, GAME_TOOL_LAST + 1> tool_strings{
+    "None",
+    "Brush",
 };
 
 auto default_gpu_input() -> GpuInput {
@@ -35,13 +40,6 @@ auto default_gpu_input() -> GpuInput {
             .frame_blending = 0.3f,
             .sensitivity = 1.0f,
             .daylight_cycle_time = std::numbers::pi_v<f32> * 0.6f,
-
-            .gen_origin = {-1000.0f, 50.0f, 0.0f},
-            .gen_amplitude = 1.0f,
-            .gen_persistance = 0.33f,
-            .gen_scale = 0.011f,
-            .gen_lacunarity = 2.726f,
-            .gen_octaves = 7,
         },
     };
 }
@@ -113,6 +111,15 @@ void ThreadPool::stop() {
 #endif
 }
 
+void Brush::cleanup(daxa::Device &device) {
+    device.destroy_image(preview_thumbnail);
+    custom_brush_settings.clear();
+    if (custom_buffer_size != 0) {
+        device.destroy_buffer(custom_brush_settings_buffer);
+        delete[] custom_brush_settings_data;
+    }
+}
+
 using Clock = std::chrono::high_resolution_clock;
 
 struct Timer {
@@ -154,10 +161,10 @@ App::App()
           .size = sizeof(VoxelWorld),
           .debug_name = "gpu_voxel_world_buffer",
       })},
-      gpu_voxel_brush_buffer{device.create_buffer({
-          .size = sizeof(VoxelBrush),
-          .debug_name = "gpu_voxel_brush_buffer",
-      })},
+    //   gpu_voxel_brush_buffer{device.create_buffer({
+    //       .size = sizeof(VoxelBrush),
+    //       .debug_name = "gpu_voxel_brush_buffer",
+    //   })},
       gpu_indirect_dispatch_buffer{device.create_buffer({
           .size = sizeof(GpuIndirectDispatch),
           .debug_name = "gpu_indirect_dispatch_buffer",
@@ -215,6 +222,11 @@ App::App()
         .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
         .push_constant_size = sizeof(ChunkEditCompPush),
         .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
+    }).value();
+    brush_chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"}},
+        .push_constant_size = sizeof(ChunkEditCompPush),
+        .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
     }).value();
     subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {
@@ -305,6 +317,7 @@ void App::reset_settings() {
         GLFW_KEY_LEFT_SHIFT,
         GLFW_KEY_LEFT_ALT,
         GLFW_KEY_F5,
+        GLFW_KEY_B,
     };
     gpu_input = default_gpu_input();
 
@@ -342,6 +355,117 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
             auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
             if (config_json.contains("display_name"))
                 display_name = config_json["display_name"];
+            auto custom_brush_settings = std::vector<CustomUIParameter>{};
+            usize custom_buffer_size = 0;
+            if (config_json.contains("input")) {
+                auto const &input = config_json["input"];
+                for (auto const &item : input) {
+                    auto const &name_str = item["name"];
+                    auto const type_str = (std::string)item["type"];
+                    auto type_iter = std::find(ui_component_strings.begin(), ui_component_strings.end(), std::string_view(type_str));
+                    auto id = static_cast<UiComponentID>(type_iter - ui_component_strings.begin());
+                    auto type_size = ui_component_sizes[static_cast<usize>(id)];
+                    custom_buffer_size += type_size;
+                    CustomUIParameterTypeData type_data;
+                    switch (id) {
+                    case UiComponentID::COLOR: {
+                        type_data = CustomUI_color{
+                            .default_value = {
+                                item["default_value"][0],
+                                item["default_value"][1],
+                                item["default_value"][2],
+                            },
+                        };
+                    } break;
+                    case UiComponentID::SLIDER_I32: {
+                        type_data = CustomUI_slider_i32{
+                            .default_value = item["default_value"],
+                            .min = item["slider_range"][0],
+                            .max = item["slider_range"][1],
+                        };
+                    } break;
+                    case UiComponentID::SLIDER_U32: {
+                        type_data = CustomUI_slider_u32{
+                            .default_value = item["default_value"],
+                            .min = item["slider_range"][0],
+                            .max = item["slider_range"][1],
+                        };
+                    } break;
+                    case UiComponentID::SLIDER_F32: {
+                        type_data = CustomUI_slider_f32{
+                            .default_value = item["default_value"],
+                            .min = item["slider_range"][0],
+                            .max = item["slider_range"][1],
+                        };
+                    } break;
+                    case UiComponentID::SLIDER_F32VEC3: {
+                        type_data = CustomUI_slider_f32vec3{
+                            .default_value = {
+                                item["default_value"][0],
+                                item["default_value"][1],
+                                item["default_value"][2],
+                            },
+                            .min = item["slider_range"][0],
+                            .max = item["slider_range"][1],
+                        };
+                    } break;
+                    case UiComponentID::INPUT_F32VEC3: {
+                        type_data = CustomUI_input_f32vec3{
+                            .default_value = {
+                                item["default_value"][0],
+                                item["default_value"][1],
+                                item["default_value"][2],
+                            },
+                        };
+                    } break;
+                    }
+                    custom_brush_settings.push_back(CustomUIParameter{
+                        .id = id,
+                        .name = name_str,
+                        .type_data = type_data,
+                    });
+                }
+            }
+
+            auto custom_brush_settings_buffer = daxa::BufferId{};
+            u8 *custom_brush_settings_data = nullptr;
+            if (custom_buffer_size != 0) {
+                custom_brush_settings_buffer = device.create_buffer({
+                    .size = static_cast<u32>(custom_buffer_size),
+                    .debug_name = "custom_brush_settings_buffer",
+                });
+                custom_brush_settings_data = new u8[custom_buffer_size];
+                usize parameter_offset = 0;
+                for (auto const &parameter : custom_brush_settings) {
+                    switch (parameter.id) {
+                    case UiComponentID::COLOR: {
+                        f32vec3 &p_color = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
+                        p_color = std::get<CustomUI_color>(parameter.type_data).default_value;
+                    } break;
+                    case UiComponentID::SLIDER_I32: {
+                        i32 &p_i32 = *reinterpret_cast<i32 *>(custom_brush_settings_data + parameter_offset);
+                        p_i32 = std::get<CustomUI_slider_i32>(parameter.type_data).default_value;
+                    } break;
+                    case UiComponentID::SLIDER_U32: {
+                        u32 &p_u32 = *reinterpret_cast<u32 *>(custom_brush_settings_data + parameter_offset);
+                        p_u32 = std::get<CustomUI_slider_u32>(parameter.type_data).default_value;
+                    } break;
+                    case UiComponentID::SLIDER_F32: {
+                        f32 &p_f32 = *reinterpret_cast<f32 *>(custom_brush_settings_data + parameter_offset);
+                        p_f32 = std::get<CustomUI_slider_f32>(parameter.type_data).default_value;
+                    } break;
+                    case UiComponentID::SLIDER_F32VEC3: {
+                        f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
+                        p_f32vec3 = std::get<CustomUI_slider_f32vec3>(parameter.type_data).default_value;
+                    } break;
+                    case UiComponentID::INPUT_F32VEC3: {
+                        f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(custom_brush_settings_data + parameter_offset);
+                        p_f32vec3 = std::get<CustomUI_input_f32vec3>(parameter.type_data).default_value;
+                    } break;
+                    }
+                    parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
+                }
+            }
             if (!std::filesystem::exists(path / "brush_info.glsl")) {
                 std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
                 continue;
@@ -362,31 +486,6 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                 .debug_name = path.string() + " thumbnail image",
             });
 
-            auto perframe_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"perframe.comp.glsl"},
-                    .compile_options = {.root_paths = {path}},
-                },
-                .push_constant_size = sizeof(PerframeCompPush),
-                .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
-            });
-            auto chunk_edit_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-                    .compile_options = {.root_paths = {path}},
-                },
-                .push_constant_size = sizeof(ChunkEditCompPush),
-                .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
-            });
-            auto brush_chunkgen_comp_pipeline_result = pipeline_compiler.create_compute_pipeline({
-                .shader_info = {
-                    .source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"},
-                    .compile_options = {.root_paths = {path}},
-                },
-                .push_constant_size = sizeof(ChunkEditCompPush),
-                .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
-            });
-
             result.emplace(
                 name.string(),
                 Brush{
@@ -398,15 +497,35 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                     .preview_thumbnail = image,
                     .task_preview_thumbnail = {},
 
-                    .perframe_comp_pipeline = perframe_comp_pipeline_result.value(),
-                    .chunk_edit_comp_pipeline = chunk_edit_comp_pipeline_result.value(),
-                    .brush_chunkgen_comp_pipeline = brush_chunkgen_comp_pipeline_result.value(),
-
+                    .pipelines = {
+                        .pipeline_compiler = pipeline_compiler,
+                        .perframe_comp_info = {
+                            .shader_info = {
+                                .source = daxa::ShaderFile{"perframe.comp.glsl"},
+                                .compile_options = {.root_paths = {path}},
+                            },
+                            .push_constant_size = sizeof(PerframeCompPush),
+                            .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
+                        },
+                        .chunk_edit_comp_info = {
+                            .shader_info = {
+                                .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
+                                .compile_options = {.root_paths = {path}},
+                            },
+                            .push_constant_size = sizeof(ChunkEditCompPush),
+                            .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
+                        },
+                    },
                     .settings = {
                         .limit_edit_rate = false,
                         .edit_rate = 0.5f,
                         .color = {1.0f, 0.2f, 0.2f},
                     },
+
+                    .custom_brush_settings = std::move(custom_brush_settings),
+                    .custom_brush_settings_buffer = custom_brush_settings_buffer,
+                    .custom_buffer_size = custom_buffer_size,
+                    .custom_brush_settings_data = custom_brush_settings_data,
                 });
         }
     }
@@ -416,7 +535,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
 void App::reload_brushes() {
     device.wait_idle();
     for (auto &[key, brush] : brushes) {
-        device.destroy_image(brush.preview_thumbnail);
+        brush.cleanup(device);
     }
     brushes.clear();
     brushes = std::move(load_brushes());
@@ -436,12 +555,242 @@ App::~App() {
     device.destroy_buffer(gvox_model_buffer);
     device.destroy_buffer(gpu_globals_buffer);
     device.destroy_buffer(gpu_voxel_world_buffer);
-    device.destroy_buffer(gpu_voxel_brush_buffer);
+    // device.destroy_buffer(gpu_voxel_brush_buffer);
     device.destroy_buffer(gpu_input_buffer);
     device.destroy_buffer(gpu_indirect_dispatch_buffer);
     device.destroy_image(render_image);
     for (auto &[key, brush] : brushes) {
-        device.destroy_image(brush.preview_thumbnail);
+        brush.cleanup(device);
+    }
+}
+
+void imgui_help_marker(const char *const desc) {
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+};
+
+void imgui_align_centered_for_width(float width, float alignment = 0.5f) {
+    ImGuiStyle &style = ImGui::GetStyle();
+    float avail = ImGui::GetContentRegionAvail().x;
+    float off = (avail - width) * alignment;
+    if (off > 0.0f)
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
+
+void App::settings_ui() {
+    ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
+    // auto prev_vsync = use_vsync;
+    // ImGui::Checkbox("VSYNC", &use_vsync);
+    // if (prev_vsync != use_vsync) {
+    //     device.wait_idle();
+    //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
+    // }
+    ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
+    ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
+    ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
+    ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
+    ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
+    ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
+    if (use_custom_resolution) {
+        i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
+        ImGui::InputInt2("Resolution", custom_res);
+        if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
+            render_size_x = custom_res[0];
+            render_size_y = custom_res[1];
+            recreate_render_images();
+        }
+    } else {
+        auto prev_scl = render_resolution_scl;
+        ImGui::SliderFloat("Resolution Scale", &render_resolution_scl, 0.1f, 1.0f);
+        render_resolution_scl = std::round(render_resolution_scl * 40.0f) / 40.0f;
+        if (prev_scl != render_resolution_scl) {
+            render_size_x = size_x * render_resolution_scl;
+            render_size_y = size_y * render_resolution_scl;
+            recreate_render_images();
+        }
+    }
+    if (ImGui::Button("Help")) {
+        show_help_menu = !show_help_menu;
+    }
+    if (ImGui::Button("Reset Settings")) {
+        reset_settings();
+    }
+
+    if (ImGui::TreeNode("Controls")) {
+        if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, 250))) {
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
+            ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
+            ImGui::TableHeadersRow();
+            for (usize i = 0; i < keys.size(); ++i) {
+                ImGui::TableNextRow(ImGuiTableRowFlags_None);
+                if (ImGui::TableSetColumnIndex(0)) {
+                    ImGui::Text("%s", control_strings[i].data());
+                }
+
+                if (ImGui::TableSetColumnIndex(1)) {
+                    if (i == new_key_index) {
+                        ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
+                        if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                            new_key_index = GAME_KEY_LAST + 1;
+                        } else {
+                            for (i32 key_i = 0; key_i < 512; ++key_i) {
+                                auto key_state = glfwGetKey(glfw_window_ptr, key_i);
+                                if (key_state != GLFW_RELEASE && !controls_popup_is_open) {
+                                    new_key_id = key_i;
+                                    auto key_find_iter = std::find(keys.begin(), keys.end(), key_i);
+                                    if (key_find_iter != keys.end()) {
+                                        prev_key_id = keys[new_key_index];
+                                        old_key_index = key_find_iter - keys.begin();
+                                        if (old_key_index != new_key_index) {
+                                            // new key to set, but already in bindings
+                                            ImGui::OpenPopup("controls_popup_id");
+                                            controls_popup_is_open = true;
+                                        } else {
+                                            // same key was pressed
+                                            keys[new_key_index] = new_key_id;
+                                            new_key_index = GAME_KEY_LAST + 1;
+                                            save_settings();
+                                        }
+                                    } else {
+                                        // new key to set
+                                        keys[new_key_index] = new_key_id;
+                                        new_key_index = GAME_KEY_LAST + 1;
+                                        save_settings();
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        auto key_name = get_key_string(keys[i]);
+                        if (ImGui::Button(key_name, ImVec2(-FLT_MIN, 0.0f))) {
+                            if (new_key_index == GAME_KEY_LAST + 1)
+                                new_key_index = i;
+                        }
+                    }
+                }
+            }
+
+            if (ImGui::BeginPopupModal("controls_popup_id", nullptr, ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
+                ImGui::Text("You're about to overwrite the binding of another key, Would you like to swap these keys?");
+                if (ImGui::Button("YES") || ImGui::IsKeyDown(ImGuiKey_Enter)) {
+                    keys[old_key_index] = prev_key_id;
+                    keys[new_key_index] = new_key_id;
+                    save_settings();
+                    new_key_index = GAME_KEY_LAST + 1;
+                    ImGui::CloseCurrentPopup();
+                    controls_popup_is_open = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("CANCEL") || ImGui::IsKeyDown(ImGuiKey_Escape)) {
+                    new_key_index = GAME_KEY_LAST + 1;
+                    ImGui::CloseCurrentPopup();
+                    controls_popup_is_open = false;
+                }
+                ImGui::EndPopup();
+            }
+
+            ImGui::EndTable();
+        }
+
+        ImGui::TreePop();
+    }
+}
+
+void App::brush_tool_ui() {
+    auto &current_brush = brushes.at(current_brush_key);
+
+    imgui_align_centered_for_width(128.0f);
+    if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
+        ImGui::OpenPopup("brush_selection_popup");
+
+    ImGui::SetNextWindowSize(ImVec2(420, 0));
+    if (ImGui::BeginPopup("brush_selection_popup")) {
+        float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        ImGuiStyle &style = ImGui::GetStyle();
+        auto brush_n = brushes.size();
+        usize n = 0;
+        for (auto const &[key, brush] : brushes) {
+            auto button_sz = ImVec2(64, 64);
+            ImGui::PushID(n);
+            if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), button_sz)) {
+                current_brush_key = key;
+                ImGui::CloseCurrentPopup();
+            }
+            imgui_help_marker(brush.display_name.c_str());
+            float last_button_x2 = ImGui::GetItemRectMax().x;
+            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x;
+            if (n + 1 < brush_n && next_button_x2 < window_visible_x2)
+                ImGui::SameLine();
+            ImGui::PopID();
+            ++n;
+        }
+        ImGui::EndPopup();
+    }
+
+    imgui_align_centered_for_width(ImGui::CalcTextSize("Reload Brushes").x);
+    if (ImGui::Button("Reload Brushes")) {
+        reload_brushes();
+    }
+
+    // Tool specific UI (Only brush for now..)
+    ImGui::Text("Brush Settings");
+    ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
+    set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
+    if (current_brush.settings.limit_edit_rate)
+        ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
+    gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
+
+    if (current_brush.key.filename() == "model") {
+        ImGui::Text("%s Settings", current_brush.display_name.c_str());
+        ImGui::InputText("File", &gvox_model_path);
+        ImGui::InputText("File Type", &gvox_model_type);
+        if (ImGui::Button("Reload Model"))
+            should_upload_gvox_model = true;
+    } else if (current_brush.custom_brush_settings.size() > 0) {
+        ImGui::Text("%s Settings", current_brush.display_name.c_str());
+    }
+
+    usize parameter_offset = 0;
+    for (auto const &parameter : current_brush.custom_brush_settings) {
+        switch (parameter.id) {
+        case UiComponentID::COLOR: {
+            f32vec3 &p_color = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            ImGui::ColorEdit3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_color));
+        } break;
+        case UiComponentID::SLIDER_I32: {
+            i32 &p_i32 = *reinterpret_cast<i32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomUI_slider_i32>(parameter.type_data);
+            ImGui::SliderInt(parameter.name.c_str(), &p_i32, type_data.min, type_data.max);
+        } break;
+        case UiComponentID::SLIDER_U32: {
+            u32 &p_u32 = *reinterpret_cast<u32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomUI_slider_u32>(parameter.type_data);
+            i32 temp = static_cast<i32>(p_u32);
+            ImGui::SliderInt(parameter.name.c_str(), &temp, type_data.min, type_data.max);
+            p_u32 = static_cast<u32>(temp);
+        } break;
+        case UiComponentID::SLIDER_F32: {
+            f32 &p_f32 = *reinterpret_cast<f32 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomUI_slider_f32>(parameter.type_data);
+            ImGui::SliderFloat(parameter.name.c_str(), &p_f32, type_data.min, type_data.max);
+        } break;
+        case UiComponentID::SLIDER_F32VEC3: {
+            f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            auto &type_data = std::get<CustomUI_slider_f32vec3>(parameter.type_data);
+            ImGui::SliderFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3), type_data.min, type_data.max);
+        } break;
+        case UiComponentID::INPUT_F32VEC3: {
+            f32vec3 &p_f32vec3 = *reinterpret_cast<f32vec3 *>(current_brush.custom_brush_settings_data + parameter_offset);
+            ImGui::InputFloat3(parameter.name.c_str(), reinterpret_cast<f32 *>(&p_f32vec3));
+        } break;
+        }
+        parameter_offset += ui_component_sizes[static_cast<usize>(parameter.id)];
     }
 }
 
@@ -453,15 +802,7 @@ void App::ui_update() {
     ImGui::NewFrame();
     ImGui::PushFont(base_font);
 
-    auto HelpMarker = [](const char *const desc) {
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(desc);
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
+    // ImGui::ShowDemoWindow();
 
     if (show_menus) {
         ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
@@ -481,204 +822,28 @@ void App::ui_update() {
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("Settings")) {
-                ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
-                // auto prev_vsync = use_vsync;
-                // ImGui::Checkbox("VSYNC", &use_vsync);
-                // if (prev_vsync != use_vsync) {
-                //     device.wait_idle();
-                //     swapchain.change_present_mode(use_vsync ? daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK : daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK);
-                // }
-                ImGui::SliderFloat("FOV", &gpu_input.settings.fov, 0.01f, 170.0f);
-                ImGui::SliderFloat("Daylight Cycle Time", &gpu_input.settings.daylight_cycle_time, -1.5f * std::numbers::pi_v<f32>, 2.5f * std::numbers::pi_v<f32>);
-                ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
-                ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
-                ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
-                ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
-                if (use_custom_resolution) {
-                    i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
-                    ImGui::InputInt2("Resolution", custom_res);
-                    if (custom_res[0] != render_size_x || custom_res[1] != render_size_y) {
-                        render_size_x = custom_res[0];
-                        render_size_y = custom_res[1];
-                        recreate_render_images();
-                    }
-                } else {
-                    auto prev_scl = render_resolution_scl;
-                    ImGui::SliderFloat("Resolution Scale", &render_resolution_scl, 0.1f, 1.0f);
-                    render_resolution_scl = std::round(render_resolution_scl * 40.0f) / 40.0f;
-                    if (prev_scl != render_resolution_scl) {
-                        render_size_x = size_x * render_resolution_scl;
-                        render_size_y = size_y * render_resolution_scl;
-                        recreate_render_images();
-                    }
-                }
-                ImGui::Checkbox("Generation Settings", &show_generation_menu);
-                if (ImGui::Button("Help")) {
-                    show_help_menu = !show_help_menu;
-                }
-                if (ImGui::Button("Reset Settings")) {
-                    reset_settings();
-                }
-
-                if (ImGui::TreeNode("Controls")) {
-                    if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, 250))) {
-                        ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
-                        ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
-                        ImGui::TableHeadersRow();
-                        for (usize i = 0; i < keys.size(); ++i) {
-                            ImGui::TableNextRow(ImGuiTableRowFlags_None);
-                            if (ImGui::TableSetColumnIndex(0)) {
-                                ImGui::Text("%s", control_strings[i].data());
-                            }
-
-                            if (ImGui::TableSetColumnIndex(1)) {
-                                if (i == new_key_index) {
-                                    ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
-                                    if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
-                                        new_key_index = GAME_KEY_LAST + 1;
-                                    } else {
-                                        for (i32 key_i = 0; key_i < 512; ++key_i) {
-                                            auto key_state = glfwGetKey(glfw_window_ptr, key_i);
-                                            if (key_state != GLFW_RELEASE && !controls_popup_is_open) {
-                                                new_key_id = key_i;
-                                                auto key_find_iter = std::find(keys.begin(), keys.end(), key_i);
-                                                if (key_find_iter != keys.end()) {
-                                                    prev_key_id = keys[new_key_index];
-                                                    old_key_index = key_find_iter - keys.begin();
-                                                    if (old_key_index != new_key_index) {
-                                                        // new key to set, but already in bindings
-                                                        ImGui::OpenPopup("controls_popup_id");
-                                                        controls_popup_is_open = true;
-                                                    } else {
-                                                        // same key was pressed
-                                                        keys[new_key_index] = new_key_id;
-                                                        new_key_index = GAME_KEY_LAST + 1;
-                                                        save_settings();
-                                                    }
-                                                } else {
-                                                    // new key to set
-                                                    keys[new_key_index] = new_key_id;
-                                                    new_key_index = GAME_KEY_LAST + 1;
-                                                    save_settings();
-                                                }
-                                                break;
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    auto key_name = get_key_string(keys[i]);
-                                    if (ImGui::Button(key_name, ImVec2(-FLT_MIN, 0.0f))) {
-                                        if (new_key_index == GAME_KEY_LAST + 1)
-                                            new_key_index = i;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (ImGui::BeginPopupModal("controls_popup_id", nullptr, ImGuiWindowFlags_Modal | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
-                            ImGui::Text("You're about to overwrite the binding of another key, Would you like to swap these keys?");
-                            if (ImGui::Button("YES") || ImGui::IsKeyDown(ImGuiKey_Enter)) {
-                                keys[old_key_index] = prev_key_id;
-                                keys[new_key_index] = new_key_id;
-                                save_settings();
-                                new_key_index = GAME_KEY_LAST + 1;
-                                ImGui::CloseCurrentPopup();
-                                controls_popup_is_open = false;
-                            }
-                            ImGui::SameLine();
-                            if (ImGui::Button("CANCEL") || ImGui::IsKeyDown(ImGuiKey_Escape)) {
-                                new_key_index = GAME_KEY_LAST + 1;
-                                ImGui::CloseCurrentPopup();
-                                controls_popup_is_open = false;
-                            }
-                            ImGui::EndPopup();
-                        }
-
-                        ImGui::EndTable();
-                    }
-
-                    ImGui::TreePop();
-                }
-
+                settings_ui();
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
         }
         ImGui::End();
 
-        auto generation_settings = [this]() {
-            ImGui::InputFloat3("Origin (offset)", reinterpret_cast<f32 *>(&gpu_input.settings.gen_origin));
-            ImGui::SliderFloat("Amplitude", &gpu_input.settings.gen_amplitude, 0.01f, 1.0f);
-            ImGui::SliderFloat("Persistance", &gpu_input.settings.gen_persistance, 0.01f, 1.0f);
-            ImGui::SliderFloat("Scale", &gpu_input.settings.gen_scale, 0.01f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-            ImGui::SliderFloat("Lacunarity", &gpu_input.settings.gen_lacunarity, 0.01f, 10.0f);
-            ImGui::SliderInt("Octaves", &gpu_input.settings.gen_octaves, 1, 8);
-            if (ImGui::Button("Regenerate"))
-                should_regenerate = true;
-        };
-
         if (show_tool_menu) {
             ImGui::Begin("Tools");
-            if (ImGui::TreeNode("Brushes")) {
-                if (ImGui::Button("Reload Brushes")) {
-                    reload_brushes();
+            for (u32 tool_i = 0; tool_i < GAME_TOOL_LAST + 1; ++tool_i) {
+                if (ImGui::Button(tool_strings[tool_i].data())) {
+                    current_tool = tool_i;
                 }
-                for (auto const &[key, brush] : brushes) {
-                    if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), ImVec2(64, 64))) {
-                        current_brush_key = key;
-                        break;
-                    }
-                    HelpMarker(brush.display_name.c_str());
-                }
-                ImGui::TreePop();
             }
             ImGui::End();
         }
 
         if (show_tool_settings_menu) {
-            auto &current_brush = brushes.at(current_brush_key);
-            // std::string tool_window_name = fmt::format(, current_brush.display_name);
             ImGui::Begin("Tool Settings");
-
-            ImGui::Image(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128));
-
-            // Tool specific UI (Only brush for now..)
-            ImGui::Text("Brush Settings");
-            ImGui::ColorEdit3("Brush Color", reinterpret_cast<f32 *>(&current_brush.settings.color));
-            gpu_input.settings.brush_color = current_brush.settings.color;
-            // gpu_input.settings.brush_color = f32vec3{
-            //     std::powf(current_brush.settings.color.x, 2.0f),
-            //     std::powf(current_brush.settings.color.y, 2.0f),
-            //     std::powf(current_brush.settings.color.z, 2.0f),
-            // };
-            ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
-            set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);
-            if (current_brush.settings.limit_edit_rate)
-                ImGui::SliderFloat("Edit Rate", &current_brush.settings.edit_rate, 0.01f, 1.0f);
-            gpu_input.settings.edit_rate = current_brush.settings.edit_rate;
-
-            if (current_brush.key.filename() == "chunkgen") {
-                ImGui::Text("Generation Settings");
-                generation_settings();
-            }
-
-            if (current_brush.key.filename() == "model") {
-                ImGui::Text("Model Settings");
-                ImGui::InputText("File", &gvox_model_path);
-                ImGui::InputText("File Type", &gvox_model_type);
-                if (ImGui::Button("Reload Model"))
-                    should_upload_gvox_model = true;
-            }
-
+            if (current_tool == GAME_TOOL_BRUSH)
+                brush_tool_ui();
             ImGui::End();
-        }
-
-        if (show_generation_menu) {
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {300.f, 240.f});
-            ImGui::Begin("Generation", &show_generation_menu);
-            generation_settings();
-            ImGui::End();
-            ImGui::PopStyleVar();
         }
     }
 
@@ -732,6 +897,7 @@ void App::on_update() {
     prev_time = now;
 
     gpu_input.frame_dim = {render_size_x, render_size_y};
+    gpu_input.settings.tool_id = current_tool;
     set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, show_menus);
 
     // auto current_brushes_write_time = std::filesystem::last_write_time("assets/brushes");
@@ -744,12 +910,12 @@ void App::on_update() {
     }
 
     reload_pipeline(draw_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).brush_chunkgen_comp_pipeline);
+    reload_pipeline(brushes.at(current_brush_key).pipelines.get_perframe_comp());
+    reload_pipeline(brushes.at(current_brush_key).pipelines.get_chunk_edit_comp());
     auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
+    reload_pipeline(brush_chunkgen_comp_pipeline);
     reload_pipeline(subchunk_brush_x2x4_comp_pipeline);
     reload_pipeline(subchunk_brush_x8up_comp_pipeline);
     if (reloaded_chunkgen_pipe)
@@ -817,8 +983,6 @@ void App::on_key(i32 key_id, i32 action) {
         show_tool_menu = !show_tool_menu;
     if (key_id == GLFW_KEY_N && action == GLFW_PRESS)
         show_tool_settings_menu = !show_tool_settings_menu;
-    if (key_id == GLFW_KEY_G && action == GLFW_PRESS)
-        show_generation_menu = !show_generation_menu;
 
     auto key_find_iter = std::find(keys.begin(), keys.end(), key_id);
     if (key_find_iter != keys.end()) {
@@ -876,8 +1040,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_runtime_buffer(task_gpu_globals_buffer, gpu_globals_buffer);
     task_gpu_voxel_world_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_voxel_world_buffer")});
     new_task_list.add_runtime_buffer(task_gpu_voxel_world_buffer, gpu_voxel_world_buffer);
-    task_gpu_voxel_brush_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_voxel_brush_buffer")});
-    new_task_list.add_runtime_buffer(task_gpu_voxel_brush_buffer, gpu_voxel_brush_buffer);
+    // task_gpu_voxel_brush_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_voxel_brush_buffer")});
+    // new_task_list.add_runtime_buffer(task_gpu_voxel_brush_buffer, gpu_voxel_brush_buffer);
     task_gpu_indirect_dispatch_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_indirect_dispatch_buffer")});
     new_task_list.add_runtime_buffer(task_gpu_indirect_dispatch_buffer, gpu_indirect_dispatch_buffer);
     task_optical_depth_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_optical_depth_image")});
@@ -886,11 +1050,13 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
 
     daxa::UsedTaskImages thumbnail_upload_task_usages;
     daxa::UsedTaskImages imgui_task_usages;
+    task_gpu_brush_settings_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gpu_brush_settings_buffer")});
     for (auto &[key, brush] : brushes) {
         brush.task_preview_thumbnail = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("brush.task_preview_thumbnail")}),
         new_task_list.add_runtime_image(brush.task_preview_thumbnail, brush.preview_thumbnail);
         thumbnail_upload_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::TRANSFER_WRITE, {}});
         imgui_task_usages.push_back({brush.task_preview_thumbnail, daxa::TaskImageAccess::SHADER_READ_ONLY, {}});
+        new_task_list.add_runtime_buffer(task_gpu_brush_settings_buffer, brush.custom_brush_settings_buffer);
     }
 
     new_task_list.add_task({
@@ -951,16 +1117,30 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     });
 
     new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+        },
         .used_images = thumbnail_upload_task_usages,
         .task = [=, this](daxa::TaskRuntime runtime) {
             auto cmd_list = runtime.get_command_list();
+            u32 total_settings_size = 0;
+            for (auto &[key, brush] : brushes) {
+                total_settings_size += brush.custom_buffer_size;
+            }
             auto image_staging_buffer = device.create_buffer({
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .size = static_cast<u32>((4 * 512 * 512) * brushes.size()),
             });
+            auto settings_staging_buffer = device.create_buffer({
+                .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                .size = total_settings_size,
+            });
             cmd_list.destroy_buffer_deferred(image_staging_buffer);
+            cmd_list.destroy_buffer_deferred(settings_staging_buffer);
             auto *buffer_ptr = device.map_memory_as<u8>(image_staging_buffer);
+            auto *settings_buffer_ptr = device.map_memory_as<u8>(settings_staging_buffer);
             u32 offset = 0;
+            u32 settings_offset = 0;
             for (auto &[key, brush] : brushes) {
                 if (!brush.thumbnail_needs_updating)
                     continue;
@@ -1002,10 +1182,23 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 });
                 offset += data_size;
                 brush.thumbnail_needs_updating = false;
+
+                if (brush.custom_buffer_size > 0) {
+                    memcpy(settings_buffer_ptr + settings_offset, brush.custom_brush_settings_data, brush.custom_buffer_size);
+                    cmd_list.copy_buffer_to_buffer({
+                        .src_buffer = settings_staging_buffer,
+                        .src_offset = settings_offset,
+                        .dst_buffer = brush.custom_brush_settings_buffer,
+                        .dst_offset = 0,
+                        .size = static_cast<u32>(brush.custom_buffer_size),
+                    });
+                    settings_offset += brush.custom_buffer_size;
+                }
             }
             device.unmap_memory(image_staging_buffer);
+            device.unmap_memory(settings_staging_buffer);
         },
-        .debug_name = APPNAME_PREFIX("Upload brush thumbnails"),
+        .debug_name = APPNAME_PREFIX("Upload brush thumbnails and default settings"),
     });
 
     new_task_list.add_task({
@@ -1034,12 +1227,37 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Input Transfer"),
     });
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+        },
+        .task = [this](daxa::TaskRuntime interf) {
+            auto cmd_list = interf.get_command_list();
+            auto const &current_brush = brushes.at(current_brush_key);
+            if (current_brush.custom_buffer_size > 0) {
+                auto staging_gpu_brush_settings_buffer = device.create_buffer({
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .size = static_cast<u32>(current_brush.custom_buffer_size),
+                    .debug_name = APPNAME_PREFIX("staging_gpu_brush_settings_buffer"),
+                });
+                cmd_list.destroy_buffer_deferred(staging_gpu_brush_settings_buffer);
+                GpuInput *buffer_ptr = device.map_memory_as<GpuInput>(staging_gpu_brush_settings_buffer);
+                memcpy(buffer_ptr, current_brush.custom_brush_settings_data, current_brush.custom_buffer_size);
+                device.unmap_memory(staging_gpu_brush_settings_buffer);
+                cmd_list.copy_buffer_to_buffer({
+                    .src_buffer = staging_gpu_brush_settings_buffer,
+                    .dst_buffer = current_brush.custom_brush_settings_buffer,
+                    .size = static_cast<u32>(current_brush.custom_buffer_size),
+                });
+            }
+        },
+        .debug_name = APPNAME_PREFIX("Brush Settings Transfer"),
+    });
 
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             if (!should_run_startup && should_regenerate) {
@@ -1060,12 +1278,12 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .size = sizeof(GpuGlobals),
                     .clear_value = 0,
                 });
-                cmd_list.clear_buffer({
-                    .buffer = gpu_voxel_brush_buffer,
-                    .offset = 0,
-                    .size = sizeof(VoxelBrush),
-                    .clear_value = 0,
-                });
+                // cmd_list.clear_buffer({
+                //     .buffer = gpu_voxel_brush_buffer,
+                //     .offset = 0,
+                //     .size = sizeof(VoxelBrush),
+                //     .clear_value = 0,
+                // });
             }
         },
         .debug_name = "Startup (Globals Clear)",
@@ -1074,7 +1292,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             if (should_run_startup) {
@@ -1084,7 +1302,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 auto push = StartupCompPush{
                     .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
                     .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                    .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                    // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 };
                 cmd_list.push_constant(push);
                 cmd_list.dispatch(1, 1, 1);
@@ -1116,18 +1334,25 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(brushes.at(current_brush_key).perframe_comp_pipeline);
+            auto &current_brush = brushes.at(current_brush_key);
+            // cmd_list.set_pipeline(perframe_comp_pipeline);
+            cmd_list.set_pipeline(current_brush.pipelines.get_perframe_comp());
+            u64 brush_settings_id = 0;
+            if (current_brush.custom_buffer_size > 0)
+                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
             auto push = PerframeCompPush{
                 .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .brush_settings = brush_settings_id,
                 .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_indirect_dispatch = this->device.buffer_reference(gpu_indirect_dispatch_buffer),
             };
             cmd_list.push_constant(push);
@@ -1138,18 +1363,26 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
 
     new_task_list.add_task({
         .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
+            auto chunkgen_brush_key = std::filesystem::canonical("assets/brushes/terrain").string();
+            auto &current_brush = brushes.at(chunkgen_brush_key);
             cmd_list.set_pipeline(chunkgen_comp_pipeline);
+            u64 brush_settings_id = 0;
+            if (current_brush.custom_buffer_size > 0)
+                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .brush_settings = brush_settings_id,
                 .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
                 // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
@@ -1158,45 +1391,52 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
     });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(brushes.at(current_brush_key).brush_chunkgen_comp_pipeline);
-            cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = device.buffer_reference(gpu_input_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
-            });
-            cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_chunk_dispatch)});
-        },
-        .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
-    });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
+    //         cmd_list.push_constant(ChunkEditCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //             .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+    //         });
+    //         cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
+    // });
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE_ONLY},
+            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(brushes.at(current_brush_key).chunk_edit_comp_pipeline);
+            auto &current_brush = brushes.at(current_brush_key);
+            // cmd_list.set_pipeline(chunk_edit_comp_pipeline);
+            cmd_list.set_pipeline(current_brush.pipelines.get_chunk_edit_comp());
+            u64 brush_settings_id = 0;
+            if (current_brush.custom_buffer_size > 0)
+                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
             cmd_list.push_constant(ChunkEditCompPush{
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = device.buffer_reference(gpu_input_buffer),
+                .brush_settings = brush_settings_id,
                 .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
@@ -1241,50 +1481,49 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
     });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            // {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
-            cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                // .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-            });
-            cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x2x4_dispatch)});
-        },
-        .debug_name = APPNAME_PREFIX("Brush Subchunk x2x4 (Compute)"),
-    });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
-            cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                // .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-            });
-            cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x8up_dispatch)});
-        },
-        .debug_name = APPNAME_PREFIX("Brush Subchunk x8up (Compute)"),
-    });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
+    //         cmd_list.push_constant(ChunkOptCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //         });
+    //         cmd_list.dispatch(1, 64, 1);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Subchunk x2x4 (Compute)"),
+    // });
+    // new_task_list.add_task({
+    //     .used_buffers = {
+    //         {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //         // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+    //     },
+    //     .task = [this](daxa::TaskRuntime interf) {
+    //         auto cmd_list = interf.get_command_list();
+    //         cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
+    //         cmd_list.push_constant(ChunkOptCompPush{
+    //             .gpu_globals = device.buffer_reference(gpu_globals_buffer),
+    //             .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
+    //             // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+    //         });
+    //         cmd_list.dispatch(1, 1, 1);
+    //     },
+    //     .debug_name = APPNAME_PREFIX("Subchunk x8up (Compute)"),
+    // });
 
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            // {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
             {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
@@ -1297,7 +1536,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.buffer_reference(gpu_globals_buffer),
                 .gpu_input = device.buffer_reference(gpu_input_buffer),
                 .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                // .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
                 .image_id = render_image.default_view(),
                 .optical_depth_image_id = optical_depth_image.default_view(),
                 .optical_depth_sampler_id = optical_depth_sampler,

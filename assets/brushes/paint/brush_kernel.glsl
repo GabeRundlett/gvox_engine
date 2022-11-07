@@ -6,10 +6,8 @@ b32 custom_brush_should_edit(in BrushInput brush) {
 
 Voxel custom_brush_kernel(in BrushInput brush) {
     Voxel result = brush.prev_voxel;
-    // if (brush.prev_voxel.block_id == BlockID_Stone)
-    //     result.col = INPUT.settings.brush_color;
-    f32 r = 1; // rand(brush.p + brush.origin + INPUT.time);
-    if (brush.prev_voxel.block_id != BlockID_Air && r > 0.99)
-        result.col = pow(INPUT.settings.brush_color, f32vec3(1.0));
+    f32 r = rand(brush.p + brush.origin + INPUT.time);
+    if (brush.prev_voxel.block_id != BlockID_Air && r > BRUSH_SETTINGS.random_threshold)
+        result.col = pow(BRUSH_SETTINGS.color, f32vec3(2.2));
     return result;
 }

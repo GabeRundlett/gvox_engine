@@ -1,4 +1,17 @@
 {
     "display_name": "Paint",
-    "custom_image": "image.png"
+    "custom_image": "image.png",
+    "input": [
+        {
+            "name": "Color",
+            "type": "color",
+            "default_value": [ 0.343, 0.331, 0.728 ]
+        },
+        {
+            "name": "Random Threshold",
+            "type": "slider_f32",
+            "default_value": 0.0,
+            "slider_range": [ 0, 1 ]
+        }
+    ]
 }

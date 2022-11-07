@@ -33,5 +33,5 @@ b32 custom_brush_should_edit(in BrushInput brush) {
 }
 
 Voxel custom_brush_kernel(in BrushInput brush) {
-    return Voxel(INPUT.settings.brush_color, BlockID_Stone);
+    return Voxel(BRUSH_SETTINGS.color, BlockID_Stone);
 }

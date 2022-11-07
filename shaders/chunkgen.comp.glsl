@@ -4,8 +4,9 @@ DAXA_USE_PUSH_CONSTANT(ChunkEditCompPush)
 
 #define CHUNKGEN
 
+#include <brushes/terrain/brush_input.glsl>
 #include <utils/impl_brush_header.glsl>
-#include <brushes/chunkgen/brush_kernel.glsl>
+#include <brushes/terrain/brush_kernel.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {

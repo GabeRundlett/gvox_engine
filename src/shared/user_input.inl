@@ -21,32 +21,28 @@
 #define GAME_KEY_TOGGLE_FLY         5
 #define GAME_KEY_INTERACT1          6
 #define GAME_KEY_INTERACT0          7
-#define GAME_KEY_JUMP               (GAME_KEY_INTERACT0 + 1)
-#define GAME_KEY_CROUCH             (GAME_KEY_INTERACT0 + 2)
-#define GAME_KEY_SPRINT             (GAME_KEY_INTERACT0 + 3)
-#define GAME_KEY_WALK               (GAME_KEY_INTERACT0 + 4)
-#define GAME_KEY_CYCLE_VIEW         (GAME_KEY_INTERACT0 + 5)
-#define GAME_KEY_TOGGLE_BRUSH       (GAME_KEY_INTERACT0 + 6)
+#define GAME_KEY_JUMP               8
+#define GAME_KEY_CROUCH             9
+#define GAME_KEY_SPRINT             10
+#define GAME_KEY_WALK               11
+#define GAME_KEY_CYCLE_VIEW         12
+#define GAME_KEY_TOGGLE_BRUSH       13
 #define GAME_KEY_LAST               GAME_KEY_TOGGLE_BRUSH
+
+#define GAME_TOOL_NONE 0
+#define GAME_TOOL_BRUSH 1
+#define GAME_TOOL_LAST GAME_TOOL_BRUSH
 // clang-format on
 
 struct Settings {
     u32 flags;
+    u32 tool_id;
     f32 fov;
     f32 edit_rate;
     f32 jitter_scl;
     f32 frame_blending;
     f32 sensitivity;
     f32 daylight_cycle_time;
-
-    f32vec3 brush_color;
-
-    f32vec3 gen_origin;
-    f32 gen_amplitude;
-    f32 gen_persistance;
-    f32 gen_scale;
-    f32 gen_lacunarity;
-    i32 gen_octaves;
 };
 
 struct MouseInput {

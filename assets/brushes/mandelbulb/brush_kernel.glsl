@@ -61,5 +61,5 @@ Voxel custom_brush_kernel(in BrushInput brush) {
     f32vec3 c = a * 1.0 / BRUSH_SCL;
     f32vec3 color;
     mandelbulb(c, color);
-    return Voxel(mix(1 - INPUT.settings.brush_color, INPUT.settings.brush_color, clamp(color.r, 0, 1)), BlockID_Stone);
+    return Voxel(mix(1 - BRUSH_SETTINGS.color, BRUSH_SETTINGS.color, clamp(color.r, 0, 1)), BlockID_Stone);
 }
