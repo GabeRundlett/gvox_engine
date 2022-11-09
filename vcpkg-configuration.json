@@ -2,13 +2,14 @@
     "registries": [
         {
             "kind": "git",
-            "baseline": "21cca8c1fd7a2e4a4a16b54e09888d951dc15f04",
+            "baseline": "e279b59a437f659ee3b65f0648ba21216c013f35",
             "repository": "https://github.com/GabeRundlett/vcpkg-registry",
             "packages": [
                 "daxa",
                 "glfw3",
                 "fsr2",
-                "gvox"
+                "gvox",
+                "imnodes"
             ]
         }
     ]

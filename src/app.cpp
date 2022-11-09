@@ -9,6 +9,7 @@
 #include <soundio/soundio.h>
 
 #include <imgui_stdlib.h>
+#include <imnodes.h>
 
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
@@ -192,6 +193,8 @@ App::App()
           GLFW_MOUSE_BUTTON_5,
       },
       loop_task_list{record_loop_task_list()} {
+
+    ImNodes::CreateContext();
 
     // gvox_model_path = "sponge.vox";
     // gvox_model_type = "magicavoxel";
@@ -543,6 +546,7 @@ void App::reload_brushes() {
 }
 
 App::~App() {
+    ImNodes::DestroyContext();
     gvox_destroy_context(gvox_ctx);
     while (thread_pool.busy()) {
         std::this_thread::sleep_for(1ms);
@@ -885,6 +889,23 @@ RIGHT MOUSE BUTTON to place voxels
         ImGui::End();
         ImGui::PopStyleVar();
     }
+
+    // ImGui::Begin("Node Editor");
+    // ImNodes::BeginNodeEditor();
+    // const int hardcoded_node_id = 1;
+    // static float value = 0.0f;
+    // ImNodes::BeginNode(hardcoded_node_id);
+    // ImNodes::BeginNodeTitleBar();
+    // ImGui::TextUnformatted("My node");
+    // ImNodes::EndNodeTitleBar();
+    // ImGui::Dummy(ImVec2(80.0f, 45.0f));
+    // const int output_attr_id = 2;
+    // ImNodes::BeginOutputAttribute(output_attr_id);
+    // ImGui::Text("My output pin");
+    // ImNodes::EndOutputAttribute();
+    // ImNodes::EndNode();
+    // ImNodes::EndNodeEditor();
+    // ImGui::End();
 
     ImGui::PopFont();
     ImGui::Render();
@@ -1361,6 +1382,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .debug_name = "Perframe (Compute)",
     });
 
+#if 1
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
@@ -1545,6 +1567,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Draw (Compute)"),
     });
+#endif
 
     new_task_list.add_task({
         .used_buffers = {

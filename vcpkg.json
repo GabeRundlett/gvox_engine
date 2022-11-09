@@ -13,6 +13,7 @@
         "glfw3",
         "glm",
         "gvox",
+        "imnodes",
         "stb",
         "nlohmann-json",
         "platform-folders",
