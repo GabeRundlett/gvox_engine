@@ -65,6 +65,18 @@ f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h) {
     f32vec2 d = abs(f32vec2(length(p.xy), p.z)) - f32vec2(h, r);
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
+f32 sd_cylinder(f32vec3 p, f32vec3 a, f32vec3 b, f32 r) {
+    f32vec3 ba = b - a;
+    f32vec3 pa = p - a;
+    f32 baba = dot(ba, ba);
+    f32 paba = dot(pa, ba);
+    f32 x = length(pa * baba - ba * paba) - r * baba;
+    f32 y = abs(paba - baba * 0.5) - baba * 0.5;
+    f32 x2 = x * x;
+    f32 y2 = y * y * baba;
+    f32 d = (max(x, y) < 0.0) ? -min(x2, y2) : (((x > 0.0) ? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));
+    return sign(d) * sqrt(abs(d)) / baba;
+}
 f32 sd_triangular_prism(in f32vec3 p, in f32 r, in f32 h) {
     const f32 k = sqrt(3.0);
     h *= 0.5 * k;
@@ -169,11 +181,6 @@ f32 sd_capped_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 ra, in f32 r
 }
 f32 sd_torus(in f32vec3 p, in f32vec2 t) {
     return length(f32vec2(length(p.xy) - t.x, p.z)) - t.y;
-}
-f32 sd_capped_torus(in f32vec3 p, in f32vec2 sc, in f32 ra, in f32 rb) {
-    p.x = abs(p.x);
-    f32 k = (sc.y * p.x > sc.x * p.y) ? dot(p.xy, sc) : length(p.xy);
-    return sqrt(dot(p, p) + ra * ra - 2.0 * ra * k) - rb;
 }
 f32 sd_octahedron(in f32vec3 p, in f32 s) {
     p = abs(p);

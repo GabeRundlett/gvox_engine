@@ -114,6 +114,8 @@ value = sd_smooth_difference(value, sd_sphere(brush.p - center, r), 2.0);
 ---
 
 ### Plane
+<img src="readme/shapes/plane.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_plane(in f32vec3 p);`
@@ -123,6 +125,8 @@ value = sd_plane(brush.p - center);
 ```
 
 ### Sphere
+<img src="readme/shapes/sphere.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_sphere(in f32vec3 p, in f32 r);`
@@ -133,6 +137,8 @@ value = sd_sphere(brush.p - center, r);
 ```
 
 ### Ellipsoid
+<img src="readme/shapes/ellipsoid.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_ellipsoid(in f32vec3 p, in f32vec3 r);`
@@ -143,6 +149,8 @@ value = sd_ellipsoid(brush.p - center, r);
 ```
 
 ### Box
+<img src="readme/shapes/box.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_box(in f32vec3 p, in f32vec3 size);`
@@ -161,6 +169,8 @@ value = sd_box(brush.p, box);
 ```
 
 ### Box Frame
+<img src="readme/shapes/box_frame.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_box_frame(in f32vec3 p, in f32vec3 b, in f32 e);`
@@ -181,17 +191,33 @@ value = sd_box_frame(brush.p, box, 1);
 ```
 
 ### Cylinder
+<img src="readme/shapes/cylinder.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h);`
 ```glsl
 f32 r = 4;
 f32 h = 3;
-f32vec3 center = f32vec3(r + 1, r + 1, h + 1)
+f32vec3 center = f32vec3(r + 1, r + 1, h + 1);
 value = sd_cylinder(brush.p - center, r, h);
 ```
 
+or, in an arbitrary orientation:
+
+<img src="readme/shapes/cylinder_arb.png" alt="Visual Representation" width="240"/>
+
+`f32 sd_cylinder(f32vec3 p, f32vec3 a, f32vec3 b, f32 r)`
+```glsl
+f32 r = 2;
+f32vec3 p0 = f32vec3(r + 1) + f32vec3(0, 2, 0);
+f32vec3 p1 = p0 + f32vec3(1, -2, 8);
+value = sd_cylinder(brush.p, p0, p1, r);
+```
+
 ### Triangular Prism
+<img src="readme/shapes/triangular_prism.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_triangular_prism(in f32vec3 p, in f32 r, in f32 h);`
@@ -203,6 +229,8 @@ value = sd_triangular_prism(brush.p - center, r, h);
 ```
 
 ### Hexagonal Prism
+<img src="readme/shapes/hexagonal_prism.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_hexagonal_prism(in f32vec3 p, in f32 r, in f32 h);`
@@ -214,6 +242,8 @@ value = sd_hexagonal_prism(brush.p - center, r, h);
 ```
 
 ### Octagonal Prism
+<img src="readme/shapes/octagonal_prism.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_octagonal_prism(in f32vec3 p, in f32 r, in f32 h);`
@@ -225,33 +255,39 @@ value = sd_octagonal_prism(brush.p - center, r, h);
 ```
 
 ### Capsule
+<img src="readme/shapes/capsule.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_capsule(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r);`
 ```glsl
 f32 r = 2;
-f32vec3 p0 = f32vec3(r + 1);
-f32vec3 p1 = p0 + f32vec3(1, 2, 8);
+f32vec3 p0 = f32vec3(r + 1) + f32vec3(0, 2, 0);
+f32vec3 p1 = p0 + f32vec3(1, -2, 8);
 value = sd_capsule(brush.p, p0, p1, r);
 ```
 
 ### Cone
+<img src="readme/shapes/cone.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_cone(in f32vec3 p, in f32 c, in f32 h);`
 ```glsl
-f32 slope = 2.0 / 8.0;
-f32 h = 4;
+f32 slope = 5.0 / 8.0;
+f32 h = 8;
 f32vec3 center = f32vec3(h + 1);
 value = sd_cone(brush.p - center, slope, h);
 ```
 
 ### Round Cone
+<img src="readme/shapes/round_cone.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_round_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h);`
 ```glsl
-f32 r0 = 4;
+f32 r0 = 3;
 f32 r1 = 1;
 f32 h = 8;
 f32vec3 p = f32vec3(r0 + 1);
@@ -260,21 +296,25 @@ value = sd_round_cone(brush.p - p, r0, r1, h);
 
 or, in an arbitrary orientation:
 
+<img src="readme/shapes/round_cone_arb.png" alt="Visual Representation" width="240"/>
+
 `f32 sd_round_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r1, in f32 r2);`
 ```glsl
-f32 r0 = 2;
+f32 r0 = 3;
 f32 r1 = 1;
-f32vec3 p0 = f32vec3(r0 + 1);
-f32vec3 p1 = p0 + f32vec3(1, 2, 8);
+f32vec3 p0 = f32vec3(r0 + 1) + f32vec3(0, 2, 0);
+f32vec3 p1 = p0 + f32vec3(1, -2, 8);
 value = sd_round_cone(brush.p, p0, p1, r0, r1);
 ```
 
 ### Capped Cone
+<img src="readme/shapes/capped_cone.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_capped_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h);`
 ```glsl
-f32 r0 = 4;
+f32 r0 = 3;
 f32 r1 = 1;
 f32 h = 4;
 f32vec3 center = f32vec3(0, 0, h) + r0 + 1;
@@ -283,16 +323,20 @@ value = sd_capped_cone(brush.p - center, r0, r1, h);
 
 or, in an arbitrary orientation:
 
+<img src="readme/shapes/capped_cone_arb.png" alt="Visual Representation" width="240"/>
+
 `f32 sd_capped_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 ra, in f32 rb);`
 ```glsl
-f32 r0 = 2;
+f32 r0 = 3;
 f32 r1 = 1;
-f32vec3 p0 = f32vec3(r0 + 1);
-f32vec3 p1 = p0 + f32vec3(1, 2, 8);
+f32vec3 p0 = f32vec3(r0 + 1) + f32vec3(0, 2, 0);
+f32vec3 p1 = p0 + f32vec3(1, -2, 8);
 value = sd_capped_cone(brush.p, p0, p1, r0, r1);
 ```
 
 ### Torus
+<img src="readme/shapes/torus.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_torus(in f32vec3 p, in f32vec2 t);`
@@ -301,17 +345,9 @@ f32vec2 r = f32vec2(4, 2);
 value = sd_torus(brush.p - (f32vec3(r.x + r.y, r.x + r.y, r.y) + 1), r);
 ```
 
-### Capped Torus
-usage:
-
-`f32 sd_capped_torus(in f32vec3 p, in f32vec2 sc, in f32 ra, in f32 rb);`
-```glsl
-f32vec2 r = f32vec2(4, 2);
-f32vec3 center = f32vec3(r.x + r.y, r.x + r.y, r.y) + 1;
-value = sd_capped_torus(brush.p - center, f32vec2(1, 0.5), r.x, r.y);
-```
-
 ### Octahedron
+<img src="readme/shapes/octahedron.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_octahedron(in f32vec3 p, in f32 s);`
@@ -322,6 +358,8 @@ value = sd_octahedron(brush.p - center, r);
 ```
 
 ### Pyramid
+<img src="readme/shapes/pyramid.png" alt="Visual Representation" width="240"/>
+
 usage:
 
 `f32 sd_pyramid(in f32vec3 p, in f32 r, in f32 h);`
