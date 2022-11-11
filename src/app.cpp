@@ -841,6 +841,25 @@ void App::ui_update() {
                 }
             }
             ImGui::End();
+
+            // ImGui::Begin("Node Editor");
+            // ImNodes::BeginNodeEditor();
+
+            // const int hardcoded_node_id = 1;
+            // const int output_attr_id = 2;
+            // static float value = 0.0f;
+
+            // ImNodes::BeginNode(hardcoded_node_id);
+            // ImNodes::BeginNodeTitleBar();
+            // ImGui::TextUnformatted("My node");
+            // ImNodes::EndNodeTitleBar();
+            // ImNodes::BeginOutputAttribute(output_attr_id);
+            // ImGui::Text("My output pin");
+            // ImNodes::EndOutputAttribute();
+            // ImNodes::EndNode();
+
+            // ImNodes::EndNodeEditor();
+            // ImGui::End();
         }
 
         if (show_tool_settings_menu) {
@@ -889,23 +908,6 @@ RIGHT MOUSE BUTTON to place voxels
         ImGui::End();
         ImGui::PopStyleVar();
     }
-
-    // ImGui::Begin("Node Editor");
-    // ImNodes::BeginNodeEditor();
-    // const int hardcoded_node_id = 1;
-    // static float value = 0.0f;
-    // ImNodes::BeginNode(hardcoded_node_id);
-    // ImNodes::BeginNodeTitleBar();
-    // ImGui::TextUnformatted("My node");
-    // ImNodes::EndNodeTitleBar();
-    // ImGui::Dummy(ImVec2(80.0f, 45.0f));
-    // const int output_attr_id = 2;
-    // ImNodes::BeginOutputAttribute(output_attr_id);
-    // ImGui::Text("My output pin");
-    // ImNodes::EndOutputAttribute();
-    // ImNodes::EndNode();
-    // ImNodes::EndNodeEditor();
-    // ImGui::End();
 
     ImGui::PopFont();
     ImGui::Render();

@@ -37,7 +37,7 @@ f32 sd_castle_wall(in f32vec3 p) {
     f32vec3 wlb_p = p;
     wlb_p.x = wlb_p.x = (fract(wlb_p.x / wlb_repeat_x + 0.5) - 0.5) * wlb_repeat_x;
     wlb_p.z -= 2;
-    val = min(val, sd_triangular_prism(wlb_p, 1.85, 1));
+    val = min(val, sd_triangular_prism(wlb_p.zyx, 1.85, 1));
     wlb_p.z -= -8;
     val = min(val, sd_box(wlb_p + f32vec3(0, 0, 2.8 + 4), f32vec3(1, 1.6, 10 + 4)));
     val = min(val, sd_cylinder(t_p + f32vec3(0, 0, 8), 4, 16));

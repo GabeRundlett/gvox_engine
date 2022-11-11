@@ -90,38 +90,30 @@ b32 custom_brush_should_edit(in BrushInput brush) {
 #define OFFSET brush.origin
 #endif
 
+#if 1
 Voxel custom_brush_kernel(in BrushInput brush) {
     f32vec3 voxel_p = brush.p + OFFSET;
-
     Voxel result;
-
     voxel_p = voxel_p - BRUSH_SETTINGS.origin;
-
     WorldgenState worldgen_state = get_worldgen_state(voxel_p);
     block_pass0(worldgen_state, voxel_p);
-
     SurroundingInfo surroundings;
-
     for (int i = 0; i < 15; ++i) {
         WorldgenState temp;
         f32vec3 sample_pos;
-
         sample_pos = voxel_p + f32vec3(0, 0, i + 1) / VOXEL_SCL;
         temp = get_worldgen_state(sample_pos);
         block_pass0(temp, sample_pos);
         surroundings.below_ids[i] = temp.block_id;
-
         sample_pos = voxel_p + f32vec3(0, 0, -i - 1) / VOXEL_SCL;
         temp = get_worldgen_state(sample_pos);
         block_pass0(temp, sample_pos);
         surroundings.above_ids[i] = temp.block_id;
     }
-
     surroundings.depth_above = 0;
     surroundings.depth_below = 0;
     surroundings.above_water = 0;
     surroundings.under_water = 0;
-
     if (worldgen_state.block_id == BlockID_Air) {
         for (; surroundings.depth_above < 15; ++surroundings.depth_above) {
             if (surroundings.above_ids[surroundings.depth_above] == BlockID_Water)
@@ -153,12 +145,32 @@ Voxel custom_brush_kernel(in BrushInput brush) {
     WorldgenState slope_t1 = get_worldgen_state(voxel_p + f32vec3(0, 1, 0) / VOXEL_SCL * 0.01);
     WorldgenState slope_t2 = get_worldgen_state(voxel_p + f32vec3(0, 0, 1) / VOXEL_SCL * 0.01);
     surroundings.nrm = normalize(f32vec3(slope_t0.t_noise, slope_t1.t_noise, slope_t2.t_noise) - worldgen_state.t_noise);
-
     block_pass1(worldgen_state, voxel_p, surroundings);
-
     result.col = block_color(worldgen_state.block_id);
-    // result.nrm = surroundings.nrm;
     result.block_id = worldgen_state.block_id;
+    return result;
+}
+#else
+Voxel custom_brush_kernel(in BrushInput brush) {
+    Voxel result;
+    result.col = f32vec3(0.5);
+    f32 value = MAX_SD;
+
+    Box box;
+    box.bound_min = f32vec3(1);
+    box.bound_max = f32vec3(1 + 3 * 2);
+    value = sd_box(brush.p, box);
+
+    f32 r = 4;
+    f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+    value = sd_smooth_intersection(value, sd_sphere(brush.p - center, r), 2);
+
+    if (value < 0.0) {
+        result.block_id = BlockID_Stone;
+    } else {
+        result.block_id = BlockID_Air;
+    }
 
     return result;
 }
+#endif
