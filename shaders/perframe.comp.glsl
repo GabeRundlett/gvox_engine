@@ -393,7 +393,7 @@ u32 calculate_chunk_edit() {
                 if (VOXEL_WORLD.chunk_update_n >= MAX_CHUNK_UPDATES)
                     break;
                 u32 i = get_chunk_index_WORLD(i32vec3(xi, yi, zi));
-                Box chunk_box = VOXEL_WORLD.voxel_chunks[i].box;
+                BoundingBox chunk_box = VOXEL_WORLD.voxel_chunks[i].box;
                 if (VOXEL_WORLD.chunks_genstate[i].edit_stage == 2 && overlaps(chunk_box, SCENE.pick_box)) {
                     VOXEL_WORLD.chunks_genstate[i].edit_stage = 3;
                     VOXEL_WORLD.chunk_update_indices[VOXEL_WORLD.chunk_update_n] = i;
@@ -529,7 +529,7 @@ void main() {
             GLOBALS.pick_intersection.hit = custom_brush_enable(p0, p1);
         }
 
-        Box custom_box = custom_brush_box();
+        BoundingBox custom_box = custom_brush_box();
 
         // SCENE.pick_box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
         // SCENE.pick_box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;

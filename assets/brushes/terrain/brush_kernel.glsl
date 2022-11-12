@@ -156,7 +156,7 @@ Voxel custom_brush_kernel(in BrushInput brush) {
     result.col = f32vec3(0.5);
     f32 value = MAX_SD;
 
-    Box box;
+    BoundingBox box;
     box.bound_min = f32vec3(1);
     box.bound_max = f32vec3(1 + 3 * 2);
     value = sd_box(brush.p, box);

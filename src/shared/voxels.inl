@@ -60,7 +60,7 @@ struct ChunkGenState {
 };
 
 struct VoxelChunk {
-    Box box;
+    BoundingBox box;
     PackedVoxel packed_voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
 
@@ -73,7 +73,7 @@ struct VoxelUniformityChunk {
 };
 
 DAXA_DECL_BUFFER_STRUCT(VoxelWorld, {
-    Box box;
+    BoundingBox box;
     f32vec3 center_pt;
     f32 last_update_time;
     u32 chunk_update_indices[MAX_CHUNK_UPDATES];

@@ -14,7 +14,7 @@ usage:
 
 `f32 sd_union(in f32 a, in f32 b);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -31,7 +31,7 @@ usage:
 
 `f32 sd_intersection(in f32 a, in f32 b);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -46,7 +46,7 @@ value = sd_intersection(value, sd_sphere(brush.p - center, r));
 
 usage:
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -65,7 +65,7 @@ usage:
 
 `f32 sd_smooth_union(in f32 a, in f32 b, in f32 k);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -82,7 +82,7 @@ usage:
 
 `f32 sd_smooth_intersection(in f32 a, in f32 b, in f32 k);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -99,7 +99,7 @@ usage:
 
 `f32 sd_smooth_difference(in f32 a, in f32 b, in f32 k);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
@@ -160,9 +160,9 @@ f32vec3 center = r + 1;
 value = sd_box(brush.p - center, r);
 ```
 
-`f32 sd_box(in f32vec3 p, in Box box);`
+`f32 sd_box(in f32vec3 p, in BoundingBox box);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 4 * 2);
 value = sd_box(brush.p, box);
@@ -182,9 +182,9 @@ value = sd_box_frame(brush.p - center, r, 1);
 
 or
 
-`f32 sd_box_frame(in f32vec3 p, in Box box, in f32 e);`
+`f32 sd_box_frame(in f32vec3 p, in BoundingBox box, in f32 e);`
 ```glsl
-Box box;
+BoundingBox box;
 box.bound_min = f32vec3(1);
 box.bound_max = f32vec3(1 + 4 * 2);
 value = sd_box_frame(brush.p, box, 1);

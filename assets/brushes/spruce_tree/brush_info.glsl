@@ -1,7 +1,7 @@
 #pragma once
 
-Box custom_brush_box() {
-    return Box(
+BoundingBox custom_brush_box() {
+    return BoundingBox(
         f32vec3(-2, -2, -0.15 - 1.0 / VOXEL_SCL),
         f32vec3(+2, +2, +5.15 + 1.0 / VOXEL_SCL));
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-Box custom_brush_box() {
-    return Box(
+BoundingBox custom_brush_box() {
+    return BoundingBox(
         f32vec3(-PLAYER.edit_radius),
         f32vec3(+PLAYER.edit_radius));
 }

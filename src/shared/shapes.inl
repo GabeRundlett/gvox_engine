@@ -7,11 +7,11 @@ struct Sphere {
     f32 r;
 };
 
-struct Box {
+struct BoundingBox {
     f32vec3 bound_min, bound_max;
 };
 
-struct Capsule {
+struct CapsulePoints {
     f32vec3 p0, p1;
     f32 r;
 };

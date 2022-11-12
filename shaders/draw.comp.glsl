@@ -35,7 +35,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     }
 
     for (u32 i = 0; i < SCENE.box_n; ++i) {
-        Box b = SCENE.boxes[i];
+        BoundingBox b = SCENE.boxes[i];
         IntersectionRecord b_hit = intersect(ray, b);
         if (b_hit.hit && b_hit.dist < trace.intersection_record.dist) {
             trace.intersection_record = b_hit;
@@ -46,7 +46,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     }
 
     for (u32 i = 0; i < SCENE.capsule_n; ++i) {
-        Capsule c = SCENE.capsules[i];
+        CapsulePoints c = SCENE.capsules[i];
         IntersectionRecord c_hit = intersect(ray, c);
         if (c_hit.hit && c_hit.dist < trace.intersection_record.dist) {
             trace.intersection_record = c_hit;
@@ -73,6 +73,15 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.material = 3;
         }
     }
+
+    // {
+    //     IntersectionRecord b0_hit = intersect_sdmap(ray);
+    //     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
+    //         trace.intersection_record = b0_hit;
+    //         trace.color = f32vec3(0.5);
+    //         trace.material = 5;
+    //     }
+    // }
 
     return trace;
 }
@@ -271,7 +280,7 @@ void main() {
 #endif
         } break;
         case 2: {
-            Capsule c = SCENE.capsules[view_trace_record.object_i];
+            CapsulePoints c = SCENE.capsules[view_trace_record.object_i];
             f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
             f32vec3 local_pos = (hit_pos - c.p1) * 1;
             local_pos.xy = rot_mat * local_pos.xy;
@@ -323,6 +332,11 @@ void main() {
             //     col *= f32vec3(4.0, 4.0, 4.0);
             //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
             // }
+        } break;
+        case 5: {
+#if RENDER_SHADOWS
+            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+#endif
         } break;
         }
 

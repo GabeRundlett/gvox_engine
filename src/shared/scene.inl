@@ -12,10 +12,10 @@ struct Scene {
     u32 capsule_n;
 
     Sphere spheres[MAX_SPHERES];
-    Box boxes[MAX_BOXES];
-    Capsule capsules[MAX_CAPSULES];
+    BoundingBox boxes[MAX_BOXES];
+    CapsulePoints capsules[MAX_CAPSULES];
 
-    Box pick_box;
+    BoundingBox pick_box;
     Sphere brush_origin_sphere;
 };
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/math.glsl>
+#include <utils/sd_shapes.glsl>
 
 #if !defined(RAYTRACE_NO_VOXELS)
 #include <utils/voxel.glsl>
@@ -51,7 +51,7 @@ IntersectionRecord intersect(Ray ray, Sphere s) {
     result.nrm = normalize(ray.o + ray.nrm * result.dist - s.o) * result.internal_fac;
     return result;
 }
-IntersectionRecord intersect(Ray ray, Box b) {
+IntersectionRecord intersect(Ray ray, BoundingBox b) {
     IntersectionRecord result;
     default_init(result);
 
@@ -108,7 +108,7 @@ IntersectionRecord intersect(Ray ray, Box b) {
 
     return result;
 }
-IntersectionRecord intersect(Ray ray, Capsule cap) {
+IntersectionRecord intersect(Ray ray, CapsulePoints cap) {
     IntersectionRecord result;
     default_init(result);
 
@@ -146,6 +146,77 @@ IntersectionRecord intersect(Ray ray, Capsule cap) {
         result.hit = d != MAX_DIST && d >= 0;
         // return d;
         // }
+    }
+    return result;
+}
+
+// f32 sd_analytical_noise_map(in f32vec3 p) {
+//     f32 d2 = sd_box(p - f32vec3(0, 0, 1), f32vec3(2.0));
+//     if (d2 > 0.01)
+//         return d2;
+//     f32vec4 d1 = sd_analytical_fractal_noise(p);
+//     d1.x -= 0.37;
+//     d1.x *= 0.7;
+//     d1.yzw = normalize(d1.yzw);
+//     return (d1.x > d2.x) ? d1.x : d2.x;
+// }
+
+f32 sdmap(f32vec3 p) {
+    f32 value = MAX_SD;
+
+    value = sd_union(value, sd_plane(p));
+
+    for (u32 i = 0; i < 1; ++i) {
+        f32 y = i * 2.5 - 5;
+        f32 x = 4;
+        // clang-format off
+        value = sd_union(value, sd_sphere            (p - f32vec3(x, y, 1.0), 1.0)                                         ), x += 3;
+        value = sd_union(value, sd_ellipsoid         (p - f32vec3(x, y, 1.0), f32vec3(4, 2, 3) / 3)                        ), x += 3;
+        value = sd_union(value, sd_box               (p - f32vec3(x, y, 1.0), f32vec3(1, 1, 1))                            ), x += 3;
+        value = sd_union(value, sd_box_frame         (p - f32vec3(x, y, 1.0), f32vec3(1, 1, 1), 0.1)                       ), x += 3;
+        value = sd_union(value, sd_cylinder          (p - f32vec3(x, y, 1.0), 1.0, 1.0)                                    ), x += 3;
+        value = sd_union(value, sd_triangular_prism  (p - f32vec3(x, y, 1.0), 1.0, 1.0)                                    ), x += 3;
+        value = sd_union(value, sd_hexagonal_prism   (p - f32vec3(x, y, 1.0), 1.0, 1.0)                                    ), x += 3;
+        value = sd_union(value, sd_octagonal_prism   (p - f32vec3(x, y, 1.0), 1.0, 1.0)                                    ), x += 3;
+        value = sd_union(value, sd_capsule           (p - f32vec3(x, y, 0.5), f32vec3(0), f32vec3(1, -2, 8) / 8, 0.5)      ), x += 3;
+        value = sd_union(value, sd_cone              (p - f32vec3(x, y, 2.0), 0.5, 2.0)                                    ), x += 3;
+        value = sd_union(value, sd_round_cone        (p - f32vec3(x, y, 0.5), 0.5, 0.1, 1.5)                               ), x += 3;
+        value = sd_union(value, sd_round_cone        (p - f32vec3(x, y, 0.5), f32vec3(0), f32vec3(1, -2, 8) / 8, 0.5, 0.1) ), x += 3;
+        value = sd_union(value, sd_capped_cone       (p - f32vec3(x, y, 1.0), 0.5, 0.1, 0.75)                              ), x += 3;
+        value = sd_union(value, sd_capped_cone       (p - f32vec3(x, y, 0.5), f32vec3(0), f32vec3(1, -2, 8) / 8, 0.5, 0.1) ), x += 3;
+        value = sd_union(value, sd_torus             (p - f32vec3(x, y, 0.3), f32vec2(0.7, 0.3))                           ), x += 3;
+        value = sd_union(value, sd_octahedron        (p - f32vec3(x, y, 1.0), 1.0)                                         ), x += 3;
+        value = sd_union(value, sd_pyramid           (p - f32vec3(x, y, 0.0), 2, 2.0)                                      ), x += 3;
+        // value = sd_union(value, sd_analytical_noise_map  (p - f32vec3(x, y, 1.0))                                          ), x += 3;
+        // clang-format on
+    }
+
+    return value;
+}
+
+f32vec3 sdmap_nrm(f32vec3 pos) {
+    f32vec3 n = f32vec3(0.0);
+    for (u32 i = 0; i < 4; ++i) {
+        f32vec3 e = 0.5773 * (2.0 * f32vec3((((i + 3) >> 1) & 1), ((i >> 1) & 1), (i & 1)) - 1.0);
+        n += e * sdmap(pos + 0.0005 * e);
+    }
+    return normalize(n);
+}
+
+IntersectionRecord intersect_sdmap(Ray ray) {
+    IntersectionRecord result;
+    default_init(result);
+    f32 t = 0.0;
+    for (u32 i = 0; i < 512 && t < MAX_SD; ++i) {
+        f32vec3 p = ray.o + ray.nrm * t;
+        f32 d = sdmap(p);
+        if (abs(d) < (0.0001 * t)) {
+            result.dist = t;
+            result.hit = true;
+            result.nrm = sdmap_nrm(p);
+            break;
+        }
+        t += d;
     }
     return result;
 }
@@ -355,7 +426,7 @@ u32 sample_brush_lod(f32vec3 p, in out u32 chunk_index) {
 }
 
 IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
-    Box brush_box = SCENE.pick_box;
+    BoundingBox brush_box = SCENE.pick_box;
     brush_box.bound_min -= SCENE.pick_box.bound_min;
     brush_box.bound_max -= SCENE.pick_box.bound_min;
 
@@ -436,7 +507,7 @@ IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_step
 
 IntersectionRecord intersect_brush_voxels(Ray ray) {
     IntersectionRecord result;
-    Box brush_box = SCENE.pick_box;
+    BoundingBox brush_box = SCENE.pick_box;
 
     default_init(result);
     result = intersect(ray, brush_box);

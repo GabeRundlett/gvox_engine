@@ -1,8 +1,7 @@
 #pragma once
 
 #include <shared/shapes.inl>
-
-#define MAX_SD 10000.0
+#include <utils/math.glsl>
 
 f32 sd_shapes_dot2(in f32vec2 v) { return dot(v, v); }
 f32 sd_shapes_dot2(in f32vec3 v) { return dot(v, v); }
@@ -47,7 +46,7 @@ f32 sd_box(in f32vec3 p, in f32vec3 size) {
     f32vec3 d = abs(p) - size;
     return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
 }
-f32 sd_box(in f32vec3 p, in Box box) {
+f32 sd_box(in f32vec3 p, in BoundingBox box) {
     return sd_box(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5);
 }
 f32 sd_box_frame(in f32vec3 p, in f32vec3 b, in f32 e) {
@@ -58,7 +57,7 @@ f32 sd_box_frame(in f32vec3 p, in f32vec3 b, in f32 e) {
             length(max(f32vec3(q.x, p.y, q.z), 0.0)) + min(max(q.x, max(p.y, q.z)), 0.0)),
         length(max(f32vec3(q.x, q.y, p.z), 0.0)) + min(max(q.x, max(q.y, p.z)), 0.0));
 }
-f32 sd_box_frame(in f32vec3 p, in Box box, in f32 e) {
+f32 sd_box_frame(in f32vec3 p, in BoundingBox box, in f32 e) {
     return sd_box_frame(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5, e);
 }
 f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h) {
