@@ -181,7 +181,8 @@ App::App()
       })},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"},
       brushes{load_brushes()},
-      current_brush_key{absolute(std::filesystem::path("assets/brushes/spruce_tree")).string()},
+      chunkgen_brush_key{absolute(std::filesystem::path("assets/brushes/terrain")).string()},
+      current_brush_key{absolute(std::filesystem::path("assets/brushes/sphere")).string()},
       last_seen_brushes_folder_update{std::chrono::file_clock::now()},
       keys{},
       // clang-format on
@@ -221,16 +222,11 @@ App::App()
         .push_constant_size = sizeof(OpticalDepthCompPush),
         .debug_name = APPNAME_PREFIX("optical_depth_comp_pipeline"),
     }).value();
-    chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {.source = daxa::ShaderFile{"chunkgen.comp.glsl"}},
-        .push_constant_size = sizeof(ChunkEditCompPush),
-        .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
-    }).value();
-    brush_chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
-        .shader_info = {.source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"}},
-        .push_constant_size = sizeof(ChunkEditCompPush),
-        .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
-    }).value();
+    // brush_chunkgen_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    //     .shader_info = {.source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"}},
+    //     .push_constant_size = sizeof(ChunkEditCompPush),
+    //     .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
+    // }).value();
     subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
@@ -518,6 +514,14 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                             .push_constant_size = sizeof(ChunkEditCompPush),
                             .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
                         },
+                        .chunkgen_comp_info = {
+                            .shader_info = {
+                                .source = daxa::ShaderFile{"chunkgen.comp.glsl"},
+                                .compile_options = {.root_paths = {path}},
+                            },
+                            .push_constant_size = sizeof(ChunkEditCompPush),
+                            .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
+                        },
                     },
                     .settings = {
                         .limit_edit_rate = false,
@@ -709,6 +713,11 @@ void App::settings_ui() {
 void App::brush_tool_ui() {
     auto &current_brush = brushes.at(current_brush_key);
 
+    imgui_align_centered_for_width(ImGui::CalcTextSize("Reload Brushes").x);
+    if (ImGui::Button("Reload Brushes")) {
+        reload_brushes();
+    }
+
     imgui_align_centered_for_width(128.0f);
     if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
         ImGui::OpenPopup("brush_selection_popup");
@@ -737,10 +746,14 @@ void App::brush_tool_ui() {
         ImGui::EndPopup();
     }
 
-    imgui_align_centered_for_width(ImGui::CalcTextSize("Reload Brushes").x);
-    if (ImGui::Button("Reload Brushes")) {
-        reload_brushes();
-    }
+    imgui_align_centered_for_width(ImGui::CalcTextSize("Use for chunkgen").x);
+    bool use_for_chunkgen_disabled = chunkgen_brush_key == current_brush_key;
+    if (use_for_chunkgen_disabled)
+        ImGui::BeginDisabled();
+    if (ImGui::Button("Use for chunkgen"))
+        chunkgen_brush_key = current_brush_key;
+    if (use_for_chunkgen_disabled)
+        ImGui::EndDisabled();
 
     // Tool specific UI (Only brush for now..)
     ImGui::Text("Brush Settings");
@@ -935,10 +948,10 @@ void App::on_update() {
     reload_pipeline(draw_comp_pipeline);
     reload_pipeline(brushes.at(current_brush_key).pipelines.get_perframe_comp());
     reload_pipeline(brushes.at(current_brush_key).pipelines.get_chunk_edit_comp());
-    auto reloaded_chunkgen_pipe = reload_pipeline(chunkgen_comp_pipeline);
+    auto reloaded_chunkgen_pipe = reload_pipeline(brushes.at(chunkgen_brush_key).pipelines.get_chunkgen_comp());
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
     reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
-    reload_pipeline(brush_chunkgen_comp_pipeline);
+    // reload_pipeline(brush_chunkgen_comp_pipeline);
     reload_pipeline(subchunk_brush_x2x4_comp_pipeline);
     reload_pipeline(subchunk_brush_x8up_comp_pipeline);
     if (reloaded_chunkgen_pipe)
@@ -1397,9 +1410,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime interf) {
             auto cmd_list = interf.get_command_list();
-            auto chunkgen_brush_key = std::filesystem::canonical("assets/brushes/terrain").string();
             auto &current_brush = brushes.at(chunkgen_brush_key);
-            cmd_list.set_pipeline(chunkgen_comp_pipeline);
+            cmd_list.set_pipeline(current_brush.pipelines.get_chunkgen_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);

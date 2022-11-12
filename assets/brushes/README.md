@@ -5,6 +5,37 @@ Brushes define how voxels should generate
 ## THIS PAGE IS A WORK IN PROGRESS
 ![WIP](https://images2.minutemediacdn.com/image/upload/c_fit,f_auto,fl_lossy,q_auto,w_728/v1555999902/shape/mentalfloss/construction_8.gif?itok=i0AHeyO3)
 
+## Chapters
+
+ - [Combination Operators](#combination-operators)
+    - [Union](#union)
+    - [Intersection](#intersection)
+    - [Difference](#difference)
+    - [Smooth Union](#smooth-union)
+    - [Smooth Intersection](#smooth-intersection)
+    - [Smooth Difference](#smooth-difference)
+ - [Combination Operators](#combination-operators)
+    - [Plane](#plane)
+    - [Sphere](#sphere)
+    - [Ellipsoid](#ellipsoid)
+    - [Box](#box)
+    - [Box Frame](#box-frame)
+    - [Cylinder](#cylinder)
+    - [Triangular Prism](#triangular-prism)
+    - [Hexagonal Prism](#hexagonal-prism)
+    - [Octagonal Prism](#octagonal-prism)
+    - [Capsule](#capsule)
+    - [Cone](#cone)
+    - [Round Cone](#round-cone)
+    - [Capped Cone](#capped-cone)
+    - [Torus](#torus)
+    - [Octahedron](#octahedron)
+    - [Pyramid](#pyramid)
+
+<!-- ## Walkthrough
+
+### Making a Pumpkin -->
+
 ## Combination Operators
 
 ### Union

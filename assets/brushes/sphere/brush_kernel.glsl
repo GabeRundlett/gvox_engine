@@ -6,7 +6,7 @@
 #define OFFSET f32vec3(0, 0, 0)
 #endif
 
-b32 custom_brush_should_edit(in BrushInput brush) {
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32 l = length(brush.p - OFFSET) / PLAYER.edit_radius;
     f32 r = 1;
     b32 has_surrounding = true;
@@ -29,9 +29,7 @@ b32 custom_brush_should_edit(in BrushInput brush) {
     //     v[4].block_id != BlockID_Air ||
     //     v[5].block_id != BlockID_Air;
 
-    return l < 1 && r > 0.5 && has_surrounding;
-}
-
-Voxel custom_brush_kernel(in BrushInput brush) {
-    return Voxel(BRUSH_SETTINGS.color, BlockID_Stone);
+    if (l < 1 && r > 0.5 && has_surrounding) {
+        result = Voxel(BRUSH_SETTINGS.color, BlockID_Stone);
+    }
 }

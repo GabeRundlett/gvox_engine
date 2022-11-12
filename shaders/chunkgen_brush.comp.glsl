@@ -27,10 +27,7 @@ void main() {
     brush.prev_voxel = air_voxel;
 
     Voxel result = air_voxel;
-    b32 should_edit = custom_brush_should_edit(brush);
-    if (should_edit) {
-        result = custom_brush_kernel(brush);
-    }
+    custom_brush_kernel(brush, result);
 
     VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
 }

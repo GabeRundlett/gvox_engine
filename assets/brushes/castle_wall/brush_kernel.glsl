@@ -53,11 +53,9 @@ f32 sd_castle_wall(in f32vec3 p) {
 #define OFFSET brush.begin_p
 #endif
 
-b32 custom_brush_should_edit(in BrushInput brush) {
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32 wall_value = sd_castle_wall(brush.p - OFFSET);
-    return wall_value - 0.01 < 0.0;
-}
-
-Voxel custom_brush_kernel(in BrushInput brush) {
-    return Voxel(block_color(BlockID_Stone), BlockID_Cobblestone);
+    if (wall_value - 0.01 < 0.0) {
+        result = Voxel(block_color(BlockID_Stone), BlockID_Cobblestone);
+    }
 }

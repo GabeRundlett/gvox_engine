@@ -33,20 +33,16 @@ TreeSDF sd_tree(in f32vec3 p, in f32vec3 seed) {
     }
     return val;
 }
-b32 custom_brush_should_edit(in BrushInput brush) {
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     TreeSDF tree_sdf = sd_tree(brush.p, brush.origin);
-    return min(tree_sdf.wood, tree_sdf.leaves) < 0.0;
-}
-Voxel custom_brush_kernel(in BrushInput brush) {
-    Voxel result;
-    TreeSDF tree_sdf = sd_tree(brush.p, brush.origin);
-    if (tree_sdf.wood < tree_sdf.leaves) {
-        result.block_id = BlockID_Log;
-        result.col = block_color(result.block_id);
-    } else {
-        result.block_id = BlockID_Leaves;
-        f32 r = rand(brush.origin) * 0.1 + 0.001 + rand(brush.p) * 0.05;
-        result.col = hsv2rgb(f32vec3(r, 0.99, clamp(tree_sdf.wood * 0.75 + 0.25, 0, 1)));
+    if (min(tree_sdf.wood, tree_sdf.leaves) < 0.0) {
+        if (tree_sdf.wood < tree_sdf.leaves) {
+            result.block_id = BlockID_Log;
+            result.col = block_color(result.block_id);
+        } else {
+            result.block_id = BlockID_Leaves;
+            f32 r = rand(brush.origin) * 0.1 + 0.001 + rand(brush.p) * 0.05;
+            result.col = hsv2rgb(f32vec3(r, 0.99, clamp(tree_sdf.wood * 0.75 + 0.25, 0, 1)));
+        }
     }
-    return result;
 }

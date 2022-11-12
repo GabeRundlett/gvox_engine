@@ -318,20 +318,12 @@ void main() {
 #if RENDER_SHADOWS
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-            // if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
-            //     col *= f32vec3(4.0, 4.0, 4.0);
-            //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
-            // }
         } break;
         case 4: {
             col = brush_voxel_color(hit_pos, hit_nrm);
 #if RENDER_SHADOWS
             shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-            // if (GLOBALS.pick_intersection.hit && brush_should_edit(voxel_p)) {
-            //     col *= f32vec3(4.0, 4.0, 4.0);
-            //     col = clamp(col, f32vec3(0, 0, 0), f32vec3(1, 1, 1));
-            // }
         } break;
         case 5: {
 #if RENDER_SHADOWS

@@ -6,13 +6,11 @@
 #define OFFSET f32vec3(0, 0, 0)
 #endif
 
-b32 custom_brush_should_edit(in BrushInput brush) {
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32 l = length(brush.p - OFFSET) / PLAYER.edit_radius;
     f32 r = 1;
     b32 has_surrounding = true;
-
     r = rand(brush.p + brush.origin + INPUT.time) - l * 0.1;
-
     f32vec3 voxel_p = brush.p + brush.origin;
     Voxel v[6];
     v[0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
@@ -28,10 +26,7 @@ b32 custom_brush_should_edit(in BrushInput brush) {
         v[3].block_id == BlockID_Grass || v[3].block_id == BlockID_Leaves ||
         v[4].block_id == BlockID_Grass || v[4].block_id == BlockID_Leaves ||
         v[5].block_id == BlockID_Grass || v[5].block_id == BlockID_Leaves;
-
-    return l < 1 && r > 0.95 && has_surrounding && unpack_voxel(sample_packed_voxel(voxel_p)).block_id == BlockID_Air;
-}
-
-Voxel custom_brush_kernel(in BrushInput brush) {
-    return Voxel(pow(BRUSH_SETTINGS.color, f32vec3(2.2)), BlockID_Leaves);
+    if (l < 1 && r > 0.95 && has_surrounding && unpack_voxel(sample_packed_voxel(voxel_p)).block_id == BlockID_Air) {
+        result = Voxel(pow(BRUSH_SETTINGS.color, f32vec3(2.2)), BlockID_Leaves);
+    }
 }

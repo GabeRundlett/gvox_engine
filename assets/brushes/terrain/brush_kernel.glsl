@@ -80,10 +80,6 @@ b32 is_block_occluding(u32 block_id) {
     }
 }
 
-b32 custom_brush_should_edit(in BrushInput brush) {
-    return true;
-}
-
 #if defined(CHUNKGEN)
 #define OFFSET f32vec3(0, 0, 0)
 #else
@@ -91,9 +87,8 @@ b32 custom_brush_should_edit(in BrushInput brush) {
 #endif
 
 #if 1
-Voxel custom_brush_kernel(in BrushInput brush) {
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32vec3 voxel_p = brush.p + OFFSET;
-    Voxel result;
     voxel_p = voxel_p - BRUSH_SETTINGS.origin;
     WorldgenState worldgen_state = get_worldgen_state(voxel_p);
     block_pass0(worldgen_state, voxel_p);
@@ -148,11 +143,9 @@ Voxel custom_brush_kernel(in BrushInput brush) {
     block_pass1(worldgen_state, voxel_p, surroundings);
     result.col = block_color(worldgen_state.block_id);
     result.block_id = worldgen_state.block_id;
-    return result;
 }
 #else
-Voxel custom_brush_kernel(in BrushInput brush) {
-    Voxel result;
+void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     result.col = f32vec3(0.5);
     f32 value = MAX_SD;
 
@@ -167,10 +160,6 @@ Voxel custom_brush_kernel(in BrushInput brush) {
 
     if (value < 0.0) {
         result.block_id = BlockID_Stone;
-    } else {
-        result.block_id = BlockID_Air;
     }
-
-    return result;
 }
 #endif

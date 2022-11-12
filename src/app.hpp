@@ -27,10 +27,14 @@ struct BrushPipelines {
     daxa::ComputePipelineInfo chunk_edit_comp_info;
     daxa::ComputePipeline chunk_edit_comp;
 
+    daxa::ComputePipelineInfo chunkgen_comp_info;
+    daxa::ComputePipeline chunkgen_comp;
+
     void compile() {
         if (!compiled) {
             perframe_comp = pipeline_compiler.create_compute_pipeline(perframe_comp_info).value();
             chunk_edit_comp = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info).value();
+            chunkgen_comp = pipeline_compiler.create_compute_pipeline(chunkgen_comp_info).value();
             compiled = true;
         }
     }
@@ -42,6 +46,10 @@ struct BrushPipelines {
     auto &get_chunk_edit_comp() {
         compile();
         return chunk_edit_comp;
+    }
+    auto &get_chunkgen_comp() {
+        compile();
+        return chunkgen_comp;
     }
 };
 
@@ -84,8 +92,7 @@ struct App : BaseApp<App> {
 
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
-    daxa::ComputePipeline chunkgen_comp_pipeline;
-    daxa::ComputePipeline brush_chunkgen_comp_pipeline;
+    // daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
     daxa::ComputePipeline subchunk_x8up_comp_pipeline;
     daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
@@ -121,6 +128,7 @@ struct App : BaseApp<App> {
 
     std::filesystem::path data_directory;
     std::unordered_map<std::string, Brush> brushes;
+    std::string chunkgen_brush_key;
     std::string current_brush_key;
     std::chrono::file_clock::time_point last_seen_brushes_folder_update;
 

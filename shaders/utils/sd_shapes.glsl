@@ -61,7 +61,7 @@ f32 sd_box_frame(in f32vec3 p, in BoundingBox box, in f32 e) {
     return sd_box_frame(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5, e);
 }
 f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h) {
-    f32vec2 d = abs(f32vec2(length(p.xy), p.z)) - f32vec2(h, r);
+    f32vec2 d = abs(f32vec2(length(p.xy), p.z)) - f32vec2(r, h);
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
 f32 sd_cylinder(f32vec3 p, f32vec3 a, f32vec3 b, f32 r) {
