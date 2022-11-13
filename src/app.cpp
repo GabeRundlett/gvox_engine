@@ -1036,8 +1036,8 @@ void App::on_resize(u32 sx, u32 sy) {
     minimized = (sx == 0 || sy == 0);
     if (!minimized) {
         swapchain.resize();
-        size_x = swapchain.info().width;
-        size_y = swapchain.info().height;
+        size_x = swapchain.get_surface_extent().x;
+        size_y = swapchain.get_surface_extent().y;
         if (!use_custom_resolution) {
             render_size_x = size_x * render_resolution_scl;
             render_size_y = size_y * render_resolution_scl;
