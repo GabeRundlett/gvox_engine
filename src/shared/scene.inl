@@ -14,9 +14,6 @@ struct Scene {
     Sphere spheres[MAX_SPHERES];
     BoundingBox boxes[MAX_BOXES];
     CapsulePoints capsules[MAX_CAPSULES];
-
-    BoundingBox pick_box;
-    Sphere brush_origin_sphere;
 };
 
 struct Ray {

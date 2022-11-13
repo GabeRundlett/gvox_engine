@@ -11,12 +11,12 @@ void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     if (l < 1) {
         f32vec3 voxel_p = brush.p + brush.origin;
         Voxel v[6];
-        v[0 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
-        v[1 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, 0, +1) / VOXEL_SCL));
-        v[2 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, -1, 0) / VOXEL_SCL));
-        v[3 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, +1, 0) / VOXEL_SCL));
-        v[4 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(-1, 0, 0) / VOXEL_SCL));
-        v[5 + 0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(+1, 0, 0) / VOXEL_SCL));
+        v[0 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
+        v[1 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, 0, +1) / VOXEL_SCL));
+        v[2 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, -1, 0) / VOXEL_SCL));
+        v[3 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, +1, 0) / VOXEL_SCL));
+        v[4 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(-1, 0, 0) / VOXEL_SCL));
+        v[5 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(+1, 0, 0) / VOXEL_SCL));
 
         u32 air_count = 0;
         u32 non_air_id = 0;

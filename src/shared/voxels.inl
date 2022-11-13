@@ -25,11 +25,7 @@
 #define BRUSH_BLOCK_NZ (BRUSH_CHUNK_NZ * CHUNK_SIZE)
 #define BRUSH_BLOCK_N (BRUSH_CHUNK_N * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
 
-#define CHUNK_N (WORLD_CHUNK_N + BRUSH_CHUNK_N)
-
 #define MAX_CHUNK_UPDATES ((BRUSH_CHUNK_NX + 1) * (BRUSH_CHUNK_NY + 1) * (BRUSH_CHUNK_NZ + 1))
-
-const u32 CHUNK_PTR_U32_N = (CHUNK_N / 32 == 0) ? 1 : CHUNK_N / 32;
 
 struct Voxel {
     f32vec3 col;
@@ -74,15 +70,28 @@ struct VoxelUniformityChunk {
 
 DAXA_DECL_BUFFER_STRUCT(VoxelWorld, {
     BoundingBox box;
-    f32vec3 center_pt;
-    f32 last_update_time;
     u32 chunk_update_indices[MAX_CHUNK_UPDATES];
     u32 chunk_update_n;
+
+    // TODO: Make chunkgen able to have a variable number of generation indices
     u32 chunkgen_index;
-    u32 brush_chunkgen_index;
 
-    VoxelUniformityChunk uniformity_chunks[CHUNK_N];
-    ChunkGenState chunks_genstate[CHUNK_N];
+    VoxelUniformityChunk uniformity_chunks[WORLD_CHUNK_N];
+    ChunkGenState chunks_genstate[WORLD_CHUNK_N];
 
-    VoxelChunk voxel_chunks[CHUNK_N];
+    VoxelChunk voxel_chunks[WORLD_CHUNK_N];
+});
+
+DAXA_DECL_BUFFER_STRUCT(VoxelBrush, {
+    BoundingBox box;
+
+    u32 chunk_update_indices[MAX_CHUNK_UPDATES];
+    u32 chunk_update_n;
+
+    u32 chunkgen_index;
+
+    VoxelUniformityChunk uniformity_chunks[BRUSH_CHUNK_N];
+    ChunkGenState chunks_genstate[BRUSH_CHUNK_N];
+
+    VoxelChunk voxel_chunks[BRUSH_CHUNK_N];
 });

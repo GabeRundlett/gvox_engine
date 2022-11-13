@@ -30,11 +30,15 @@ struct BrushPipelines {
     daxa::ComputePipelineInfo chunkgen_comp_info;
     daxa::ComputePipeline chunkgen_comp;
 
+    daxa::ComputePipelineInfo brush_chunkgen_comp_info;
+    daxa::ComputePipeline brush_chunkgen_comp;
+
     void compile() {
         if (!compiled) {
             perframe_comp = pipeline_compiler.create_compute_pipeline(perframe_comp_info).value();
             chunk_edit_comp = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info).value();
             chunkgen_comp = pipeline_compiler.create_compute_pipeline(chunkgen_comp_info).value();
+            brush_chunkgen_comp = pipeline_compiler.create_compute_pipeline(brush_chunkgen_comp_info).value();
             compiled = true;
         }
     }
@@ -50,6 +54,10 @@ struct BrushPipelines {
     auto &get_chunkgen_comp() {
         compile();
         return chunkgen_comp;
+    }
+    auto &get_brush_chunkgen_comp() {
+        compile();
+        return brush_chunkgen_comp;
     }
 };
 
@@ -92,7 +100,6 @@ struct App : BaseApp<App> {
 
     daxa::ComputePipeline startup_comp_pipeline;
     daxa::ComputePipeline optical_depth_comp_pipeline;
-    // daxa::ComputePipeline brush_chunkgen_comp_pipeline;
     daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
     daxa::ComputePipeline subchunk_x8up_comp_pipeline;
     daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
@@ -116,8 +123,8 @@ struct App : BaseApp<App> {
     daxa::BufferId gpu_voxel_world_buffer;
     daxa::TaskBufferId task_gpu_voxel_world_buffer;
 
-    // daxa::BufferId gpu_voxel_brush_buffer;
-    // daxa::TaskBufferId task_gpu_voxel_brush_buffer;
+    daxa::BufferId gpu_voxel_brush_buffer;
+    daxa::TaskBufferId task_gpu_voxel_brush_buffer;
 
     BufferId gpu_indirect_dispatch_buffer;
     daxa::TaskBufferId task_gpu_indirect_dispatch_buffer;

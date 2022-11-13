@@ -15,12 +15,12 @@ void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
 
     // f32vec3 voxel_p = brush.p + brush.origin;
     // Voxel v[6];
-    // v[0] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
-    // v[1] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, 0, +1) / VOXEL_SCL));
-    // v[2] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, -1, 0) / VOXEL_SCL));
-    // v[3] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(0, +1, 0) / VOXEL_SCL));
-    // v[4] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(-1, 0, 0) / VOXEL_SCL));
-    // v[5] = unpack_voxel(sample_packed_voxel(voxel_p + f32vec3(+1, 0, 0) / VOXEL_SCL));
+    // v[0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
+    // v[1] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, 0, +1) / VOXEL_SCL));
+    // v[2] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, -1, 0) / VOXEL_SCL));
+    // v[3] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, +1, 0) / VOXEL_SCL));
+    // v[4] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(-1, 0, 0) / VOXEL_SCL));
+    // v[5] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(+1, 0, 0) / VOXEL_SCL));
     // has_surrounding =
     //     v[0].block_id != BlockID_Air ||
     //     v[1].block_id != BlockID_Air ||

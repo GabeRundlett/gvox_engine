@@ -37,6 +37,7 @@
 struct Settings {
     u32 flags;
     u32 tool_id;
+    u32 brush_chunk_update_n;
     f32 fov;
     f32 edit_rate;
     f32 jitter_scl;

@@ -7,7 +7,7 @@
 Voxel brush_kernel(in f32vec3 voxel_p) {
     Voxel result;
     result.block_id = BlockID_Debug;
-    if (sd_box(voxel_p, SCENE.pick_box) < 0.0) {
+    if (sd_box(voxel_p, VOXEL_BRUSH.box) < 0.0) {
         if (PLAYER.edit_voxel_id == BlockID_Air) {
             return Voxel(block_color(BlockID_Air), PLAYER.edit_voxel_id);
         } else {
@@ -18,7 +18,7 @@ Voxel brush_kernel(in f32vec3 voxel_p) {
             }
             brush.p = voxel_p - brush.origin;
             brush.begin_p = GLOBALS.edit_origin - brush.origin;
-            brush.prev_voxel = unpack_voxel(sample_packed_voxel(voxel_p));
+            brush.prev_voxel = unpack_voxel(sample_packed_voxel_WORLD(voxel_p));
             custom_brush_kernel(brush, result);
         }
     }

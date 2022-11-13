@@ -32,24 +32,22 @@ void main() {
         }
     }
 
-    // for (i32 zi = 0; zi < BRUSH_CHUNK_NZ; ++zi) {
-    //     for (i32 yi = 0; yi < BRUSH_CHUNK_NY; ++yi) {
-    //         for (i32 xi = 0; xi < BRUSH_CHUNK_NX; ++xi) {
-    //             u32 index = get_chunk_index_BRUSH(i32vec3(xi, yi, zi));
-    //             VOXEL_WORLD.voxel_chunks[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
-    //             VOXEL_WORLD.voxel_chunks[index].box.bound_max = VOXEL_WORLD.voxel_chunks[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
-    //         }
-    //     }
-    // }
+    for (i32 zi = 0; zi < BRUSH_CHUNK_NZ; ++zi) {
+        for (i32 yi = 0; yi < BRUSH_CHUNK_NY; ++yi) {
+            for (i32 xi = 0; xi < BRUSH_CHUNK_NX; ++xi) {
+                u32 index = get_chunk_index_BRUSH(i32vec3(xi, yi, zi));
+                VOXEL_BRUSH.voxel_chunks[index].box.bound_min = f32vec3(xi, yi, zi) * (CHUNK_SIZE / VOXEL_SCL);
+                VOXEL_BRUSH.voxel_chunks[index].box.bound_max = VOXEL_WORLD.voxel_chunks[index].box.bound_min + (CHUNK_SIZE / VOXEL_SCL);
+            }
+        }
+    }
 
     VOXEL_WORLD.box.bound_min = VOXEL_WORLD.voxel_chunks[0].box.bound_min;
     VOXEL_WORLD.box.bound_max = VOXEL_WORLD.voxel_chunks[WORLD_CHUNK_N - 1].box.bound_max;
 
-    SCENE.pick_box.bound_min = f32vec3(-1, -1, -1);
-    SCENE.pick_box.bound_max = f32vec3(+1, +1, +1);
-
-    SCENE.brush_origin_sphere.o = f32vec3(0, 0, 0);
-    SCENE.brush_origin_sphere.r = 0.1;
+    VOXEL_BRUSH.box.bound_min = f32vec3(-1, -1, -1);
+    VOXEL_BRUSH.box.bound_max = f32vec3(+1, +1, +1);
+    VOXEL_BRUSH.chunkgen_index = 0;
 
     SCENE.capsules[SCENE.capsule_n].r = 0.05;
     SCENE.capsule_n++;

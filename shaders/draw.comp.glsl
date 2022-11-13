@@ -56,21 +56,21 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
-        IntersectionRecord b0_hit = intersect_brush_voxels(ray);
-        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
-            trace.intersection_record = b0_hit;
-            trace.color = f32vec3(0.5, 0.5, 0.5);
-            trace.material = 4;
-        }
-    }
-
     {
         IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
         if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
             trace.intersection_record = b0_hit;
             trace.color = f32vec3(0.5, 1.0, 0.5);
             trace.material = 3;
+        }
+    }
+
+    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
+        IntersectionRecord b0_hit = intersect_brush_voxels(ray);
+        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.01) {
+            trace.intersection_record = b0_hit;
+            trace.color = f32vec3(0.5, 0.5, 0.5);
+            trace.material = 4;
         }
     }
 
@@ -126,7 +126,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
     VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
-    Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+    Voxel vox = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
     //     col = f32vec3(0.2, 1.0, 0.2);
@@ -185,14 +185,17 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 
 f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
-    f32vec3 col;
-    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(hit_pos - SCENE.pick_box.bound_min - hit_nrm * 0.01);
-    Voxel vox = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+    f32vec3 col = f32vec3(0);
+
+    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(hit_pos - VOXEL_BRUSH.box.bound_min - hit_nrm * 0.01);
+    Voxel vox = unpack_voxel(sample_packed_voxel_BRUSH(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
-    f32vec3 b_pos = hit_pos - SCENE.pick_box.bound_min;
-    f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
-    f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
-    col = mix(col, outside_color, 0.1);
+
+    // f32vec3 b_pos = hit_pos - VOXEL_BRUSH.box.bound_min;
+    // f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
+    // f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
+    // col = mix(col, outside_color, 0.1);
+
     return col;
 }
 
@@ -256,7 +259,7 @@ void main() {
             // bounce_ray.o += hit_nrm * 0.001;
 
             // VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
-            // hit_voxel = unpack_voxel(sample_packed_voxel(chunk_info.chunk_index, chunk_info.voxel_index));
+            // hit_voxel = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
             // hit_voxel.nrm = hit_nrm;
             // hit_voxel.nrm *= -1;
         } break;
@@ -357,7 +360,9 @@ void main() {
     }
 
     {
-        Sphere b = SCENE.brush_origin_sphere;
+        Sphere b;
+        b.o = GLOBALS.edit_origin;
+        b.r = 0.25;
         IntersectionRecord b_hit = intersect(view_ray, b);
         if (b_hit.hit) {
             col = mix(col, f32vec3(1, 0, 1), 0.8);
