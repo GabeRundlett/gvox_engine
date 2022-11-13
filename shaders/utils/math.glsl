@@ -11,6 +11,33 @@ f32 rad2deg(f32 r) {
     return r * 180.0 / PI;
 }
 
+f32vec3 rotate_x(f32vec3 v, f32 angle) {
+    float sin_rot_x = sin(angle), cos_rot_x = cos(angle);
+    f32mat3x3 rot_mat = f32mat3x3(
+        1, 0, 0,
+        0, cos_rot_x, sin_rot_x,
+        0, -sin_rot_x, cos_rot_x);
+    return rot_mat * v;
+}
+
+f32vec3 rotate_y(f32vec3 v, f32 angle) {
+    float sin_rot_y = sin(angle), cos_rot_y = cos(angle);
+    f32mat3x3 rot_mat = f32mat3x3(
+        cos_rot_y, 0, sin_rot_y,
+        0, 1, 0,
+        -sin_rot_y, 0, cos_rot_y);
+    return rot_mat * v;
+}
+
+f32vec3 rotate_z(f32vec3 v, f32 angle) {
+    float sin_rot_z = sin(angle), cos_rot_z = cos(angle);
+    f32mat3x3 rot_mat = f32mat3x3(
+        cos_rot_z, -sin_rot_z, 0,
+        sin_rot_z, cos_rot_z, 0,
+        0, 0, 1);
+    return rot_mat * v;
+}
+
 f32vec3 rgb2hsv(f32vec3 c) {
     f32vec4 K = f32vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     f32vec4 p = mix(f32vec4(c.bg, K.wz), f32vec4(c.gb, K.xy), step(c.b, c.g));
