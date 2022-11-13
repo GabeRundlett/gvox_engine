@@ -202,7 +202,7 @@ void perframe_player() {
         PLAYER.edit_radius /= 1.05;
     }
 
-    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 1.0 / VOXEL_SCL, 64.0 / VOXEL_SCL);
+    PLAYER.edit_radius = clamp(PLAYER.edit_radius, 0.5 / VOXEL_SCL, 64.0 / VOXEL_SCL);
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, PLAYER_HEIGHT - PLAYER_HEAD_RADIUS);
 
@@ -439,18 +439,6 @@ void perframe_voxel_world() {
         }
     }
 
-    // if (VOXEL_WORLD.chunk_update_n == 0) {
-    //     for (u32 i = WORLD_CHUNK_N; i < WORLD_CHUNK_N + BRUSH_CHUNK_N; ++i) {
-    //         u32 stage = VOXEL_WORLD.chunks_genstate[i].edit_stage;
-    //         if (stage == 0) {
-    //             VOXEL_WORLD.chunkgen_index = i;
-    //             VOXEL_WORLD.chunk_update_n = 1;
-    //             VOXEL_WORLD.chunk_update_indices[0] = i;
-    //             break;
-    //         }
-    //     }
-    // }
-
     u32 non_chunkgen_update_n = 0;
     b32 brush_enabled = ((PLAYER.view_state >> 8) & 0x1) == 1;
 
@@ -513,17 +501,9 @@ void perframe_voxel_brush() {
     INDIRECT.brush_chunk_dispatch.z *= VOXEL_BRUSH.chunk_update_n;
     INDIRECT.brush_subchunk_x2x4_dispatch.y *= VOXEL_BRUSH.chunk_update_n;
     INDIRECT.brush_subchunk_x8up_dispatch.y *= VOXEL_BRUSH.chunk_update_n;
-}
-
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-void main() {
-    u32 prev_edit_flags = GLOBALS.edit_flags;
-
-    perframe_player();
-    perframe_voxel_world();
-    perframe_voxel_brush();
 
     b32 brush_enabled = INPUT.settings.tool_id == GAME_TOOL_BRUSH && ((PLAYER.view_state >> 8) & 0x1) == 1;
+    GLOBALS.brush_offset = ceil(custom_brush_origin_offset() * VOXEL_SCL) / VOXEL_SCL;
 
     if (brush_enabled) {
         f32vec2 pick_uv = f32vec2(0.0, 0.0);
@@ -539,29 +519,32 @@ void main() {
         Ray pick_ray = create_view_ray(pick_uv);
         GLOBALS.pick_intersection = intersect_voxels(pick_ray);
 
-        GLOBALS.brush_offset = custom_brush_origin_offset();
-
         if (GLOBALS.pick_intersection.hit) {
             f32vec3 p0 = pick_ray.o + pick_ray.nrm * GLOBALS.pick_intersection.dist;
             f32vec3 p1 = p0 - GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
-            p0 = p0 + GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
-            GLOBALS.brush_origin = p0 + GLOBALS.brush_offset;
+            if (GLOBALS.edit_flags == 2) {
+                p0 += GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            } else {
+                p0 -= GLOBALS.pick_intersection.nrm * 0.01 / VOXEL_SCL;
+            }
+            GLOBALS.brush_origin = floor(p0 * VOXEL_SCL) / VOXEL_SCL;
             GLOBALS.pick_intersection.hit = custom_brush_enable(p0, p1);
         }
-
-        BoundingBox custom_box = custom_brush_box();
-
-        // VOXEL_BRUSH.box.bound_min = custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset;
-        // VOXEL_BRUSH.box.bound_max = custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset;
-
-        // VOXEL_BRUSH.box.bound_min = floor((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-        // VOXEL_BRUSH.box.bound_max = floor((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-
-        VOXEL_BRUSH.box.bound_min = round((custom_box.bound_min + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-        VOXEL_BRUSH.box.bound_max = round((custom_box.bound_max + GLOBALS.brush_origin - GLOBALS.brush_offset) * VOXEL_SCL) / VOXEL_SCL;
-
-        if (prev_edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
-            GLOBALS.edit_origin = round(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
-        }
     }
+
+    f32vec3 brush_size = custom_brush_size();
+
+    VOXEL_BRUSH.box.bound_min = GLOBALS.brush_origin + GLOBALS.brush_offset;
+    VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + round(brush_size * VOXEL_SCL) / VOXEL_SCL;
+
+    if (GLOBALS.edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
+        GLOBALS.edit_origin = floor(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
+    }
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    perframe_player();
+    perframe_voxel_world();
+    perframe_voxel_brush();
 }

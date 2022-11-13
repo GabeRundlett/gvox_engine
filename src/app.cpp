@@ -578,7 +578,7 @@ App::~App() {
 void imgui_help_marker(const char *const desc) {
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 25.0f);
         ImGui::TextUnformatted(desc);
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
@@ -591,6 +591,12 @@ void imgui_align_centered_for_width(float width, float alignment = 0.5f) {
     float off = (avail - width) * alignment;
     if (off > 0.0f)
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
+
+void App::imgui_gpu_input_flag_checkbox(char const *const str, u32 flag_index) {
+    auto flag = get_flag(flag_index);
+    ImGui::Checkbox(str, &flag);
+    set_flag(flag_index, flag);
 }
 
 void App::settings_ui() {
@@ -606,12 +612,6 @@ void App::settings_ui() {
     ImGui::InputFloat("Mouse Sensitivity", &gpu_input.settings.sensitivity);
     ImGui::SliderFloat("Jitter Scale", &gpu_input.settings.jitter_scl, 0.0f, 1.0f);
     ImGui::SliderFloat("Frame Blending", &gpu_input.settings.frame_blending, 0.0f, 0.99f);
-    i32 temp_int = static_cast<i32>(gpu_input.settings.brush_chunk_update_n);
-    ImGui::InputInt("Brush Chunk Update N", &temp_int);
-    gpu_input.settings.brush_chunk_update_n = static_cast<u32>(std::min(std::max(temp_int, 0), BRUSH_CHUNK_N));
-    auto brush_preview_overlay = get_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY);
-    ImGui::Checkbox("Brush Preview Striped", &brush_preview_overlay);
-    set_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY, brush_preview_overlay);
     ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
     if (use_custom_resolution) {
         i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
@@ -720,12 +720,19 @@ void App::settings_ui() {
 }
 
 void App::brush_tool_ui() {
-    auto &current_brush = brushes.at(current_brush_key);
-
     imgui_align_centered_for_width(ImGui::CalcTextSize("Reload Brushes").x);
     if (ImGui::Button("Reload Brushes")) {
         reload_brushes();
     }
+
+    auto &current_brush = brushes.at(current_brush_key);
+
+    i32 temp_int = static_cast<i32>(gpu_input.settings.brush_chunk_update_n);
+    ImGui::InputInt("Update Rate", &temp_int);
+    imgui_help_marker("The number of chunks in the brush region to update per frame. A value of 0 will update all");
+    gpu_input.settings.brush_chunk_update_n = static_cast<u32>(std::min(std::max(temp_int, 0), BRUSH_CHUNK_N));
+    imgui_gpu_input_flag_checkbox("Use Striped Brush Preview", GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY);
+    imgui_gpu_input_flag_checkbox("Show Brush Bounding Box", GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX);
 
     imgui_align_centered_for_width(128.0f);
     if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
@@ -764,7 +771,6 @@ void App::brush_tool_ui() {
     if (use_for_chunkgen_disabled)
         ImGui::EndDisabled();
 
-    // Tool specific UI (Only brush for now..)
     ImGui::Text("Brush Settings");
     ImGui::Checkbox("Limit Edit Rate", &current_brush.settings.limit_edit_rate);
     set_flag(GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE, current_brush.settings.limit_edit_rate);

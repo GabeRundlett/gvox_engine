@@ -50,7 +50,7 @@ b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
 void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32vec3 a = brush.p;
     a = a - OFFSET;
-    f32vec3 c = a * 1.2 / BRUSH_SCL;
+    f32vec3 c = a * 1.1 / BRUSH_SCL;
     f32vec3 color;
     if (mandelbulb(c, color)) {
         result = Voxel(mix(1 - BRUSH_SETTINGS.color, BRUSH_SETTINGS.color, clamp(color.r, 0, 1)), BlockID_Stone);

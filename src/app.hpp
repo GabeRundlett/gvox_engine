@@ -187,6 +187,7 @@ struct App : BaseApp<App> {
 
     auto get_flag(u32 index) -> bool;
     void set_flag(u32 index, bool value);
+    void imgui_gpu_input_flag_checkbox(char const * const str, u32 flag_index);
 
     void brush_tool_ui();
     void settings_ui();

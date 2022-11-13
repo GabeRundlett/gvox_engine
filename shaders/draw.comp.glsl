@@ -67,7 +67,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
 
     if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
         IntersectionRecord b0_hit = intersect_brush_voxels(ray);
-        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.01) {
+        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.001) {
             trace.intersection_record = b0_hit;
             trace.color = f32vec3(0.5, 0.5, 0.5);
             trace.material = 4;
@@ -198,7 +198,7 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
         col = mix(col, f32vec3(0.01, 0.01, 0.8), v);
     }
 
-    if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
+    if (inside(hit_pos + hit_nrm * 0.1, VOXEL_BRUSH.box)) {
         f32vec3 mask = abs(hit_nrm);
         f32vec3 v_pos = (hit_pos - VOXEL_BRUSH.box.bound_min) * VOXEL_SCL - hit_nrm * 0.01;
         f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
@@ -252,6 +252,8 @@ void main() {
 
     col = view_trace_record.color;
 
+    f32 hit_dist = MAX_SD;
+
     if (false) {
         f32vec2 tex_uv = pixel_p * inv_frame_dim;
 
@@ -268,7 +270,7 @@ void main() {
     } else if (view_trace_record.intersection_record.hit) {
         f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
         f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
-        f32 hit_dist = view_trace_record.intersection_record.dist;
+        hit_dist = view_trace_record.intersection_record.dist;
         Ray bounce_ray;
         bounce_ray.o = hit_pos;
 
@@ -383,13 +385,24 @@ void main() {
         // TraceRecord sun_trace_record = trace_scene(sun_ray);
     }
 
-    {
-        Sphere b;
-        b.o = GLOBALS.edit_origin;
-        b.r = 0.25;
-        IntersectionRecord b_hit = intersect(view_ray, b);
-        if (b_hit.hit) {
-            col = mix(col, f32vec3(1, 0, 1), 0.8);
+    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH) {
+        {
+            Sphere b;
+            b.o = GLOBALS.edit_origin;
+            b.r = 0.25;
+            IntersectionRecord b_hit = intersect(view_ray, b);
+            if (b_hit.hit) {
+                col = mix(col, f32vec3(1, 0, 1), 0.8);
+            }
+        }
+        if (get_flag(GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX)) {
+            BoundingBox b = VOXEL_BRUSH.box;
+            IntersectionRecord b_hit = intersect(view_ray, b);
+            f32vec3 b_col = f32vec3(0.5);
+            b_col *= (dot(SUN_DIR, b_hit.nrm) * 0.5 + 0.5) * SUN_COL * SUN_FACTOR + sample_sky_ambient(b_hit.nrm);
+            if (b_hit.hit) {
+                col = mix(col, b_col, b_hit.dist < hit_dist ? 0.2 : 0.04);
+            }
         }
     }
 
