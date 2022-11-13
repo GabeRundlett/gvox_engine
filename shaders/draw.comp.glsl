@@ -191,10 +191,34 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     Voxel vox = unpack_voxel(sample_packed_voxel_BRUSH(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
 
-    // f32vec3 b_pos = hit_pos - VOXEL_BRUSH.box.bound_min;
-    // f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time) * 0.5), 0.5) * 0.5 + 0.5;
-    // f32vec3 outside_color = mix(f32vec3(0.01, 0.01, 0.2), f32vec3(0.1, 0.1, 0.5), v);
-    // col = mix(col, outside_color, 0.1);
+    if (get_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY)) {
+        f32vec3 b_pos = hit_pos - VOXEL_BRUSH.box.bound_min;
+        b_pos = floor(b_pos * VOXEL_SCL) / VOXEL_SCL;
+        f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time * 4) * 0.5), 0.5) * 0.5;
+        col = mix(col, f32vec3(0.01, 0.01, 0.8), v);
+    }
+
+    if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
+        f32vec3 mask = abs(hit_nrm);
+        f32vec3 v_pos = (hit_pos - VOXEL_BRUSH.box.bound_min) * VOXEL_SCL - hit_nrm * 0.01;
+        f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
+        f32vec3 d1 = mask.zxy / VOXEL_SCL;
+        f32vec3 d2 = mask.yzx / VOXEL_SCL;
+        f32vec4 side = f32vec4(
+            sample_brush_lod(b_pos + d1, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos + d2, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos - d1, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos - d2, temp_chunk_index) == 0);
+        f32vec4 corner = f32vec4(
+            sample_brush_lod(b_pos + d1 + d2, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos - d1 + d2, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos - d1 - d2, temp_chunk_index) == 0,
+            sample_brush_lod(b_pos + d1 - d2, temp_chunk_index) == 0);
+        f32vec2 uv = mod(f32vec2(dot(mask * v_pos.yzx, f32vec3(1, 1, 1)), dot(mask * v_pos.zxy, f32vec3(1, 1, 1))), f32vec2(1, 1));
+        f32vec4 ao = voxel_ao(side, corner);
+        f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
+        col *= interp_ao * 0.6 + 0.4;
+    }
 
     return col;
 }

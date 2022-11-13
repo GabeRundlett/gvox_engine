@@ -609,6 +609,9 @@ void App::settings_ui() {
     i32 temp_int = static_cast<i32>(gpu_input.settings.brush_chunk_update_n);
     ImGui::InputInt("Brush Chunk Update N", &temp_int);
     gpu_input.settings.brush_chunk_update_n = static_cast<u32>(std::min(std::max(temp_int, 0), BRUSH_CHUNK_N));
+    auto brush_preview_overlay = get_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY);
+    ImGui::Checkbox("Brush Preview Striped", &brush_preview_overlay);
+    set_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY, brush_preview_overlay);
     ImGui::Checkbox("Use Custom Resolution", &use_custom_resolution);
     if (use_custom_resolution) {
         i32 custom_res[2] = {static_cast<i32>(render_size_x), static_cast<i32>(render_size_y)};
