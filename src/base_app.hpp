@@ -4,12 +4,12 @@
 
 #include <thread>
 using namespace std::chrono_literals;
-#include <iostream>
 #include <filesystem>
 #include <cmath>
 
 #include <daxa/utils/imgui.hpp>
 #include <imgui_impl_glfw.h>
+#include "imgui_console.hpp"
 
 #include <daxa/utils/math_operators.hpp>
 using namespace daxa::math_operators;
@@ -200,10 +200,12 @@ struct BaseApp : AppWindow<T> {
     auto reload_pipeline(auto &pipeline) -> bool {
         if (pipeline_compiler.check_if_sources_changed(pipeline)) {
             auto new_pipeline = pipeline_compiler.recreate_compute_pipeline(pipeline);
-            std::cout << new_pipeline.to_string() << std::endl;
             if (new_pipeline.is_ok()) {
                 pipeline = new_pipeline.value();
                 return true;
+            } else {
+                imgui_console.add_log("[error] Failed to recompile a pipeline:");
+                imgui_console.add_log("[error]   - %s", new_pipeline.message().c_str());
             }
         }
         return false;

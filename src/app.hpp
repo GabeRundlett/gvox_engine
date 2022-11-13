@@ -20,6 +20,7 @@ struct BrushPipelines {
     daxa::PipelineCompiler pipeline_compiler;
 
     bool compiled = false;
+    bool valid = false;
 
     daxa::ComputePipelineInfo perframe_comp_info;
     daxa::ComputePipeline perframe_comp;
@@ -35,11 +36,31 @@ struct BrushPipelines {
 
     void compile() {
         if (!compiled) {
-            perframe_comp = pipeline_compiler.create_compute_pipeline(perframe_comp_info).value();
-            chunk_edit_comp = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info).value();
-            chunkgen_comp = pipeline_compiler.create_compute_pipeline(chunkgen_comp_info).value();
-            brush_chunkgen_comp = pipeline_compiler.create_compute_pipeline(brush_chunkgen_comp_info).value();
-            compiled = true;
+            auto perframe_comp_result = pipeline_compiler.create_compute_pipeline(perframe_comp_info);
+            auto chunk_edit_comp_result = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info);
+            auto chunkgen_comp_result = pipeline_compiler.create_compute_pipeline(chunkgen_comp_info);
+            auto brush_chunkgen_comp_result = pipeline_compiler.create_compute_pipeline(brush_chunkgen_comp_info);
+            if (perframe_comp_result.is_ok() &&
+                chunk_edit_comp_result.is_ok() &&
+                chunkgen_comp_result.is_ok() &&
+                brush_chunkgen_comp_result.is_ok()) {
+
+                perframe_comp = perframe_comp_result.value();
+                chunk_edit_comp = chunk_edit_comp_result.value();
+                chunkgen_comp = chunkgen_comp_result.value();
+                brush_chunkgen_comp = brush_chunkgen_comp_result.value();
+
+                compiled = true;
+                valid = true;
+            } else if (perframe_comp_result.is_err()) {
+                imgui_console.add_log("[error] %s", perframe_comp_result.message().c_str());
+            } else if (chunk_edit_comp_result.is_err()) {
+                imgui_console.add_log("[error] %s", chunk_edit_comp_result.message().c_str());
+            } else if (chunkgen_comp_result.is_err()) {
+                imgui_console.add_log("[error] %s", chunkgen_comp_result.message().c_str());
+            } else if (brush_chunkgen_comp_result.is_err()) {
+                imgui_console.add_log("[error] %s", brush_chunkgen_comp_result.message().c_str());
+            }
         }
     }
 
@@ -157,6 +178,7 @@ struct App : BaseApp<App> {
     bool use_vsync = false;
     bool use_custom_resolution = false;
     bool show_menus = true;
+    bool show_console = true;
     bool show_debug_menu = false;
     bool show_help_menu = false;
     bool show_tool_menu = true;
@@ -187,7 +209,7 @@ struct App : BaseApp<App> {
 
     auto get_flag(u32 index) -> bool;
     void set_flag(u32 index, bool value);
-    void imgui_gpu_input_flag_checkbox(char const * const str, u32 flag_index);
+    void imgui_gpu_input_flag_checkbox(char const *const str, u32 flag_index);
 
     void brush_tool_ui();
     void settings_ui();

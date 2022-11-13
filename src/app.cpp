@@ -121,16 +121,14 @@ void Brush::cleanup(daxa::Device &device) {
     }
 }
 
-using Clock = std::chrono::high_resolution_clock;
-
-struct Timer {
-    Clock::time_point start = Clock::now();
-
-    ~Timer() {
-        auto now = Clock::now();
-        std::cout << "elapsed: " << std::chrono::duration<float>(now - start).count() << std::endl;
-    }
-};
+// using Clock = std::chrono::high_resolution_clock;
+// struct Timer {
+//     Clock::time_point start = Clock::now();
+//     ~Timer() {
+//         auto now = Clock::now();
+//         std::cout << "elapsed: " << std::chrono::duration<float>(now - start).count() << std::endl;
+//     }
+// };
 
 auto App::get_flag(u32 index) -> bool {
     return (gpu_input.settings.flags >> index) & 0x01;
@@ -338,12 +336,12 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
             auto path = absolute(brushes_file.path());
             auto name = path; // path.filename().string();
             if (result.contains(name.string())) {
-                std::cout << "Found 2 folders with the same name..?" << std::endl;
+                imgui_console.add_log("[error] Found 2 folders with the same name..?");
                 continue;
             }
             auto display_name = name.string();
             if (!std::filesystem::exists(path / "config.json")) {
-                std::cout << "Failed to find the config.json file associated with brush '" << display_name << "'" << std::endl;
+                imgui_console.add_log("[error] Failed to find the config.json file associated with brush '%s'", display_name.c_str());
                 continue;
             }
             auto config_json = nlohmann::json::parse(std::ifstream(path / "config.json"));
@@ -461,11 +459,11 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                 }
             }
             if (!std::filesystem::exists(path / "brush_info.glsl")) {
-                std::cout << "Failed to find the info.glsl file associated with brush '" << display_name << "'" << std::endl;
+                imgui_console.add_log("[error] Failed to find the info.glsl file associated with brush '%s'", display_name.c_str());
                 continue;
             }
             if (!std::filesystem::exists(path / "brush_kernel.glsl")) {
-                std::cout << "Failed to find the brush_kernel.glsl file associated with brush '" << display_name << "'" << std::endl;
+                imgui_console.add_log("[error] Failed to find the brush_kernel.glsl file associated with brush '%s'", display_name.c_str());
                 continue;
             }
 
@@ -725,8 +723,6 @@ void App::brush_tool_ui() {
         reload_brushes();
     }
 
-    auto &current_brush = brushes.at(current_brush_key);
-
     i32 temp_int = static_cast<i32>(gpu_input.settings.brush_chunk_update_n);
     ImGui::InputInt("Update Rate", &temp_int);
     imgui_help_marker("The number of chunks in the brush region to update per frame. A value of 0 will update all");
@@ -734,9 +730,12 @@ void App::brush_tool_ui() {
     imgui_gpu_input_flag_checkbox("Use Striped Brush Preview", GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY);
     imgui_gpu_input_flag_checkbox("Show Brush Bounding Box", GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX);
 
-    imgui_align_centered_for_width(128.0f);
-    if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
-        ImGui::OpenPopup("brush_selection_popup");
+    {
+        auto &current_brush = brushes.at(current_brush_key);
+        imgui_align_centered_for_width(128.0f);
+        if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&current_brush.preview_thumbnail), ImVec2(128, 128)))
+            ImGui::OpenPopup("brush_selection_popup");
+    }
 
     ImGui::SetNextWindowSize(ImVec2(420, 0));
     if (ImGui::BeginPopup("brush_selection_popup")) {
@@ -748,7 +747,11 @@ void App::brush_tool_ui() {
             auto button_sz = ImVec2(64, 64);
             ImGui::PushID(n);
             if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), button_sz)) {
-                current_brush_key = key;
+                auto & new_brush = brushes.at(key);
+                new_brush.pipelines.compile();
+                if (new_brush.pipelines.compiled) {
+                    current_brush_key = key;
+                }
                 ImGui::CloseCurrentPopup();
             }
             imgui_help_marker(brush.display_name.c_str());
@@ -761,6 +764,8 @@ void App::brush_tool_ui() {
         }
         ImGui::EndPopup();
     }
+
+    auto &current_brush = brushes.at(current_brush_key);
 
     imgui_align_centered_for_width(ImGui::CalcTextSize("Use for chunkgen").x);
     bool use_for_chunkgen_disabled = chunkgen_brush_key == current_brush_key;
@@ -861,6 +866,9 @@ void App::ui_update() {
         }
         ImGui::End();
 
+        if (show_console)
+            imgui_console.draw("Console", &show_console);
+
         if (show_tool_menu) {
             ImGui::Begin("Tools");
             for (u32 tool_i = 0; tool_i < GAME_TOOL_LAST + 1; ++tool_i) {
@@ -951,11 +959,6 @@ void App::on_update() {
     gpu_input.settings.tool_id = current_tool;
     set_flag(GPU_INPUT_FLAG_INDEX_PAUSED, show_menus);
 
-    // auto current_brushes_write_time = std::filesystem::last_write_time("assets/brushes");
-    // if (current_brushes_write_time - last_seen_brushes_folder_update < 0.5s) {
-    //     std::cout << "bruh" << std::endl;
-    // }
-
     if (battery_saving_mode) {
         std::this_thread::sleep_for(10ms);
     }
@@ -1034,6 +1037,10 @@ void App::on_key(i32 key_id, i32 action) {
         show_tool_menu = !show_tool_menu;
     if (key_id == GLFW_KEY_N && action == GLFW_PRESS)
         show_tool_settings_menu = !show_tool_settings_menu;
+    if (key_id == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS)
+        show_console = !show_console;
+
+    // imgui_console.add_log("key_id = %d", key_id);
 
     auto key_find_iter = std::find(keys.begin(), keys.end(), key_id);
     if (key_find_iter != keys.end()) {
@@ -1198,7 +1205,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 i32 thumbnail_sx, thumbnail_sy;
                 u8 *thumbnail_data = stbi_load(brush.thumbnail_image_path.string().c_str(), &thumbnail_sx, &thumbnail_sy, 0, 4);
                 if (thumbnail_sx * thumbnail_sy > 512 * 512) {
-                    // std::cout << "Image was too big! skipping...";
+                    imgui_console.add_log("[error] Image '%s' was too big! skipping...", brush.thumbnail_image_path.string().c_str());
                     brush.thumbnail_needs_updating = false;
                     stbi_image_free(thumbnail_data);
                     continue;
@@ -1352,9 +1359,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 auto cmd_list = interf.get_command_list();
                 cmd_list.set_pipeline(startup_comp_pipeline);
                 auto push = StartupCompPush{
-                    .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
-                    .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                    .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                    .gpu_globals = this->device.get_device_address(gpu_globals_buffer),
+                    .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                    .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
                 };
                 cmd_list.push_constant(push);
                 cmd_list.dispatch(1, 1, 1);
@@ -1398,14 +1405,14 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.set_pipeline(current_brush.pipelines.get_perframe_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
+                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
             auto push = PerframeCompPush{
-                .gpu_globals = this->device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_globals = this->device.get_device_address(gpu_globals_buffer),
+                .gpu_input = this->device.get_device_address(gpu_input_buffer),
                 .brush_settings = brush_settings_id,
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_indirect_dispatch = this->device.buffer_reference(gpu_indirect_dispatch_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_indirect_dispatch = this->device.get_device_address(gpu_indirect_dispatch_buffer),
             };
             cmd_list.push_constant(push);
             cmd_list.dispatch(1, 1, 1);
@@ -1430,14 +1437,14 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.set_pipeline(current_brush.pipelines.get_chunkgen_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
+                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
             cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .gpu_input = this->device.get_device_address(gpu_input_buffer),
                 .brush_settings = brush_settings_id,
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
         },
@@ -1459,14 +1466,14 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.set_pipeline(current_brush.pipelines.get_brush_chunkgen_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
+                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
             cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .gpu_input = this->device.get_device_address(gpu_input_buffer),
                 .brush_settings = brush_settings_id,
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_chunk_dispatch)});
         },
@@ -1489,14 +1496,14 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             cmd_list.set_pipeline(current_brush.pipelines.get_chunk_edit_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.buffer_reference(current_brush.custom_brush_settings_buffer);
+                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
             cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = device.buffer_reference(gpu_input_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .gpu_input = device.get_device_address(gpu_input_buffer),
                 .brush_settings = brush_settings_id,
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.buffer_reference(gvox_model_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
         },
@@ -1513,9 +1520,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch)});
         },
@@ -1532,9 +1539,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch)});
         },
@@ -1550,9 +1557,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x2x4_dispatch)});
         },
@@ -1568,9 +1575,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x8up_dispatch)});
         },
@@ -1592,10 +1599,10 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             auto cmd_list = interf.get_command_list();
             cmd_list.set_pipeline(draw_comp_pipeline);
             cmd_list.push_constant(DrawCompPush{
-                .gpu_globals = device.buffer_reference(gpu_globals_buffer),
-                .gpu_input = device.buffer_reference(gpu_input_buffer),
-                .voxel_world = this->device.buffer_reference(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.buffer_reference(gpu_voxel_brush_buffer),
+                .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                .gpu_input = device.get_device_address(gpu_input_buffer),
+                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
                 .image_id = render_image.default_view(),
                 .optical_depth_image_id = optical_depth_image.default_view(),
                 .optical_depth_sampler_id = optical_depth_sampler,
