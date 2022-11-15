@@ -34,6 +34,28 @@
 
 Brushes define how voxels should generate
 
+## Variables and Types
+
+### BrushInput
+The `BrushInput` type has the following declaration
+```cpp
+struct BrushInput {
+    f32vec3 p;
+    f32vec3 origin;
+    f32vec3 begin_p;
+    Voxel prev_voxel;
+};
+```
+ - `p` represents the worldspace position of the current voxel RELATIVE to the brush origin
+ - `origin` is the current brush origin, so if you add `brush.p` to `brush.origin`, then it will be the absolute worldspace voxel position
+ - `begin_p` is the position of the origin at the time of starting the edit, so when you start holding down the moust button, this is set, but doesn't get set until you let go again.
+ - `prev_voxel` is the voxel data previously at the position `p`
+ 
+ ### INPUT
+ The `INPUT` variable has the following "public" members
+  - `frame_dim` is a `u32vec2` that is the size of the rendered viewport
+  - `time` is a `f32` holding the current time in seconds
+
 <!-- ## Walkthrough
 
 ### Making a Pumpkin -->
