@@ -32,7 +32,7 @@ void main() {
     f32 result = optical_depth(ray, depth - epsilon * 2);
 
     imageStore(
-        daxa_access_RWImage(image2D, r32f, push_constant.image_id),
+        daxa_access_Image(image2D, push_constant.image_id),
         i32vec2(pixel_i.xy),
         f32vec4(result, 0, 0, 0));
 }

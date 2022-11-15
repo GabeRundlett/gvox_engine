@@ -8,7 +8,9 @@
 
 void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32 l = length(brush.p - OFFSET) / PLAYER.edit_radius;
-    if (l < 1) {
+    f32 r = rand(brush.p + brush.origin + INPUT.time);
+
+    if (l < 1 && r > pow(l, 8)) {
         f32vec3 voxel_p = brush.p + brush.origin;
         Voxel v[6];
         v[0 + 0] = unpack_voxel(sample_packed_voxel_WORLD(voxel_p + f32vec3(0, 0, -1) / VOXEL_SCL));
@@ -29,9 +31,7 @@ void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
             }
         }
 
-        if (air_count < 1) {
-            result = v[non_air_id];
-        } else {
+        if (air_count > 0) {
             result = Voxel(block_color(BlockID_Air), BlockID_Air);
         }
     }

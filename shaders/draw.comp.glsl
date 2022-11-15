@@ -6,6 +6,10 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 #include <utils/raytrace.glsl>
 #include <utils/sky.glsl>
 
+#define DO_RENDERING 1
+
+#define VISUALIZE_COMPLEXITY 0
+
 #define RENDER_SHADOWS 1
 #define RENDER_SHADING 1
 #define RENDER_FOG 1
@@ -66,7 +70,9 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     }
 
     if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
-        IntersectionRecord b0_hit = intersect_brush_voxels(ray);
+        i32 brush_complexity = 0;
+        IntersectionRecord b0_hit = intersect_brush_voxels(ray, brush_complexity);
+        complexity += brush_complexity;
         if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.001) {
             trace.intersection_record = b0_hit;
             trace.color = f32vec3(0.5, 0.5, 0.5);
@@ -225,6 +231,7 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
+#if DO_RENDERING
     u32vec3 pixel_i = gl_GlobalInvocationID.xyz;
     if (pixel_i.x >= INPUT.frame_dim.x ||
         pixel_i.y >= INPUT.frame_dim.y)
@@ -254,6 +261,10 @@ void main() {
 
     f32 hit_dist = MAX_SD;
 
+#if VISUALIZE_COMPLEXITY
+    col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+#else
+
     if (false) {
         f32vec2 tex_uv = pixel_p * inv_frame_dim;
 
@@ -266,7 +277,6 @@ void main() {
         o_depth = optical_depth_baked(optical_ray);
 
         col = filmic_inv(f32vec3(o_depth));
-        // col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 6 + 0.5, 1.0, 0.9)));
     } else if (view_trace_record.intersection_record.hit) {
         f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
         f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
@@ -406,6 +416,8 @@ void main() {
         }
     }
 
+#endif
+
     i32vec2 crosshair_uv = abs(i32vec2(pixel_i) - i32vec2(frame_dim / 2));
 
     if (!get_flag(GPU_INPUT_FLAG_INDEX_PAUSED)) {
@@ -417,7 +429,7 @@ void main() {
 
     f32vec3 prev_col = filmic_inv(
         imageLoad(
-            daxa_access_RWImage(image2D, rgba32f, push_constant.image_id),
+            daxa_access_Image(image2D, push_constant.image_id),
             i32vec2(pixel_i.xy))
             .rgb);
 
@@ -427,7 +439,8 @@ void main() {
     f32 blending = INPUT.settings.frame_blending;
 
     imageStore(
-        daxa_access_RWImage(image2D, rgba32f, push_constant.image_id),
+        daxa_access_Image(image2D, push_constant.image_id),
         i32vec2(pixel_i.xy),
         f32vec4(filmic((col * (1.0 - blending) + prev_col * blending)), 1));
+#endif
 }

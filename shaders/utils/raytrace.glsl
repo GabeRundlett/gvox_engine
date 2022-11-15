@@ -534,4 +534,31 @@ IntersectionRecord intersect_brush_voxels(Ray ray) {
 
     return result;
 }
+IntersectionRecord intersect_brush_voxels(Ray ray, in out i32 x1_steps) {
+    IntersectionRecord result;
+    BoundingBox brush_box = VOXEL_BRUSH.box;
+
+    default_init(result);
+    result = intersect(ray, brush_box);
+
+    if (inside(ray.o, brush_box)) {
+        result.dist = 0;
+        result.hit = true;
+    } else {
+        result = intersect(ray, brush_box);
+        result.dist += 0.0001;
+    }
+
+    Ray dda_ray = ray;
+    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_BRUSH.box.bound_min;
+    u32 chunk_index;
+
+    if (result.hit && sample_brush_lod(dda_ray.o, chunk_index) != 0) {
+        f32 prev_dist = result.dist;
+        result = brush_dda(dda_ray, chunk_index, x1_steps);
+        result.dist += prev_dist;
+    }
+
+    return result;
+}
 #endif
