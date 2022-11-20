@@ -1,40 +1,40 @@
 {
-    "name": "gabecraft",
-    "version": "0.1.0",
-    "dependencies": [
-        {
-            "name": "daxa",
-            "features": [
-                "glslang",
-                "utils"
-            ]
-        },
-        "fmt",
-        "glfw3",
-        "glm",
-        "gvox",
-        "imnodes",
-        "stb",
-        "nlohmann-json",
-        "platform-folders",
-        "libsoundio",
-        {
-            "name": "imgui",
-            "features": [
-                "glfw-binding",
-                "docking-experimental"
-            ]
-        }
-    ],
-    "builtin-baseline": "a2261f65ea979eebf56074f604776160f0074b09",
-    "overrides": [
-        {
-            "name": "daxa",
-            "version-string": "nightly"
-        },
-        {
-            "name": "glfw3",
-            "version-string": "custom"
-        }
-    ]
+  "name": "gabecraft",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "daxa",
+      "features": [
+        "glslang",
+        "utils"
+      ]
+    },
+    "fmt",
+    "glfw3",
+    "glm",
+    "gvox",
+    "imnodes",
+    "stb",
+    "nlohmann-json",
+    "platform-folders",
+    "libsoundio",
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "docking-experimental"
+      ]
+    }
+  ],
+  "builtin-baseline": "a2261f65ea979eebf56074f604776160f0074b09",
+  "overrides": [
+    {
+      "name": "daxa",
+      "version-string": "nightly"
+    },
+    {
+      "name": "glfw3",
+      "version-string": "custom"
+    }
+  ]
 }

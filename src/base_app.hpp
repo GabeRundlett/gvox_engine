@@ -62,33 +62,23 @@ struct BaseApp : AppWindow<T> {
         .debug_name = APPNAME_PREFIX("pipeline_compiler"),
     });
 
+    ImFont *mono_font = nullptr;
+    ImFont *menu_font = nullptr;
     daxa::ImGuiRenderer imgui_renderer = create_imgui_renderer();
-    ImFont *mono_font, *base_font, *menu_font;
-    auto create_imgui_renderer() -> daxa::ImGuiRenderer {
-        ImGui::CreateContext();
+
+    void load_imgui_fonts(f32 scl) {
         ImGuiIO &io = ImGui::GetIO();
-        mono_font = io.Fonts->AddFontDefault();
-#if defined(_WIN32)
-        if (std::filesystem::exists("C:/Windows/Fonts/segoeui.ttf")) {
-            base_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 16.0f);
-            menu_font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 32.0f);
-        } else {
-            base_font = io.Fonts->AddFontDefault();
-            menu_font = io.Fonts->AddFontDefault();
-        }
-#elif defined(__linux__)
-        if (std::filesystem::exists("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            base_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16.0f);
-            menu_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32.0f);
-        } else {
-            base_font = io.Fonts->AddFontDefault();
-            menu_font = io.Fonts->AddFontDefault();
-        }
-#endif
-        if (!base_font)
-            base_font = io.Fonts->AddFontDefault();
+        mono_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 14.0f * scl);
+        menu_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_Tight/InterTight-Regular.ttf", 14.0f * scl);
         if (!menu_font)
             menu_font = io.Fonts->AddFontDefault();
+        if (!mono_font)
+            mono_font = io.Fonts->AddFontDefault();
+    }
+
+    auto create_imgui_renderer() -> daxa::ImGuiRenderer {
+        ImGui::CreateContext();
+        load_imgui_fonts(1.0f);
 
         ImGui_ImplGlfw_InitForVulkan(AppWindow<T>::glfw_window_ptr, true);
         return daxa::ImGuiRenderer({

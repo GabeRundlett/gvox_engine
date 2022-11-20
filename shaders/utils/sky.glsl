@@ -23,7 +23,8 @@
 #define WAVELENGTH_Z 440.0
 #define SCATTERING_STRENGTH 30.0
 #define SCATTERING_COEFF (f32vec3(pow(400.0 / WAVELENGTH_X, 4), pow(400.0 / WAVELENGTH_Y, 4), pow(400.0 / WAVELENGTH_Z, 4)) * SCATTERING_STRENGTH)
-#define SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0005), 2))
+#define INTERNAL_SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0005), 2))
+#define SUN_FACTOR (1 - pow(1 - clamp(sin(SUN_TIME) + 0.1, 0.0001, 1.0), 50))
 
 #define IN_SCATTER_N 4
 #define OPTICAL_DEPTH_N 100
@@ -61,8 +62,8 @@ f32 optical_depth_baked(Ray ray) {
     f32 angle = 1.0 - (dot(normalize(ray.o), ray.nrm) * 0.5 + 0.5);
     // clang-format off
     return texture(sampler2D(
-        daxa_access_Texture(texture2D, push_constant.optical_depth_image_id),
-        daxa_access_Sampler(push_constant.optical_depth_sampler_id)),
+        get_texture(texture2D, push_constant.optical_depth_image_id),
+        get_sampler(push_constant.optical_depth_sampler_id)),
         f32vec2(angle, height_normalized)).r;
     // clang-format on
 }
@@ -113,9 +114,9 @@ f32vec3 calc_light(Ray ray, f32 ray_length) {
     f32 fac = dot(f32vec3(0, 0, 1), ray.nrm) * 0.4 + 0.4;
     fac = (fac - 0.25) * 2;
     fac = clamp(fac, 0, 1);
-    result = mix(f32vec3(0.2, 0.2, 0.2) * SUN_FACTOR, result, fac);
+    result = mix(f32vec3(0.2, 0.2, 0.2) * INTERNAL_SUN_FACTOR, result, fac);
 
-    return result + SKY_COL * SUN_FACTOR;
+    return result + SKY_COL * INTERNAL_SUN_FACTOR;
 }
 
 f32vec3 sample_sky_ambient(f32vec3 nrm) {
@@ -123,9 +124,10 @@ f32vec3 sample_sky_ambient(f32vec3 nrm) {
     return f32vec3(0.5);
 #elif USE_OLD_SKY
     f32 sun_val = dot(nrm, SUN_DIR) * 0.25 + 0.5;
+    sun_val *= f32(dot(nrm, f32vec3(0, 0, 1)) > 0.0);
     sun_val = pow(sun_val, 2) * 0.2;
     f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.5 + 0.5, 0, 1);
-    return mix(SKY_COL + sun_val * SUN_COL, SKY_COL_B, pow(sky_val, 2)) * SUN_FACTOR;
+    return mix(SKY_COL + sun_val * SUN_COL, SKY_COL_B, pow(sky_val, 2)) * INTERNAL_SUN_FACTOR;
 #else
     Ray ray;
     ray.o = f32vec3(0, 0, PLANET_RADIUS);
@@ -142,6 +144,7 @@ f32vec3 sample_sky(f32vec3 nrm) {
     f32vec3 light = sample_sky_ambient(nrm);
 #if !DISABLE_SKY
     f32 sun_val = dot(nrm, SUN_DIR) * 0.5 + 0.5;
+    sun_val *= f32(dot(nrm, f32vec3(0, 0, 1)) > 0.0);
     sun_val = sun_val * 1000 - 999;
     sun_val = pow(clamp(sun_val * 1.5, 0, 1), 20);
     light += sun_val * SUN_COL * 1.0;

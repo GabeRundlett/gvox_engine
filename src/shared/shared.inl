@@ -11,6 +11,9 @@
 #define GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY 2
 #define GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX 3
 
+#define USE_PERSISTENT_THREAD_TRACE 0
+#define PERSISTENT_THREAD_TRACE_DISPATCH_SIZE 30000
+
 DAXA_DECL_BUFFER_STRUCT(GpuInput, {
     u32vec2 frame_dim;
     f32 time;
@@ -29,6 +32,10 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
 
     f32vec3 edit_origin;
     u32 edit_flags;
+
+// #if USE_PERSISTENT_THREAD_TRACE
+//     i32 ray_count;
+// #endif
 });
 
 DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
@@ -91,6 +98,11 @@ struct DrawCompPush {
     daxa_ImageViewId image_id;
     daxa_ImageViewId optical_depth_image_id;
     daxa_SamplerId optical_depth_sampler_id;
+};
+struct RaytraceCompPush {
+    BufferRef(GpuGlobals) gpu_globals;
+    BufferRef(GpuInput) gpu_input;
+    BufferRef(VoxelWorld) voxel_world;
 };
 
 #define GLOBALS push_constant.gpu_globals

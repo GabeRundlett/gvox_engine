@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
+execute_process(COMMAND vcpkg x-update-baseline)
+
 project(gabe_voxel_game VERSION 0.1.12)
 
 find_package(fmt CONFIG REQUIRED)

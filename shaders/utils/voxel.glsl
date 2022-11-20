@@ -33,7 +33,7 @@ f32vec3 block_color(u32 block_id) {
     // case BlockID_DiamondOre:      return f32vec3(0.18, 0.67, 0.69); break;
     case BlockID_Dirt:            return f32vec3(0.08, 0.05, 0.03); break;
     // case BlockID_DriedShrub:      return f32vec3(0.52, 0.36, 0.27); break;
-    case BlockID_Grass:           return f32vec3(0.05, 0.09, 0.03); break;
+    case BlockID_Grass:           return f32vec3(0.053, 0.101, 0.026); break;
     case BlockID_Gravel:          return f32vec3(0.10, 0.08, 0.07); break;
     // case BlockID_Lava:            return f32vec3(0.00, 0.00, 0.00); break;
     case BlockID_Leaves:          return f32vec3(0.10, 0.29, 0.10) * 0.08; break;
@@ -41,10 +41,10 @@ f32vec3 block_color(u32 block_id) {
     // case BlockID_MoltenRock:      return f32vec3(0.20, 0.13, 0.12); break;
     // case BlockID_Planks:          return f32vec3(0.68, 0.47, 0.35); break;
     // case BlockID_Rose:            return f32vec3(0.52, 0.04, 0.05); break;
-    case BlockID_Sand:            return f32vec3(0.33, 0.31, 0.29); break;
+    case BlockID_Sand:            return f32vec3(0.65, 0.58, 0.42); break;
     case BlockID_Sandstone:       return f32vec3(0.44, 0.42, 0.41); break;
     case BlockID_Stone:           return f32vec3(0.11, 0.10, 0.09); break;
-    case BlockID_TallGrass:       return f32vec3(0.04, 0.08, 0.03); break;
+    case BlockID_TallGrass:       return f32vec3(0.065, 0.116, 0.035); break;
     case BlockID_Water:           return f32vec3(0.20, 0.28, 0.93); break;
     case BlockID_Snow:            return f32vec3(0.60, 0.60, 0.60); break;
     default:                      return f32vec3(0.00, 0.00, 0.00); break;

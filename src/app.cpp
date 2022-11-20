@@ -152,6 +152,14 @@ App::App()
           .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
           .debug_name = APPNAME_PREFIX("render_image"),
       })},
+#if USE_PERSISTENT_THREAD_TRACE
+      raytrace_output_image{device.create_image({
+          .format = daxa::Format::R32G32B32A32_SFLOAT,
+          .size = {render_size_x, render_size_y, 1},
+          .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+          .debug_name = APPNAME_PREFIX("raytrace_output_image"),
+      })},
+#endif
       gpu_globals_buffer{device.create_buffer({
           .size = sizeof(GpuGlobals),
           .debug_name = "gpu_globals_buffer",
@@ -568,6 +576,9 @@ App::~App() {
     device.destroy_buffer(gpu_input_buffer);
     device.destroy_buffer(gpu_indirect_dispatch_buffer);
     device.destroy_image(render_image);
+#if USE_PERSISTENT_THREAD_TRACE
+    device.destroy_image(raytrace_output_image);
+#endif
     for (auto &[key, brush] : brushes) {
         brush.cleanup(device);
     }
@@ -747,7 +758,7 @@ void App::brush_tool_ui() {
             auto button_sz = ImVec2(64, 64);
             ImGui::PushID(n);
             if (ImGui::ImageButton(*reinterpret_cast<ImTextureID const *>(&brush.preview_thumbnail), button_sz)) {
-                auto & new_brush = brushes.at(key);
+                auto &new_brush = brushes.at(key);
                 new_brush.pipelines.compile();
                 if (new_brush.pipelines.compiled) {
                     current_brush_key = key;
@@ -837,7 +848,7 @@ void App::ui_update() {
 
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::PushFont(base_font);
+    ImGui::PushFont(menu_font);
 
     // ImGui::ShowDemoWindow();
 
@@ -1072,6 +1083,17 @@ void App::recreate_render_images() {
         .debug_name = APPNAME_PREFIX("render_image"),
     });
     loop_task_list.add_runtime_image(task_render_image, render_image);
+
+#if USE_PERSISTENT_THREAD_TRACE
+    loop_task_list.remove_runtime_image(task_raytrace_output_image, raytrace_output_image);
+    device.destroy_image(raytrace_output_image);
+    raytrace_output_image = device.create_image({
+        .format = daxa::Format::R32G32B32A32_SFLOAT,
+        .size = {render_size_x, render_size_y, 1},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .debug_name = APPNAME_PREFIX("raytrace_output_image"),
+    });
+#endif
 }
 void App::toggle_menus() {
     set_mouse_capture(show_menus);
@@ -1105,6 +1127,11 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     task_optical_depth_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_optical_depth_image")});
     new_task_list.add_runtime_image(task_optical_depth_image, optical_depth_image);
     task_gvox_model_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
+
+#if USE_PERSISTENT_THREAD_TRACE
+    task_raytrace_output_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_raytrace_output_image")});
+    new_task_list.add_runtime_image(task_raytrace_output_image, raytrace_output_image);
+#endif
 
     daxa::UsedTaskImages thumbnail_upload_task_usages;
     daxa::UsedTaskImages imgui_task_usages;
@@ -1150,7 +1177,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .debug_name = APPNAME_PREFIX("staging_gvox_model_buffer"),
                 });
                 cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
-                GpuGVoxModel *buffer_ptr = device.map_memory_as<GpuGVoxModel>(staging_gvox_model_buffer);
+                GpuGVoxModel *buffer_ptr = device.get_host_address_as<GpuGVoxModel>(staging_gvox_model_buffer);
                 buffer_ptr->size_x = static_cast<u32>(gvox_model.nodes[0].size_x);
                 buffer_ptr->size_y = static_cast<u32>(gvox_model.nodes[0].size_y);
                 buffer_ptr->size_z = static_cast<u32>(gvox_model.nodes[0].size_z);
@@ -1162,7 +1189,6 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     o_vox.col.z = i_vox.color.z;
                     o_vox.id = i_vox.id;
                 }
-                device.unmap_memory(staging_gvox_model_buffer);
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gvox_model_buffer,
                     .dst_buffer = gvox_model_buffer,
@@ -1195,8 +1221,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             });
             cmd_list.destroy_buffer_deferred(image_staging_buffer);
             cmd_list.destroy_buffer_deferred(settings_staging_buffer);
-            auto *buffer_ptr = device.map_memory_as<u8>(image_staging_buffer);
-            auto *settings_buffer_ptr = device.map_memory_as<u8>(settings_staging_buffer);
+            auto *buffer_ptr = device.get_host_address_as<u8>(image_staging_buffer);
+            auto *settings_buffer_ptr = device.get_host_address_as<u8>(settings_staging_buffer);
             u32 offset = 0;
             u32 settings_offset = 0;
             for (auto &[key, brush] : brushes) {
@@ -1253,8 +1279,6 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     settings_offset += brush.custom_buffer_size;
                 }
             }
-            device.unmap_memory(image_staging_buffer);
-            device.unmap_memory(settings_staging_buffer);
         },
         .debug_name = APPNAME_PREFIX("Upload brush thumbnails and default settings"),
     });
@@ -1263,8 +1287,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
 
             auto staging_gpu_input_buffer = device.create_buffer({
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -1273,9 +1297,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             });
             cmd_list.destroy_buffer_deferred(staging_gpu_input_buffer);
 
-            GpuInput *buffer_ptr = device.map_memory_as<GpuInput>(staging_gpu_input_buffer);
+            GpuInput *buffer_ptr = device.get_host_address_as<GpuInput>(staging_gpu_input_buffer);
             *buffer_ptr = this->gpu_input;
-            device.unmap_memory(staging_gpu_input_buffer);
 
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_gpu_input_buffer,
@@ -1289,8 +1312,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_buffers = {
             {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             auto const &current_brush = brushes.at(current_brush_key);
             if (current_brush.custom_buffer_size > 0) {
                 auto staging_gpu_brush_settings_buffer = device.create_buffer({
@@ -1299,9 +1322,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .debug_name = APPNAME_PREFIX("staging_gpu_brush_settings_buffer"),
                 });
                 cmd_list.destroy_buffer_deferred(staging_gpu_brush_settings_buffer);
-                GpuInput *buffer_ptr = device.map_memory_as<GpuInput>(staging_gpu_brush_settings_buffer);
+                GpuInput *buffer_ptr = device.get_host_address_as<GpuInput>(staging_gpu_brush_settings_buffer);
                 memcpy(buffer_ptr, current_brush.custom_brush_settings_data, current_brush.custom_buffer_size);
-                device.unmap_memory(staging_gpu_brush_settings_buffer);
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gpu_brush_settings_buffer,
                     .dst_buffer = current_brush.custom_brush_settings_buffer,
@@ -1318,9 +1340,9 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
+        .task = [this](daxa::TaskRuntime task_runtime) {
             if (!should_run_startup && should_regenerate) {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = task_runtime.get_command_list();
                 cmd_list.clear_buffer({
                     .buffer = gpu_voxel_world_buffer,
                     .offset = offsetof(VoxelWorld, chunk_update_indices),
@@ -1330,7 +1352,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 should_regenerate = false;
             }
             if (should_run_startup) {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = task_runtime.get_command_list();
                 cmd_list.clear_buffer({
                     .buffer = gpu_globals_buffer,
                     .offset = 0,
@@ -1353,10 +1375,10 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
+        .task = [this](daxa::TaskRuntime task_runtime) {
             if (should_run_startup) {
                 should_run_startup = false;
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = task_runtime.get_command_list();
                 cmd_list.set_pipeline(startup_comp_pipeline);
                 auto push = StartupCompPush{
                     .gpu_globals = this->device.get_device_address(gpu_globals_buffer),
@@ -1374,10 +1396,10 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .used_images = {
             {task_optical_depth_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
         },
-        .task = [this](daxa::TaskRuntime interf) {
+        .task = [this](daxa::TaskRuntime task_runtime) {
             if (should_regen_optical_depth) {
                 should_regen_optical_depth = false;
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = task_runtime.get_command_list();
                 cmd_list.set_pipeline(optical_depth_comp_pipeline);
                 auto push = OpticalDepthCompPush{
                     .image_id = optical_depth_image.default_view(),
@@ -1398,8 +1420,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
             // cmd_list.set_pipeline(perframe_comp_pipeline);
             cmd_list.set_pipeline(current_brush.pipelines.get_perframe_comp());
@@ -1431,8 +1453,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(chunkgen_brush_key);
             cmd_list.set_pipeline(current_brush.pipelines.get_chunkgen_comp());
             u64 brush_settings_id = 0;
@@ -1459,8 +1481,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
             // cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
             cmd_list.set_pipeline(current_brush.pipelines.get_brush_chunkgen_comp());
@@ -1489,8 +1511,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
             // cmd_list.set_pipeline(chunk_edit_comp_pipeline);
             cmd_list.set_pipeline(current_brush.pipelines.get_chunk_edit_comp());
@@ -1516,8 +1538,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.set_pipeline(subchunk_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
@@ -1535,8 +1557,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.set_pipeline(subchunk_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
@@ -1553,8 +1575,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
@@ -1571,8 +1593,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
@@ -1583,6 +1605,23 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .debug_name = APPNAME_PREFIX("Brush Subchunk x8up (Compute)"),
     });
+
+#if USE_PERSISTENT_THREAD_TRACE
+    new_task_list.add_task({
+        .used_buffers = {
+            //
+        },
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
+            cmd_list.set_pipeline(raytrace_comp_pipeline);
+            cmd_list.push_constant(RaytraceCompPush{
+                //
+            });
+            cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);
+        },
+        .debug_name = APPNAME_PREFIX("Raytrace (Compute)"),
+    });
+#endif
 
     new_task_list.add_task({
         .used_buffers = {
@@ -1595,8 +1634,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
             {task_optical_depth_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY, daxa::ImageMipArraySlice{}},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.set_pipeline(draw_comp_pipeline);
             cmd_list.push_constant(DrawCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
@@ -1621,8 +1660,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_render_image, daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageMipArraySlice{}},
             {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageMipArraySlice{}},
         },
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             cmd_list.blit_image_to_image({
                 .src_image = render_image,
                 .src_image_layout = daxa::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -1641,8 +1680,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
 
     new_task_list.add_task({
         .used_images = imgui_task_usages,
-        .task = [this](daxa::TaskRuntime interf) {
-            auto cmd_list = interf.get_command_list();
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
             imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
         },
         .debug_name = APPNAME_PREFIX("ImGui Task"),

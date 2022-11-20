@@ -127,6 +127,12 @@ struct App : BaseApp<App> {
     daxa::ComputePipeline subchunk_brush_x8up_comp_pipeline;
     daxa::ComputePipeline draw_comp_pipeline;
 
+#if USE_PERSISTENT_THREAD_TRACE
+    daxa::ComputePipeline raytrace_comp_pipeline;
+    daxa::ImageId raytrace_output_image;
+    daxa::TaskImageId task_raytrace_output_image;
+#endif
+
     GpuInput gpu_input;
     daxa::BufferId gpu_input_buffer;
     daxa::TaskBufferId task_gpu_input_buffer;

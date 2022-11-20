@@ -262,6 +262,11 @@ void main() {
     f32 hit_dist = MAX_SD;
 
 #if VISUALIZE_COMPLEXITY
+    // if (complexity > 32) {
+    //     col = f32vec3(1);
+    // } else {
+    //     col = f32vec3(0);
+    // }
     col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
 #else
 
@@ -429,7 +434,7 @@ void main() {
 
     f32vec3 prev_col = filmic_inv(
         imageLoad(
-            daxa_access_Image(image2D, push_constant.image_id),
+            get_image(image2D, push_constant.image_id),
             i32vec2(pixel_i.xy))
             .rgb);
 
@@ -439,7 +444,7 @@ void main() {
     f32 blending = INPUT.settings.frame_blending;
 
     imageStore(
-        daxa_access_Image(image2D, push_constant.image_id),
+        get_image(image2D, push_constant.image_id),
         i32vec2(pixel_i.xy),
         f32vec4(filmic((col * (1.0 - blending) + prev_col * blending)), 1));
 #endif

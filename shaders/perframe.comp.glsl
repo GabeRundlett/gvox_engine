@@ -547,4 +547,8 @@ void main() {
     perframe_player();
     perframe_voxel_world();
     perframe_voxel_brush();
+
+#if USE_PERSISTENT_THREAD_TRACE
+    GLOBALS.ray_count = INPUT.frame_dim.x * INPUT.frame_dim.y;
+#endif
 }
