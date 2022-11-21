@@ -10,8 +10,9 @@
 #define GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE 1
 #define GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY 2
 #define GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX 3
+#define GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE 4
 
-#define USE_PERSISTENT_THREAD_TRACE 0
+#define USE_PERSISTENT_THREAD_TRACE 1
 #define PERSISTENT_THREAD_TRACE_DISPATCH_SIZE 30000
 
 DAXA_DECL_BUFFER_STRUCT(GpuInput, {
@@ -33,9 +34,7 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     f32vec3 edit_origin;
     u32 edit_flags;
 
-// #if USE_PERSISTENT_THREAD_TRACE
-//     i32 ray_count;
-// #endif
+    i32 ray_count;
 });
 
 DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
@@ -95,6 +94,7 @@ struct DrawCompPush {
     BufferRef(VoxelWorld) voxel_world;
     BufferRef(VoxelBrush) voxel_brush;
 
+    daxa_ImageViewId raytrace_output_image_id;
     daxa_ImageViewId image_id;
     daxa_ImageViewId optical_depth_image_id;
     daxa_SamplerId optical_depth_sampler_id;
@@ -103,6 +103,9 @@ struct RaytraceCompPush {
     BufferRef(GpuGlobals) gpu_globals;
     BufferRef(GpuInput) gpu_input;
     BufferRef(VoxelWorld) voxel_world;
+    BufferRef(VoxelBrush) voxel_brush;
+
+    daxa_ImageViewId raytrace_output_image_id;
 };
 
 #define GLOBALS push_constant.gpu_globals
@@ -113,3 +116,4 @@ struct RaytraceCompPush {
 #define MODEL push_constant.gpu_gvox_model
 #define PLAYER push_constant.gpu_globals.player
 #define INDIRECT push_constant.gpu_indirect_dispatch
+#define RT_IMAGE push_constant.raytrace_output_image_id

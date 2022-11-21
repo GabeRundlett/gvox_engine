@@ -152,14 +152,12 @@ App::App()
           .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
           .debug_name = APPNAME_PREFIX("render_image"),
       })},
-#if USE_PERSISTENT_THREAD_TRACE
       raytrace_output_image{device.create_image({
-          .format = daxa::Format::R32G32B32A32_SFLOAT,
+          .format = daxa::Format::R16G16B16A16_SFLOAT,
           .size = {render_size_x, render_size_y, 1},
           .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
           .debug_name = APPNAME_PREFIX("raytrace_output_image"),
       })},
-#endif
       gpu_globals_buffer{device.create_buffer({
           .size = sizeof(GpuGlobals),
           .debug_name = "gpu_globals_buffer",
@@ -273,7 +271,14 @@ App::App()
         .push_constant_size = sizeof(DrawCompPush),
         .debug_name = APPNAME_PREFIX("draw_comp_pipeline"),
     }).value();
+    raytrace_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+        .shader_info = {.source = daxa::ShaderFile{"raytrace.comp.glsl"}},
+        .push_constant_size = sizeof(RaytraceCompPush),
+        .debug_name = APPNAME_PREFIX("raytrace_comp_pipeline"),
+    }).value();
     // clang-format on
+
+    set_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE, false);
 
     if (!std::filesystem::exists(data_directory)) {
         std::filesystem::create_directory(data_directory);
@@ -576,9 +581,7 @@ App::~App() {
     device.destroy_buffer(gpu_input_buffer);
     device.destroy_buffer(gpu_indirect_dispatch_buffer);
     device.destroy_image(render_image);
-#if USE_PERSISTENT_THREAD_TRACE
     device.destroy_image(raytrace_output_image);
-#endif
     for (auto &[key, brush] : brushes) {
         brush.cleanup(device);
     }
@@ -609,6 +612,7 @@ void App::imgui_gpu_input_flag_checkbox(char const *const str, u32 flag_index) {
 }
 
 void App::settings_ui() {
+    imgui_gpu_input_flag_checkbox("Use Persistent Thread Trace", GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE);
     ImGui::Checkbox("Battery Saving Mode", &battery_saving_mode);
     // auto prev_vsync = use_vsync;
     // ImGui::Checkbox("VSYNC", &use_vsync);
@@ -975,6 +979,7 @@ void App::on_update() {
     }
 
     reload_pipeline(draw_comp_pipeline);
+    reload_pipeline(raytrace_comp_pipeline);
     reload_pipeline(brushes.at(current_brush_key).pipelines.get_perframe_comp());
     reload_pipeline(brushes.at(current_brush_key).pipelines.get_chunk_edit_comp());
     auto reloaded_chunkgen_pipe = reload_pipeline(brushes.at(chunkgen_brush_key).pipelines.get_chunkgen_comp());
@@ -1050,6 +1055,8 @@ void App::on_key(i32 key_id, i32 action) {
         show_tool_settings_menu = !show_tool_settings_menu;
     if (key_id == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS)
         show_console = !show_console;
+    if (key_id == GLFW_KEY_P && action == GLFW_PRESS)
+        set_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE, !get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE));
 
     // imgui_console.add_log("key_id = %d", key_id);
 
@@ -1084,16 +1091,15 @@ void App::recreate_render_images() {
     });
     loop_task_list.add_runtime_image(task_render_image, render_image);
 
-#if USE_PERSISTENT_THREAD_TRACE
     loop_task_list.remove_runtime_image(task_raytrace_output_image, raytrace_output_image);
     device.destroy_image(raytrace_output_image);
     raytrace_output_image = device.create_image({
-        .format = daxa::Format::R32G32B32A32_SFLOAT,
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {render_size_x, render_size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
         .debug_name = APPNAME_PREFIX("raytrace_output_image"),
     });
-#endif
+    loop_task_list.add_runtime_image(task_raytrace_output_image, raytrace_output_image);
 }
 void App::toggle_menus() {
     set_mouse_capture(show_menus);
@@ -1128,10 +1134,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     new_task_list.add_runtime_image(task_optical_depth_image, optical_depth_image);
     task_gvox_model_buffer = new_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
 
-#if USE_PERSISTENT_THREAD_TRACE
     task_raytrace_output_image = new_task_list.create_task_image({.debug_name = APPNAME_PREFIX("task_raytrace_output_image")});
     new_task_list.add_runtime_image(task_raytrace_output_image, raytrace_output_image);
-#endif
 
     daxa::UsedTaskImages thumbnail_upload_task_usages;
     daxa::UsedTaskImages imgui_task_usages;
@@ -1608,16 +1612,40 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
 
 #if USE_PERSISTENT_THREAD_TRACE
     new_task_list.add_task({
-        .used_buffers = {
-            //
+        .used_images = {
+            {task_raytrace_output_image, daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageMipArraySlice{}},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(raytrace_comp_pipeline);
-            cmd_list.push_constant(RaytraceCompPush{
-                //
+            cmd_list.clear_image({
+                .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+                .clear_value = {std::array{0.0f, 0.0f, 0.0f, 0.0f}},
+                .dst_image = raytrace_output_image,
             });
-            cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);
+        },
+    });
+    new_task_list.add_task({
+        .used_buffers = {
+            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+        },
+        .used_images = {
+            {task_raytrace_output_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
+        },
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
+                auto cmd_list = task_runtime.get_command_list();
+                cmd_list.set_pipeline(raytrace_comp_pipeline);
+                cmd_list.push_constant(RaytraceCompPush{
+                    .gpu_globals = device.get_device_address(gpu_globals_buffer),
+                    .gpu_input = device.get_device_address(gpu_input_buffer),
+                    .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                    .raytrace_output_image_id = raytrace_output_image.default_view(),
+                });
+                cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);
+            }
         },
         .debug_name = APPNAME_PREFIX("Raytrace (Compute)"),
     });
@@ -1631,6 +1659,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
+            {task_raytrace_output_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY, daxa::ImageMipArraySlice{}},
             {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
             {task_optical_depth_image, daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY, daxa::ImageMipArraySlice{}},
         },
@@ -1642,6 +1671,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_input = device.get_device_address(gpu_input_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .raytrace_output_image_id = raytrace_output_image.default_view(),
                 .image_id = render_image.default_view(),
                 .optical_depth_image_id = optical_depth_image.default_view(),
                 .optical_depth_sampler_id = optical_depth_sampler,

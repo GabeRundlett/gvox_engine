@@ -256,7 +256,6 @@ void main() {
 
     i32 complexity;
     TraceRecord view_trace_record = trace_scene(view_ray, complexity);
-
     col = view_trace_record.color;
 
     f32 hit_dist = MAX_SD;
@@ -268,6 +267,7 @@ void main() {
     //     col = f32vec3(0);
     // }
     col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+
 #else
 
     if (false) {
@@ -282,6 +282,11 @@ void main() {
         o_depth = optical_depth_baked(optical_ray);
 
         col = filmic_inv(f32vec3(o_depth));
+    } else if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
+        f32vec4 rt_image_result = imageLoad(
+            get_image(image2D, RT_IMAGE),
+            i32vec2(pixel_i.xy));
+        col = rt_image_result.rgb;
     } else if (view_trace_record.intersection_record.hit) {
         f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
         f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
