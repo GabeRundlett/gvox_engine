@@ -152,7 +152,7 @@ struct ImGuiConsole {
             Strtrim(s);
             if (s[0])
                 exec_command(s);
-            strcpy(s, "");
+            s[0] = '\0';
             reclaim_focus = true;
         }
         ImGui::SetItemDefaultFocus();

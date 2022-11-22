@@ -80,7 +80,7 @@ DAXA_DECL_BUFFER_STRUCT(VoxelWorld, {
     ChunkGenState chunks_genstate[WORLD_CHUNK_N];
 
     VoxelChunk voxel_chunks[WORLD_CHUNK_N];
-});
+})
 
 DAXA_DECL_BUFFER_STRUCT(VoxelBrush, {
     BoundingBox box;
@@ -94,4 +94,4 @@ DAXA_DECL_BUFFER_STRUCT(VoxelBrush, {
     ChunkGenState chunks_genstate[BRUSH_CHUNK_N];
 
     VoxelChunk voxel_chunks[BRUSH_CHUNK_N];
-});
+})

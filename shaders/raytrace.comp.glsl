@@ -74,46 +74,44 @@ RaySetupInfo raytrace_setup(u32 ray_backlog_index) {
     RaySetupInfo result;
     result.result_index = ray_backlog.start_index - ray_backlog_index;
     result.result_i = get_result_i(result.result_index);
-    Ray ray = create_view_ray(result.result_i);
-    ray.inv_nrm = 1.0 / ray.nrm;
-    const u32 max_steps = WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ;
-    f32vec3 delta = f32vec3(
-        ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
-        ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
-        ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
-    u32 chunk_index;
-    u32 lod = sample_lod(ray.o, chunk_index);
-    if (lod == 0) {
-        result.hit = true;
-        return result;
-    }
-    f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
-    f32vec3 t_start;
-    if (ray.nrm.x < 0) {
-        t_start.x = (ray.o.x / cell_size - floor(ray.o.x / cell_size)) * cell_size * delta.x;
-    } else {
-        t_start.x = (ceil(ray.o.x / cell_size) - ray.o.x / cell_size) * cell_size * delta.x;
-    }
-    if (ray.nrm.y < 0) {
-        t_start.y = (ray.o.y / cell_size - floor(ray.o.y / cell_size)) * cell_size * delta.y;
-    } else {
-        t_start.y = (ceil(ray.o.y / cell_size) - ray.o.y / cell_size) * cell_size * delta.y;
-    }
-    if (ray.nrm.z < 0) {
-        t_start.z = (ray.o.z / cell_size - floor(ray.o.z / cell_size)) * cell_size * delta.z;
-    } else {
-        t_start.z = (ceil(ray.o.z / cell_size) - ray.o.z / cell_size) * cell_size * delta.z;
-    }
+    // Ray ray = create_view_ray(result.result_i);
+    // ray.inv_nrm = 1.0 / ray.nrm;
+    // const u32 max_steps = WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ;
+    // f32vec3 delta = f32vec3(
+    //     ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
+    //     ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
+    //     ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
+    // u32 chunk_index;
+    // u32 lod = sample_lod(ray.o, chunk_index);
+    // if (lod == 0) {
+    //     result.hit = true;
+    //     return result;
+    // }
+    // f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
+    // f32vec3 t_start;
+    // if (ray.nrm.x < 0) {
+    //     t_start.x = (ray.o.x / cell_size - floor(ray.o.x / cell_size)) * cell_size * delta.x;
+    // } else {
+    //     t_start.x = (ceil(ray.o.x / cell_size) - ray.o.x / cell_size) * cell_size * delta.x;
+    // }
+    // if (ray.nrm.y < 0) {
+    //     t_start.y = (ray.o.y / cell_size - floor(ray.o.y / cell_size)) * cell_size * delta.y;
+    // } else {
+    //     t_start.y = (ceil(ray.o.y / cell_size) - ray.o.y / cell_size) * cell_size * delta.y;
+    // }
+    // if (ray.nrm.z < 0) {
+    //     t_start.z = (ray.o.z / cell_size - floor(ray.o.z / cell_size)) * cell_size * delta.z;
+    // } else {
+    //     t_start.z = (ceil(ray.o.z / cell_size) - ray.o.z / cell_size) * cell_size * delta.z;
+    // }
     return result;
 }
 
 void raytrace_begin(in RaySetupInfo ray_begin_info, in out RayState ray_state) {
     ray_state.result_i = ray_begin_info.result_i;
-    // ray_state.currently_tracing = true;
-    ray_state.has_ray_result = false;
-    ray_state.ray = create_view_ray(ray_state.result_i);
-
-    ray_state.dist = 0.5;
+    // ray_state.has_ray_result = false;
+    // ray_state.ray = create_view_ray(ray_state.result_i);
+    // ray_state.dist = 0.5;
 }
 
 void raytrace_end(in out RayState ray_state) {
@@ -177,6 +175,17 @@ void main() {
         ray_backlog.size = min(ray_backlog.start_index, 64);
         ray_backlog.need_regeneration = false;
     }
+
+    // subgroupMemoryBarrier();
+    // if (ray_backlog.size == 0)
+    //     return;
+
+    // for (u32 i = 0; i < ray_backlog.size; i += WARP_SIZE) {
+    //     u32 ray_backlog_index = i + gl_LocalInvocationID.x;
+    //     if (ray_backlog_index < ray_backlog.size) {
+    //         ray_backlog.ray_setup_infos[ray_backlog_index] = raytrace_setup(ray_backlog_index);
+    //     }
+    // }
 
     RayState ray_state;
     ray_state.currently_tracing = false;

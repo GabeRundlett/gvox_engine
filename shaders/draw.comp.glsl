@@ -439,7 +439,7 @@ void main() {
 
     f32vec3 prev_col = filmic_inv(
         imageLoad(
-            get_image(image2D, push_constant.image_id),
+            get_image(image2D, daxa_push_constant.image_id),
             i32vec2(pixel_i.xy))
             .rgb);
 
@@ -449,7 +449,7 @@ void main() {
     f32 blending = INPUT.settings.frame_blending;
 
     imageStore(
-        get_image(image2D, push_constant.image_id),
+        get_image(image2D, daxa_push_constant.image_id),
         i32vec2(pixel_i.xy),
         f32vec4(filmic((col * (1.0 - blending) + prev_col * blending)), 1));
 #endif

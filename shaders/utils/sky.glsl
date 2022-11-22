@@ -62,8 +62,8 @@ f32 optical_depth_baked(Ray ray) {
     f32 angle = 1.0 - (dot(normalize(ray.o), ray.nrm) * 0.5 + 0.5);
     // clang-format off
     return texture(sampler2D(
-        get_texture(texture2D, push_constant.optical_depth_image_id),
-        get_sampler(push_constant.optical_depth_sampler_id)),
+        get_texture(texture2D, daxa_push_constant.optical_depth_image_id),
+        get_sampler(daxa_push_constant.optical_depth_sampler_id)),
         f32vec2(angle, height_normalized)).r;
     // clang-format on
 }

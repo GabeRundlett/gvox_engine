@@ -1642,6 +1642,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .gpu_globals = device.get_device_address(gpu_globals_buffer),
                     .gpu_input = device.get_device_address(gpu_input_buffer),
                     .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
+                    .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
                     .raytrace_output_image_id = raytrace_output_image.default_view(),
                 });
                 cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);

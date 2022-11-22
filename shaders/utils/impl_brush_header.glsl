@@ -21,4 +21,4 @@ f32 brush_noise_value(in f32vec3 voxel_p) {
     return fractal_noise(voxel_p, noise_conf);
 }
 
-#define BRUSH_SETTINGS daxa_buffer_address_to_ref(CustomBrushSettings, push_constant.brush_settings)
+#define BRUSH_SETTINGS daxa_Buffer(CustomBrushSettings)(daxa_push_constant.brush_settings)

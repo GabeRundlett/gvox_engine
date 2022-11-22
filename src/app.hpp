@@ -53,12 +53,16 @@ struct BrushPipelines {
                 compiled = true;
                 valid = true;
             } else if (perframe_comp_result.is_err()) {
+                // std::cout << perframe_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", perframe_comp_result.message().c_str());
             } else if (chunk_edit_comp_result.is_err()) {
+                // std::cout << chunk_edit_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", chunk_edit_comp_result.message().c_str());
             } else if (chunkgen_comp_result.is_err()) {
+                // std::cout << chunkgen_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", chunkgen_comp_result.message().c_str());
             } else if (brush_chunkgen_comp_result.is_err()) {
+                // std::cout << brush_chunkgen_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", brush_chunkgen_comp_result.message().c_str());
             }
         }

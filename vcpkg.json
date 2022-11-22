@@ -26,12 +26,8 @@
       ]
     }
   ],
-  "builtin-baseline": "a2261f65ea979eebf56074f604776160f0074b09",
+  "builtin-baseline": "aa27f5d15ab1d8cb1617d1c003d1b4a30e472e24",
   "overrides": [
-    {
-      "name": "daxa",
-      "version-string": "nightly"
-    },
     {
       "name": "glfw3",
       "version-string": "custom"

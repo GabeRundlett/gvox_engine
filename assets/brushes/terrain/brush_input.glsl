@@ -7,4 +7,4 @@ DAXA_DECL_BUFFER_STRUCT(CustomBrushSettings, {
     f32 scale;
     f32 lacunarity;
     i32 octaves;
-});
+})
