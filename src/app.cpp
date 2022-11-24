@@ -155,7 +155,7 @@ App::App()
       raytrace_output_image{device.create_image({
           .format = daxa::Format::R16G16B16A16_SFLOAT,
           .size = {render_size_x, render_size_y, 1},
-          .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+          .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
           .debug_name = APPNAME_PREFIX("raytrace_output_image"),
       })},
       gpu_globals_buffer{device.create_buffer({

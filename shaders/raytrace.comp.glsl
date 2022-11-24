@@ -32,7 +32,8 @@ struct RaySetupInfo {
 };
 
 #define WARP_SIZE (32)
-#define BACKLOG_SIZE (WARP_SIZE * 2)
+#define CACHE_SIZE (WARP_SIZE * 2)
+#define BATCH_SIZE (WARP_SIZE * 16)
 #define STEPS_UNTIL_REORDER (8)
 
 // We keep a backlog of rays.
@@ -41,14 +42,20 @@ struct RaySetupInfo {
 // Having the ray prepreation work done non-divergently is important as the rays can potentially diverge heavily.
 // The backlog gets emptied one by one until there are no rays left.
 // When its empty, 64 new rays are acquired and ALL threads in a warp prepare the 64 new rays.
-struct RayBacklog {
+struct RayBatchCachedSetup {
     i32 size;
     i32 start_index;
     b32 need_regeneration;
-    RaySetupInfo ray_setup_infos[BACKLOG_SIZE];
+    RaySetupInfo ray_setup_infos[CACHE_SIZE];
 };
 
-shared RayBacklog ray_backlog;
+struct RayBatch {
+    i32 size;
+    i32 start_index;
+    RayBatchCachedSetup cached_setup;
+};
+
+shared RayBatch ray_batch;
 
 u32vec2 get_result_i(u32 result_index) {
     u32vec2 result;
@@ -72,7 +79,7 @@ Ray create_view_ray(u32vec2 pixel_i) {
 
 RaySetupInfo raytrace_setup(u32 ray_backlog_index) {
     RaySetupInfo result;
-    result.result_index = ray_backlog.start_index - ray_backlog_index;
+    result.result_index = ray_batch.cached_setup.start_index + ray_backlog_index;
     result.result_i = get_result_i(result.result_index);
     // Ray ray = create_view_ray(result.result_i);
     // ray.inv_nrm = 1.0 / ray.nrm;
@@ -164,109 +171,89 @@ void write_ray_result(RayState ray_state) {
     imageStore(
         get_image(image2D, RT_IMAGE),
         i32vec2(ray_state.result_i),
-        f32vec4(0, 0.5, 0.2, 1));
+        f32vec4((ray_state.result_i) / f32vec2(INPUT.frame_dim), 0, 1));
 }
 
 layout(local_size_x = WARP_SIZE, local_size_y = 1, local_size_z = 1) in;
 void main() {
     // One thread from each group will take 64 "jobs" from the global job count
     if (subgroupElect()) {
-        ray_backlog.start_index = atomicAdd(GLOBALS.ray_count, -64);
-        ray_backlog.size = min(ray_backlog.start_index, 64);
-        ray_backlog.need_regeneration = false;
+        ray_batch.cached_setup.start_index = 0;
+        ray_batch.cached_setup.size = 0;
+        ray_batch.cached_setup.need_regeneration = true;
     }
-
-    // subgroupMemoryBarrier();
-    // if (ray_backlog.size == 0)
-    //     return;
-
-    // for (u32 i = 0; i < ray_backlog.size; i += WARP_SIZE) {
-    //     u32 ray_backlog_index = i + gl_LocalInvocationID.x;
-    //     if (ray_backlog_index < ray_backlog.size) {
-    //         ray_backlog.ray_setup_infos[ray_backlog_index] = raytrace_setup(ray_backlog_index);
-    //     }
-    // }
 
     RayState ray_state;
     ray_state.currently_tracing = false;
     ray_state.has_ray_result = false;
     ray_state.result_i = u32vec2(0, 0);
 
-#if 1
-
-    ray_state.result_i = get_result_i(gl_GlobalInvocationID.x);
-    write_ray_result(ray_state);
-    return;
-
-#else
+    const i32 TOTAL_RAY_COUNT = i32(INPUT.frame_dim.x * INPUT.frame_dim.y);
 
     while (true) {
         if (subgroupAny(!ray_state.currently_tracing)) {
             if (!ray_state.currently_tracing) {
                 if (ray_state.has_ray_result) {
-                    ray_state.has_ray_result = false;
                     write_ray_result(ray_state);
+                    ray_state.has_ray_result = false;
                 }
                 // local offset in the backlog.
-                i32 ray_backlog_index = atomicAdd(ray_backlog.size, -1);
-                if (ray_backlog_index > 0) {
+                i32 ray_backlog_index = CACHE_SIZE - atomicAdd(ray_batch.cached_setup.size, -1);
+                if (ray_backlog_index < CACHE_SIZE) {
                     // I got an item in the current backlog
-                    raytrace_begin(ray_backlog.ray_setup_infos[ray_backlog_index], ray_state);
+                    raytrace_begin(ray_batch.cached_setup.ray_setup_infos[ray_backlog_index], ray_state);
                     ray_state.currently_tracing = true;
                 }
-                if (ray_backlog_index <= 0) {
+                if (ray_backlog_index >= CACHE_SIZE) {
                     // I did NOT get an item in the current backlog
                     // We need to get a new backlog, and mark it to be reinitialized later.
                     if (subgroupElect()) {
                         // One thread aquires new ray index for the back log and marks it for reinitialization.
-                        ray_backlog.need_regeneration = true;
+                        ray_batch.cached_setup.need_regeneration = true;
                     }
                 }
             }
             // Flush the shared memory (not used in most compilers)
-            subgroupMemoryBarrier();
-            if (ray_backlog.need_regeneration) {
-                bool backlog_acquire_success = false;
+            subgroupMemoryBarrierShared();
+            if (ray_batch.cached_setup.need_regeneration) {
                 // reinitialize backlog.
                 // We do it here so ALL threads in the warp work on generating the backlog with no divergence and full utilization.
                 if (subgroupElect()) {
                     // We now set the backlog metadata, which can be done by one thread alone.
-                    ray_backlog.need_regeneration = false;
-                    ray_backlog.size = clamp(ray_backlog.start_index, 0, BACKLOG_SIZE);
-                    ray_backlog.start_index = atomicAdd(GLOBALS.ray_count, -BACKLOG_SIZE);
-                    // If therea re no rays left the backlog size will be empty.
-                    backlog_acquire_success = ray_backlog.size > 0;
+                    ray_batch.cached_setup.need_regeneration = false;
+                    // Get new
+                    i32 remaining_ray_count = atomicAdd(GLOBALS.ray_count, -CACHE_SIZE);
+                    ray_batch.cached_setup.size = clamp(remaining_ray_count, 0, CACHE_SIZE);
+                    ray_batch.cached_setup.start_index = TOTAL_RAY_COUNT - remaining_ray_count;
                 }
-                subgroupMemoryBarrier();
-                if (backlog_acquire_success) {
+                subgroupMemoryBarrierShared();
+                // If there are no rays left the backlog size will be empty.
+                if (ray_batch.cached_setup.size > 0) {
                     // Reinit the ray setup infos.
-                    for (u32 i = 0; i < ray_backlog.size; i += WARP_SIZE) {
-                        u32 ray_backlog_index = i + gl_LocalInvocationID.x;
-                        if (ray_backlog_index < ray_backlog.size) {
-                            ray_backlog.ray_setup_infos[ray_backlog_index] = raytrace_setup(ray_backlog_index);
+                    for (u32 i = 0; i < ray_batch.cached_setup.size; i += WARP_SIZE) {
+                        u32 ray_backlog_index = i + gl_SubgroupInvocationID.x;
+                        if (ray_backlog_index < ray_batch.cached_setup.size) {
+                            ray_batch.cached_setup.ray_setup_infos[ray_backlog_index] = raytrace_setup(ray_backlog_index);
                         }
                     }
-                    subgroupMemoryBarrier();
+                    subgroupMemoryBarrierShared();
                     // All the threads that didnt get a new ray previously, now get their new ray out of the backlog.
                     if (!ray_state.currently_tracing) {
-                        i32 ray_backlog_index = atomicAdd(ray_backlog.size, -1);
-                        raytrace_begin(ray_backlog.ray_setup_infos[ray_backlog_index], ray_state);
+                        i32 ray_backlog_index = CACHE_SIZE - atomicAdd(ray_batch.cached_setup.size, -1);
+                        raytrace_begin(ray_batch.cached_setup.ray_setup_infos[ray_backlog_index], ray_state);
                         ray_state.currently_tracing = true;
                     }
                 }
             }
         }
 
-        if (subgroupAll(!ray_state.currently_tracing)) {
+        if (subgroupAll(!ray_state.currently_tracing))
             break;
-        }
 
         for (u32 i = 0; (i < STEPS_UNTIL_REORDER) && subgroupAny(ray_state.currently_tracing); ++i) {
-            if (ray_state.currently_tracing) {
-                raytrace_body(ray_state);
-            }
+            if (!ray_state.currently_tracing)
+                break;
+            raytrace_body(ray_state);
         }
     }
-
-#endif
 }
