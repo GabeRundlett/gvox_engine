@@ -13,7 +13,6 @@
 #define GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE 4
 
 #define USE_PERSISTENT_THREAD_TRACE 1
-#define PERSISTENT_THREAD_TRACE_DISPATCH_SIZE 30000
 
 DAXA_DECL_BUFFER_STRUCT(GpuInput, {
     u32vec2 frame_dim;
@@ -45,6 +44,8 @@ DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
     u32vec3 brush_chunk_dispatch;
     u32vec3 brush_subchunk_x2x4_dispatch;
     u32vec3 brush_subchunk_x8up_dispatch;
+
+    u32vec3 raytrace_dispatch;
 })
 
 struct GVoxModelVoxel {

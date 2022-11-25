@@ -549,6 +549,7 @@ void main() {
     perframe_voxel_brush();
 
 #if USE_PERSISTENT_THREAD_TRACE
+    INDIRECT.raytrace_dispatch = u32vec3(30000, 1, 1);
     if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
         GLOBALS.ray_count = i32(INPUT.frame_dim.x * INPUT.frame_dim.y);
     }

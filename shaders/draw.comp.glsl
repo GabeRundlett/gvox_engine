@@ -10,9 +10,10 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #define VISUALIZE_COMPLEXITY 0
 
-#define RENDER_SHADOWS 1
-#define RENDER_SHADING 1
-#define RENDER_FOG 1
+#define RENDER_SHADOWS 0
+#define RENDER_SHADING 0
+#define RENDER_FOG 0
+#define RENDER_BRUSH_OVERLAY 0
 
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
@@ -69,6 +70,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
+#if RENDER_BRUSH_OVERLAY
     if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
         i32 brush_complexity = 0;
         IntersectionRecord b0_hit = intersect_brush_voxels(ray, brush_complexity);
@@ -79,6 +81,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.material = 4;
         }
     }
+#endif
 
     // {
     //     IntersectionRecord b0_hit = intersect_sdmap(ray);
@@ -251,182 +254,170 @@ void main() {
 
     f32vec3 col = f32vec3(0, 0, 0);
 
-    Ray view_ray = create_view_ray(uv);
-    view_ray.inv_nrm = 1.0 / view_ray.nrm;
-
-    i32 complexity;
-    TraceRecord view_trace_record = trace_scene(view_ray, complexity);
-    col = view_trace_record.color;
-
-    f32 hit_dist = MAX_SD;
-
-#if VISUALIZE_COMPLEXITY
-    // if (complexity > 32) {
-    //     col = f32vec3(1);
-    // } else {
-    //     col = f32vec3(0);
-    // }
-    col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
-
-#else
-
-    if (false) {
-        f32vec2 tex_uv = pixel_p * inv_frame_dim;
-
-        Ray optical_ray = view_ray;
-        optical_ray.o = f32vec3(0, 0, PLANET_RADIUS + 0.01);
-
-        f32 o_depth;
-        o_depth = optical_depth(optical_ray, calc_atmosphere_depth(optical_ray));
-        // o_depth = abs(o_depth - (optical_depth_baked(optical_ray)));
-        o_depth = optical_depth_baked(optical_ray);
-
-        col = filmic_inv(f32vec3(o_depth));
-    } else if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
+    if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
         f32vec4 rt_image_result = imageLoad(
             get_image(image2D, RT_IMAGE),
             i32vec2(pixel_i.xy));
         col = rt_image_result.rgb;
-    } else if (view_trace_record.intersection_record.hit) {
-        f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
-        f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
-        hit_dist = view_trace_record.intersection_record.dist;
-        Ray bounce_ray;
-        bounce_ray.o = hit_pos;
+    } else {
+        Ray view_ray = create_view_ray(uv);
+        view_ray.inv_nrm = 1.0 / view_ray.nrm;
 
-        // Voxel hit_voxel;
-        // hit_voxel.nrm = hit_nrm;
+        i32 complexity;
+        TraceRecord view_trace_record = trace_scene(view_ray, complexity);
+        col = view_trace_record.color;
 
-        switch (view_trace_record.material) {
-        default: {
-            bounce_ray.nrm = SUN_DIR;
-            bounce_ray.o += hit_nrm * 0.001;
-            // bounce_ray.o = floor(bounce_ray.o * VOXEL_SCL) / VOXEL_SCL;
-            // bounce_ray.o += hit_nrm * 0.001;
+#if VISUALIZE_COMPLEXITY
+        // if (complexity > 32) {
+        //     col = f32vec3(1);
+        // } else {
+        //     col = f32vec3(0);
+        // }
+        col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+#else
 
-            // VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
-            // hit_voxel = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
+        f32 hit_dist = MAX_SD;
+
+        if (view_trace_record.intersection_record.hit) {
+            f32vec3 hit_pos = view_ray.o + view_ray.nrm * view_trace_record.intersection_record.dist;
+            f32vec3 hit_nrm = view_trace_record.intersection_record.nrm;
+            hit_dist = view_trace_record.intersection_record.dist;
+            Ray bounce_ray;
+            bounce_ray.o = hit_pos;
+
+            // Voxel hit_voxel;
             // hit_voxel.nrm = hit_nrm;
-            // hit_voxel.nrm *= -1;
-        } break;
-        }
-        bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
+
+            switch (view_trace_record.material) {
+            default: {
+                bounce_ray.nrm = SUN_DIR;
+                bounce_ray.o += hit_nrm * 0.001;
+                // bounce_ray.o = floor(bounce_ray.o * VOXEL_SCL) / VOXEL_SCL;
+                // bounce_ray.o += hit_nrm * 0.001;
+
+                // VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
+                // hit_voxel = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
+                // hit_voxel.nrm = hit_nrm;
+                // hit_voxel.nrm *= -1;
+            } break;
+            }
+            bounce_ray.inv_nrm = 1.0 / bounce_ray.nrm;
 #if RENDER_SHADING
-        f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
+            f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
 #else
-        f32 shade = max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
+            f32 shade = max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
 #endif
-        i32 temp_i32;
+            i32 temp_i32;
 #if RENDER_SHADOWS
-        TraceRecord bounce_trace_record = trace_scene(bounce_ray, temp_i32);
+            TraceRecord bounce_trace_record = trace_scene(bounce_ray, temp_i32);
 #endif
-        f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
-        switch (view_trace_record.material) {
-        case 0:
-        case 1: {
+            f32vec3 voxel_p = f32vec3(i32vec3(hit_pos * VOXEL_SCL)) / VOXEL_SCL;
+            switch (view_trace_record.material) {
+            case 0:
+            case 1: {
 #if RENDER_SHADOWS
-            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+                shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-        } break;
-        case 2: {
-            CapsulePoints c = SCENE.capsules[view_trace_record.object_i];
-            f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
-            f32vec3 local_pos = (hit_pos - c.p1) * 1;
-            local_pos.xy = rot_mat * local_pos.xy;
-            // f32vec3 result = f32vec3(0.3, 0.3, 0.3);
-            f32vec3 result = f32vec3(0.50, 0.33, 0.30);
-            f32vec2 uv = local_pos.xz;
-            f32vec2 e1_uv = uv - f32vec2(0.1, 0.0);
-            f32 e1 = f32(dot(e1_uv, e1_uv) > 0.001);
-            f32vec2 e2_uv = uv + f32vec2(0.1, 0.0);
-            f32 e2 = f32(dot(e2_uv, e2_uv) > 0.001);
-            f32vec2 m_uv = uv + f32vec2(0.0, 0.04);
-            f32 m = clamp(f32(dot(m_uv, m_uv) > 0.02) + f32(m_uv.y > -0.05), 0, 1);
-            f32 face_fac = clamp(e1 * e2 * m + f32(local_pos.y < 0) * 10, 0, 1);
-            f32 pants_fac = f32(local_pos.z > -0.6);
-            f32 radial = atan(local_pos.y, local_pos.x) / 6.28 + 0.5;
-            f32vec2 b_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.075, (local_pos.z + 0.7) * 0.5);
-            f32vec2 f_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.200, (local_pos.z + 0.7) * 0.5);
-            f32 b_pockets_fac = f32(b_pocket_pos.y < 0.0 && b_pocket_pos.x < 0.04 && b_pocket_pos.x > -0.04 && dot(b_pocket_pos, b_pocket_pos) < 0.003 && local_pos.y < 0);
-            f32 f_pockets_fac = f32(f_pocket_pos.y < 0.0 && f_pocket_pos.x < 0.02 && f_pocket_pos.x > -0.06 && dot(f_pocket_pos, f_pocket_pos) < 0.003 && local_pos.y > 0);
-            f32 belt_fac = f32(fract(radial * 20) < 0.8 && local_pos.z > -0.64 && local_pos.z < -0.62);
-            f32vec2 shirt_uv = f32vec2(local_pos.x, (local_pos.z + 0.40) * 4);
-            f32 shirt_fac = f32(shirt_uv.y > 0 || (dot(shirt_uv, shirt_uv) < 0.1 + local_pos.y * 0.1));
-            result = mix(f32vec3(0.4, 0.08, 0.07), result, shirt_fac);
-            result = mix(f32vec3(0.04, 0.04, 0.12), result, pants_fac);
-            result = mix(result, f32vec3(0.03, 0.03, 0.10), f32(b_pockets_fac != 0.0 || f_pockets_fac != 0.0 || (f_pocket_pos.x > 0.045 && local_pos.z < -0.68 && local_pos.z > -1.5)));
-            result = mix(f32vec3(0.0, 0.0, 0.0), result, face_fac);
-            result = mix(result, f32vec3(0.04, 0.02, 0.01), belt_fac);
-            col = result;
+            } break;
+            case 2: {
+                CapsulePoints c = SCENE.capsules[view_trace_record.object_i];
+                f32mat2x2 rot_mat = f32mat2x2(f32vec2(-PLAYER.forward.y, PLAYER.forward.x), PLAYER.forward);
+                f32vec3 local_pos = (hit_pos - c.p1) * 1;
+                local_pos.xy = rot_mat * local_pos.xy;
+                // f32vec3 result = f32vec3(0.3, 0.3, 0.3);
+                f32vec3 result = f32vec3(0.50, 0.33, 0.30);
+                f32vec2 uv = local_pos.xz;
+                f32vec2 e1_uv = uv - f32vec2(0.1, 0.0);
+                f32 e1 = f32(dot(e1_uv, e1_uv) > 0.001);
+                f32vec2 e2_uv = uv + f32vec2(0.1, 0.0);
+                f32 e2 = f32(dot(e2_uv, e2_uv) > 0.001);
+                f32vec2 m_uv = uv + f32vec2(0.0, 0.04);
+                f32 m = clamp(f32(dot(m_uv, m_uv) > 0.02) + f32(m_uv.y > -0.05), 0, 1);
+                f32 face_fac = clamp(e1 * e2 * m + f32(local_pos.y < 0) * 10, 0, 1);
+                f32 pants_fac = f32(local_pos.z > -0.6);
+                f32 radial = atan(local_pos.y, local_pos.x) / 6.28 + 0.5;
+                f32vec2 b_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.075, (local_pos.z + 0.7) * 0.5);
+                f32vec2 f_pocket_pos = f32vec2(abs(abs(radial - 0.5) - 0.25) - 0.200, (local_pos.z + 0.7) * 0.5);
+                f32 b_pockets_fac = f32(b_pocket_pos.y < 0.0 && b_pocket_pos.x < 0.04 && b_pocket_pos.x > -0.04 && dot(b_pocket_pos, b_pocket_pos) < 0.003 && local_pos.y < 0);
+                f32 f_pockets_fac = f32(f_pocket_pos.y < 0.0 && f_pocket_pos.x < 0.02 && f_pocket_pos.x > -0.06 && dot(f_pocket_pos, f_pocket_pos) < 0.003 && local_pos.y > 0);
+                f32 belt_fac = f32(fract(radial * 20) < 0.8 && local_pos.z > -0.64 && local_pos.z < -0.62);
+                f32vec2 shirt_uv = f32vec2(local_pos.x, (local_pos.z + 0.40) * 4);
+                f32 shirt_fac = f32(shirt_uv.y > 0 || (dot(shirt_uv, shirt_uv) < 0.1 + local_pos.y * 0.1));
+                result = mix(f32vec3(0.4, 0.08, 0.07), result, shirt_fac);
+                result = mix(f32vec3(0.04, 0.04, 0.12), result, pants_fac);
+                result = mix(result, f32vec3(0.03, 0.03, 0.10), f32(b_pockets_fac != 0.0 || f_pockets_fac != 0.0 || (f_pocket_pos.x > 0.045 && local_pos.z < -0.68 && local_pos.z > -1.5)));
+                result = mix(f32vec3(0.0, 0.0, 0.0), result, face_fac);
+                result = mix(result, f32vec3(0.04, 0.02, 0.01), belt_fac);
+                col = result;
 #if RENDER_SHADOWS
-            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+                shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-        } break;
-        case 3: {
-            col = voxel_color(hit_pos, hit_nrm);
+            } break;
+            case 3: {
+                col = voxel_color(hit_pos, hit_nrm);
 #if RENDER_SHADOWS
-            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+                shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-        } break;
-        case 4: {
-            col = brush_voxel_color(hit_pos, hit_nrm);
+            } break;
+            case 4: {
+                col = brush_voxel_color(hit_pos, hit_nrm);
 #if RENDER_SHADOWS
-            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+                shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-        } break;
-        case 5: {
+            } break;
+            case 5: {
 #if RENDER_SHADOWS
-            shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
+                shade *= max(f32(!bounce_trace_record.intersection_record.hit), 0.0);
 #endif
-        } break;
-        }
+            } break;
+            }
 
-        f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
+            f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
 #if RENDER_FOG
-        f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.02, 0, 1);
-        f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
-        col = mix(surface_col, fog_col, fog_factor);
+            f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.02, 0, 1);
+            f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
+            col = mix(surface_col, fog_col, fog_factor);
 #else
-        col = surface_col;
+            col = surface_col;
 #endif
 
-        // col = hit_pos;
-        // col = hit_nrm;
-        // col = reflect(view_ray.nrm, hit_nrm);
-        // col = refract(view_ray.nrm, hit_nrm, 1.0 / 1.4);
-        // col = f32vec3(hit_dist);
-        // col = view_ray.nrm;
-        // col = bounce_ray.nrm;
+            // col = hit_pos;
+            // col = hit_nrm;
+            // col = reflect(view_ray.nrm, hit_nrm);
+            // col = refract(view_ray.nrm, hit_nrm, 1.0 / 1.4);
+            // col = f32vec3(hit_dist);
+            // col = view_ray.nrm;
+            // col = bounce_ray.nrm;
 
-        // Ray sun_ray;
-        // sun_ray.o = hit_pos + view_trace_record.intersection_record.nrm * 0.001;
-        // sun_ray.nrm = normalize(f32vec3(1, -2, 3));
-        // sun_ray.inv_nrm = 1.0 / sun_ray.nrm;
-        // TraceRecord sun_trace_record = trace_scene(sun_ray);
-    }
+            // Ray sun_ray;
+            // sun_ray.o = hit_pos + view_trace_record.intersection_record.nrm * 0.001;
+            // sun_ray.nrm = normalize(f32vec3(1, -2, 3));
+            // sun_ray.inv_nrm = 1.0 / sun_ray.nrm;
+            // TraceRecord sun_trace_record = trace_scene(sun_ray);
+        }
 
-    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH) {
-        {
-            Sphere b;
-            b.o = GLOBALS.edit_origin;
-            b.r = 0.25;
-            IntersectionRecord b_hit = intersect(view_ray, b);
-            if (b_hit.hit) {
-                col = mix(col, f32vec3(1, 0, 1), 0.8);
+        if (INPUT.settings.tool_id == GAME_TOOL_BRUSH) {
+            {
+                Sphere b;
+                b.o = GLOBALS.edit_origin;
+                b.r = 0.25;
+                IntersectionRecord b_hit = intersect(view_ray, b);
+                if (b_hit.hit) {
+                    col = mix(col, f32vec3(1, 0, 1), 0.8);
+                }
+            }
+            if (get_flag(GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX)) {
+                BoundingBox b = VOXEL_BRUSH.box;
+                IntersectionRecord b_hit = intersect(view_ray, b);
+                f32vec3 b_col = f32vec3(0.5);
+                b_col *= (dot(SUN_DIR, b_hit.nrm) * 0.5 + 0.5) * SUN_COL * SUN_FACTOR + sample_sky_ambient(b_hit.nrm);
+                if (b_hit.hit) {
+                    col = mix(col, b_col, b_hit.dist < hit_dist ? 0.2 : 0.04);
+                }
             }
         }
-        if (get_flag(GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX)) {
-            BoundingBox b = VOXEL_BRUSH.box;
-            IntersectionRecord b_hit = intersect(view_ray, b);
-            f32vec3 b_col = f32vec3(0.5);
-            b_col *= (dot(SUN_DIR, b_hit.nrm) * 0.5 + 0.5) * SUN_COL * SUN_FACTOR + sample_sky_ambient(b_hit.nrm);
-            if (b_hit.hit) {
-                col = mix(col, b_col, b_hit.dist < hit_dist ? 0.2 : 0.04);
-            }
-        }
-    }
-
 #endif
+    }
 
     i32vec2 crosshair_uv = abs(i32vec2(pixel_i) - i32vec2(frame_dim / 2));
 

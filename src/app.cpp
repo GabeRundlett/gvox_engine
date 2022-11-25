@@ -1645,7 +1645,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
                     .raytrace_output_image_id = raytrace_output_image.default_view(),
                 });
-                cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);
+                cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, raytrace_dispatch)});
+                // cmd_list.dispatch(PERSISTENT_THREAD_TRACE_DISPATCH_SIZE, 1, 1);
             }
         },
         .debug_name = APPNAME_PREFIX("Raytrace (Compute)"),
