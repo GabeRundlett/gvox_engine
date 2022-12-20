@@ -10,10 +10,10 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 
 #define VISUALIZE_COMPLEXITY 0
 
-#define RENDER_SHADOWS 0
-#define RENDER_SHADING 0
-#define RENDER_FOG 0
-#define RENDER_BRUSH_OVERLAY 0
+#define RENDER_SHADOWS 1
+#define RENDER_SHADING 1
+#define RENDER_FOG 1
+#define RENDER_BRUSH_OVERLAY 1
 
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
@@ -61,25 +61,23 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    {
-        IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
-        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
-            trace.intersection_record = b0_hit;
-            trace.color = f32vec3(0.5, 1.0, 0.5);
-            trace.material = 3;
-        }
-    }
+    // {
+    //     IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
+    //     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
+    //         trace.intersection_record = b0_hit;
+    //         trace.color = f32vec3(0.5, 1.0, 0.5);
+    //         trace.material = 3;
+    //     }
+    // }
 
 #if RENDER_BRUSH_OVERLAY
-    if (INPUT.settings.tool_id == GAME_TOOL_BRUSH && GLOBALS.pick_intersection.hit) {
-        i32 brush_complexity = 0;
-        IntersectionRecord b0_hit = intersect_brush_voxels(ray, brush_complexity);
-        complexity += brush_complexity;
-        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.001) {
-            trace.intersection_record = b0_hit;
-            trace.color = f32vec3(0.5, 0.5, 0.5);
-            trace.material = 4;
-        }
+    i32 brush_complexity = 0;
+    IntersectionRecord b0_hit = intersect_brush_voxels(ray, brush_complexity);
+    complexity += brush_complexity;
+    if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist + 0.001) {
+        trace.intersection_record = b0_hit;
+        trace.color = f32vec3(0.5, 0.5, 0.5);
+        trace.material = 4;
     }
 #endif
 
@@ -193,6 +191,9 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
 }
 
 f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
+    if (!inside(hit_pos - hit_nrm * 0.01, VOXEL_BRUSH.box)) {
+        return voxel_color(hit_pos, hit_nrm);
+    }
     u32 temp_chunk_index;
     f32vec3 col = f32vec3(0);
 
@@ -201,15 +202,15 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     col = vox.col;
 
     if (get_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY)) {
-        f32vec3 b_pos = hit_pos - VOXEL_BRUSH.box.bound_min;
+        f32vec3 b_pos = hit_pos - VOXEL_WORLD.box.bound_min;
         b_pos = floor(b_pos * VOXEL_SCL) / VOXEL_SCL;
         f32 v = step(fract((b_pos.x + b_pos.y + b_pos.z + INPUT.time * 4) * 0.5), 0.5) * 0.5;
         col = mix(col, f32vec3(0.01, 0.01, 0.8), v);
     }
 
-    if (inside(hit_pos + hit_nrm * 0.1, VOXEL_BRUSH.box)) {
+    if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
         f32vec3 mask = abs(hit_nrm);
-        f32vec3 v_pos = (hit_pos - VOXEL_BRUSH.box.bound_min) * VOXEL_SCL - hit_nrm * 0.01;
+        f32vec3 v_pos = (hit_pos - VOXEL_WORLD.box.bound_min) * VOXEL_SCL - hit_nrm * 0.01;
         f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
         f32vec3 d1 = mask.zxy / VOXEL_SCL;
         f32vec3 d2 = mask.yzx / VOXEL_SCL;
@@ -228,6 +229,33 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
         f32 interp_ao = mix(mix(ao.z, ao.w, uv.x), mix(ao.y, ao.x, uv.x), uv.y);
         col *= interp_ao * 0.6 + 0.4;
     }
+
+    return col;
+    // return f32vec3(1, 0, 1);
+}
+
+f32vec3 col_from_dist(Ray view_ray, f32 dist) {
+    if (dist == MAX_SD) {
+        return sample_sky(view_ray.nrm);
+    }
+
+    f32vec3 hit_pos = view_ray.o + view_ray.nrm * dist;
+    f32vec3 hit_nrm = fract(hit_pos * 8) - 0.5;
+    f32vec3 abs_nrm = abs(hit_nrm);
+    if (abs_nrm.x > abs_nrm.y) {
+        if (abs_nrm.x > abs_nrm.z)
+            hit_nrm = f32vec3(1, 0, 0) * sign(hit_nrm.x);
+        else
+            hit_nrm = f32vec3(0, 0, 1) * sign(hit_nrm.z);
+    } else {
+        if (abs_nrm.y > abs_nrm.z)
+            hit_nrm = f32vec3(0, 1, 0) * sign(hit_nrm.y);
+        else
+            hit_nrm = f32vec3(0, 0, 1) * sign(hit_nrm.z);
+    }
+
+    // f32vec3 col = voxel_color(hit_pos, hit_nrm);
+    f32vec3 col = hit_nrm;
 
     return col;
 }
@@ -254,15 +282,16 @@ void main() {
 
     f32vec3 col = f32vec3(0, 0, 0);
 
+    Ray view_ray = create_view_ray(uv);
+    view_ray.inv_nrm = 1.0 / view_ray.nrm;
+
     if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
         f32vec4 rt_image_result = imageLoad(
             get_image(image2D, RT_IMAGE),
             i32vec2(pixel_i.xy));
-        col = rt_image_result.rgb;
-    } else {
-        Ray view_ray = create_view_ray(uv);
-        view_ray.inv_nrm = 1.0 / view_ray.nrm;
 
+        col = col_from_dist(view_ray, rt_image_result.r);
+    } else {
         i32 complexity;
         TraceRecord view_trace_record = trace_scene(view_ray, complexity);
         col = view_trace_record.color;
@@ -273,7 +302,8 @@ void main() {
         // } else {
         //     col = f32vec3(0);
         // }
-        col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+        // col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+        col = col_from_dist(view_ray, view_trace_record.intersection_record.dist);
 #else
 
         f32 hit_dist = MAX_SD;

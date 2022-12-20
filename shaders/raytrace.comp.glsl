@@ -16,20 +16,22 @@ struct RayState {
     f32vec3 current_pos;
     f32 t_curr;
     u32 side;
+    f32 initial_dist_offset;
 };
 
 struct RaySetupInfo {
     u32 result_index;
     u32vec2 result_i;
 
-    b32 hit;
+    f32 dist;
+
     f32vec3 ray_dir;
     f32vec3 delta;
     f32vec3 t_start;
 };
 
 #define WARP_SIZE (32)
-#define CACHE_SIZE (WARP_SIZE * 2)
+#define CACHE_SIZE (WARP_SIZE * 1)
 #define BATCH_SIZE (CACHE_SIZE * 2)
 #define STEPS_UNTIL_REORDER (128)
 
@@ -56,8 +58,21 @@ shared RayBatch ray_batch;
 
 u32vec2 get_result_i(u32 result_index) {
     u32vec2 result;
+
+#if 0
     result.y = result_index / INPUT.frame_dim.x;
     result.x = result_index - result.y * INPUT.frame_dim.x;
+#else
+    u32 block_index = result_index / 64;
+    u32 block_sub_index = result_index - block_index * 64;
+    u32vec2 block_i;
+    block_i.y = block_index / (GLOBALS.padded_frame_dim.x / 8);
+    block_i.x = block_index - block_i.y * (GLOBALS.padded_frame_dim.x / 8);
+    result.y = block_sub_index / 8;
+    result.x = block_sub_index - result.y * 8;
+    result += block_i * 8;
+#endif
+
     return result;
 }
 
@@ -80,6 +95,17 @@ RaySetupInfo raytrace_setup(u32 ray_cache_index) {
     result.result_i = get_result_i(result.result_index);
     Ray ray = create_view_ray(result.result_i);
     ray.inv_nrm = 1.0 / ray.nrm;
+    result.dist = 0;
+
+    if (!inside(ray.o, VOXEL_WORLD.box)) {
+        IntersectionRecord intersection_record = intersect(ray, VOXEL_WORLD.box);
+        if (intersection_record.hit) {
+            result.dist = intersection_record.dist + 0.0001;
+        } else {
+            result.dist = MAX_SD;
+        }
+    }
+
     const u32 max_steps = WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ;
     result.delta = f32vec3(
         ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
@@ -87,10 +113,6 @@ RaySetupInfo raytrace_setup(u32 ray_cache_index) {
         ray.nrm.z == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.z));
     u32 chunk_index;
     u32 lod = sample_lod(ray.o, chunk_index);
-    if (lod == 0) {
-        result.hit = true;
-        return result;
-    }
     f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
     if (ray.nrm.x < 0) {
         result.t_start.x = (ray.o.x / cell_size - floor(ray.o.x / cell_size)) * cell_size * result.delta.x;
@@ -114,11 +136,14 @@ void raytrace_begin(in RaySetupInfo ray_begin_info, in out RayState ray_state) {
     ray_state.result_i = ray_begin_info.result_i;
     // ray_state.has_ray_result = false;
     ray_state.ray = create_view_ray(ray_state.result_i);
+    ray_state.initial_dist_offset = ray_begin_info.dist;
+    ray_state.ray.o += ray_state.ray.nrm * ray_begin_info.dist;
     ray_state.t_curr = 0;
     ray_state.delta = ray_begin_info.delta;
 }
 
 void raytrace_end(in out RayState ray_state) {
+    ray_state.t_curr += ray_state.initial_dist_offset;
     // switch (ray_state.side) {
     // case 0: ray_state.nrm = f32vec3(ray_state.ray.nrm.x < 0 ? 1 : -1, 0, 0); break;
     // case 1: ray_state.nrm = f32vec3(0, ray_state.ray.nrm.y < 0 ? 1 : -1, 0); break;
@@ -131,6 +156,8 @@ void raytrace_body(in out RayState ray_state) {
     if (inside(ray_state.current_pos + ray_state.ray.nrm * 0.001, VOXEL_WORLD.box) == false) {
         ray_state.currently_tracing = false;
         ray_state.has_ray_result = true;
+        ray_state.t_curr = MAX_SD;
+        ray_state.initial_dist_offset = 0;
         return;
     }
     u32 chunk_index;
@@ -159,11 +186,11 @@ void raytrace_body(in out RayState ray_state) {
 }
 
 void write_ray_result(RayState ray_state) {
-    // raytrace_end(ray_state);
+    raytrace_end(ray_state);
     imageStore(
         get_image(image2D, RT_IMAGE),
         i32vec2(ray_state.result_i),
-        f32vec4(f32vec3(fract(ray_state.current_pos)), 1));
+        f32vec4(ray_state.t_curr, 0, 0, 0));
 }
 
 i32 fast_atomic_decrement(inout i32 a) {
@@ -204,8 +231,8 @@ void main() {
                 i32 ray_cache_index = CACHE_SIZE - fast_atomic_decrement(ray_batch.setup_cache.size);
                 if (ray_cache_index < CACHE_SIZE) {
                     // I got an item in the current cache.
-                    raytrace_begin(ray_batch.setup_cache.ray_setup_infos[ray_cache_index], ray_state);
                     ray_state.currently_tracing = true;
+                    raytrace_begin(ray_batch.setup_cache.ray_setup_infos[ray_cache_index], ray_state);
                 }
                 if (ray_cache_index >= CACHE_SIZE) {
                     // I did NOT get an item in the current cache.
@@ -254,8 +281,8 @@ void main() {
                     // All the threads that didnt get a new ray previously, now get their new ray out of the setup cache.
                     if (!ray_state.currently_tracing) {
                         i32 ray_cache_index = CACHE_SIZE - fast_atomic_decrement(ray_batch.setup_cache.size);
-                        raytrace_begin(ray_batch.setup_cache.ray_setup_infos[ray_cache_index], ray_state);
                         ray_state.currently_tracing = true;
+                        raytrace_begin(ray_batch.setup_cache.ray_setup_infos[ray_cache_index], ray_state);
                     }
                 }
             }
@@ -264,8 +291,10 @@ void main() {
         if (subgroupAll(!ray_state.currently_tracing))
             break;
 
-        [[unroll]]
-        for (u32 i = 0; (i < STEPS_UNTIL_REORDER) && subgroupAny(ray_state.currently_tracing); ++i) {
+        [[unroll]] for (u32 i = 0; (i < STEPS_UNTIL_REORDER)
+                        //  && subgroupAny(ray_state.currently_tracing)
+                        ;
+                        ++i) {
             if (!ray_state.currently_tracing)
                 break;
             raytrace_body(ray_state);

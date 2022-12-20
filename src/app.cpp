@@ -45,10 +45,10 @@ auto default_gpu_input() -> GpuInput {
     };
 }
 
-#define ENABLE_THREADPOOL 1
+#define ENABLE_THREAD_POOL 0
 
 void ThreadPool::thread_loop() {
-#if ENABLE_THREADPOOL
+#if ENABLE_THREAD_POOL
     while (true) {
         std::function<void()> job;
         {
@@ -67,7 +67,7 @@ void ThreadPool::thread_loop() {
 #endif
 }
 void ThreadPool::start() {
-#if ENABLE_THREADPOOL
+#if ENABLE_THREAD_POOL
     uint32_t const num_threads = std::thread::hardware_concurrency();
     threads.resize(num_threads);
     for (uint32_t i = 0; i < num_threads; i++) {
@@ -76,7 +76,7 @@ void ThreadPool::start() {
 #endif
 }
 void ThreadPool::enqueue(std::function<void()> const &job) {
-#if ENABLE_THREADPOOL
+#if ENABLE_THREAD_POOL
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         jobs.push(job);
@@ -87,19 +87,19 @@ void ThreadPool::enqueue(std::function<void()> const &job) {
 #endif
 }
 auto ThreadPool::busy() -> bool {
-#if ENABLE_THREADPOOL
-    bool poolbusy;
+#if ENABLE_THREAD_POOL
+    bool pool_busy;
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        poolbusy = !jobs.empty();
+        pool_busy = !jobs.empty();
     }
-    return poolbusy;
+    return pool_busy;
 #else
     return false;
 #endif
 }
 void ThreadPool::stop() {
-#if ENABLE_THREADPOOL
+#if ENABLE_THREAD_POOL
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         should_terminate = true;
@@ -153,7 +153,7 @@ App::App()
           .debug_name = APPNAME_PREFIX("render_image"),
       })},
       raytrace_output_image{device.create_image({
-          .format = daxa::Format::R16G16B16A16_SFLOAT,
+          .format = daxa::Format::R32_SFLOAT,
           .size = {render_size_x, render_size_y, 1},
           .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST,
           .debug_name = APPNAME_PREFIX("raytrace_output_image"),
@@ -1094,7 +1094,7 @@ void App::recreate_render_images() {
     loop_task_list.remove_runtime_image(task_raytrace_output_image, raytrace_output_image);
     device.destroy_image(raytrace_output_image);
     raytrace_output_image = device.create_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .format = daxa::Format::R32_SFLOAT,
         .size = {render_size_x, render_size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
         .debug_name = APPNAME_PREFIX("raytrace_output_image"),
@@ -1611,19 +1611,19 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     });
 
 #if USE_PERSISTENT_THREAD_TRACE
-    new_task_list.add_task({
-        .used_images = {
-            {task_raytrace_output_image, daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageMipArraySlice{}},
-        },
-        .task = [this](daxa::TaskRuntime task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            cmd_list.clear_image({
-                .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
-                .clear_value = {std::array{0.0f, 0.0f, 0.0f, 0.0f}},
-                .dst_image = raytrace_output_image,
-            });
-        },
-    });
+    // new_task_list.add_task({
+    //     .used_images = {
+    //         {task_raytrace_output_image, daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageMipArraySlice{}},
+    //     },
+    //     .task = [this](daxa::TaskRuntime task_runtime) {
+    //         auto cmd_list = task_runtime.get_command_list();
+    //         cmd_list.clear_image({
+    //             .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+    //             .clear_value = {std::array{0.0f, 0.0f, 0.0f, 0.0f}},
+    //             .dst_image = raytrace_output_image,
+    //         });
+    //     },
+    // });
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},

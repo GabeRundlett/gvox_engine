@@ -76,11 +76,11 @@ void chunk_opt_x2x4(in u32 chunk_index, in u32 chunk_local_workgroup) {
 
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    u32 chunk_index = VOXEL_WORLD.chunk_update_indices[gl_WorkGroupID.y / 64];
+    u32 chunk_index = VOXEL_WORLD.chunk_update_indices[gl_WorkGroupID.z];
     if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
         return;
 
-    chunk_opt_x2x4(chunk_index, gl_WorkGroupID.y % 64);
+    chunk_opt_x2x4(chunk_index, gl_WorkGroupID.y);
 }
 
 #endif
@@ -205,7 +205,7 @@ void chunk_opt_x8up(in u32 chunk_index) {
 
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    u32 chunk_index = VOXEL_WORLD.chunk_update_indices[gl_WorkGroupID.y];
+    u32 chunk_index = VOXEL_WORLD.chunk_update_indices[gl_WorkGroupID.z];
     if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage == 2)
         return;
 

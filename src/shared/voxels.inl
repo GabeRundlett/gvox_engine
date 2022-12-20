@@ -68,21 +68,7 @@ struct VoxelUniformityChunk {
     u32 lod_x32[4];
 };
 
-DAXA_DECL_BUFFER_STRUCT(VoxelWorld, {
-    BoundingBox box;
-    u32 chunk_update_indices[MAX_CHUNK_UPDATES];
-    u32 chunk_update_n;
-
-    // TODO: Make chunkgen able to have a variable number of generation indices
-    u32 chunkgen_index;
-
-    VoxelUniformityChunk uniformity_chunks[WORLD_CHUNK_N];
-    ChunkGenState chunks_genstate[WORLD_CHUNK_N];
-
-    VoxelChunk voxel_chunks[WORLD_CHUNK_N];
-})
-
-DAXA_DECL_BUFFER_STRUCT(VoxelBrush, {
+struct VoxelBrush {
     BoundingBox box;
 
     u32 chunk_update_indices[MAX_CHUNK_UPDATES];
@@ -94,4 +80,21 @@ DAXA_DECL_BUFFER_STRUCT(VoxelBrush, {
     ChunkGenState chunks_genstate[BRUSH_CHUNK_N];
 
     VoxelChunk voxel_chunks[BRUSH_CHUNK_N];
-})
+};
+
+struct VoxelWorld {
+    BoundingBox box;
+    u32 chunk_update_indices[MAX_CHUNK_UPDATES];
+    u32 chunk_update_n;
+
+    // TODO: Make chunkgen able to have a variable number of generation indices
+    u32 chunkgen_index;
+
+    VoxelUniformityChunk uniformity_chunks[WORLD_CHUNK_N];
+    ChunkGenState chunks_genstate[WORLD_CHUNK_N];
+
+    VoxelChunk voxel_chunks[WORLD_CHUNK_N];
+};
+
+DAXA_ENABLE_BUFFER_PTR(VoxelWorld)
+DAXA_ENABLE_BUFFER_PTR(VoxelBrush)

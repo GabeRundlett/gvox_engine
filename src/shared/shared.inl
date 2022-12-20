@@ -14,15 +14,12 @@
 
 #define USE_PERSISTENT_THREAD_TRACE 1
 
-DAXA_DECL_BUFFER_STRUCT(GpuInput, {
-    u32vec2 frame_dim;
-    f32 time;
-    f32 delta_time;
-    Settings settings;
-    MouseInput mouse;
-    KeyboardInput keyboard;
-})
-DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
+struct GVoxModelVoxel {
+    f32vec3 col;
+    u32 id;
+};
+
+struct GpuGlobals {
     Player player;
     Scene scene;
 
@@ -33,10 +30,11 @@ DAXA_DECL_BUFFER_STRUCT(GpuGlobals, {
     f32vec3 edit_origin;
     u32 edit_flags;
 
+    u32vec2 padded_frame_dim;
     i32 ray_count;
-})
+};
 
-DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
+struct GpuIndirectDispatch {
     u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
     u32vec3 subchunk_x8up_dispatch;
@@ -46,54 +44,62 @@ DAXA_DECL_BUFFER_STRUCT(GpuIndirectDispatch, {
     u32vec3 brush_subchunk_x8up_dispatch;
 
     u32vec3 raytrace_dispatch;
-})
-
-struct GVoxModelVoxel {
-    f32vec3 col;
-    u32 id;
 };
 
-DAXA_DECL_BUFFER_STRUCT(GpuGVoxModel, {
+struct GpuGVoxModel {
     u32 size_x;
     u32 size_y;
     u32 size_z;
     GVoxModelVoxel voxels[256 * 256 * 256];
-})
+};
+
+DAXA_ENABLE_BUFFER_PTR(GpuInput)
+DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
+DAXA_ENABLE_BUFFER_PTR(GpuIndirectDispatch)
+DAXA_ENABLE_BUFFER_PTR(GpuGVoxModel)
 
 struct StartupCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
 };
 struct OpticalDepthCompPush {
     daxa_ImageViewId image_id;
 };
+
+#if !defined(BRUSH_INPUT)
+struct CustomBrushSettings {
+    u32 _x;
+};
+#endif
+DAXA_ENABLE_BUFFER_PTR(CustomBrushSettings)
+
 struct PerframeCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(GpuInput) gpu_input;
-    u64 brush_settings;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
-    daxa_Buffer(GpuIndirectDispatch) gpu_indirect_dispatch;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_BufferPtr(CustomBrushSettings) brush_settings;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuIndirectDispatch) gpu_indirect_dispatch;
 };
 struct ChunkOptCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
 };
 struct ChunkEditCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(GpuInput) gpu_input;
-    u64 brush_settings;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
-    daxa_Buffer(GpuGVoxModel) gpu_gvox_model;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_BufferPtr(CustomBrushSettings) brush_settings;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGVoxModel) gpu_gvox_model;
 };
 struct DrawCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(GpuInput) gpu_input;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
 
     daxa_ImageViewId raytrace_output_image_id;
     daxa_ImageViewId image_id;
@@ -101,20 +107,20 @@ struct DrawCompPush {
     daxa_SamplerId optical_depth_sampler_id;
 };
 struct RaytraceCompPush {
-    daxa_Buffer(GpuGlobals) gpu_globals;
-    daxa_Buffer(GpuInput) gpu_input;
-    daxa_Buffer(VoxelWorld) voxel_world;
-    daxa_Buffer(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_RWBufferPtr(VoxelWorld) voxel_world;
+    daxa_RWBufferPtr(VoxelBrush) voxel_brush;
 
     daxa_ImageViewId raytrace_output_image_id;
 };
 
-#define GLOBALS daxa_push_constant.gpu_globals
-#define SCENE daxa_push_constant.gpu_globals.scene
-#define VOXEL_WORLD daxa_push_constant.voxel_world
-#define VOXEL_BRUSH daxa_push_constant.voxel_brush
-#define INPUT daxa_push_constant.gpu_input
-#define MODEL daxa_push_constant.gpu_gvox_model
-#define PLAYER daxa_push_constant.gpu_globals.player
-#define INDIRECT daxa_push_constant.gpu_indirect_dispatch
+#define GLOBALS deref(daxa_push_constant.gpu_globals)
+#define SCENE deref(daxa_push_constant.gpu_globals).scene
+#define VOXEL_WORLD deref(daxa_push_constant.voxel_world)
+#define VOXEL_BRUSH deref(daxa_push_constant.voxel_brush)
+#define INPUT deref(daxa_push_constant.gpu_input)
+#define MODEL deref(daxa_push_constant.gpu_gvox_model)
+#define PLAYER deref(daxa_push_constant.gpu_globals).player
+#define INDIRECT deref(daxa_push_constant.gpu_indirect_dispatch)
 #define RT_IMAGE daxa_push_constant.raytrace_output_image_id

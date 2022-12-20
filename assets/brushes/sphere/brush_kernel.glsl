@@ -29,7 +29,9 @@ void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     //     v[4].block_id != BlockID_Air ||
     //     v[5].block_id != BlockID_Air;
 
+    b32 should_break = INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0;
+
     if (l < 1 && r > 0.5 && has_surrounding) {
-        result = Voxel(BRUSH_SETTINGS.color, BlockID_Stone);
+        result = Voxel(BRUSH_SETTINGS.color, BlockID_Air);
     }
 }

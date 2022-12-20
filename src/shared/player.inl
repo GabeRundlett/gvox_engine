@@ -19,7 +19,6 @@ struct Player {
 
     f32 last_edit_time;
     f32 edit_radius;
-    u32 edit_voxel_id;
     u32 view_state;
     u32 interact_state;
 

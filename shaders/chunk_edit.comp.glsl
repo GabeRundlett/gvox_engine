@@ -1,3 +1,6 @@
+#include <utils/impl_brush_input.glsl>
+#define BRUSH_INPUT 1
+
 #include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(ChunkEditCompPush)

@@ -388,54 +388,55 @@ IntersectionRecord intersect_voxels(Ray ray, in out i32 x1_steps) {
 }
 
 u32 sample_brush_lod(f32vec3 p, in out u32 chunk_index) {
-    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(p);
-    chunk_index = chunk_info.chunk_index;
-
-    u32 lod_index_x2 = uniformity_lod_index(2)(chunk_info.inchunk_voxel_i / 2);
-    u32 lod_mask_x2 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 2);
-    u32 lod_index_x4 = uniformity_lod_index(4)(chunk_info.inchunk_voxel_i / 4);
-    u32 lod_mask_x4 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 4);
-    u32 lod_index_x8 = uniformity_lod_index(8)(chunk_info.inchunk_voxel_i / 8);
-    u32 lod_mask_x8 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 8);
-    u32 lod_index_x16 = uniformity_lod_index(16)(chunk_info.inchunk_voxel_i / 16);
-    u32 lod_mask_x16 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 16);
-    u32 lod_index_x32 = uniformity_lod_index(32)(chunk_info.inchunk_voxel_i / 32);
-    u32 lod_mask_x32 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 32);
-    u32 lod_index_x64 = uniformity_lod_index(64)(chunk_info.inchunk_voxel_i / 64);
-    u32 lod_mask_x64 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 64);
-
-    // u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
-    // if (chunk_edit_stage != 2 && chunk_edit_stage != 3)
-    //     return 7;
-    u32 block_id = sample_voxel_id_BRUSH(chunk_index, chunk_info.inchunk_voxel_i);
-    if (block_id != BlockID_Air && block_id != BlockID_Debug)
-        return 0;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 2)(chunk_index, lod_index_x2, lod_mask_x2))
-        return 1;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 4)(chunk_index, lod_index_x4, lod_mask_x4))
-        return 2;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 8)(chunk_index, lod_index_x8, lod_mask_x8))
-        return 3;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 16)(chunk_index, lod_index_x16, lod_mask_x16))
-        return 4;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 32)(chunk_index, lod_index_x32, lod_mask_x32))
-        return 5;
-    if (voxel_uniformity_lod_nonuniform(BRUSH, 64)(chunk_index, lod_index_x64, lod_mask_x64))
-        return 6;
-
-    return 7;
+    if (inside(p + VOXEL_WORLD.box.bound_min, VOXEL_BRUSH.box)) {
+        VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(p + VOXEL_WORLD.box.bound_min - VOXEL_BRUSH.box.bound_min);
+        chunk_index = chunk_info.chunk_index;
+        u32 lod_index_x2 = uniformity_lod_index(2)(chunk_info.inchunk_voxel_i / 2);
+        u32 lod_mask_x2 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 2);
+        u32 lod_index_x4 = uniformity_lod_index(4)(chunk_info.inchunk_voxel_i / 4);
+        u32 lod_mask_x4 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 4);
+        u32 lod_index_x8 = uniformity_lod_index(8)(chunk_info.inchunk_voxel_i / 8);
+        u32 lod_mask_x8 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 8);
+        u32 lod_index_x16 = uniformity_lod_index(16)(chunk_info.inchunk_voxel_i / 16);
+        u32 lod_mask_x16 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 16);
+        u32 lod_index_x32 = uniformity_lod_index(32)(chunk_info.inchunk_voxel_i / 32);
+        u32 lod_mask_x32 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 32);
+        u32 lod_index_x64 = uniformity_lod_index(64)(chunk_info.inchunk_voxel_i / 64);
+        u32 lod_mask_x64 = uniformity_lod_mask(chunk_info.inchunk_voxel_i / 64);
+        // u32 chunk_edit_stage = VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage;
+        // if (chunk_edit_stage != 2 && chunk_edit_stage != 3)
+        //     return 7;
+        u32 block_id = sample_voxel_id_BRUSH(chunk_index, chunk_info.inchunk_voxel_i);
+        if (block_id != BlockID_Air && block_id != BlockID_Debug)
+            return 0;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 2)(chunk_index, lod_index_x2, lod_mask_x2))
+            return 1;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 4)(chunk_index, lod_index_x4, lod_mask_x4))
+            return 2;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 8)(chunk_index, lod_index_x8, lod_mask_x8))
+            return 3;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 16)(chunk_index, lod_index_x16, lod_mask_x16))
+            return 4;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 32)(chunk_index, lod_index_x32, lod_mask_x32))
+            return 5;
+        if (voxel_uniformity_lod_nonuniform(BRUSH, 64)(chunk_index, lod_index_x64, lod_mask_x64))
+            return 6;
+        return 7;
+    } else {
+        return sample_lod(p, chunk_index);
+    }
 }
 
 IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_steps) {
-    BoundingBox brush_box = VOXEL_BRUSH.box;
-    brush_box.bound_min -= VOXEL_BRUSH.box.bound_min;
-    brush_box.bound_max -= VOXEL_BRUSH.box.bound_min;
+    BoundingBox brush_box = VOXEL_WORLD.box;
+    brush_box.bound_min -= VOXEL_WORLD.box.bound_min;
+    brush_box.bound_max -= VOXEL_WORLD.box.bound_min;
 
     IntersectionRecord result;
     default_init(result);
     result.dist = 0;
 
-    const u32 max_steps = BRUSH_BLOCK_NX + BRUSH_BLOCK_NY + BRUSH_BLOCK_NZ;
+    const u32 max_steps = WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ;
     f32vec3 delta = f32vec3(
         ray.nrm.x == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.x),
         ray.nrm.y == 0.0 ? 3.0 * max_steps : abs(ray.inv_nrm.y),
@@ -508,7 +509,7 @@ IntersectionRecord brush_dda(Ray ray, in out u32 chunk_index, in out i32 x1_step
 
 IntersectionRecord intersect_brush_voxels(Ray ray) {
     IntersectionRecord result;
-    BoundingBox brush_box = VOXEL_BRUSH.box;
+    BoundingBox brush_box = VOXEL_WORLD.box;
 
     default_init(result);
     result = intersect(ray, brush_box);
@@ -522,7 +523,7 @@ IntersectionRecord intersect_brush_voxels(Ray ray) {
     }
 
     Ray dda_ray = ray;
-    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_BRUSH.box.bound_min;
+    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_WORLD.box.bound_min;
     u32 chunk_index;
 
     if (result.hit && sample_brush_lod(dda_ray.o, chunk_index) != 0) {
@@ -536,7 +537,7 @@ IntersectionRecord intersect_brush_voxels(Ray ray) {
 }
 IntersectionRecord intersect_brush_voxels(Ray ray, in out i32 x1_steps) {
     IntersectionRecord result;
-    BoundingBox brush_box = VOXEL_BRUSH.box;
+    BoundingBox brush_box = VOXEL_WORLD.box;
 
     default_init(result);
     result = intersect(ray, brush_box);
@@ -550,7 +551,7 @@ IntersectionRecord intersect_brush_voxels(Ray ray, in out i32 x1_steps) {
     }
 
     Ray dda_ray = ray;
-    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_BRUSH.box.bound_min;
+    dda_ray.o = ray.o + ray.nrm * result.dist - VOXEL_WORLD.box.bound_min;
     u32 chunk_index;
 
     if (result.hit && sample_brush_lod(dda_ray.o, chunk_index) != 0) {

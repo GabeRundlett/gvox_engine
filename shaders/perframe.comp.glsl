@@ -1,3 +1,6 @@
+#include <utils/impl_brush_input.glsl>
+#define BRUSH_INPUT 1
+
 #include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
@@ -5,6 +8,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #include <utils/voxel.glsl>
 #include <utils/raytrace.glsl>
 
+#include <utils/impl_brush_header.glsl>
 #include <brush_info.glsl>
 
 #define PLAYER_HEIGHT 1.8
@@ -447,12 +451,10 @@ void perframe_voxel_world() {
             if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] != 0) {
                 GLOBALS.edit_flags = 1;
                 non_chunkgen_update_n = calculate_chunk_edit();
-                PLAYER.edit_voxel_id = BlockID_Air;
                 PLAYER.last_edit_time = INPUT.time;
             } else if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] != 0) {
                 GLOBALS.edit_flags = 2;
                 non_chunkgen_update_n = calculate_chunk_edit();
-                PLAYER.edit_voxel_id = BlockID_Stone;
                 PLAYER.last_edit_time = INPUT.time;
             } else {
                 GLOBALS.edit_flags = 0;
@@ -473,8 +475,8 @@ void perframe_voxel_world() {
     INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 1);
 
     INDIRECT.chunk_edit_dispatch.z *= non_chunkgen_update_n;
-    INDIRECT.subchunk_x2x4_dispatch.y *= VOXEL_WORLD.chunk_update_n;
-    INDIRECT.subchunk_x8up_dispatch.y *= VOXEL_WORLD.chunk_update_n;
+    INDIRECT.subchunk_x2x4_dispatch.z *= VOXEL_WORLD.chunk_update_n;
+    INDIRECT.subchunk_x8up_dispatch.z *= VOXEL_WORLD.chunk_update_n;
 
     if (INPUT.mouse.buttons[GAME_MOUSE_BUTTON_LEFT] == 0 &&
         INPUT.mouse.buttons[GAME_MOUSE_BUTTON_RIGHT] == 0)
@@ -537,6 +539,9 @@ void perframe_voxel_brush() {
     VOXEL_BRUSH.box.bound_min = GLOBALS.brush_origin + GLOBALS.brush_offset;
     VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + round(brush_size * VOXEL_SCL) / VOXEL_SCL;
 
+    VOXEL_BRUSH.box.bound_min = floor(VOXEL_BRUSH.box.bound_min / 8) * 8;
+    VOXEL_BRUSH.box.bound_max = ceil(VOXEL_BRUSH.box.bound_max / 8) * 8;
+
     if (GLOBALS.edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
         GLOBALS.edit_origin = floor(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;
     }
@@ -551,7 +556,8 @@ void main() {
 #if USE_PERSISTENT_THREAD_TRACE
     INDIRECT.raytrace_dispatch = u32vec3(30000, 1, 1);
     if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
-        GLOBALS.ray_count = i32(INPUT.frame_dim.x * INPUT.frame_dim.y);
+        GLOBALS.padded_frame_dim = ((INPUT.frame_dim + 7) / 8) * 8;
+        GLOBALS.ray_count = i32(GLOBALS.padded_frame_dim.x * GLOBALS.padded_frame_dim.y);
     }
 #endif
 }

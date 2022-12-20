@@ -56,3 +56,12 @@ struct MouseInput {
 struct KeyboardInput {
     u32 keys[GAME_KEY_LAST + 1];
 };
+
+struct GpuInput {
+    u32vec2 frame_dim;
+    f32 time;
+    f32 delta_time;
+    Settings settings;
+    MouseInput mouse;
+    KeyboardInput keyboard;
+};

@@ -1,5 +1,7 @@
 #pragma once
 
-DAXA_DECL_BUFFER_STRUCT(CustomBrushSettings, {
+#define USE_CUSTOM_SETTINGS 1
+
+struct CustomBrushSettings {
     f32 _x;
-})
+};
