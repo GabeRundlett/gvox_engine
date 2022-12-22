@@ -17,29 +17,29 @@ struct BrushSettings {
 };
 
 struct BrushPipelines {
-    daxa::PipelineCompiler pipeline_compiler;
+    daxa::PipelineManager pipeline_manager;
 
     bool compiled = false;
     bool valid = false;
 
-    daxa::ComputePipelineInfo perframe_comp_info;
-    daxa::ComputePipeline perframe_comp;
+    daxa::ComputePipelineCompileInfo perframe_comp_info;
+    std::shared_ptr<daxa::ComputePipeline> perframe_comp;
 
-    daxa::ComputePipelineInfo chunk_edit_comp_info;
-    daxa::ComputePipeline chunk_edit_comp;
+    daxa::ComputePipelineCompileInfo chunk_edit_comp_info;
+    std::shared_ptr<daxa::ComputePipeline> chunk_edit_comp;
 
-    daxa::ComputePipelineInfo chunkgen_comp_info;
-    daxa::ComputePipeline chunkgen_comp;
+    daxa::ComputePipelineCompileInfo chunkgen_comp_info;
+    std::shared_ptr<daxa::ComputePipeline> chunkgen_comp;
 
-    daxa::ComputePipelineInfo brush_chunkgen_comp_info;
-    daxa::ComputePipeline brush_chunkgen_comp;
+    daxa::ComputePipelineCompileInfo brush_chunkgen_comp_info;
+    std::shared_ptr<daxa::ComputePipeline> brush_chunkgen_comp;
 
     void compile() {
         if (!compiled) {
-            auto perframe_comp_result = pipeline_compiler.create_compute_pipeline(perframe_comp_info);
-            auto chunk_edit_comp_result = pipeline_compiler.create_compute_pipeline(chunk_edit_comp_info);
-            auto chunkgen_comp_result = pipeline_compiler.create_compute_pipeline(chunkgen_comp_info);
-            auto brush_chunkgen_comp_result = pipeline_compiler.create_compute_pipeline(brush_chunkgen_comp_info);
+            auto perframe_comp_result = pipeline_manager.add_compute_pipeline(perframe_comp_info);
+            auto chunk_edit_comp_result = pipeline_manager.add_compute_pipeline(chunk_edit_comp_info);
+            auto chunkgen_comp_result = pipeline_manager.add_compute_pipeline(chunkgen_comp_info);
+            auto brush_chunkgen_comp_result = pipeline_manager.add_compute_pipeline(brush_chunkgen_comp_info);
             if (perframe_comp_result.is_ok() &&
                 chunk_edit_comp_result.is_ok() &&
                 chunkgen_comp_result.is_ok() &&
@@ -123,13 +123,13 @@ struct ThreadPool {
 struct App : BaseApp<App> {
     ThreadPool thread_pool;
 
-    daxa::ComputePipeline startup_comp_pipeline;
-    daxa::ComputePipeline optical_depth_comp_pipeline;
-    daxa::ComputePipeline subchunk_x2x4_comp_pipeline;
-    daxa::ComputePipeline subchunk_x8up_comp_pipeline;
-    daxa::ComputePipeline subchunk_brush_x2x4_comp_pipeline;
-    daxa::ComputePipeline subchunk_brush_x8up_comp_pipeline;
-    daxa::ComputePipeline draw_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> startup_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> optical_depth_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> subchunk_x2x4_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> subchunk_x8up_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> subchunk_brush_x2x4_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> subchunk_brush_x8up_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> draw_comp_pipeline;
 
     GpuInput gpu_input;
     daxa::BufferId gpu_input_buffer;
@@ -142,7 +142,7 @@ struct App : BaseApp<App> {
     daxa::ImageId render_image;
     daxa::TaskImageId task_render_image;
 
-    daxa::ComputePipeline raytrace_comp_pipeline;
+    std::shared_ptr<daxa::ComputePipeline> raytrace_comp_pipeline;
     daxa::ImageId raytrace_output_image;
     daxa::TaskImageId task_raytrace_output_image;
 

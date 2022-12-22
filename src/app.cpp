@@ -216,17 +216,17 @@ App::App()
     thread_pool.start();
 
     // clang-format off
-    startup_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    startup_comp_pipeline = startup_pipeline_manager.add_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"startup.comp.glsl"}},
         .push_constant_size = sizeof(StartupCompPush),
         .debug_name = APPNAME_PREFIX("startup_comp_pipeline"),
     }).value();
-    optical_depth_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    optical_depth_comp_pipeline = optical_depth_pipeline_manager.add_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"optical_depth.comp.glsl"}},
         .push_constant_size = sizeof(OpticalDepthCompPush),
         .debug_name = APPNAME_PREFIX("optical_depth_comp_pipeline"),
     }).value();
-    subchunk_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    subchunk_x2x4_comp_pipeline = chunkgen_pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
             .compile_options = {
@@ -236,7 +236,7 @@ App::App()
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_x2x4_comp_pipeline"),
     }).value();
-    subchunk_x8up_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    subchunk_x8up_comp_pipeline = chunkgen_pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt.comp.glsl"}, 
             .compile_options = {
@@ -246,7 +246,7 @@ App::App()
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_x8up_comp_pipeline"),
     }).value();
-    subchunk_brush_x2x4_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    subchunk_brush_x2x4_comp_pipeline = chunkgen_pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt_brush.comp.glsl"}, 
             .compile_options = {
@@ -256,7 +256,7 @@ App::App()
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_brush_x2x4_comp_pipeline"),
     }).value();
-    subchunk_brush_x8up_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    subchunk_brush_x8up_comp_pipeline = basic_pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"chunk_opt_brush.comp.glsl"}, 
             .compile_options = {
@@ -266,12 +266,12 @@ App::App()
         .push_constant_size = sizeof(ChunkOptCompPush),
         .debug_name = APPNAME_PREFIX("subchunk_brush_x8up_comp_pipeline"),
     }).value();
-    draw_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    draw_comp_pipeline = basic_pipeline_manager.add_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"draw.comp.glsl"}},
         .push_constant_size = sizeof(DrawCompPush),
         .debug_name = APPNAME_PREFIX("draw_comp_pipeline"),
     }).value();
-    raytrace_comp_pipeline = pipeline_compiler.create_compute_pipeline({
+    raytrace_comp_pipeline = basic_pipeline_manager.add_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"raytrace.comp.glsl"}},
         .push_constant_size = sizeof(RaytraceCompPush),
         .debug_name = APPNAME_PREFIX("raytrace_comp_pipeline"),
@@ -503,7 +503,7 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                     .task_preview_thumbnail = {},
 
                     .pipelines = {
-                        .pipeline_compiler = pipeline_compiler,
+                        .pipeline_manager = basic_pipeline_manager,
                         .perframe_comp_info = {
                             .shader_info = {
                                 .source = daxa::ShaderFile{"perframe.comp.glsl"},
@@ -978,22 +978,38 @@ void App::on_update() {
         std::this_thread::sleep_for(10ms);
     }
 
-    reload_pipeline(draw_comp_pipeline);
-    reload_pipeline(raytrace_comp_pipeline);
-    reload_pipeline(brushes.at(current_brush_key).pipelines.get_perframe_comp());
-    reload_pipeline(brushes.at(current_brush_key).pipelines.get_chunk_edit_comp());
-    auto reloaded_chunkgen_pipe = reload_pipeline(brushes.at(chunkgen_brush_key).pipelines.get_chunkgen_comp());
-    reloaded_chunkgen_pipe = reload_pipeline(subchunk_x2x4_comp_pipeline) || reloaded_chunkgen_pipe;
-    reloaded_chunkgen_pipe = reload_pipeline(subchunk_x8up_comp_pipeline) || reloaded_chunkgen_pipe;
-    reload_pipeline(brushes.at(current_brush_key).pipelines.get_brush_chunkgen_comp());
-    reload_pipeline(subchunk_brush_x2x4_comp_pipeline);
-    reload_pipeline(subchunk_brush_x8up_comp_pipeline);
-    if (reloaded_chunkgen_pipe)
-        should_regenerate = true;
-    if (reload_pipeline(startup_comp_pipeline))
-        should_run_startup = true;
-    if (reload_pipeline(optical_depth_comp_pipeline))
-        should_regen_optical_depth = true;
+    auto handle_reload_result = [this](daxa::Result<bool> const &result) {
+        if (result.v.value_or(true)) {
+            // std::cout << reload_result.to_string() << std::endl;
+            if (result.is_err()) {
+                imgui_console.add_log("[error] Failed to recompile a pipeline:");
+                imgui_console.add_log("[error]   - %s", result.message().c_str());
+            }
+        }
+    };
+
+    {
+        auto reload_result = basic_pipeline_manager.reload_all();
+        handle_reload_result(reload_result);
+    }
+    {
+        auto reload_result = chunkgen_pipeline_manager.reload_all();
+        handle_reload_result(reload_result);
+        if (reload_result.v.value_or(false))
+            should_regenerate = true;
+    }
+    {
+        auto reload_result = startup_pipeline_manager.reload_all();
+        handle_reload_result(reload_result);
+        if (reload_result.v.value_or(false))
+            should_run_startup = true;
+    }
+    {
+        auto reload_result = optical_depth_pipeline_manager.reload_all();
+        handle_reload_result(reload_result);
+        if (reload_result.v.value_or(false))
+            should_regen_optical_depth = true;
+    }
 
     ui_update();
     submit_task_list();
@@ -1383,7 +1399,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             if (should_run_startup) {
                 should_run_startup = false;
                 auto cmd_list = task_runtime.get_command_list();
-                cmd_list.set_pipeline(startup_comp_pipeline);
+                cmd_list.set_pipeline(*startup_comp_pipeline);
                 auto push = StartupCompPush{
                     .gpu_globals = this->device.get_device_address(gpu_globals_buffer),
                     .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
@@ -1404,7 +1420,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
             if (should_regen_optical_depth) {
                 should_regen_optical_depth = false;
                 auto cmd_list = task_runtime.get_command_list();
-                cmd_list.set_pipeline(optical_depth_comp_pipeline);
+                cmd_list.set_pipeline(*optical_depth_comp_pipeline);
                 auto push = OpticalDepthCompPush{
                     .image_id = optical_depth_image.default_view(),
                 };
@@ -1427,8 +1443,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
-            // cmd_list.set_pipeline(perframe_comp_pipeline);
-            cmd_list.set_pipeline(current_brush.pipelines.get_perframe_comp());
+            // cmd_list.set_pipeline(*perframe_comp_pipeline);
+            cmd_list.set_pipeline(*current_brush.pipelines.get_perframe_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
@@ -1460,7 +1476,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(chunkgen_brush_key);
-            cmd_list.set_pipeline(current_brush.pipelines.get_chunkgen_comp());
+            cmd_list.set_pipeline(*current_brush.pipelines.get_chunkgen_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
@@ -1488,8 +1504,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
-            // cmd_list.set_pipeline(brush_chunkgen_comp_pipeline);
-            cmd_list.set_pipeline(current_brush.pipelines.get_brush_chunkgen_comp());
+            // cmd_list.set_pipeline(*brush_chunkgen_comp_pipeline);
+            cmd_list.set_pipeline(*current_brush.pipelines.get_brush_chunkgen_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
@@ -1518,8 +1534,8 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             auto &current_brush = brushes.at(current_brush_key);
-            // cmd_list.set_pipeline(chunk_edit_comp_pipeline);
-            cmd_list.set_pipeline(current_brush.pipelines.get_chunk_edit_comp());
+            // cmd_list.set_pipeline(*chunk_edit_comp_pipeline);
+            cmd_list.set_pipeline(*current_brush.pipelines.get_chunk_edit_comp());
             u64 brush_settings_id = 0;
             if (current_brush.custom_buffer_size > 0)
                 brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
@@ -1544,7 +1560,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(subchunk_x2x4_comp_pipeline);
+            cmd_list.set_pipeline(*subchunk_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
@@ -1563,7 +1579,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(subchunk_x8up_comp_pipeline);
+            cmd_list.set_pipeline(*subchunk_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
@@ -1581,7 +1597,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x2x4_comp_pipeline);
+            cmd_list.set_pipeline(*subchunk_brush_x2x4_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
@@ -1599,7 +1615,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(subchunk_brush_x8up_comp_pipeline);
+            cmd_list.set_pipeline(*subchunk_brush_x8up_comp_pipeline);
             cmd_list.push_constant(ChunkOptCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
@@ -1637,7 +1653,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [this](daxa::TaskRuntime task_runtime) {
             if (get_flag(GPU_INPUT_FLAG_INDEX_USE_PERSISTENT_THREAD_TRACE)) {
                 auto cmd_list = task_runtime.get_command_list();
-                cmd_list.set_pipeline(raytrace_comp_pipeline);
+                cmd_list.set_pipeline(*raytrace_comp_pipeline);
                 cmd_list.push_constant(RaytraceCompPush{
                     .gpu_globals = device.get_device_address(gpu_globals_buffer),
                     .gpu_input = device.get_device_address(gpu_input_buffer),
@@ -1667,7 +1683,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            cmd_list.set_pipeline(draw_comp_pipeline);
+            cmd_list.set_pipeline(*draw_comp_pipeline);
             cmd_list.push_constant(DrawCompPush{
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .gpu_input = device.get_device_address(gpu_input_buffer),

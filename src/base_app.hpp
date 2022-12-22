@@ -11,6 +11,8 @@ using namespace std::chrono_literals;
 #include <imgui_impl_glfw.h>
 #include "imgui_console.hpp"
 
+#include <daxa/utils/pipeline_manager.hpp>
+
 #include <daxa/utils/math_operators.hpp>
 using namespace daxa::math_operators;
 
@@ -21,6 +23,17 @@ using Clock = std::chrono::high_resolution_clock;
 
 #define APPNAME "Voxel Game"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
+
+#define PIPELINE_MANAGER_OPTIONS                                           \
+    {                                                                      \
+        .root_paths = {                                                    \
+            DAXA_SHADER_INCLUDE_DIR,                                       \
+            "assets",                                                      \
+            "shaders",                                                     \
+            "src",                                                         \
+        },                                                                 \
+        .language = daxa::ShaderLanguage::GLSL, .enable_debug_info = true, \
+    }
 
 template <typename T>
 struct BaseApp : AppWindow<T> {
@@ -49,17 +62,25 @@ struct BaseApp : AppWindow<T> {
         .debug_name = APPNAME_PREFIX("swapchain"),
     });
 
-    daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
-        .shader_compile_options = {
-            .root_paths = {
-                DAXA_SHADER_INCLUDE_DIR,
-                "assets",
-                "shaders",
-                "src",
-            },
-            .language = daxa::ShaderLanguage::GLSL,
-        },
-        .debug_name = APPNAME_PREFIX("pipeline_compiler"),
+    daxa::PipelineManager basic_pipeline_manager = daxa::PipelineManager({
+        .device = device,
+        .shader_compile_options = PIPELINE_MANAGER_OPTIONS,
+        .debug_name = APPNAME_PREFIX("pipeline_manager"),
+    });
+    daxa::PipelineManager chunkgen_pipeline_manager = daxa::PipelineManager({
+        .device = device,
+        .shader_compile_options = PIPELINE_MANAGER_OPTIONS,
+        .debug_name = APPNAME_PREFIX("pipeline_manager"),
+    });
+    daxa::PipelineManager startup_pipeline_manager = daxa::PipelineManager({
+        .device = device,
+        .shader_compile_options = PIPELINE_MANAGER_OPTIONS,
+        .debug_name = APPNAME_PREFIX("pipeline_manager"),
+    });
+    daxa::PipelineManager optical_depth_pipeline_manager = daxa::PipelineManager({
+        .device = device,
+        .shader_compile_options = PIPELINE_MANAGER_OPTIONS,
+        .debug_name = APPNAME_PREFIX("pipeline_manager"),
     });
 
     ImFont *mono_font = nullptr;
@@ -83,7 +104,6 @@ struct BaseApp : AppWindow<T> {
         ImGui_ImplGlfw_InitForVulkan(AppWindow<T>::glfw_window_ptr, true);
         return daxa::ImGuiRenderer({
             .device = device,
-            .pipeline_compiler = pipeline_compiler,
             .format = swapchain.get_format(),
         });
     }
@@ -184,20 +204,6 @@ struct BaseApp : AppWindow<T> {
             std::this_thread::sleep_for(1ms);
         }
 
-        return false;
-    }
-
-    auto reload_pipeline(auto &pipeline) -> bool {
-        if (pipeline_compiler.check_if_sources_changed(pipeline)) {
-            auto new_pipeline = pipeline_compiler.recreate_compute_pipeline(pipeline);
-            if (new_pipeline.is_ok()) {
-                pipeline = new_pipeline.value();
-                return true;
-            } else {
-                imgui_console.add_log("[error] Failed to recompile a pipeline:");
-                imgui_console.add_log("[error]   - %s", new_pipeline.message().c_str());
-            }
-        }
         return false;
     }
 
