@@ -34,13 +34,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
 
-set(GVOX_FORMATS
-    gvox_simple
-    gvox_u32
-    gvox_u32_palette
-    magicavoxel
-)
-foreach(FORMAT_NAME ${GVOX_FORMATS})
+foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
     add_custom_command(
         TARGET gabe_voxel_game
         POST_BUILD
@@ -77,7 +71,7 @@ if(PACKAGE_VOXEL_GAME)
     install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
     install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
-    foreach(FORMAT_NAME ${GVOX_FORMATS})
+    foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
         install(FILES $<TARGET_FILE:gvox::gvox_format_${FORMAT_NAME}> DESTINATION bin)
     endforeach()
 
