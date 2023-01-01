@@ -204,7 +204,7 @@ App::App()
     // gvox_model_path = "sponge.vox";
     // gvox_model_type = "magicavoxel";
 
-    gvox_model_path = "mansion.gvox";
+    gvox_model_path = "phantom_mansion.gvox";
     gvox_model_type = "gvox";
 
     gvox_ctx = gvox_create_context();
