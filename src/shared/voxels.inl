@@ -69,7 +69,7 @@ struct VoxelUniformityChunk {
 };
 
 struct VoxelBrush {
-    BoundingBox box;
+    BoundingBox box, real_box;
 
     u32 chunk_update_indices[MAX_CHUNK_UPDATES];
     u32 chunk_update_n;

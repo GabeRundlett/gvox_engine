@@ -18,7 +18,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeCompPush)
 #if 1 // REALISTIC
 #define PLAYER_SPEED 1.5
 #define PLAYER_SPRINT_MUL 2.5
-#define PLAYER_ACCEL 10.0
+#define PLAYER_ACCEL 30.0
 #define EARTH_JUMP_HEIGHT 0.59
 #else // MINECRAFT-LIKE
 #define PLAYER_SPEED 4.3
@@ -536,11 +536,13 @@ void perframe_voxel_brush() {
 
     f32vec3 brush_size = custom_brush_size();
 
-    VOXEL_BRUSH.box.bound_min = GLOBALS.brush_origin + GLOBALS.brush_offset;
-    VOXEL_BRUSH.box.bound_max = VOXEL_BRUSH.box.bound_min + round(brush_size * VOXEL_SCL) / VOXEL_SCL;
+    VOXEL_BRUSH.real_box.bound_min = GLOBALS.brush_origin + GLOBALS.brush_offset;
+    VOXEL_BRUSH.real_box.bound_max = VOXEL_BRUSH.real_box.bound_min + round(brush_size * VOXEL_SCL) / VOXEL_SCL;
 
-    VOXEL_BRUSH.box.bound_min = floor(VOXEL_BRUSH.box.bound_min / 8) * 8;
-    VOXEL_BRUSH.box.bound_max = ceil(VOXEL_BRUSH.box.bound_max / 8) * 8;
+    VOXEL_BRUSH.box.bound_min = floor(VOXEL_BRUSH.real_box.bound_min / (64 / VOXEL_SCL)) * (64 / VOXEL_SCL);
+    VOXEL_BRUSH.box.bound_max = ceil(VOXEL_BRUSH.real_box.bound_max / (64 / VOXEL_SCL)) * (64 / VOXEL_SCL);
+    VOXEL_BRUSH.box.bound_min = max(VOXEL_BRUSH.box.bound_min, VOXEL_WORLD.box.bound_min);
+    VOXEL_BRUSH.box.bound_max = min(VOXEL_BRUSH.box.bound_max, VOXEL_WORLD.box.bound_max);
 
     if (GLOBALS.edit_flags == 0 && INPUT.keyboard.keys[GAME_KEY_INTERACT0] != 0) {
         GLOBALS.edit_origin = floor(GLOBALS.brush_origin * VOXEL_SCL) / VOXEL_SCL;

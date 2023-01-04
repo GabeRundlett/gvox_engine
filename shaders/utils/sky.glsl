@@ -7,13 +7,17 @@
 #define SKY_COL (f32vec3(0.02, 0.05, 0.90))
 #define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
 
-#if DISABLE_SKY
-#define SUN_COL (f32vec3(1, 1, 1))
-#else
-#define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
-#endif
 #define SUN_TIME INPUT.settings.daylight_cycle_time
 #define SUN_DIR normalize(f32vec3(0.8 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
+#if DISABLE_SKY
+#define SUN_COL f32vec3(1, 1, 1)
+#define INTERNAL_SUN_FACTOR 1
+#define SUN_FACTOR 1
+#else
+#define SUN_COL (f32vec3(1, 0.85, 0.5) * 2)
+#define INTERNAL_SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0005), 2))
+#define SUN_FACTOR (1 - pow(1 - clamp(sin(SUN_TIME) + 0.1, 0.0001, 1.0), 50))
+#endif
 
 #define PLANET_RADIUS 0.95
 #define ATMOSPHERE_RADIUS 1.0
@@ -23,8 +27,6 @@
 #define WAVELENGTH_Z 440.0
 #define SCATTERING_STRENGTH 30.0
 #define SCATTERING_COEFF (f32vec3(pow(400.0 / WAVELENGTH_X, 4), pow(400.0 / WAVELENGTH_Y, 4), pow(400.0 / WAVELENGTH_Z, 4)) * SCATTERING_STRENGTH)
-#define INTERNAL_SUN_FACTOR (1 - pow(1 - max(sin(SUN_TIME), 0.0005), 2))
-#define SUN_FACTOR (1 - pow(1 - clamp(sin(SUN_TIME) + 0.1, 0.0001, 1.0), 50))
 
 #define IN_SCATTER_N 4
 #define OPTICAL_DEPTH_N 100

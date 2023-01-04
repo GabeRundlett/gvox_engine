@@ -53,16 +53,12 @@ struct BrushPipelines {
                 compiled = true;
                 valid = true;
             } else if (perframe_comp_result.is_err()) {
-                // std::cout << perframe_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", perframe_comp_result.message().c_str());
             } else if (chunk_edit_comp_result.is_err()) {
-                // std::cout << chunk_edit_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", chunk_edit_comp_result.message().c_str());
             } else if (chunkgen_comp_result.is_err()) {
-                // std::cout << chunkgen_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", chunkgen_comp_result.message().c_str());
             } else if (brush_chunkgen_comp_result.is_err()) {
-                // std::cout << brush_chunkgen_comp_result.message() << std::endl;
                 imgui_console.add_log("[error] %s", brush_chunkgen_comp_result.message().c_str());
             }
         }
@@ -138,7 +134,12 @@ struct App : BaseApp<App> {
     daxa::TaskBufferId task_gpu_brush_settings_buffer;
 
     f32 render_resolution_scl = 1.0f;
+#if RENDER_PERF_TESTING
+    u32 render_size_x = 100, render_size_y = 100;
+    u64 chunk_render_frame_index = 0;
+#else
     u32 render_size_x = size_x, render_size_y = size_y;
+#endif
     daxa::ImageId render_image;
     daxa::TaskImageId task_render_image;
 
@@ -184,7 +185,11 @@ struct App : BaseApp<App> {
     bool should_regenerate = false;
     bool should_regen_optical_depth = true;
     bool use_vsync = false;
+#if RENDER_PERF_TESTING
+    bool use_custom_resolution = true;
+#else
     bool use_custom_resolution = false;
+#endif
     bool show_menus = true;
     bool show_console = true;
     bool show_debug_menu = false;
@@ -193,7 +198,6 @@ struct App : BaseApp<App> {
     bool show_tool_settings_menu = true;
 
     GVoxContext *gvox_ctx;
-    GVoxScene gvox_model = {};
     daxa::BufferId gvox_model_buffer = {};
     daxa::TaskBufferId task_gvox_model_buffer = {};
     std::string gvox_model_path, gvox_model_type;

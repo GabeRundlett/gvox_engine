@@ -14,7 +14,9 @@ Voxel brush_kernel(in f32vec3 voxel_p) {
         brush.begin_p = GLOBALS.edit_origin - brush.origin;
         brush.prev_voxel = unpack_voxel(sample_packed_voxel_WORLD(voxel_p));
         result = brush.prev_voxel;
-        custom_brush_kernel(brush, result);
+        if (sd_box(voxel_p, VOXEL_BRUSH.real_box) <= 0.0) {
+            custom_brush_kernel(brush, result);
+        }
     }
     return result;
 }

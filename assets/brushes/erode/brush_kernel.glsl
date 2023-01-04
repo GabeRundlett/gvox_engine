@@ -19,7 +19,7 @@ f32 erode_noise(f32vec3 p) {
 
 void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
     f32 random_factor = rand(brush.origin);
-    f32 n = erode_noise(brush.p + brush.origin + INPUT.time * 100);
+    f32 n = erode_noise(brush.p + brush.origin);
     f32 l = length(brush.p - OFFSET) / (PLAYER.edit_radius + random_factor);
     if (n > pow(l, 2) * 0.5 - 0.25) {
         f32vec3 voxel_p = brush.p + brush.origin;

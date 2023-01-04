@@ -4,6 +4,6 @@
 
 struct CustomBrushSettings {
     f32vec3 color;
-    // f32vec3 pos;
-    // f32vec3 rot;
+    f32vec3 pos;
+    f32vec3 rot;
 };

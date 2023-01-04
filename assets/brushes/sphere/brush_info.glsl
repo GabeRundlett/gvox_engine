@@ -1,8 +1,10 @@
 #pragma once
 
 f32vec3 custom_brush_size() {
-    // PLAYER.pos = BRUSH_SETTINGS.pos;
-    // PLAYER.rot = BRUSH_SETTINGS.rot;
+#if RENDER_PERF_TESTING
+    PLAYER.pos = BRUSH_SETTINGS.pos;
+    PLAYER.rot = BRUSH_SETTINGS.rot;
+#endif
     return f32vec3(2.0 * PLAYER.edit_radius);
 }
 

@@ -73,7 +73,37 @@ u32 uniformity_lod_mask(u32vec3 index_within_lod) {
 
 i32vec3 get_chunk_i(i32vec3 voxel_i) { return voxel_i / CHUNK_SIZE; }
 u32vec3 get_inchunk_voxel_i(i32vec3 voxel_i, i32vec3 chunk_i) { return u32vec3(voxel_i - chunk_i * CHUNK_SIZE); }
-u32 get_voxel_index(u32vec3 inchunk_voxel_i) { return inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE; }
+u32 get_voxel_index(u32vec3 inchunk_voxel_i) {
+#if 0
+    return inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
+#elif 1
+#define CACHE_BLOCK_AXIS_SIZE 4
+#define CACHE_BLOCK_TOTAL_SIZE (CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE)
+#define CACHE_BLOCK_AXIS_N (CHUNK_SIZE / CACHE_BLOCK_AXIS_SIZE)
+#define CACHE_BLOCK_TOTAL_N (CACHE_BLOCK_AXIS_N * CACHE_BLOCK_AXIS_N * CACHE_BLOCK_AXIS_N)
+    u32 result_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
+    u32 block_index = result_index / CACHE_BLOCK_TOTAL_SIZE;
+    u32 block_sub_index = result_index - block_index * CACHE_BLOCK_TOTAL_SIZE;
+    u32vec3 block_i;
+    block_i.z = block_index / (CACHE_BLOCK_AXIS_N * CACHE_BLOCK_AXIS_N);
+    block_i.y = (block_index - block_i.z * (CACHE_BLOCK_AXIS_N * CACHE_BLOCK_AXIS_N)) / CACHE_BLOCK_AXIS_N;
+    block_i.x = block_index - block_i.z * (CACHE_BLOCK_AXIS_N * CACHE_BLOCK_AXIS_N) - block_i.y * CACHE_BLOCK_AXIS_N;
+    u32vec3 result;
+    result.z = block_sub_index / (CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE);
+    result.y = (block_sub_index - result.z * (CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE)) / CACHE_BLOCK_AXIS_SIZE;
+    result.x = block_sub_index - result.z * (CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE) - result.y * CACHE_BLOCK_AXIS_SIZE;
+    result += block_i * CACHE_BLOCK_AXIS_SIZE;
+    return result.x + result.y * CHUNK_SIZE + result.z * CHUNK_SIZE * CHUNK_SIZE;
+#else
+    u32vec3 result = inchunk_voxel_i;
+    result = (result | (result << u32vec3(8))) & u32vec3(0x0300F00F);
+    result = (result | (result << u32vec3(4))) & u32vec3(0x030C30C3);
+    result = (result | (result << u32vec3(2))) & u32vec3(0x09249249);
+    return (result.x << 0) |
+           (result.y << 1) |
+           (result.z << 2);
+#endif
+}
 
 PackedVoxel pack_voxel(in Voxel voxel) {
     PackedVoxel result;

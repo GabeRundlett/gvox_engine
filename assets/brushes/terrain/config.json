@@ -5,7 +5,7 @@
         {
             "name": "Origin",
             "type": "input_f32vec3",
-            "default_value": [ -1000.0, 50.0, 0.0 ]
+            "default_value": [ 290.0, 0.0, 0.0 ]
         },
         {
             "name": "Amplitude",
@@ -16,25 +16,25 @@
         {
             "name": "Persistance",
             "type": "slider_f32",
-            "default_value": 0.33,
+            "default_value": 0.15,
             "slider_range": [ 0.0, 1.0 ]
         },
         {
             "name": "Scale",
             "type": "slider_f32",
-            "default_value": 0.011,
-            "slider_range": [ 0.0, 1.0 ]
+            "default_value": 0.003,
+            "slider_range": [ 0.0, 0.1 ]
         },
         {
             "name": "Lacunarity",
             "type": "slider_f32",
-            "default_value": 2.726,
+            "default_value": 6.8,
             "slider_range": [ 1.0, 8.0 ]
         },
         {
             "name": "Octaves",
             "type": "slider_u32",
-            "default_value": 7,
+            "default_value": 4,
             "slider_range": [ 1, 8 ]
         }
     ]

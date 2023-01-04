@@ -66,6 +66,7 @@ struct ImGuiConsole {
         buf[IM_ARRAYSIZE(buf) - 1] = 0;
         va_end(args);
         items.push_back(Strdup(buf));
+        // std::cout << buf << std::endl;
     }
     void draw(const char *title, bool *p_open) {
         ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);

@@ -14,6 +14,8 @@
 
 #define USE_PERSISTENT_THREAD_TRACE 1
 
+#define RENDER_PERF_TESTING 0
+
 struct GVoxModelVoxel {
     f32vec3 col;
     u32 id;

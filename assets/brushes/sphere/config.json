@@ -5,6 +5,16 @@
             "name": "Color",
             "type": "color",
             "default_value": [ 0.5, 0.5, 0.5 ]
+        },
+        {
+            "name": "Pos",
+            "type": "input_f32vec3",
+            "default_value": [ 10.1, 100.1, 20.1 ]
+        },
+        {
+            "name": "Rot",
+            "type": "input_f32vec3",
+            "default_value": [ -0.4, 0, 2.2 ]
         }
     ]
 }

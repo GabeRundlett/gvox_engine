@@ -61,15 +61,6 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         }
     }
 
-    // {
-    //     IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
-    //     if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
-    //         trace.intersection_record = b0_hit;
-    //         trace.color = f32vec3(0.5, 1.0, 0.5);
-    //         trace.material = 3;
-    //     }
-    // }
-
 #if RENDER_BRUSH_OVERLAY
     i32 brush_complexity = 0;
     IntersectionRecord b0_hit = intersect_brush_voxels(ray, brush_complexity);
@@ -78,6 +69,15 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
         trace.intersection_record = b0_hit;
         trace.color = f32vec3(0.5, 0.5, 0.5);
         trace.material = 4;
+    }
+#else
+    {
+        IntersectionRecord b0_hit = intersect_voxels(ray, complexity);
+        if (b0_hit.hit && b0_hit.dist < trace.intersection_record.dist) {
+            trace.intersection_record = b0_hit;
+            trace.color = f32vec3(0.5, 1.0, 0.5);
+            trace.material = 3;
+        }
     }
 #endif
 
@@ -135,6 +135,7 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
     Voxel vox = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
     col = vox.col;
+    // col = hit_nrm;
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
     //     col = f32vec3(0.2, 1.0, 0.2);
 
@@ -335,7 +336,7 @@ void main() {
 #if RENDER_SHADING
             f32 shade = max(dot(bounce_ray.nrm, hit_nrm), 0.0);
 #else
-            f32 shade = max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
+            f32 shade = 1; // max(dot(f32vec3(0, 0, 1), hit_nrm) * 0.5 + 0.5, 0.0);
 #endif
             i32 temp_i32;
 #if RENDER_SHADOWS
@@ -404,7 +405,7 @@ void main() {
 
             f32vec3 surface_col = col * (shade * SUN_COL * SUN_FACTOR + sample_sky_ambient(hit_nrm) * 1);
 #if RENDER_FOG
-            f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.01) * 0.02, 0, 1);
+            f32 fog_factor = clamp(exp(view_trace_record.intersection_record.dist * 0.005) * 0.02, 0, 1);
             f32vec3 fog_col = sample_sky_ambient(view_ray.nrm);
             col = mix(surface_col, fog_col, fog_factor);
 #else
@@ -437,7 +438,7 @@ void main() {
                 }
             }
             if (get_flag(GPU_INPUT_FLAG_INDEX_SHOW_BRUSH_BOUNDING_BOX)) {
-                BoundingBox b = VOXEL_BRUSH.box;
+                BoundingBox b = VOXEL_BRUSH.real_box;
                 IntersectionRecord b_hit = intersect(view_ray, b);
                 f32vec3 b_col = f32vec3(0.5);
                 b_col *= (dot(SUN_DIR, b_hit.nrm) * 0.5 + 0.5) * SUN_COL * SUN_FACTOR + sample_sky_ambient(b_hit.nrm);

@@ -948,13 +948,20 @@ void App::ui_update() {
 ESCAPE to toggle pause (lock/unlock camera)
 F1 for help
 F3 to see debug info
+
+R to reload the chunks
 CTRL+R to reload the game
+
+B to toggle brush freeze
+T to toggle the tool selection
+N to toggle the tool settings
+` to toggle the console
+P to toggle renderers
 
 * Brush Controls:
 E Place Edit Origin (important for some brushes, like the Castle Wall)
 SCROLL to increase/decrease brush size
-LEFT MOUSE BUTTON to destroy voxels
-RIGHT MOUSE BUTTON to place voxels
+MOUSE BUTTON to trigger a brush interaction (some do different things depending on Left vs Right click)
 )");
         ImGui::End();
         ImGui::PopStyleVar();
@@ -978,9 +985,17 @@ void App::on_update() {
         std::this_thread::sleep_for(10ms);
     }
 
+#if RENDER_PERF_TESTING
+    if (chunk_render_frame_index == WORLD_CHUNK_N) {
+        render_size_x = 4096;
+        render_size_y = 2048;
+        recreate_render_images();
+    }
+    ++chunk_render_frame_index;
+#endif
+
     auto handle_reload_result = [this](daxa::Result<bool> const &result) {
         if (result.v.value_or(true)) {
-            // std::cout << reload_result.to_string() << std::endl;
             if (result.is_err()) {
                 imgui_console.add_log("[error] Failed to recompile a pipeline:");
                 imgui_console.add_log("[error]   - %s", result.message().c_str());
@@ -1171,15 +1186,33 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         .task = [=, this](daxa::TaskRuntime runtime) {
             if (should_upload_gvox_model) {
                 auto cmd_list = runtime.get_command_list();
-                if (!gvox_model_buffer.is_empty()) {
-                    runtime.remove_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
-                    cmd_list.destroy_buffer_deferred(gvox_model_buffer);
-                }
-                gvox_destroy_scene(gvox_model);
+                GVoxScene gvox_model = {};
                 if (gvox_model_type == "gvox") {
                     gvox_model = gvox_load(gvox_ctx, gvox_model_path.c_str());
                 } else {
                     gvox_model = gvox_load_raw(gvox_ctx, gvox_model_path.c_str(), gvox_model_type.c_str());
+                }
+
+                bool had_error = false;
+                while (gvox_get_result(gvox_ctx) != GVOX_SUCCESS) {
+                    size_t msg_size = 0;
+                    gvox_get_result_message(gvox_ctx, nullptr, &msg_size);
+                    std::string msg;
+                    msg.resize(msg_size);
+                    gvox_get_result_message(gvox_ctx, nullptr, &msg_size);
+                    gvox_pop_result(gvox_ctx);
+                    had_error = true;
+                    imgui_console.add_log("[error] %s", msg.c_str());
+                }
+                if (had_error) {
+                    should_upload_gvox_model = false;
+                    gvox_destroy_scene(gvox_model);
+                    return;
+                }
+
+                if (!gvox_model_buffer.is_empty()) {
+                    runtime.remove_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
+                    cmd_list.destroy_buffer_deferred(gvox_model_buffer);
                 }
 
                 gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
@@ -1215,6 +1248,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .size = gvox_model_size,
                 });
                 should_upload_gvox_model = false;
+                gvox_destroy_scene(gvox_model);
             }
         },
         .debug_name = APPNAME_PREFIX("Upload GVOX Model"),
@@ -1385,6 +1419,12 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .size = sizeof(VoxelBrush),
                     .clear_value = 0,
                 });
+#if RENDER_PERF_TESTING
+                chunk_render_frame_index = 0;
+                render_size_x = 100;
+                render_size_y = 100;
+                recreate_render_images();
+#endif
             }
         },
         .debug_name = "Startup (Globals Clear)",

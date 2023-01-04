@@ -15,7 +15,7 @@ void main() {
     if (VOXEL_WORLD.chunks_genstate[chunk_index].edit_stage != 3)
         return;
     u32vec3 voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, workgroup_index * 64);
-    u32 voxel_index = voxel_i.x + voxel_i.y * CHUNK_SIZE + voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
+    u32 voxel_index = get_voxel_index(voxel_i);
     f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_WORLD.voxel_chunks[chunk_index].box.bound_min;
     Voxel result = brush_kernel(voxel_p);
     if (result.block_id != BlockID_Debug) {
