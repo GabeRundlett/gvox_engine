@@ -3,6 +3,8 @@
 #include <shared/shared.inl>
 #include <utils/bitpacking.glsl>
 
+#define VOXEL_SCL 8
+
 #define BlockID_Debug 0
 #define BlockID_Air 1
 #define BlockID_Stone 2

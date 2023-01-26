@@ -2,17 +2,16 @@
   "name": "gabecraft",
   "version": "0.1.0",
   "dependencies": [
-    {
-      "name": "daxa",
-      "features": [
-        "glslang",
-        "utils"
-      ]
-    },
+    "daxa",
     "fmt",
     "glfw3",
     "glm",
-    "gvox",
+    {
+      "name": "gvox",
+      "features": [
+        "file-io"
+      ]
+    },
     "imnodes",
     "stb",
     "nlohmann-json",
@@ -26,7 +25,7 @@
       ]
     }
   ],
-  "builtin-baseline": "f9bea5d58186dc14e7e33132e43b52222147f51e",
+  "builtin-baseline": "877e3dc2323a4d4c3c75e7168c22a0c4e921d4db",
   "overrides": [
     {
       "name": "glfw3",

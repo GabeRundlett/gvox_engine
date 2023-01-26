@@ -14,6 +14,7 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 #define RENDER_SHADING 1
 #define RENDER_FOG 1
 #define RENDER_BRUSH_OVERLAY 1
+#define RENDER_SHAPES 1
 
 b32 get_flag(u32 index) {
     return ((INPUT.settings.flags >> index) & 0x01) == 0x01;
@@ -28,6 +29,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
     trace.material = 0;
     trace.object_i = 0;
 
+#if RENDER_SHAPES
     for (u32 i = 0; i < SCENE.sphere_n; ++i) {
         Sphere s = SCENE.spheres[i];
         IntersectionRecord s_hit = intersect(ray, s);
@@ -60,6 +62,7 @@ TraceRecord trace_scene(in Ray ray, in out i32 complexity) {
             trace.object_i = i;
         }
     }
+#endif
 
 #if RENDER_BRUSH_OVERLAY
     i32 brush_complexity = 0;
@@ -114,7 +117,7 @@ f32vec3 filmic(f32vec3 color) {
     color = max(color, f32vec3(0, 0, 0));
     color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06);
 #elif TONEMAPPER == 1
-    color = pow(color, f32vec3(2.2));
+    color = pow(color, f32vec3(1.0 / 2.2));
 #endif
     return color;
 }
@@ -124,7 +127,7 @@ f32vec3 filmic_inv(f32vec3 color) {
     color = max(color, f32vec3(0, 0, 0));
     color = (-sqrt(5.0) * sqrt(701.0 * color * color - 106.0 * color + 125.0) - 85 * color + 25) / (620 * (color - 1));
 #elif TONEMAPPER == 1
-    color = pow(color, f32vec3(1.0 / 2.2));
+    color = pow(color, f32vec3(2.2));
 #endif
     return color;
 }
@@ -303,8 +306,8 @@ void main() {
         // } else {
         //     col = f32vec3(0);
         // }
-        // col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
-        col = col_from_dist(view_ray, view_trace_record.intersection_record.dist);
+        col = filmic_inv(hsv2rgb(f32vec3(complexity * (0.5 / (WORLD_BLOCK_NX + WORLD_BLOCK_NY + WORLD_BLOCK_NZ)) * 16 + 0.5, 1.0, 0.9)));
+        // col = col_from_dist(view_ray, view_trace_record.intersection_record.dist);
 #else
 
         f32 hit_dist = MAX_SD;

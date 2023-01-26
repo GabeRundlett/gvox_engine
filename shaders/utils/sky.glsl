@@ -4,11 +4,11 @@
 #define USE_OLD_SKY 0
 #define USE_BAKED_OPTICAL_DEPTH 1
 
-#define SKY_COL (f32vec3(0.02, 0.05, 0.90))
+#define SKY_COL (f32vec3(0.22, 0.25, 0.90))
 #define SKY_COL_B (f32vec3(0.08, 0.10, 0.54))
 
 #define SUN_TIME INPUT.settings.daylight_cycle_time
-#define SUN_DIR normalize(f32vec3(0.8 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
+#define SUN_DIR normalize(f32vec3(-0.1 * sin(SUN_TIME), 2.3 * cos(SUN_TIME), sin(SUN_TIME)))
 #if DISABLE_SKY
 #define SUN_COL f32vec3(1, 1, 1)
 #define INTERNAL_SUN_FACTOR 1

@@ -3,11 +3,10 @@
 #include <shared/shapes.inl>
 
 #define CHUNK_SIZE 64
-#define VOXEL_SCL 8
 
-#define WORLD_CHUNK_NX 16
-#define WORLD_CHUNK_NY 16
-#define WORLD_CHUNK_NZ 6
+#define WORLD_CHUNK_NX 15
+#define WORLD_CHUNK_NY 15
+#define WORLD_CHUNK_NZ 15
 #define WORLD_CHUNK_N (WORLD_CHUNK_NX * WORLD_CHUNK_NY * WORLD_CHUNK_NZ)
 
 #define WORLD_BLOCK_NX (WORLD_CHUNK_NX * CHUNK_SIZE)
@@ -93,7 +92,9 @@ struct VoxelWorld {
     VoxelUniformityChunk uniformity_chunks[WORLD_CHUNK_N];
     ChunkGenState chunks_genstate[WORLD_CHUNK_N];
 
+#if !defined(__cplusplus)
     VoxelChunk voxel_chunks[WORLD_CHUNK_N];
+#endif
 };
 
 DAXA_ENABLE_BUFFER_PTR(VoxelWorld)

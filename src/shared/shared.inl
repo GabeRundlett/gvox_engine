@@ -5,6 +5,7 @@
 #include <shared/user_input.inl>
 #include <shared/player.inl>
 #include <shared/scene.inl>
+#include <shared/compressed_model.inl>
 
 #define GPU_INPUT_FLAG_INDEX_PAUSED 0
 #define GPU_INPUT_FLAG_INDEX_LIMIT_EDIT_RATE 1
@@ -15,11 +16,6 @@
 #define USE_PERSISTENT_THREAD_TRACE 1
 
 #define RENDER_PERF_TESTING 0
-
-struct GVoxModelVoxel {
-    f32vec3 col;
-    u32 id;
-};
 
 struct GpuGlobals {
     Player player;
@@ -48,17 +44,10 @@ struct GpuIndirectDispatch {
     u32vec3 raytrace_dispatch;
 };
 
-struct GpuGVoxModel {
-    u32 size_x;
-    u32 size_y;
-    u32 size_z;
-    GVoxModelVoxel voxels[256 * 256 * 256];
-};
-
 DAXA_ENABLE_BUFFER_PTR(GpuInput)
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
 DAXA_ENABLE_BUFFER_PTR(GpuIndirectDispatch)
-DAXA_ENABLE_BUFFER_PTR(GpuGVoxModel)
+DAXA_ENABLE_BUFFER_PTR(GpuGVox_CompressedModel)
 
 struct StartupCompPush {
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
@@ -95,7 +84,7 @@ struct ChunkEditCompPush {
     daxa_BufferPtr(CustomBrushSettings) brush_settings;
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
-    daxa_RWBufferPtr(GpuGVoxModel) gpu_gvox_model;
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
 };
 struct DrawCompPush {
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;

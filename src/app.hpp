@@ -201,7 +201,6 @@ struct App : BaseApp<App> {
     daxa::BufferId gvox_model_buffer = {};
     daxa::TaskBufferId task_gvox_model_buffer = {};
     std::string gvox_model_path, gvox_model_type;
-    u32 gvox_model_size;
     bool should_upload_gvox_model = true;
 
     std::array<float, 40> frametimes = {};

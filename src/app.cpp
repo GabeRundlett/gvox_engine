@@ -163,7 +163,7 @@ App::App()
           .debug_name = "gpu_globals_buffer",
       })},
       gpu_voxel_world_buffer{device.create_buffer({
-          .size = sizeof(VoxelWorld),
+          .size = sizeof(VoxelWorld) + sizeof(VoxelChunk) * WORLD_CHUNK_N,
           .debug_name = "gpu_voxel_world_buffer",
       })},
       gpu_voxel_brush_buffer{device.create_buffer({
@@ -185,7 +185,7 @@ App::App()
       })},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"},
       brushes{load_brushes()},
-      chunkgen_brush_key{absolute(std::filesystem::path("assets/brushes/terrain")).string()},
+      chunkgen_brush_key{absolute(std::filesystem::path("assets/brushes/model")).string()},
       current_brush_key{absolute(std::filesystem::path("assets/brushes/sphere")).string()},
       last_seen_brushes_folder_update{std::chrono::file_clock::now()},
       keys{},
@@ -204,7 +204,7 @@ App::App()
     // gvox_model_path = "sponge.vox";
     // gvox_model_type = "magicavoxel";
 
-    gvox_model_path = "phantom_mansion.gvox";
+    gvox_model_path = "half-life-c2a5w.gvox";
     gvox_model_type = "gvox";
 
     gvox_ctx = gvox_create_context();
@@ -1185,37 +1185,32 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
         },
         .task = [=, this](daxa::TaskRuntime runtime) {
             if (should_upload_gvox_model) {
-                auto cmd_list = runtime.get_command_list();
-                GVoxScene gvox_model = {};
-                if (gvox_model_type == "gvox") {
-                    gvox_model = gvox_load(gvox_ctx, gvox_model_path.c_str());
-                } else {
-                    gvox_model = gvox_load_raw(gvox_ctx, gvox_model_path.c_str(), gvox_model_type.c_str());
+                auto file = std::ifstream(gvox_model_path, std::ios::binary);
+                if (!file.is_open()) {
+                    file = std::ifstream("assets/" + gvox_model_path, std::ios::binary);
                 }
-
-                bool had_error = false;
-                while (gvox_get_result(gvox_ctx) != GVOX_SUCCESS) {
-                    size_t msg_size = 0;
-                    gvox_get_result_message(gvox_ctx, nullptr, &msg_size);
-                    std::string msg;
-                    msg.resize(msg_size);
-                    gvox_get_result_message(gvox_ctx, nullptr, &msg_size);
-                    gvox_pop_result(gvox_ctx);
-                    had_error = true;
-                    imgui_console.add_log("[error] %s", msg.c_str());
-                }
-                if (had_error) {
+                if (!file.is_open()) {
+                    imgui_console.add_log("[error] Failed to load the model");
                     should_upload_gvox_model = false;
-                    gvox_destroy_scene(gvox_model);
+                    return;
+                }
+                GVoxHeader file_header;
+                file.read((char *)&file_header, sizeof(file_header));
+                auto format_str = std::string{};
+                format_str.resize(file_header.format_name_size);
+                file.read(format_str.data(), file_header.format_name_size);
+                if (format_str != "gvox_u32_palette") {
+                    imgui_console.add_log("[error] Bad format. Should be gvox_u32_palette");
+                    should_upload_gvox_model = false;
                     return;
                 }
 
+                auto cmd_list = runtime.get_command_list();
                 if (!gvox_model_buffer.is_empty()) {
                     runtime.remove_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
                     cmd_list.destroy_buffer_deferred(gvox_model_buffer);
                 }
-
-                gvox_model_size = static_cast<u32>(sizeof(GVoxVoxel) * gvox_model.nodes[0].size_x * gvox_model.nodes[0].size_y * gvox_model.nodes[0].size_z + sizeof(u32) * 3);
+                auto gvox_model_size = static_cast<u32>(file_header.payload_size);
                 gvox_model_buffer = device.create_buffer({
                     .size = gvox_model_size,
                     .debug_name = APPNAME_PREFIX("gvox_model_buffer"),
@@ -1230,25 +1225,15 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .debug_name = APPNAME_PREFIX("staging_gvox_model_buffer"),
                 });
                 cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
-                GpuGVoxModel *buffer_ptr = device.get_host_address_as<GpuGVoxModel>(staging_gvox_model_buffer);
-                buffer_ptr->size_x = static_cast<u32>(gvox_model.nodes[0].size_x);
-                buffer_ptr->size_y = static_cast<u32>(gvox_model.nodes[0].size_y);
-                buffer_ptr->size_z = static_cast<u32>(gvox_model.nodes[0].size_z);
-                for (usize i = 0; i < buffer_ptr->size_x * buffer_ptr->size_y * buffer_ptr->size_z; ++i) {
-                    auto &i_vox = gvox_model.nodes[0].voxels[i];
-                    auto &o_vox = buffer_ptr->voxels[i];
-                    o_vox.col.x = i_vox.color.x;
-                    o_vox.col.y = i_vox.color.y;
-                    o_vox.col.z = i_vox.color.z;
-                    o_vox.id = i_vox.id;
-                }
+                char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer);
+                file.read(buffer_ptr, static_cast<std::streamsize>(file_header.payload_size));
+
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gvox_model_buffer,
                     .dst_buffer = gvox_model_buffer,
                     .size = gvox_model_size,
                 });
                 should_upload_gvox_model = false;
-                gvox_destroy_scene(gvox_model);
             }
         },
         .debug_name = APPNAME_PREFIX("Upload GVOX Model"),
@@ -1400,7 +1385,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 cmd_list.clear_buffer({
                     .buffer = gpu_voxel_world_buffer,
                     .offset = offsetof(VoxelWorld, chunk_update_indices),
-                    .size = offsetof(VoxelWorld, voxel_chunks) - offsetof(VoxelWorld, chunk_update_indices),
+                    .size = sizeof(VoxelWorld) - offsetof(VoxelWorld, chunk_update_indices),
                     .clear_value = 0,
                 });
                 should_regenerate = false;
