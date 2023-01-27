@@ -13,6 +13,11 @@ struct DDA_RunState {
 };
 
 uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
+#if DISABLE_DRIVER_BREAKING_CODE
+    if (x_load_presence<2>(globals, p))
+        return 1;
+    return 2;
+#else
     if (x_load_presence<2>(globals, p))
         return 1;
     if (x_load_presence<4>(globals, p))
@@ -26,6 +31,7 @@ uint get_lod(StructuredBuffer<Globals> globals, in float3 p) {
     if (x_load_presence<64>(globals, p))
         return 6;
     return 7;
+#endif
 }
 
 uint dda_get_lod(StructuredBuffer<Globals> globals, in out DDA_RunState run_state, in float3 p) {
@@ -40,7 +46,9 @@ uint dda_get_lod(StructuredBuffer<Globals> globals, in out DDA_RunState run_stat
 #endif
 
 #if DISABLE_DRIVER_BREAKING_CODE
-    return 1;
+    if (x_load_presence<2>(globals, p))
+        return 1;
+    return 2;
 #else
     if (x_load_presence<2>(globals, p))
         return 1;

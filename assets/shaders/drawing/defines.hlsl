@@ -33,7 +33,7 @@
 #define BLOCKEDIT_RADIUS 0
 
 #define ENABLE_TAA 1
-#define TAA_MIXING 0.3
+#define TAA_MIXING 0.1
 
 #define MAX_STEPS (BLOCK_NX + BLOCK_NY + BLOCK_NZ)
 
