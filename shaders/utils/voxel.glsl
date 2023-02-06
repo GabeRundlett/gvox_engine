@@ -76,9 +76,9 @@ u32 uniformity_lod_mask(u32vec3 index_within_lod) {
 i32vec3 get_chunk_i(i32vec3 voxel_i) { return voxel_i / CHUNK_SIZE; }
 u32vec3 get_inchunk_voxel_i(i32vec3 voxel_i, i32vec3 chunk_i) { return u32vec3(voxel_i - chunk_i * CHUNK_SIZE); }
 u32 get_voxel_index(u32vec3 inchunk_voxel_i) {
-#if 0
+#if 1
     return inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
-#elif 1
+#elif 0
 #define CACHE_BLOCK_AXIS_SIZE 4
 #define CACHE_BLOCK_TOTAL_SIZE (CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE * CACHE_BLOCK_AXIS_SIZE)
 #define CACHE_BLOCK_AXIS_N (CHUNK_SIZE / CACHE_BLOCK_AXIS_SIZE)
@@ -123,6 +123,8 @@ Voxel unpack_voxel(in PackedVoxel packed_voxel) {
     return result;
 }
 
+#include <utils/gvox_palette.glsl>
+
 struct VoxelSampleInfo {
     i32vec3 voxel_i;
     i32vec3 chunk_i;
@@ -146,27 +148,24 @@ struct VoxelSampleInfo {
         return result;                                                                \
     }
 
-#define impl_sample_packed_voxel(NAME)                                                                             \
-    PackedVoxel sample_packed_voxel_##NAME(u32 chunk_index, u32 voxel_index) {                                     \
-        return VOXEL_##NAME.voxel_chunks[chunk_index].packed_voxels[voxel_index];                                  \
-    }                                                                                                              \
-    PackedVoxel sample_packed_voxel_##NAME(u32 chunk_index, u32vec3 inchunk_voxel_i) {                             \
-        return sample_packed_voxel_##NAME(chunk_index, get_voxel_index(inchunk_voxel_i));                          \
-    }                                                                                                              \
-    PackedVoxel sample_packed_voxel_##NAME(f32vec3 p) {                                                            \
-        i32vec3 voxel_i = get_voxel_i_##NAME(p);                                                                   \
-        i32vec3 chunk_i = get_chunk_i(voxel_i);                                                                    \
-        return sample_packed_voxel_##NAME(get_chunk_index_##NAME(chunk_i), get_inchunk_voxel_i(voxel_i, chunk_i)); \
+#define impl_sample_packed_voxel(NAME)                                                                    \
+    PackedVoxel sample_packed_voxel_##NAME(f32vec3 p) {                                                   \
+        return sample_gvox_palette_voxel(p);                                                              \
+    }                                                                                                     \
+    PackedVoxel sample_packed_voxel_##NAME(u32 chunk_index, u32vec3 inchunk_voxel_i) {                    \
+        return sample_packed_voxel_##NAME(                                                                \
+            VOXEL_##NAME.voxel_chunks[chunk_index].box.bound_min + f32vec3(inchunk_voxel_i) / VOXEL_SCL); \
+    }                                                                                                     \
+    PackedVoxel sample_packed_voxel_##NAME(u32 chunk_index, u32 voxel_index) {                            \
+        return sample_packed_voxel_##NAME(                                                                \
+            chunk_index,                                                                                  \
+            u32vec3(voxel_index % 64, (voxel_index / 64) % 64, voxel_index / 64 / 64));                   \
     }
 
-#define impl_sample_voxel_id(NAME)                                                                                                                         \
-    u32 sample_voxel_id_##NAME(u32 chunk_index, u32 voxel_index) { return unpack_voxel(sample_packed_voxel_##NAME(chunk_index, voxel_index)).block_id; }   \
-    u32 sample_voxel_id_##NAME(u32 chunk_index, u32vec3 inchunk_voxel_i) { return sample_voxel_id_##NAME(chunk_index, get_voxel_index(inchunk_voxel_i)); } \
-    u32 sample_voxel_id_##NAME(f32vec3 p) {                                                                                                                \
-        i32vec3 voxel_i = get_voxel_i_##NAME(p);                                                                                                           \
-        i32vec3 chunk_i = get_chunk_i(voxel_i);                                                                                                            \
-        return sample_voxel_id_##NAME(get_chunk_index_##NAME(chunk_i), get_inchunk_voxel_i(voxel_i, chunk_i));                                             \
-    }
+#define impl_sample_voxel_id(NAME)                                                                                                                                   \
+    u32 sample_voxel_id_##NAME(u32 chunk_index, u32 voxel_index) { return unpack_voxel(sample_packed_voxel_##NAME(chunk_index, voxel_index)).block_id; }             \
+    u32 sample_voxel_id_##NAME(u32 chunk_index, u32vec3 inchunk_voxel_i) { return unpack_voxel(sample_packed_voxel_##NAME(chunk_index, inchunk_voxel_i)).block_id; } \
+    u32 sample_voxel_id_##NAME(f32vec3 p) { return unpack_voxel(sample_packed_voxel_##NAME(p)).block_id; }
 
 #define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(NAME, N)                                          \
     b32 VoxelUniformityChunk_lod_nonuniform_##NAME##_##N(u32 chunk_index, u32 index, u32 mask) { \

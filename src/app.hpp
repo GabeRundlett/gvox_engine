@@ -25,41 +25,15 @@ struct BrushPipelines {
     daxa::ComputePipelineCompileInfo perframe_comp_info;
     std::shared_ptr<daxa::ComputePipeline> perframe_comp;
 
-    daxa::ComputePipelineCompileInfo chunk_edit_comp_info;
-    std::shared_ptr<daxa::ComputePipeline> chunk_edit_comp;
-
-    daxa::ComputePipelineCompileInfo chunkgen_comp_info;
-    std::shared_ptr<daxa::ComputePipeline> chunkgen_comp;
-
-    daxa::ComputePipelineCompileInfo brush_chunkgen_comp_info;
-    std::shared_ptr<daxa::ComputePipeline> brush_chunkgen_comp;
-
     void compile() {
         if (!compiled) {
             auto perframe_comp_result = pipeline_manager.add_compute_pipeline(perframe_comp_info);
-            auto chunk_edit_comp_result = pipeline_manager.add_compute_pipeline(chunk_edit_comp_info);
-            auto chunkgen_comp_result = pipeline_manager.add_compute_pipeline(chunkgen_comp_info);
-            auto brush_chunkgen_comp_result = pipeline_manager.add_compute_pipeline(brush_chunkgen_comp_info);
-            if (perframe_comp_result.is_ok() &&
-                chunk_edit_comp_result.is_ok() &&
-                chunkgen_comp_result.is_ok() &&
-                brush_chunkgen_comp_result.is_ok()) {
-
+            if (perframe_comp_result.is_ok()) {
                 perframe_comp = perframe_comp_result.value();
-                chunk_edit_comp = chunk_edit_comp_result.value();
-                chunkgen_comp = chunkgen_comp_result.value();
-                brush_chunkgen_comp = brush_chunkgen_comp_result.value();
-
                 compiled = true;
                 valid = true;
             } else if (perframe_comp_result.is_err()) {
                 imgui_console.add_log("[error] %s", perframe_comp_result.message().c_str());
-            } else if (chunk_edit_comp_result.is_err()) {
-                imgui_console.add_log("[error] %s", chunk_edit_comp_result.message().c_str());
-            } else if (chunkgen_comp_result.is_err()) {
-                imgui_console.add_log("[error] %s", chunkgen_comp_result.message().c_str());
-            } else if (brush_chunkgen_comp_result.is_err()) {
-                imgui_console.add_log("[error] %s", brush_chunkgen_comp_result.message().c_str());
             }
         }
     }
@@ -67,18 +41,6 @@ struct BrushPipelines {
     auto &get_perframe_comp() {
         compile();
         return perframe_comp;
-    }
-    auto &get_chunk_edit_comp() {
-        compile();
-        return chunk_edit_comp;
-    }
-    auto &get_chunkgen_comp() {
-        compile();
-        return chunkgen_comp;
-    }
-    auto &get_brush_chunkgen_comp() {
-        compile();
-        return brush_chunkgen_comp;
     }
 };
 

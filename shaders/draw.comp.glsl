@@ -13,7 +13,7 @@ DAXA_USE_PUSH_CONSTANT(DrawCompPush)
 #define RENDER_SHADOWS 1
 #define RENDER_SHADING 1
 #define RENDER_FOG 1
-#define RENDER_BRUSH_OVERLAY 1
+#define RENDER_BRUSH_OVERLAY 0
 #define RENDER_SHAPES 1
 
 b32 get_flag(u32 index) {
@@ -135,8 +135,7 @@ f32vec3 filmic_inv(f32vec3 color) {
 f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col;
-    VoxelSampleInfo chunk_info = get_voxel_sample_info_WORLD(hit_pos - hit_nrm * 0.01);
-    Voxel vox = unpack_voxel(sample_packed_voxel_WORLD(chunk_info.chunk_index, chunk_info.voxel_index));
+    Voxel vox = unpack_voxel(sample_packed_voxel_WORLD(hit_pos - hit_nrm * 0.01));
     col = vox.col;
     // col = hit_nrm;
     // if ((VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage == 3))
@@ -168,8 +167,6 @@ f32vec3 voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     // col = f32vec3(VOXEL_WORLD.chunks_genstate[chunk_info.chunk_index].edit_stage) * 0.2;
 
     if (inside(hit_pos + hit_nrm * 0.1, VOXEL_WORLD.box)) {
-        // col = f32vec3(1, 1, 1);
-
         f32vec3 mask = abs(hit_nrm);
         f32vec3 v_pos = hit_pos * VOXEL_SCL - hit_nrm * 0.01;
         f32vec3 b_pos = floor(v_pos + hit_nrm * 0.1) / VOXEL_SCL;
@@ -201,8 +198,7 @@ f32vec3 brush_voxel_color(f32vec3 hit_pos, f32vec3 hit_nrm) {
     u32 temp_chunk_index;
     f32vec3 col = f32vec3(0);
 
-    VoxelSampleInfo chunk_info = get_voxel_sample_info_BRUSH(hit_pos - VOXEL_BRUSH.box.bound_min - hit_nrm * 0.01);
-    Voxel vox = unpack_voxel(sample_packed_voxel_BRUSH(chunk_info.chunk_index, chunk_info.voxel_index));
+    Voxel vox = unpack_voxel(sample_packed_voxel_BRUSH(hit_pos - VOXEL_BRUSH.box.bound_min - hit_nrm * 0.01));
     col = vox.col;
 
     if (get_flag(GPU_INPUT_FLAG_INDEX_BRUSH_PREVIEW_OVERLAY)) {

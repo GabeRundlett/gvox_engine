@@ -15,5 +15,5 @@ void main() {
     u32 voxel_index = get_voxel_index(voxel_i);
     f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_BRUSH.voxel_chunks[chunk_index].box.bound_min + VOXEL_BRUSH.box.bound_min;
     Voxel result = brush_kernel(voxel_p);
-    VOXEL_BRUSH.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+    // VOXEL_BRUSH.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
 }

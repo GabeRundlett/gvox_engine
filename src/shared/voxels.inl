@@ -56,7 +56,6 @@ struct ChunkGenState {
 
 struct VoxelChunk {
     BoundingBox box;
-    PackedVoxel packed_voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
 
 struct VoxelUniformityChunk {

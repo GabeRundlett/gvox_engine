@@ -37,5 +37,5 @@ void main() {
         result = air_voxel;
     }
 
-    VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+    // VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
 }

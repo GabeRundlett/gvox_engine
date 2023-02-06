@@ -53,7 +53,8 @@ struct StartupCompPush {
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
-};
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
+}; 
 struct OpticalDepthCompPush {
     daxa_ImageViewId image_id;
 };
@@ -72,11 +73,13 @@ struct PerframeCompPush {
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
     daxa_RWBufferPtr(GpuIndirectDispatch) gpu_indirect_dispatch;
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
 };
 struct ChunkOptCompPush {
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
 };
 struct ChunkEditCompPush {
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
@@ -91,6 +94,7 @@ struct DrawCompPush {
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
 
     daxa_ImageViewId raytrace_output_image_id;
     daxa_ImageViewId image_id;
@@ -102,6 +106,7 @@ struct RaytraceCompPush {
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_RWBufferPtr(VoxelWorld) voxel_world;
     daxa_RWBufferPtr(VoxelBrush) voxel_brush;
+    daxa_RWBufferPtr(GpuGVox_CompressedModel) gpu_gvox_model;
 
     daxa_ImageViewId raytrace_output_image_id;
 };

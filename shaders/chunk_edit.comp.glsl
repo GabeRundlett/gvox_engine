@@ -19,6 +19,6 @@ void main() {
     f32vec3 voxel_p = f32vec3(voxel_i) / VOXEL_SCL + VOXEL_WORLD.voxel_chunks[chunk_index].box.bound_min;
     Voxel result = brush_kernel(voxel_p);
     if (result.block_id != BlockID_Debug) {
-        VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
+        // VOXEL_WORLD.voxel_chunks[chunk_index].packed_voxels[voxel_index] = pack_voxel(result);
     }
 }

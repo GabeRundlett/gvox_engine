@@ -512,30 +512,6 @@ auto App::load_brushes() -> std::unordered_map<std::string, Brush> {
                             .push_constant_size = sizeof(PerframeCompPush),
                             .debug_name = APPNAME_PREFIX("perframe_comp_pipeline"),
                         },
-                        .chunk_edit_comp_info = {
-                            .shader_info = {
-                                .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
-                                .compile_options = {.root_paths = {path}},
-                            },
-                            .push_constant_size = sizeof(ChunkEditCompPush),
-                            .debug_name = APPNAME_PREFIX("chunk_edit_comp_pipeline"),
-                        },
-                        .chunkgen_comp_info = {
-                            .shader_info = {
-                                .source = daxa::ShaderFile{"chunkgen.comp.glsl"},
-                                .compile_options = {.root_paths = {path}},
-                            },
-                            .push_constant_size = sizeof(ChunkEditCompPush),
-                            .debug_name = APPNAME_PREFIX("chunkgen_comp_pipeline"),
-                        },
-                        .brush_chunkgen_comp_info = {
-                            .shader_info = {
-                                .source = daxa::ShaderFile{"chunkgen_brush.comp.glsl"},
-                                .compile_options = {.root_paths = {path}},
-                            },
-                            .push_constant_size = sizeof(ChunkEditCompPush),
-                            .debug_name = APPNAME_PREFIX("brush_chunkgen_comp_pipeline"),
-                        },
                     },
                     .settings = {
                         .limit_edit_rate = false,
@@ -1429,6 +1405,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .gpu_globals = this->device.get_device_address(gpu_globals_buffer),
                     .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                     .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                    .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
                 };
                 cmd_list.push_constant(push);
                 cmd_list.dispatch(1, 1, 1);
@@ -1480,6 +1457,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
                 .gpu_indirect_dispatch = this->device.get_device_address(gpu_indirect_dispatch_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             };
             cmd_list.push_constant(push);
             cmd_list.dispatch(1, 1, 1);
@@ -1488,94 +1466,6 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
     });
 
 #if 1
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-        },
-        .task = [this](daxa::TaskRuntime task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            auto &current_brush = brushes.at(chunkgen_brush_key);
-            cmd_list.set_pipeline(*current_brush.pipelines.get_chunkgen_comp());
-            u64 brush_settings_id = 0;
-            if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
-            cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.get_device_address(gpu_globals_buffer),
-                .gpu_input = this->device.get_device_address(gpu_input_buffer),
-                .brush_settings = brush_settings_id,
-                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
-            });
-            cmd_list.dispatch((CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8, (CHUNK_SIZE + 7) / 8);
-        },
-        .debug_name = APPNAME_PREFIX("Chunkgen (Compute)"),
-    });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-        },
-        .task = [this](daxa::TaskRuntime task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            auto &current_brush = brushes.at(current_brush_key);
-            // cmd_list.set_pipeline(*brush_chunkgen_comp_pipeline);
-            cmd_list.set_pipeline(*current_brush.pipelines.get_brush_chunkgen_comp());
-            u64 brush_settings_id = 0;
-            if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
-            cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.get_device_address(gpu_globals_buffer),
-                .gpu_input = this->device.get_device_address(gpu_input_buffer),
-                .brush_settings = brush_settings_id,
-                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
-            });
-            cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_chunk_dispatch)});
-        },
-        .debug_name = APPNAME_PREFIX("Brush Chunkgen (Compute)"),
-    });
-    new_task_list.add_task({
-        .used_buffers = {
-            {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_brush_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_voxel_world_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
-            {task_gpu_voxel_brush_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gpu_indirect_dispatch_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
-        },
-        .task = [this](daxa::TaskRuntime task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            auto &current_brush = brushes.at(current_brush_key);
-            // cmd_list.set_pipeline(*chunk_edit_comp_pipeline);
-            cmd_list.set_pipeline(*current_brush.pipelines.get_chunk_edit_comp());
-            u64 brush_settings_id = 0;
-            if (current_brush.custom_buffer_size > 0)
-                brush_settings_id = this->device.get_device_address(current_brush.custom_brush_settings_buffer);
-            cmd_list.push_constant(ChunkEditCompPush{
-                .gpu_globals = device.get_device_address(gpu_globals_buffer),
-                .gpu_input = device.get_device_address(gpu_input_buffer),
-                .brush_settings = brush_settings_id,
-                .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
-                .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
-                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
-            });
-            cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, chunk_edit_dispatch)});
-        },
-        .debug_name = APPNAME_PREFIX("Chunk Edit (Compute)"),
-    });
     new_task_list.add_task({
         .used_buffers = {
             {task_gpu_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
@@ -1590,6 +1480,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch)});
         },
@@ -1609,6 +1500,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch)});
         },
@@ -1627,6 +1519,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x2x4_dispatch)});
         },
@@ -1645,6 +1538,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_globals = device.get_device_address(gpu_globals_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
             });
             cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, brush_subchunk_x8up_dispatch)});
         },
@@ -1684,6 +1578,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .gpu_input = device.get_device_address(gpu_input_buffer),
                     .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                     .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                    .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
                     .raytrace_output_image_id = raytrace_output_image.default_view(),
                 });
                 cmd_list.dispatch_indirect({.indirect_buffer = gpu_indirect_dispatch_buffer, .offset = offsetof(GpuIndirectDispatch, raytrace_dispatch)});
@@ -1714,6 +1609,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 .gpu_input = device.get_device_address(gpu_input_buffer),
                 .voxel_world = this->device.get_device_address(gpu_voxel_world_buffer),
                 .voxel_brush = this->device.get_device_address(gpu_voxel_brush_buffer),
+                .gpu_gvox_model = device.get_device_address(gvox_model_buffer),
                 .raytrace_output_image_id = raytrace_output_image.default_view(),
                 .image_id = render_image.default_view(),
                 .optical_depth_image_id = optical_depth_image.default_view(),

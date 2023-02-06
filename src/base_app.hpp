@@ -51,6 +51,7 @@ struct BaseApp : AppWindow<T> {
             }
             return score;
         },
+        .enable_buffer_device_address_capture_replay = false,
         .debug_name = APPNAME_PREFIX("device"),
     });
 
@@ -210,7 +211,7 @@ struct BaseApp : AppWindow<T> {
     auto record_loop_task_list() -> daxa::TaskList {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
-            // .dont_use_split_barriers = true,
+            .use_split_barriers = false,
             .swapchain = swapchain,
             .debug_name = APPNAME_PREFIX("task_list"),
         });
