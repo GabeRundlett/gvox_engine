@@ -6,8 +6,8 @@ DAXA_USE_PUSH_CONSTANT(StartupCompPush)
 #include <utils/voxel.glsl>
 
 void startup_player() {
-    f32 p_offset = (WORLD_BLOCK_NX + WORLD_BLOCK_NZ) / 2 / VOXEL_SCL / 2;
-    PLAYER.pos = f32vec3(-p_offset, -p_offset, WORLD_BLOCK_NZ / VOXEL_SCL / 2 * 2.5) + 0.001;
+    f32 p_offset = (WORLD_BLOCK_NX + WORLD_BLOCK_NZ) / VOXEL_SCL / 64;
+    PLAYER.pos = f32vec3(-p_offset, -p_offset, WORLD_BLOCK_NZ / VOXEL_SCL / 2) + 0.001;
     PLAYER.vel = f32vec3(0, 0, 0);
     PLAYER.rot = f32vec3(-0.53, 0, PI / 4);
 

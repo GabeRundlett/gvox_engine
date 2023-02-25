@@ -9,7 +9,6 @@
 #include <soundio/soundio.h>
 
 #include <imgui_stdlib.h>
-#include <imnodes.h>
 
 static constexpr std::array<std::string_view, GAME_KEY_LAST + 1> control_strings{
     "Move Forward",
@@ -185,7 +184,7 @@ App::App()
       })},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"},
       brushes{load_brushes()},
-      chunkgen_brush_key{absolute(std::filesystem::path("assets/brushes/model")).string()},
+      chunkgen_brush_key{absolute(std::filesystem::path("assets/brushes/terrain")).string()},
       current_brush_key{absolute(std::filesystem::path("assets/brushes/sphere")).string()},
       last_seen_brushes_folder_update{std::chrono::file_clock::now()},
       keys{},
@@ -199,17 +198,17 @@ App::App()
       },
       loop_task_list{record_loop_task_list()} {
 
-    ImNodes::CreateContext();
+    // ImNodes::CreateContext();
 
     // gvox_model_path = "sponge.vox";
     // gvox_model_type = "magicavoxel";
 
-    gvox_model_path = "half-life-c2a5w.gvox";
+    gvox_model_path = "phantom_mansion.gvox";
     gvox_model_type = "gvox";
 
-    gvox_ctx = gvox_create_context();
-    gvox_push_root_path(gvox_ctx, "assets");
-    gvox_push_root_path(gvox_ctx, data_directory.string().c_str());
+    // gvox_ctx = gvox_create_context();
+    // gvox_push_root_path(gvox_ctx, "assets");
+    // gvox_push_root_path(gvox_ctx, data_directory.string().c_str());
 
     // gvox_push_root_path(gvox_ctx, "C:/dev/projects/c++/gvox/tests/simple");
 
@@ -564,8 +563,6 @@ void App::reload_brushes() {
 }
 
 App::~App() {
-    ImNodes::DestroyContext();
-    gvox_destroy_context(gvox_ctx);
     while (thread_pool.busy()) {
         std::this_thread::sleep_for(1ms);
     }
@@ -1190,15 +1187,20 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     file = std::ifstream("assets/" + gvox_model_path, std::ios::binary);
                 }
                 if (!file.is_open()) {
+                    file = std::ifstream(data_directory / gvox_model_path, std::ios::binary);
+                }
+                if (!file.is_open()) {
                     imgui_console.add_log("[error] Failed to load the model");
                     should_upload_gvox_model = false;
                     return;
                 }
-                GVoxHeader file_header;
-                file.read((char *)&file_header, sizeof(file_header));
+                uint64_t format_name_size;
+                uint64_t payload_size;
+                file.read((char *)&format_name_size, sizeof(format_name_size));
+                file.read((char *)&payload_size, sizeof(payload_size));
                 auto format_str = std::string{};
-                format_str.resize(file_header.format_name_size);
-                file.read(format_str.data(), file_header.format_name_size);
+                format_str.resize(format_name_size);
+                file.read(format_str.data(), format_name_size);
                 if (format_str != "gvox_u32_palette") {
                     imgui_console.add_log("[error] Bad format. Should be gvox_u32_palette");
                     should_upload_gvox_model = false;
@@ -1210,7 +1212,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     runtime.remove_runtime_buffer(task_gvox_model_buffer, gvox_model_buffer);
                     cmd_list.destroy_buffer_deferred(gvox_model_buffer);
                 }
-                auto gvox_model_size = static_cast<u32>(file_header.payload_size);
+                auto gvox_model_size = static_cast<u32>(payload_size);
                 gvox_model_buffer = device.create_buffer({
                     .size = gvox_model_size,
                     .debug_name = APPNAME_PREFIX("gvox_model_buffer"),
@@ -1226,7 +1228,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                 });
                 cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
                 char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer);
-                file.read(buffer_ptr, static_cast<std::streamsize>(file_header.payload_size));
+                file.read(buffer_ptr, static_cast<std::streamsize>(payload_size));
 
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gvox_model_buffer,
@@ -1234,6 +1236,7 @@ void App::record_tasks(daxa::TaskList &new_task_list) {
                     .size = gvox_model_size,
                 });
                 should_upload_gvox_model = false;
+                gpu_input.has_valid_model = true;
             }
         },
         .debug_name = APPNAME_PREFIX("Upload GVOX Model"),

@@ -2,18 +2,16 @@ cmake_minimum_required(VERSION 3.21)
 
 # execute_process(COMMAND vcpkg x-update-baseline)
 
-project(gabe_voxel_game VERSION 0.1.12)
+project(gabe_voxel_game VERSION 0.1.13)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(daxa CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(gvox CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 find_package(libsoundio CONFIG REQUIRED)
-find_package(imnodes CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
@@ -28,8 +26,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     sago::platform_folders
     glm::glm
     glfw
-    gvox::gvox
-    imnodes::imnodes
 )
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})

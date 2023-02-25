@@ -29,6 +29,9 @@ u32 ceil_log2(u32 x) {
 }
 
 void custom_brush_kernel(in BrushInput brush, inout Voxel result) {
+    if (!INPUT.has_valid_model) {
+        return;
+    }
     b32 should_edit = true;
 
     u32vec3 region_n = u32vec3(MODEL.node_header.region_count_x, MODEL.node_header.region_count_y, MODEL.node_header.region_count_z);

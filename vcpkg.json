@@ -4,15 +4,14 @@
   "dependencies": [
     "daxa",
     "fmt",
-    "glfw3",
-    "glm",
     {
-      "name": "gvox",
+      "name": "glfw3",
       "features": [
-        "file-io"
+        "xlib",
+        "wayland"
       ]
     },
-    "imnodes",
+    "glm",
     "stb",
     "nlohmann-json",
     "platform-folders",
@@ -25,11 +24,19 @@
       ]
     }
   ],
-  "builtin-baseline": "877e3dc2323a4d4c3c75e7168c22a0c4e921d4db",
+  "builtin-baseline": "959f8e317599dd439bc86f5cb5f0aca648d88c3f",
   "overrides": [
     {
       "name": "glfw3",
       "version-string": "custom"
     }
-  ]
+  ],
+  "vcpkg-configuration": {
+    "overlay-ports": [
+      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-port",
+      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/dxc",
+      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/glfw3",
+      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/fsr2"
+    ]
+  }
 }

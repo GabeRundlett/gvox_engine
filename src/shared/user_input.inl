@@ -64,4 +64,5 @@ struct GpuInput {
     Settings settings;
     MouseInput mouse;
     KeyboardInput keyboard;
+    b32 has_valid_model;
 };

@@ -8,8 +8,6 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <gvox/gvox.h>
-
 struct BrushSettings {
     bool limit_edit_rate;
     f32 edit_rate;
@@ -197,7 +195,6 @@ struct App : BaseApp<App> {
     bool show_tool_menu = true;
     bool show_tool_settings_menu = true;
 
-    GVoxContext *gvox_ctx;
     daxa::BufferId gvox_model_buffer = {};
     daxa::TaskBufferId task_gvox_model_buffer = {};
     std::string gvox_model_path, gvox_model_type;
