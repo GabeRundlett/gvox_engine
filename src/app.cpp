@@ -36,8 +36,8 @@ auto default_gpu_input() -> GpuInput {
     return {
         .settings{
             .fov = 90.0f,
-            .jitter_scl = 1.0f,
-            .frame_blending = 0.3f,
+            .jitter_scl = 0.0f,
+            .frame_blending = 0.0f,
             .sensitivity = 1.0f,
             .daylight_cycle_time = std::numbers::pi_v<f32> * 0.6f,
         },

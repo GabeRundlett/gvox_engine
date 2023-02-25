@@ -51,6 +51,9 @@ struct BaseApp : AppWindow<T> {
             }
             return score;
         },
+#if defined(NDEBUG)
+        .enable_buffer_device_address_capture_replay = false,
+#endif
         .debug_name = APPNAME_PREFIX("device"),
     });
 
