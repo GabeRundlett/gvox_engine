@@ -1,9 +1,14 @@
 {
-  "name": "gabecraft",
+  "name": "my-app",
   "version": "0.1.0",
   "dependencies": [
     "daxa",
+    "gvox",
     "fmt",
+    "stb",
+    "nlohmann-json",
+    "platform-folders",
+    "nativefiledialog",
     {
       "name": "glfw3",
       "features": [
@@ -11,11 +16,6 @@
         "wayland"
       ]
     },
-    "glm",
-    "stb",
-    "nlohmann-json",
-    "platform-folders",
-    "libsoundio",
     {
       "name": "imgui",
       "features": [
@@ -33,10 +33,11 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-port",
-      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/dxc",
-      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/glfw3",
-      "C:/dev/projects/cpp/Daxa/cmake/vcpkg-overlay-ports/fsr2"
+      "../gvox/cmake/vcpkg-port",
+      "../Daxa/cmake/vcpkg-port",
+      "../Daxa/cmake/vcpkg-overlay-ports/dxc",
+      "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
+      "../Daxa/cmake/vcpkg-overlay-ports/fsr2"
     ]
   }
 }
