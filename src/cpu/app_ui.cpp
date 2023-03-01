@@ -495,6 +495,14 @@ void AppUi::settings_ui() {
             if (ImGui::SliderFloat("Resolution Scale", &settings.render_res_scl, 0.1f, 2.0f)) {
                 needs_saving = true;
             }
+            {
+                auto temp_int = static_cast<int32_t>(1u << settings.log2_chunks_per_axis);
+                ImGui::InputInt("Render Distance", &temp_int, (temp_int + 1) / 2);
+                temp_int = std::max(temp_int, 1);
+                settings.log2_chunks_per_axis = static_cast<uint32_t>(round(log2(static_cast<double>(temp_int))));
+                should_upload_settings = true;
+                needs_saving = true;
+            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("UI")) {
@@ -542,12 +550,12 @@ void AppUi::settings_ui() {
             rescale_ui();
             needs_saving = true;
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            settings.reset_default();
-            rescale_ui();
-            needs_saving = true;
-        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Reset")) {
+        settings.reset_default();
+        rescale_ui();
+        needs_saving = true;
     }
     ImGui::End();
 }

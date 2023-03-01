@@ -10,6 +10,7 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["camera_fov"] = camera_fov;
     json["mouse_sensitivity"] = mouse_sensitivity;
     json["render_res_scl"] = render_res_scl;
+    json["log2_chunks_per_axis"] = log2_chunks_per_axis;
     json["show_debug_info"] = show_debug_info;
     json["show_console"] = show_console;
     json["show_help"] = show_help;
@@ -43,6 +44,7 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("camera_fov", camera_fov);
     grab_value("mouse_sensitivity", mouse_sensitivity);
     grab_value("render_res_scl", render_res_scl);
+    grab_value("log2_chunks_per_axis", log2_chunks_per_axis);
     grab_value("show_debug_info", show_debug_info);
     grab_value("show_console", show_console);
     grab_value("show_help", show_help);
@@ -68,6 +70,7 @@ void AppSettings::clear() {
     camera_fov = 90.0f;
     mouse_sensitivity = 1.0f;
     render_res_scl = 1.0f;
+    log2_chunks_per_axis = 3;
 
     show_debug_info = false;
     show_console = false;
