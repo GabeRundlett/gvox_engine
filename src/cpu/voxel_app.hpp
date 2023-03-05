@@ -12,6 +12,7 @@ using namespace daxa::math_operators;
 #include <shared/shared.inl>
 
 #include <chrono>
+#include <future>
 
 using BDA = daxa::BufferDeviceAddress;
 
@@ -65,6 +66,11 @@ struct GpuResources {
     void destroy(daxa::Device &device) const;
 };
 
+struct GvoxModelData {
+    size_t size = 0;
+    uint8_t *ptr = nullptr;
+};
+
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
 
@@ -106,8 +112,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     Clock::time_point prev_time;
     f32 render_res_scl{1.0f};
     GvoxContext *gvox_ctx;
-    bool has_model = false;
     bool needs_vram_calc = true;
+
+    bool has_model = false;
+    std::future<GvoxModelData> gvox_model_data_future;
+    bool model_is_loading = false;
 
     VoxelApp();
     ~VoxelApp();
@@ -127,6 +136,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void run_startup();
     void upload_settings();
     void upload_model();
+    auto load_gvox_data() -> GvoxModelData;
 
     auto record_main_task_list() -> daxa::TaskList;
 };

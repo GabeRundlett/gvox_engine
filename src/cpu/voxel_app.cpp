@@ -11,6 +11,8 @@
 #define APPNAME "Voxel App"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
+using namespace std::chrono_literals;
+
 void GpuInputUploadTransferTask::record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId input_buffer, GpuInput &gpu_input) {
     auto staging_input_buffer = device.create_buffer({
         .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -209,7 +211,7 @@ VoxelApp::VoxelApp()
       swapchain{device.create_swapchain({
           .native_window = AppWindow::get_native_handle(),
           .native_window_platform = AppWindow::get_native_platform(),
-          .present_mode = daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK,
+          .present_mode = daxa::PresentMode::IMMEDIATE,
           .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
           .debug_name = APPNAME_PREFIX("swapchain"),
       })},
@@ -341,11 +343,83 @@ auto VoxelApp::update() -> bool {
 
         on_update();
     } else {
-        using namespace std::chrono_literals;
         std::this_thread::sleep_for(1ms);
     }
 
     return false;
+}
+
+auto VoxelApp::load_gvox_data() -> GvoxModelData {
+    auto result = GvoxModelData{};
+    auto file = std::ifstream(ui.gvox_model_path, std::ios::binary);
+    if (!file.is_open()) {
+        ui.console.add_log("[error] Failed to load the model");
+        ui.should_upload_gvox_model = false;
+        return result;
+    }
+    file.seekg(0, std::ios_base::end);
+    auto temp_gvox_model_size = static_cast<u32>(file.tellg());
+    auto temp_gvox_model = std::vector<uint8_t>{};
+    temp_gvox_model.resize(temp_gvox_model_size);
+    {
+        time_t start = clock();
+        file.seekg(0, std::ios_base::beg);
+        file.read(reinterpret_cast<char *>(temp_gvox_model.data()), static_cast<std::streamsize>(temp_gvox_model_size));
+        file.close();
+        time_t end = clock();
+        double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        ui.console.add_log("(pulling file into memory: %fs)", cpu_time_used);
+    }
+    GvoxByteBufferInputAdapterConfig i_config = {
+        .data = temp_gvox_model.data(),
+        .size = temp_gvox_model_size,
+    };
+    GvoxByteBufferOutputAdapterConfig o_config = {
+        .out_size = &result.size,
+        .out_byte_buffer_ptr = &result.ptr,
+        .allocate = NULL,
+    };
+    void *i_config_ptr = nullptr;
+    auto voxlap_config = GvoxVoxlapParseAdapterConfig{
+        .size_x = 512,
+        .size_y = 512,
+        .size_z = 64,
+        .make_solid = false,
+        .is_ace_of_spades = true,
+    };
+    char const *gvox_model_type = "gvox_palette";
+    if (ui.gvox_model_path.has_extension()) {
+        auto ext = ui.gvox_model_path.extension();
+        if (ext == ".vox") {
+            gvox_model_type = "magicavoxel";
+        }
+        if (ext == ".vxl") {
+            i_config_ptr = &voxlap_config;
+            gvox_model_type = "voxlap";
+        }
+    }
+    GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
+    GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
+    GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);
+    GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
+
+    {
+        time_t start = clock();
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            nullptr,
+            // &ui.gvox_region_range,
+            GVOX_CHANNEL_BIT_COLOR);
+        time_t end = clock();
+        double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        ui.console.add_log("%fs, new size: %llu bytes", cpu_time_used, result.size);
+    }
+
+    gvox_destroy_adapter_context(i_ctx);
+    gvox_destroy_adapter_context(o_ctx);
+    gvox_destroy_adapter_context(p_ctx);
+    gvox_destroy_adapter_context(s_ctx);
+    return result;
 }
 
 void VoxelApp::on_update() {
@@ -382,7 +456,14 @@ void VoxelApp::on_update() {
     }
 
     if (ui.should_upload_gvox_model) {
-        upload_model();
+        if (!model_is_loading) {
+            gvox_model_data_future = std::async(std::launch::async, &VoxelApp::load_gvox_data, this);
+            model_is_loading = true;
+        }
+        if (model_is_loading && gvox_model_data_future.wait_for(0.01s) == std::future_status::ready) {
+            upload_model();
+            model_is_loading = false;
+        }
     }
 
     if (needs_vram_calc) {
@@ -610,83 +691,14 @@ void VoxelApp::upload_model() {
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            auto file = std::ifstream(ui.gvox_model_path, std::ios::binary);
-            if (!file.is_open()) {
-                ui.console.add_log("[error] Failed to load the model");
-                ui.should_upload_gvox_model = false;
-                return;
-            }
-            size_t gvox_model_size = 0;
-            uint8_t *gvox_model_data = nullptr;
-            {
-                file.seekg(0, std::ios_base::end);
-                auto temp_gvox_model_size = static_cast<u32>(file.tellg());
-                auto temp_gvox_model = std::vector<uint8_t>{};
-                temp_gvox_model.resize(temp_gvox_model_size);
-                {
-                    time_t start = clock();
-                    file.seekg(0, std::ios_base::beg);
-                    file.read(reinterpret_cast<char *>(temp_gvox_model.data()), static_cast<std::streamsize>(temp_gvox_model_size));
-                    file.close();
-                    time_t end = clock();
-                    double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-                    ui.console.add_log("(pulling file into memory: %fs)", cpu_time_used);
-                }
-                GvoxByteBufferInputAdapterConfig i_config = {
-                    .data = temp_gvox_model.data(),
-                    .size = temp_gvox_model_size,
-                };
-                GvoxByteBufferOutputAdapterConfig o_config = {
-                    .out_size = &gvox_model_size,
-                    .out_byte_buffer_ptr = &gvox_model_data,
-                    .allocate = NULL,
-                };
-                void *i_config_ptr = nullptr;
-                auto voxlap_config = GvoxVoxlapParseAdapterConfig{
-                    .size_x = 512,
-                    .size_y = 512,
-                    .size_z = 64,
-                    .make_solid = false,
-                    .is_ace_of_spades = true,
-                };
-                char const *gvox_model_type = "gvox_palette";
-                if (ui.gvox_model_path.has_extension()) {
-                    auto ext = ui.gvox_model_path.extension();
-                    if (ext == ".vox") {
-                        gvox_model_type = "magicavoxel";
-                    }
-                    if (ext == ".vxl") {
-                        i_config_ptr = &voxlap_config;
-                        gvox_model_type = "voxlap";
-                    }
-                }
-                GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
-                GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
-                GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);
-                GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
-
-                {
-                    time_t start = clock();
-                    gvox_blit_region(
-                        i_ctx, o_ctx, p_ctx, s_ctx,
-                        &ui.gvox_region_range,
-                        GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID);
-                    time_t end = clock();
-                    double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-                    ui.console.add_log("%fs, new size: %llu bytes", cpu_time_used, gvox_model_size);
-                }
-
-                gvox_destroy_adapter_context(i_ctx);
-                gvox_destroy_adapter_context(o_ctx);
-                gvox_destroy_adapter_context(p_ctx);
-                gvox_destroy_adapter_context(s_ctx);
-            }
+            gvox_model_data_future.wait();
+            auto gvox_model_data = gvox_model_data_future.get();
             if (!gpu_resources.gvox_model_buffer.is_empty()) {
                 main_task_list.remove_runtime_buffer(task_gvox_model_buffer, gpu_resources.gvox_model_buffer);
                 cmd_list.destroy_buffer_deferred(gpu_resources.gvox_model_buffer);
             }
             gpu_resources.gvox_model_buffer = device.create_buffer({
-                .size = static_cast<u32>(gvox_model_size),
+                .size = static_cast<u32>(gvox_model_data.size),
                 .debug_name = "gvox_model_buffer",
             });
             main_task_list.add_runtime_buffer(task_gvox_model_buffer, gpu_resources.gvox_model_buffer);
@@ -695,19 +707,19 @@ void VoxelApp::upload_model() {
             });
             auto staging_gvox_model_buffer = device.create_buffer({
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                .size = static_cast<u32>(gvox_model_size),
+                .size = static_cast<u32>(gvox_model_data.size),
                 .debug_name = APPNAME_PREFIX("staging_gvox_model_buffer"),
             });
             cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
             char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer);
-            std::copy(gvox_model_data, gvox_model_data + gvox_model_size, buffer_ptr);
-            if (gvox_model_data) {
-                free(gvox_model_data);
+            std::copy(gvox_model_data.ptr, gvox_model_data.ptr + gvox_model_data.size, buffer_ptr);
+            if (gvox_model_data.ptr) {
+                free(gvox_model_data.ptr);
             }
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_gvox_model_buffer,
                 .dst_buffer = gpu_resources.gvox_model_buffer,
-                .size = static_cast<u32>(gvox_model_size),
+                .size = static_cast<u32>(gvox_model_data.size),
             });
         },
         .debug_name = APPNAME_PREFIX("upload_model"),

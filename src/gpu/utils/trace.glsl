@@ -113,7 +113,7 @@ void trace(daxa_BufferPtr(GpuGvoxModel) model_ptr, in out f32vec3 ray_pos, f32ve
 }
 
 f32vec3 scene_nrm(f32vec3 pos) {
-    // return sdmap_nrm(pos);
+    // return -sdmap_nrm(pos);
     vec3 d = fract(pos * VOXEL_SCL) - .5;
     vec3 ad = abs(d);
     float m = max(max(ad.x, ad.y), ad.z);
