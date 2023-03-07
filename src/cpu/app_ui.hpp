@@ -69,6 +69,7 @@ struct AppUi {
     bool paused = true;
     bool show_settings = false;
     bool should_run_startup = true;
+    bool should_recreate_voxel_buffers = true;
     bool autosave_override = false;
 
     bool should_upload_settings = true;

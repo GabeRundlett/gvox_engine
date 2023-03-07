@@ -499,9 +499,13 @@ void AppUi::settings_ui() {
                 auto temp_int = static_cast<int32_t>(1u << settings.log2_chunks_per_axis);
                 ImGui::InputInt("Render Distance", &temp_int, (temp_int + 1) / 2);
                 temp_int = std::max(temp_int, 1);
-                settings.log2_chunks_per_axis = static_cast<uint32_t>(round(log2(static_cast<double>(temp_int))));
-                should_upload_settings = true;
-                needs_saving = true;
+                auto new_log2_chunks_per_axis = static_cast<uint32_t>(round(log2(static_cast<double>(temp_int))));
+                if (new_log2_chunks_per_axis != settings.log2_chunks_per_axis) {
+                    settings.log2_chunks_per_axis = new_log2_chunks_per_axis;
+                    should_recreate_voxel_buffers = true;
+                    should_upload_settings = true;
+                    needs_saving = true;
+                }
             }
             ImGui::EndTabItem();
         }

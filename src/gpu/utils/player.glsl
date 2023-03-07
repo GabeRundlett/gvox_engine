@@ -4,17 +4,24 @@
 
 #include <utils/math.glsl>
 
+#define SETTINGS deref(settings_ptr)
 #define PLAYER deref(globals_ptr).player
-void player_startup(daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
+void player_startup(
+    daxa_BufferPtr(GpuSettings) settings_ptr,
+    daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(0, 0, 1);
     PLAYER.rot.x = -PI / 2;
 }
 #undef PLAYER
+#undef SETTINGS
 
-#define PLAYER deref(globals_ptr).player
-#define INPUT deref(input_ptr)
 #define SETTINGS deref(settings_ptr)
-void player_perframe(daxa_BufferPtr(GpuSettings) settings_ptr, daxa_BufferPtr(GpuInput) input_ptr, daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
+#define INPUT deref(input_ptr)
+#define PLAYER deref(globals_ptr).player
+void player_perframe(
+    daxa_BufferPtr(GpuSettings) settings_ptr,
+    daxa_BufferPtr(GpuInput) input_ptr,
+    daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     const f32 mouse_sens = 1.0;
 
     PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;

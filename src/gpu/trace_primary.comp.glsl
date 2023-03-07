@@ -4,6 +4,7 @@
 
 DAXA_USE_PUSH_CONSTANT(TracePrimaryComputePush)
 
+#define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -22,7 +23,9 @@ void main() {
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
     f32vec3 ray_pos = create_view_pos(daxa_push_constant.gpu_globals);
     f32vec3 ray_dir = create_view_dir(daxa_push_constant.gpu_globals, uv);
-    trace(daxa_push_constant.gpu_gvox_model, ray_pos, ray_dir);
+    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+
+    trace(daxa_push_constant.gpu_gvox_model, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir);
 
     imageStore(
         daxa_push_constant.render_pos_image_id,
@@ -30,3 +33,4 @@ void main() {
         f32vec4(ray_pos, 0));
 }
 #undef INPUT
+#undef SETTINGS

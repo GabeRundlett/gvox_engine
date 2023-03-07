@@ -13,7 +13,7 @@ struct VoxelChunkUniformity {
 };
 
 struct VoxelChunk {
+    u32 edit_stage;
     VoxelChunkUniformity uniformity;
 };
-
 DAXA_ENABLE_BUFFER_PTR(VoxelChunk)

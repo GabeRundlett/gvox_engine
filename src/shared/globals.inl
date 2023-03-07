@@ -17,7 +17,20 @@ struct Player {
     f32 max_speed;
 };
 
+#define MAX_CHUNK_UPDATES 10
+struct VoxelWorld {
+    u32vec3 chunk_update_is[MAX_CHUNK_UPDATES];
+    u32 chunk_update_n;
+};
+
+struct GpuIndirectDispatch {
+    u32vec3 subchunk_x2x4_dispatch;
+    u32vec3 subchunk_x8up_dispatch;
+};
+
 struct GpuGlobals {
     Player player;
+    VoxelWorld voxel_world;
+    GpuIndirectDispatch indirect_dispatch;
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
