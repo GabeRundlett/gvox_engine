@@ -34,6 +34,7 @@ void voxel_world_perframe(
 
     VOXEL_WORLD.chunk_update_n = 0;
 
+    INDIRECT.chunk_edit_dispatch = u32vec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
     INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 0);
     INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 0);
 }

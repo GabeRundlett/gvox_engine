@@ -38,6 +38,7 @@ void main() {
     if (CHUNKS(chunk_index).edit_stage == 0) {
         u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
         if (prev_update_n < MAX_CHUNK_UPDATES) {
+            atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
             atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
             atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
             CHUNKS(chunk_index).edit_stage = 1;

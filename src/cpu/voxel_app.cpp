@@ -29,7 +29,10 @@ void GpuInputUploadTransferTask::record(daxa::Device &device, daxa::CommandList 
     });
 }
 
-void StartupTask::record(daxa::CommandList &cmd_list, BDA globals_buffer_ptr, BDA voxel_chunks_buffer_ptr) const {
+void StartupTask::record(
+    daxa::CommandList &cmd_list,
+    BDA globals_buffer_ptr,
+    BDA voxel_chunks_buffer_ptr) const {
     if (!pipeline) {
         return;
     }
@@ -41,7 +44,13 @@ void StartupTask::record(daxa::CommandList &cmd_list, BDA globals_buffer_ptr, BD
     cmd_list.dispatch(1, 1, 1);
 }
 
-void PerframeTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA voxel_chunks_buffer_ptr) const {
+void PerframeTask::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    GpuAllocator gpu_allocator) const {
     if (!pipeline) {
         return;
     }
@@ -51,11 +60,18 @@ void PerframeTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, 
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
+        .gpu_allocator = gpu_allocator,
     });
     cmd_list.dispatch(1, 1, 1);
 }
 
-void PerChunkTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA voxel_chunks_buffer_ptr, u32vec3 chunk_n) const {
+void PerChunkTask::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    u32vec3 chunk_n) const {
     if (!pipeline) {
         return;
     }
@@ -69,7 +85,37 @@ void PerChunkTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, 
     cmd_list.dispatch((chunk_n.x + 7) / 8, (chunk_n.y + 7) / 8, (chunk_n.z + 7) / 8);
 }
 
-void ChunkOpt_x2x4::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA gvox_model_buffer_ptr, BDA voxel_chunks_buffer_ptr, daxa::BufferId globals_buffer_id) const {
+void ChunkEdit::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA temp_voxel_chunks_ptr,
+    daxa::BufferId globals_buffer_id) const {
+    if (!pipeline) {
+        return;
+    }
+    cmd_list.set_pipeline(*pipeline);
+    cmd_list.push_constant(ChunkEditComputePush{
+        .gpu_settings = settings_buffer_ptr,
+        .gpu_input = input_buffer_ptr,
+        .gpu_globals = globals_buffer_ptr,
+        .temp_voxel_chunks = temp_voxel_chunks_ptr,
+    });
+    cmd_list.dispatch_indirect({
+        .indirect_buffer = globals_buffer_id,
+        .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+    });
+}
+
+void ChunkOpt_x2x4::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA temp_voxel_chunks_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    daxa::BufferId globals_buffer_id) const {
     if (!pipeline) {
         return;
     }
@@ -78,7 +124,7 @@ void ChunkOpt_x2x4::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr,
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
-        .gpu_gvox_model = gvox_model_buffer_ptr,
+        .temp_voxel_chunks = temp_voxel_chunks_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
     });
     cmd_list.dispatch_indirect({
@@ -87,7 +133,14 @@ void ChunkOpt_x2x4::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr,
     });
 }
 
-void ChunkOpt_x8up::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA gvox_model_buffer_ptr, BDA voxel_chunks_buffer_ptr, daxa::BufferId globals_buffer_id) const {
+void ChunkOpt_x8up::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA temp_voxel_chunks_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    daxa::BufferId globals_buffer_id) const {
     if (!pipeline) {
         return;
     }
@@ -96,7 +149,7 @@ void ChunkOpt_x8up::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr,
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
-        .gpu_gvox_model = gvox_model_buffer_ptr,
+        .temp_voxel_chunks = temp_voxel_chunks_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
     });
     cmd_list.dispatch_indirect({
@@ -105,7 +158,41 @@ void ChunkOpt_x8up::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr,
     });
 }
 
-void TracePrimaryTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA gvox_model_buffer_ptr, BDA voxel_chunks_buffer_ptr, daxa::ImageId render_image, u32vec2 render_size) const {
+void ChunkAlloc::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA temp_voxel_chunks_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    GpuAllocator gpu_allocator,
+    daxa::BufferId globals_buffer_id) const {
+    if (!pipeline) {
+        return;
+    }
+    cmd_list.set_pipeline(*pipeline);
+    cmd_list.push_constant(ChunkAllocComputePush{
+        .gpu_settings = settings_buffer_ptr,
+        .gpu_globals = globals_buffer_ptr,
+        .temp_voxel_chunks = temp_voxel_chunks_ptr,
+        .voxel_chunks = voxel_chunks_buffer_ptr,
+        .gpu_allocator = gpu_allocator,
+    });
+    cmd_list.dispatch_indirect({
+        .indirect_buffer = globals_buffer_id,
+        // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
+        .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+    });
+}
+
+void TracePrimaryTask::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA gpu_heap_buffer_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    daxa::ImageId render_image,
+    u32vec2 render_size) const {
     if (!pipeline) {
         return;
     }
@@ -114,14 +201,23 @@ void TracePrimaryTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_p
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
-        .gpu_gvox_model = gvox_model_buffer_ptr,
+        .gpu_heap = gpu_heap_buffer_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
         .render_pos_image_id = render_image.default_view(),
     });
     cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
 }
 
-void ColorSceneTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA gvox_model_buffer_ptr, BDA voxel_chunks_buffer_ptr, daxa::ImageId render_pos_image, daxa::ImageId render_col_image, u32vec2 render_size) const {
+void ColorSceneTask::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA gpu_heap_buffer_ptr,
+    BDA voxel_chunks_buffer_ptr,
+    daxa::ImageId render_pos_image,
+    daxa::ImageId render_col_image,
+    u32vec2 render_size) const {
     if (!pipeline) {
         return;
     }
@@ -130,7 +226,7 @@ void ColorSceneTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
-        .gpu_gvox_model = gvox_model_buffer_ptr,
+        .gpu_heap = gpu_heap_buffer_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
         .render_pos_image_id = render_pos_image.default_view(),
         .render_col_image_id = render_col_image.default_view(),
@@ -138,7 +234,15 @@ void ColorSceneTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr
     cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
 }
 
-void PostprocessingTask::record(daxa::CommandList &cmd_list, BDA settings_buffer_ptr, BDA input_buffer_ptr, BDA globals_buffer_ptr, BDA gvox_model_buffer_ptr, BDA voxel_chunks_buffer_ptr, daxa::ImageId render_col_image, daxa::ImageId final_image, u32vec2 render_size) const {
+void PostprocessingTask::record(
+    daxa::CommandList &cmd_list,
+    BDA settings_buffer_ptr,
+    BDA input_buffer_ptr,
+    BDA globals_buffer_ptr,
+    BDA allocator_state_buffer_info,
+    daxa::ImageId render_col_image,
+    daxa::ImageId final_image,
+    u32vec2 render_size) const {
     if (!pipeline) {
         return;
     }
@@ -147,8 +251,7 @@ void PostprocessingTask::record(daxa::CommandList &cmd_list, BDA settings_buffer
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
-        .gpu_gvox_model = gvox_model_buffer_ptr,
-        .voxel_chunks = voxel_chunks_buffer_ptr,
+        .gpu_allocator_state = allocator_state_buffer_info,
         .render_col_image_id = render_col_image.default_view(),
         .final_image_id = final_image.default_view(),
     });
@@ -182,6 +285,34 @@ void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(final_image);
 }
 
+void VoxelChunks::create(daxa::Device &device, u32 log2_chunks_per_axis) {
+    auto chunk_n = (1u << log2_chunks_per_axis);
+    chunk_n = chunk_n * chunk_n * chunk_n;
+    buffer = device.create_buffer({
+        .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
+        .debug_name = "voxel_chunks_buffer",
+    });
+}
+
+void VoxelChunks::destroy(daxa::Device &device) const {
+    if (!buffer.is_empty()) {
+        device.destroy_buffer(buffer);
+    }
+}
+
+void GpuHeap::create(daxa::Device &device, u32 size) {
+    buffer = device.create_buffer({
+        .size = size,
+        .debug_name = "gpu_heap_buffer",
+    });
+}
+
+void GpuHeap::destroy(daxa::Device &device) const {
+    if (!buffer.is_empty()) {
+        device.destroy_buffer(buffer);
+    }
+}
+
 void GpuResources::create(daxa::Device &device) {
     render_images.create(device);
     settings_buffer = device.create_buffer({
@@ -196,6 +327,14 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(GpuGlobals),
         .debug_name = "globals_buffer",
     });
+    temp_voxel_chunks_buffer = device.create_buffer({
+        .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES,
+        .debug_name = "temp_voxel_chunks_buffer",
+    });
+    allocator_state_buffer = device.create_buffer({
+        .size = sizeof(GpuAllocatorState),
+        .debug_name = "allocator_state_buffer",
+    });
 }
 
 void GpuResources::destroy(daxa::Device &device) const {
@@ -203,6 +342,10 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(settings_buffer);
     device.destroy_buffer(input_buffer);
     device.destroy_buffer(globals_buffer);
+    device.destroy_buffer(temp_voxel_chunks_buffer);
+    device.destroy_buffer(allocator_state_buffer);
+    voxel_chunks.destroy(device);
+    gpu_heap.destroy(device);
     if (!gvox_model_buffer.is_empty()) {
         device.destroy_buffer(gvox_model_buffer);
     }
@@ -254,11 +397,17 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.settings_buffer);
     buffer_size(gpu_resources.input_buffer);
     buffer_size(gpu_resources.globals_buffer);
+    buffer_size(gpu_resources.temp_voxel_chunks_buffer);
+    buffer_size(gpu_resources.allocator_state_buffer);
+    buffer_size(gpu_resources.voxel_chunks.buffer);
+    buffer_size(gpu_resources.gpu_heap.buffer);
     buffer_size(gpu_resources.gvox_model_buffer);
-    buffer_size(voxel_chunks_buffer);
 
     needs_vram_calc = false;
 }
+
+// static auto handle_pipeline_creation(AppUi &ui, auto compile_result) {
+// }
 
 VoxelApp::VoxelApp()
     : AppWindow(APPNAME),
@@ -343,6 +492,20 @@ VoxelApp::VoxelApp()
               return compile_result.value();
           }()},
       },
+      chunk_edit_task{
+          .pipeline{[this]() -> std::shared_ptr<daxa::ComputePipeline> {
+              auto compile_result = main_pipeline_manager.add_compute_pipeline({
+                  .shader_info = {.source = daxa::ShaderFile{"chunk_edit.comp.glsl"}},
+                  .push_constant_size = sizeof(ChunkEditComputePush),
+                  .debug_name = APPNAME_PREFIX("chunk_edit_task"),
+              });
+              if (compile_result.is_err()) {
+                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  return {};
+              }
+              return compile_result.value();
+          }()},
+      },
       chunk_opt_x2x4_task{
           .pipeline{[this]() -> std::shared_ptr<daxa::ComputePipeline> {
               auto compile_result = main_pipeline_manager.add_compute_pipeline({
@@ -369,6 +532,20 @@ VoxelApp::VoxelApp()
                   },
                   .push_constant_size = sizeof(ChunkOptComputePush),
                   .debug_name = APPNAME_PREFIX("chunk_opt_x8up"),
+              });
+              if (compile_result.is_err()) {
+                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  return {};
+              }
+              return compile_result.value();
+          }()},
+      },
+      chunk_alloc_task{
+          .pipeline{[this]() -> std::shared_ptr<daxa::ComputePipeline> {
+              auto compile_result = main_pipeline_manager.add_compute_pipeline({
+                  .shader_info = {.source = daxa::ShaderFile{"chunk_alloc.comp.glsl"}},
+                  .push_constant_size = sizeof(ChunkAllocComputePush),
+                  .debug_name = APPNAME_PREFIX("chunk_alloc_task"),
               });
               if (compile_result.is_err()) {
                   ui.console.add_log("%s", compile_result.to_string().c_str());
@@ -421,7 +598,8 @@ VoxelApp::VoxelApp()
       },
       main_task_list{[this]() {
           gpu_resources.create(device);
-          create_voxel_chunks();
+          gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
+          gpu_resources.gpu_heap.create(device, ui.settings.gpu_heap_size);
           return record_main_task_list();
       }()} {
     gvox_ctx = gvox_create_context();
@@ -431,7 +609,6 @@ VoxelApp::~VoxelApp() {
     gvox_destroy_context(gvox_ctx);
     device.wait_idle();
     device.collect_garbage();
-    destroy_voxel_chunks();
     gpu_resources.destroy(device);
 }
 
@@ -445,6 +622,10 @@ auto VoxelApp::update() -> bool {
         auto resized = render_res_scl != ui.settings.render_res_scl;
         if (resized) {
             on_resize(window_size.x, window_size.y);
+        }
+
+        if (ui.settings.battery_saving_mode) {
+            std::this_thread::sleep_for(10ms);
         }
 
         on_update();
@@ -684,6 +865,7 @@ void VoxelApp::recreate_render_images() {
     main_task_list.remove_runtime_image(task_render_pos_image, gpu_resources.render_images.pos_image);
     main_task_list.remove_runtime_image(task_render_col_image, gpu_resources.render_images.col_image);
     main_task_list.remove_runtime_image(task_render_final_image, gpu_resources.render_images.final_image);
+    device.wait_idle();
     gpu_resources.render_images.destroy(device);
     gpu_resources.render_images.create(device);
     main_task_list.add_runtime_image(task_render_pos_image, gpu_resources.render_images.pos_image);
@@ -692,25 +874,12 @@ void VoxelApp::recreate_render_images() {
     needs_vram_calc = true;
 }
 
-void VoxelApp::create_voxel_chunks() {
-    auto chunk_n = (1u << ui.settings.log2_chunks_per_axis);
-    chunk_n = chunk_n * chunk_n * chunk_n;
-    voxel_chunks_buffer = device.create_buffer({
-        .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
-        .debug_name = "voxel_chunks_buffer",
-    });
-}
-
-void VoxelApp::destroy_voxel_chunks() {
-    device.destroy_buffer(voxel_chunks_buffer);
-}
-
 void VoxelApp::recreate_voxel_chunks() {
-    main_task_list.remove_runtime_buffer(task_voxel_chunks_buffer, voxel_chunks_buffer);
+    main_task_list.remove_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
     device.wait_idle();
-    destroy_voxel_chunks();
-    create_voxel_chunks();
-    main_task_list.add_runtime_buffer(task_voxel_chunks_buffer, voxel_chunks_buffer);
+    gpu_resources.voxel_chunks.destroy(device);
+    gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
+    main_task_list.add_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
     ui.should_recreate_voxel_buffers = false;
     needs_vram_calc = true;
 }
@@ -726,7 +895,7 @@ void VoxelApp::run_startup() {
     temp_task_list.add_runtime_buffer(temp_task_globals_buffer, gpu_resources.globals_buffer);
 
     auto temp_task_voxel_chunks_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("temp_task_voxel_chunks_buffer")});
-    temp_task_list.add_runtime_buffer(temp_task_voxel_chunks_buffer, voxel_chunks_buffer);
+    temp_task_list.add_runtime_buffer(temp_task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
 
     // StartupTask
     temp_task_list.add_task({
@@ -793,6 +962,7 @@ void VoxelApp::upload_settings() {
                 .fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f),
                 .sensitivity = ui.settings.mouse_sensitivity,
                 .log2_chunks_per_axis = ui.settings.log2_chunks_per_axis,
+                .gpu_heap_size = ui.settings.gpu_heap_size,
             };
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_settings_buffer,
@@ -905,15 +1075,30 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
     result_task_list.add_runtime_buffer(task_globals_buffer, gpu_resources.globals_buffer);
 
-    task_gvox_model_buffer = result_task_list.create_task_buffer({
-        .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
-        .debug_name = APPNAME_PREFIX("task_gvox_model_buffer"),
+    task_temp_voxel_chunks_buffer = result_task_list.create_task_buffer({
+        .debug_name = APPNAME_PREFIX("task_temp_voxel_chunks_buffer"),
     });
+    result_task_list.add_runtime_buffer(task_temp_voxel_chunks_buffer, gpu_resources.temp_voxel_chunks_buffer);
+
+    task_allocator_state_buffer = result_task_list.create_task_buffer({
+        .debug_name = APPNAME_PREFIX("task_allocator_state_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_allocator_state_buffer, gpu_resources.allocator_state_buffer);
 
     task_voxel_chunks_buffer = result_task_list.create_task_buffer({
         .debug_name = APPNAME_PREFIX("task_voxel_chunks_buffer"),
     });
-    result_task_list.add_runtime_buffer(task_voxel_chunks_buffer, voxel_chunks_buffer);
+    result_task_list.add_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
+
+    task_gpu_heap_buffer = result_task_list.create_task_buffer({
+        .debug_name = APPNAME_PREFIX("task_gpu_heap_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_gpu_heap_buffer, gpu_resources.gpu_heap.buffer);
+
+    task_gvox_model_buffer = result_task_list.create_task_buffer({
+        .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+        .debug_name = APPNAME_PREFIX("task_gvox_model_buffer"),
+    });
 
     task_swapchain_image = result_task_list.create_task_image({.swapchain_image = true, .debug_name = APPNAME_PREFIX("task_swapchain_image")});
     result_task_list.add_runtime_image(task_swapchain_image, swapchain_image);
@@ -951,7 +1136,11 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]));
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                GpuAllocator{
+                    .state = device.get_device_address(task_runtime.get_buffers(task_allocator_state_buffer)[0]),
+                    .heap = device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
+                });
         },
         .debug_name = APPNAME_PREFIX("PerframeTask"),
     });
@@ -978,27 +1167,47 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .debug_name = APPNAME_PREFIX("PerChunkTask"),
     });
 
+    // ChunkEdit
+    result_task_list.add_task({
+        .used_buffers = {
+            {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE_ONLY},
+            {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+        },
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
+            chunk_edit_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
+                task_runtime.get_buffers(task_globals_buffer)[0]);
+        },
+        .debug_name = APPNAME_PREFIX("ChunkEdit"),
+    });
+
     // ChunkOpt_x2x4
     result_task_list.add_task({
         .used_buffers = {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
-            if (has_model) {
-                auto cmd_list = task_runtime.get_command_list();
-                chunk_opt_x2x4_task.record(
-                    cmd_list,
-                    device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_gvox_model_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                    task_runtime.get_buffers(task_globals_buffer)[0]);
-            }
+            auto cmd_list = task_runtime.get_command_list();
+            chunk_opt_x2x4_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                task_runtime.get_buffers(task_globals_buffer)[0]);
         },
         .debug_name = APPNAME_PREFIX("ChunkOpt_x2x4"),
     });
@@ -1009,21 +1218,46 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
-            if (has_model) {
-                auto cmd_list = task_runtime.get_command_list();
-                chunk_opt_x8up_task.record(
-                    cmd_list,
-                    device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_gvox_model_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                    task_runtime.get_buffers(task_globals_buffer)[0]);
-            }
+            auto cmd_list = task_runtime.get_command_list();
+            chunk_opt_x8up_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                task_runtime.get_buffers(task_globals_buffer)[0]);
+        },
+        .debug_name = APPNAME_PREFIX("ChunkOpt_x8up"),
+    });
+
+    // ChunkAlloc
+    result_task_list.add_task({
+        .used_buffers = {
+            {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_allocator_state_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+            {task_gpu_heap_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
+        },
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
+            chunk_alloc_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                GpuAllocator{
+                    .state = device.get_device_address(task_runtime.get_buffers(task_allocator_state_buffer)[0]),
+                    .heap = device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
+                },
+                task_runtime.get_buffers(task_globals_buffer)[0]);
         },
         .debug_name = APPNAME_PREFIX("ChunkOpt_x8up"),
     });
@@ -1034,25 +1268,23 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_heap_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
             {task_render_pos_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
-            if (has_model) {
-                auto cmd_list = task_runtime.get_command_list();
-                trace_primary_task.record(
-                    cmd_list,
-                    device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_gvox_model_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                    task_runtime.get_images(task_render_pos_image)[0],
-                    gpu_resources.render_images.size);
-            }
+            auto cmd_list = task_runtime.get_command_list();
+            trace_primary_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                task_runtime.get_images(task_render_pos_image)[0],
+                gpu_resources.render_images.size);
         },
         .debug_name = APPNAME_PREFIX("TracePrimaryTask"),
     });
@@ -1063,7 +1295,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_heap_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
@@ -1071,19 +1303,17 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_render_col_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
-            if (has_model) {
-                auto cmd_list = task_runtime.get_command_list();
-                color_scene_task.record(
-                    cmd_list,
-                    device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_gvox_model_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                    task_runtime.get_images(task_render_pos_image)[0],
-                    task_runtime.get_images(task_render_col_image)[0],
-                    gpu_resources.render_images.size);
-            }
+            auto cmd_list = task_runtime.get_command_list();
+            color_scene_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
+                task_runtime.get_images(task_render_pos_image)[0],
+                task_runtime.get_images(task_render_col_image)[0],
+                gpu_resources.render_images.size);
         },
         .debug_name = APPNAME_PREFIX("ColorSceneTask"),
     });
@@ -1094,7 +1324,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-            {task_gvox_model_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_heap_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
         .used_images = {
@@ -1102,19 +1332,16 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_render_final_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY, daxa::ImageMipArraySlice{}},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
-            if (has_model) {
-                auto cmd_list = task_runtime.get_command_list();
-                postprocessing_task.record(
-                    cmd_list,
-                    device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_gvox_model_buffer)[0]),
-                    device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                    task_runtime.get_images(task_render_col_image)[0],
-                    task_runtime.get_images(task_render_final_image)[0],
-                    gpu_resources.render_images.size);
-            }
+            auto cmd_list = task_runtime.get_command_list();
+            postprocessing_task.record(
+                cmd_list,
+                device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_allocator_state_buffer)[0]),
+                task_runtime.get_images(task_render_col_image)[0],
+                task_runtime.get_images(task_render_final_image)[0],
+                gpu_resources.render_images.size);
         },
         .debug_name = APPNAME_PREFIX("PostprocessingTask"),
     });

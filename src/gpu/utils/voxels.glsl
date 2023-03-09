@@ -23,9 +23,12 @@ u32 uniformity_lod_mask(u32vec3 index_within_lod) {
 
 #define uniformity_lod_index(N) uniformity_lod_index_##N
 
-#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                                                  \
-    b32 VoxelUniformityChunk_lod_nonuniform_##N(daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32 index, u32 mask) { \
-        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                    \
+#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                                                       \
+    b32 VoxelUniformityChunk_lod_nonuniform_##N(daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32 index, u32 mask) {      \
+        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                         \
+    }                                                                                                                   \
+    b32 rw_VoxelUniformityChunk_lod_nonuniform_##N(daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, u32 index, u32 mask) { \
+        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                         \
     }
 
 VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(2)
@@ -41,21 +44,12 @@ b32 VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelChunk) voxel_chun
 }
 
 #define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_lod_nonuniform_##N
+#define voxel_rw_uniformity_lod_nonuniform(N) rw_VoxelUniformityChunk_lod_nonuniform_##N
 
 u32 calc_chunk_index(u32vec3 chunk_i, u32vec3 chunk_n) {
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
 }
-
-#define PALETTE_REGION_SIZE 8
-
-#if PALETTE_REGION_SIZE == 8
-#define PALETTE_MAX_COMPRESSED_VARIANT_N 367
-#elif PALETTE_REGION_SIZE == 16
-#define PALETTE_MAX_COMPRESSED_VARIANT_N 2559
-#else
-#error Unsupported Palette Region Size
-#endif
 
 #define MODEL deref(model_ptr)
 u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 voxel_i, u32 channel_index) {
@@ -102,16 +96,25 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
 }
 #undef MODEL
 
-u32 sample_voxel_id_WORLD(daxa_BufferPtr(GpuGvoxModel) model_ptr, in u32vec3 chunk_i, in u32vec3 in_chunk_i) {
-    return sample_gvox_palette_voxel(model_ptr, chunk_i * CHUNK_SIZE + in_chunk_i, 1);
+u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
+    u32vec3 palette_region_i = inchunk_voxel_i / PALETTE_REGION_SIZE;
+    u32vec3 palette_voxel_i = inchunk_voxel_i - palette_region_i * PALETTE_REGION_SIZE;
+    u32 palette_region_index = palette_region_i.x + palette_region_i.y * PALETTES_PER_CHUNK_AXIS + palette_region_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
+    u32 palette_voxel_index = palette_voxel_i.x + palette_voxel_i.y * PALETTE_REGION_SIZE + palette_voxel_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
+    PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
+    if (palette_header.variant_n == 1) {
+        return palette_header.blob_offset;
+    }
+    u32 heap_index = palette_header.blob_offset + palette_voxel_index;
+    if (heap_index > ((1u << 30) - 1)) {
+        return 0;
+    }
+
+    // return (palette_header.blob_offset / 512) | (deref(gpu_heap[heap_index]) & 0xff000000);
+    return deref(gpu_heap[heap_index]);
 }
 
-u32 sample_voxel_id_WORLD(daxa_BufferPtr(GpuGvoxModel) model_ptr, f32vec3 voxel_p) {
-    u32vec3 voxel_i = u32vec3(voxel_p * VOXEL_SCL);
-    return sample_gvox_palette_voxel(model_ptr, voxel_i, 1);
-}
-
-u32 sample_lod(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i) {
+u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i) {
     u32 lod_index_x2 = uniformity_lod_index(2)(inchunk_voxel_i / 2);
     u32 lod_mask_x2 = uniformity_lod_mask(inchunk_voxel_i / 2);
     u32 lod_index_x4 = uniformity_lod_index(4)(inchunk_voxel_i / 4);
@@ -126,9 +129,9 @@ u32 sample_lod(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk
     u32 lod_mask_x64 = uniformity_lod_mask(inchunk_voxel_i / 64);
 
     u32 chunk_edit_stage = deref(voxel_chunk_ptr).edit_stage;
-    if (chunk_edit_stage != 2)
+    if (chunk_edit_stage < 1)
         return 7;
-    if (sample_voxel_id_WORLD(model_ptr, chunk_i, inchunk_voxel_i) != 0)
+    if ((sample_voxel_chunk(gpu_heap, voxel_chunk_ptr, inchunk_voxel_i) & 0xff000000) != 0)
         return 0;
     if (voxel_uniformity_lod_nonuniform(2)(voxel_chunk_ptr, lod_index_x2, lod_mask_x2))
         return 1;
@@ -146,9 +149,9 @@ u32 sample_lod(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk
     return 7;
 }
 
-u32 sample_lod(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 voxel_p) {
+u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 voxel_p) {
     u32vec3 voxel_i = u32vec3(voxel_p * VOXEL_SCL);
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
-    return sample_lod(model_ptr, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE);
+    return sample_lod(gpu_heap, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE);
 }

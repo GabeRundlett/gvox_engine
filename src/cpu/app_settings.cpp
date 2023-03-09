@@ -10,11 +10,14 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["camera_fov"] = camera_fov;
     json["mouse_sensitivity"] = mouse_sensitivity;
     json["render_res_scl"] = render_res_scl;
-    json["log2_chunks_per_axis"] = log2_chunks_per_axis;
+    // json["log2_chunks_per_axis"] = log2_chunks_per_axis;
+    // json["gpu_heap_size"] = gpu_heap_size;
+
     json["show_debug_info"] = show_debug_info;
     json["show_console"] = show_console;
     json["show_help"] = show_help;
     json["autosave"] = autosave;
+    json["battery_saving_mode"] = battery_saving_mode;
 
     for (auto [key_i, action_i] : keybinds) {
         auto str = fmt::format("key_{}", key_i);
@@ -44,11 +47,14 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("camera_fov", camera_fov);
     grab_value("mouse_sensitivity", mouse_sensitivity);
     grab_value("render_res_scl", render_res_scl);
-    grab_value("log2_chunks_per_axis", log2_chunks_per_axis);
+    // grab_value("log2_chunks_per_axis", log2_chunks_per_axis);
+    // grab_value("gpu_heap_size", gpu_heap_size);
+
     grab_value("show_debug_info", show_debug_info);
     grab_value("show_console", show_console);
     grab_value("show_help", show_help);
     grab_value("autosave", autosave);
+    grab_value("battery_saving_mode", battery_saving_mode);
 
     for (i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
         auto str = fmt::format("key_{}", key_i);
@@ -71,11 +77,13 @@ void AppSettings::clear() {
     mouse_sensitivity = 1.0f;
     render_res_scl = 1.0f;
     log2_chunks_per_axis = 3;
+    gpu_heap_size = 1u << 30;
 
     show_debug_info = false;
     show_console = false;
     show_help = false;
-    autosave = false;
+    autosave = true;
+    battery_saving_mode = false;
 
     keybinds.clear();
     mouse_button_binds.clear();

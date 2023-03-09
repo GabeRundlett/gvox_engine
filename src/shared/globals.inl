@@ -24,6 +24,7 @@ struct VoxelWorld {
 };
 
 struct GpuIndirectDispatch {
+    u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
     u32vec3 subchunk_x8up_dispatch;
 };
@@ -32,5 +33,16 @@ struct GpuGlobals {
     Player player;
     VoxelWorld voxel_world;
     GpuIndirectDispatch indirect_dispatch;
+    u32 padding[10];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
+
+struct GpuAllocatorState {
+    u32 offset;
+};
+DAXA_ENABLE_BUFFER_PTR(GpuAllocatorState)
+
+struct GpuAllocator {
+    daxa_RWBufferPtr(GpuAllocatorState) state;
+    daxa_RWBufferPtr(daxa_u32) heap;
+};

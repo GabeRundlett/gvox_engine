@@ -26,7 +26,7 @@ void main() {
     f32vec3 hit_nrm = scene_nrm(hit_pos);
     f32 f = step((int(hit_pos.x) + int(hit_pos.y) + int(hit_pos.z)) % 2, 0.5);
 
-    f32vec3 light_del = f32vec3(1, -2, 3);
+    f32vec3 light_del = f32vec3(1, -2, 1);
     f32 light_dist = 20;
     f32vec3 light_col = f32vec3(1, 1, 1) * 500;
 
@@ -37,23 +37,28 @@ void main() {
         u32vec3 chunk_i = u32vec3(floor(hit_pos * (f32(VOXEL_SCL) / CHUNK_SIZE)));
         u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
         u32vec3 voxel_i = u32vec3(hit_pos * VOXEL_SCL);
-        // u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
+        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
         // u32 lod = sample_lod(daxa_push_constant.gpu_gvox_model, CHUNK_PTRS(chunk_index), chunk_i, inchunk_voxel_i);
         // col = f32vec3(lod) / 7;
 
+        // col = fract(hit_pos);
         // col = hit_nrm;
-        f32vec4 sample_col = uint_to_float4(sample_gvox_palette_voxel(daxa_push_constant.gpu_gvox_model, voxel_i, 0));
-        col = sample_col.rgb;
-        // col = col * light_col * max(dot(hit_nrm, normalize(light_del)) * 0.5 + 0.5, 0) / (light_dist * light_dist);
+        if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
+            u32 voxel_data = sample_voxel_chunk(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), inchunk_voxel_i);
+            f32vec4 sample_col = uint_to_float4(voxel_data);
+            // col = f32vec3(1);
+            col = sample_col.rgb;
+            // col = col * light_col * max(dot(hit_nrm, normalize(light_del)), 0) / (light_dist * light_dist);
 
 #if AMBIENT_OCCLUSION
-        f32vec3 ray_pos = hit_pos + hit_nrm * 0.5 / VOXEL_SCL;
-        f32vec3 ray_dir = rand_lambertian_nrm(hit_nrm, fract(rand2(pixel_i) * INPUT.time * 100));
-        trace_hierarchy_traversal(daxa_push_constant.gpu_gvox_model, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 16);
-        if (dot(ray_pos, ray_pos) < MAX_SD * 10) {
-            col *= 0.0;
-        }
+            f32vec3 ray_pos = hit_pos + hit_nrm * 1 / VOXEL_SCL;
+            f32vec3 ray_dir = rand_lambertian_nrm(hit_nrm, fract(rand2(pixel_i) * INPUT.time * 100));
+            trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 64);
+            if (dot(ray_pos, ray_pos) < MAX_SD * 10) {
+                col *= 0.0;
+            }
 #endif
+        }
     } else {
         col = f32vec3(0.1, 0.12, 0.9);
     }
@@ -64,7 +69,8 @@ void main() {
             daxa_push_constant.render_col_image_id,
             i32vec2(pixel_i))
             .rgb;
-    f32 alpha = 0.01;
+    f32 alpha = 0.1;
+    col = clamp(col, f32vec3(0), f32vec3(5));
     imageStore(
         daxa_push_constant.render_col_image_id,
         i32vec2(pixel_i),

@@ -60,10 +60,10 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 #endif
 
 #define MODEL deref(model_ptr)
-void trace_hierarchy_traversal(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
+void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(MODEL.extent_x, MODEL.extent_y, MODEL.extent_z) / VOXEL_SCL;
+    b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL); // f32vec3(MODEL.extent_x, MODEL.extent_y, MODEL.extent_z) / VOXEL_SCL;
 
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
     ray_pos += ray_dir * 0.01 / VOXEL_SCL;
@@ -98,7 +98,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_Buff
         }
         to_side_dist = delta_dist * tile_steps_i + start_dist;
         if (sample_gvox_palette_voxel(model_ptr, tile_i, 1) != 0) {
-            dist = (dot(to_side_dist - delta_dist, f32vec3(mask)) + 0.001) / VOXEL_SCL;
+            dist = dot(to_side_dist - delta_dist, f32vec3(mask)) / VOXEL_SCL;
             break;
         }
         mask = bvec3(
@@ -114,7 +114,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_Buff
         ray_dir.x == 0 ? 3.0 * max_steps : abs(1.0 / ray_dir.x),
         ray_dir.y == 0 ? 3.0 * max_steps : abs(1.0 / ray_dir.y),
         ray_dir.z == 0 ? 3.0 * max_steps : abs(1.0 / ray_dir.z));
-    u32 lod = sample_lod(model_ptr, voxel_chunks_ptr, chunk_n, ray_pos);
+    u32 lod = sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, ray_pos);
     if (lod == 0) {
         return;
     }
@@ -144,7 +144,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_Buff
         if (!inside(current_pos + ray_dir * 0.001, b)) {
             break;
         }
-        lod = sample_lod(model_ptr, voxel_chunks_ptr, chunk_n, current_pos);
+        lod = sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, current_pos);
         if (lod == 0) {
             dist = t_curr;
             break;
@@ -158,9 +158,9 @@ void trace_hierarchy_traversal(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_Buff
 }
 #undef MODEL
 
-void trace(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
+void trace(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
     // trace_sphere_trace(ray_pos, ray_dir);
-    trace_hierarchy_traversal(model_ptr, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512);
+    trace_hierarchy_traversal(gpu_heap, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512);
 }
 
 f32vec3 scene_nrm(f32vec3 pos) {

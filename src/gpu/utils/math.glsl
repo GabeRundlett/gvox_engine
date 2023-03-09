@@ -363,7 +363,35 @@ f32 sd_pyramid(in f32vec3 p, in f32 r, in f32 h) {
 
 // Random functions
 
-// Hash without Sine
+u32 good_rand_hash(u32 x) {
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+u32 good_rand_hash(u32vec2 v) { return good_rand_hash(v.x ^ good_rand_hash(v.y)); }
+u32 good_rand_hash(u32vec3 v) {
+    return good_rand_hash(v.x ^ good_rand_hash(v.y) ^ good_rand_hash(v.z));
+}
+u32 good_rand_hash(u32vec4 v) {
+    return good_rand_hash(v.x ^ good_rand_hash(v.y) ^ good_rand_hash(v.z) ^ good_rand_hash(v.w));
+}
+f32 good_rand_float_construct(u32 m) {
+    const u32 ieee_mantissa = 0x007FFFFFu;
+    const u32 ieee_one = 0x3F800000u;
+    m &= ieee_mantissa;
+    m |= ieee_one;
+    f32 f = uintBitsToFloat(m);
+    return f - 1.0;
+}
+f32 good_rand(f32 x) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(x))); }
+f32 good_rand(f32vec2 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+f32 good_rand(f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+f32 good_rand(f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+
+/// Hash without Sine
 // MIT License...
 /* Copyright (c)2014 David Hoskins.
 
@@ -472,6 +500,8 @@ f32vec4 rand4(f32vec4 p4) {
     p4 += dot(p4, p4.wzxy + 33.33);
     return fract((p4.xxyz + p4.yzzw) * p4.zywx);
 }
+
+/// end Hash without Sine
 
 f32vec3 ortho(f32vec3 v) {
     return mix(f32vec3(-v.y, v.x, 0.0), f32vec3(0.0, -v.z, v.y), step(abs(v.x), abs(v.z)));

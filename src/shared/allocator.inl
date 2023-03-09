@@ -1,5 +1,6 @@
 #pragma once
 
+#if 0
 #include <shared/core.inl>
 
 struct GlobalAllocatorSettings {
@@ -55,4 +56,5 @@ void allocate_subchunk(in out SubchunkInfo subchunk_info, u32 size) {
     }
 }
 
+#endif
 #endif

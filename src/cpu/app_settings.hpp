@@ -17,11 +17,13 @@ struct AppSettings {
     f32 mouse_sensitivity;
     f32 render_res_scl;
     u32 log2_chunks_per_axis;
+    u32 gpu_heap_size;
 
     bool show_debug_info;
     bool show_console;
     bool show_help;
     bool autosave;
+    bool battery_saving_mode;
 
     void save(std::filesystem::path const &filepath);
     void load(std::filesystem::path const &filepath);
