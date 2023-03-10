@@ -6,10 +6,12 @@
 
 DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush)
 
-#define WATER_LEVEL 4
+#define SIMPLE 1
 
 f32 terrain_noise(f32vec3 p) {
-    // return 64.0 - (p.x + p.y + p.z);
+#if SIMPLE
+    return fract((p.x + p.y + p.z) * 0.05) - 0.5;
+#else
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.15,
@@ -18,6 +20,7 @@ f32 terrain_noise(f32vec3 p) {
         /* .octaves     = */ 4);
     f32 val = fractal_noise(p, noise_conf);
     return val;
+#endif
 }
 
 f32vec3 terrain_nrm(f32vec3 pos) {
@@ -71,7 +74,10 @@ void main() {
     f32 upwards = dot(nrm, f32vec3(0, 0, 1));
 
     if (val > 0) {
-        // col = f32vec3(1, 0, 1);
+#if SIMPLE
+        id = 1;
+        col = f32vec3(1, 0, 1);
+#else
         if (is_exposed && val < 0.01 && upwards > 0.75) {
             id = 1;
             col = f32vec3(0.053, 0.2, 0.026);
@@ -90,6 +96,7 @@ void main() {
             id = 3;
             col = f32vec3(0.03, 0.03, 0.03); // * (0.6 - floor((-sin(val * 2 + 3.5) * 0.5 + 0.5 + good_rand(val) * 0.2) * 4) / 50);
         }
+#endif
     }
 
     TempVoxel result;

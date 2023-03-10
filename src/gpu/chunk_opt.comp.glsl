@@ -4,6 +4,9 @@ DAXA_USE_PUSH_CONSTANT(ChunkOptComputePush)
 
 #include <utils/voxels.glsl>
 
+#define WAVE_SIZE gl_SubgroupSize
+#define WAVE_SIZE_MUL (WAVE_SIZE / 32)
+
 u32 sample_temp_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in u32vec3 in_chunk_i) {
     u32 in_chunk_index = in_chunk_i.x + in_chunk_i.y * CHUNK_SIZE + in_chunk_i.z * CHUNK_SIZE * CHUNK_SIZE;
     return deref(temp_voxel_chunk_ptr).voxels[in_chunk_index].col_and_id >> 24;
@@ -37,11 +40,15 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x2_i);
     }
-    u32 or_result = subgroupOr(result);
-    if (subgroupElect()) {
+    for (i32 i = 0; i < 1 * WAVE_SIZE_MUL; i++) {
+        if ((gl_SubgroupInvocationID >> 5) == i) {
+            result = subgroupOr(result);
+        }
+    }
+    if ((gl_SubgroupInvocationID & 0x1F /* = %32 */) == 0) {
         u32 index = uniformity_lod_index(2)(x2_i);
-        VOXEL_CHUNK.uniformity.lod_x2[index] = or_result;
-        local_x2_copy[x2_in_group_location.x][x2_in_group_location.y] = or_result;
+        VOXEL_CHUNK.uniformity.lod_x2[index] = result;
+        local_x2_copy[x2_in_group_location.x][x2_in_group_location.y] = result;
     }
     subgroupBarrier();
     if (gl_LocalInvocationID.x >= 64) {
@@ -70,7 +77,7 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x4_i);
     }
-    for (i32 i = 0; i < 2; i++) {
+    for (i32 i = 0; i < 2 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 4) == i) {
             result = subgroupOr(result);
         }
@@ -135,7 +142,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x8_i);
     }
-    for (i32 i = 0; i < 4; i++) {
+    for (i32 i = 0; i < 4 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 3) == i) {
             result = subgroupOr(result);
         }
@@ -174,7 +181,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x16_i);
     }
-    for (i32 i = 0; i < 8; i++) {
+    for (i32 i = 0; i < 8 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 2) == i) {
             result = subgroupOr(result);
         }
@@ -213,7 +220,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(x32_i);
     }
-    for (i32 i = 0; i < 16; i++) {
+    for (i32 i = 0; i < 16 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 1) == i) {
             result = subgroupOr(result);
         }

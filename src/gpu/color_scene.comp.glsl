@@ -32,7 +32,7 @@ void main() {
 
     f32vec3 col;
 
-    if (dot(hit_pos, hit_pos) < MAX_SD * 10) {
+    if (dot(hit_pos, hit_pos) < MAX_SD * MAX_SD / 2) {
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
         u32vec3 chunk_i = u32vec3(floor(hit_pos * (f32(VOXEL_SCL) / CHUNK_SIZE)));
         u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
@@ -54,7 +54,7 @@ void main() {
             f32vec3 ray_pos = hit_pos + hit_nrm * 1 / VOXEL_SCL;
             f32vec3 ray_dir = rand_lambertian_nrm(hit_nrm, fract(rand2(pixel_i) * INPUT.time * 100));
             trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 64);
-            if (dot(ray_pos, ray_pos) < MAX_SD * 10) {
+            if (dot(ray_pos, ray_pos) < MAX_SD * MAX_SD / 2) {
                 col *= 0.0;
             }
 #endif

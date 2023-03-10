@@ -105,13 +105,21 @@ u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelCh
     if (palette_header.variant_n == 1) {
         return palette_header.blob_offset;
     }
-    u32 heap_index = palette_header.blob_offset + palette_voxel_index;
-    if (heap_index > ((1u << 30) - 1)) {
-        return 0;
+    if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
+        u32 heap_index = palette_header.blob_offset + palette_voxel_index;
+        return deref(gpu_heap[heap_index]);
     }
-
-    // return (palette_header.blob_offset / 512) | (deref(gpu_heap[heap_index]) & 0xff000000);
-    return deref(gpu_heap[heap_index]);
+    u32 bits_per_variant = ceil_log2(palette_header.variant_n);
+    u32 mask = (~0u) >> (32 - bits_per_variant);
+    u32 bit_index = palette_voxel_index * bits_per_variant;
+    u32 data_index = bit_index / 32;
+    u32 data_offset = bit_index - data_index * 32;
+    u32 my_palette_index = (deref(gpu_heap[palette_header.blob_offset + palette_header.variant_n + data_index + 0]) >> data_offset) & mask;
+    if (data_offset + bits_per_variant > 32) {
+        u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
+        my_palette_index |= (deref(gpu_heap[palette_header.blob_offset + palette_header.variant_n + data_index + 1]) << shift) & mask;
+    }
+    return deref(gpu_heap[palette_header.blob_offset + my_palette_index]);
 }
 
 u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i) {
