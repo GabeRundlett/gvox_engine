@@ -18,8 +18,13 @@ struct Player {
 };
 
 #define MAX_CHUNK_UPDATES 10
+struct VoxelChunkUpdateInfo {
+    u32vec3 i;
+    f32 score;
+};
+
 struct VoxelWorld {
-    u32vec3 chunk_update_is[MAX_CHUNK_UPDATES];
+    VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES];
     u32 chunk_update_n;
 };
 

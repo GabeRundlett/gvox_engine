@@ -48,7 +48,7 @@ void main() {
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
-    u32vec3 chunk_i = VOXEL_WORLD.chunk_update_is[temp_chunk_index];
+    u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     u32 inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;

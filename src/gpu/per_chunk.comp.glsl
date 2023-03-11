@@ -42,7 +42,8 @@ void main() {
             atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
             atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
             CHUNKS(chunk_index).edit_stage = 1;
-            VOXEL_WORLD.chunk_update_is[prev_update_n] = chunk_i;
+            VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
+            VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
         }
     }
 }

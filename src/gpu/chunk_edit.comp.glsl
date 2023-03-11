@@ -43,7 +43,7 @@ void main() {
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
-    u32vec3 chunk_i = VOXEL_WORLD.chunk_update_is[temp_chunk_index];
+    u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + temp_chunk_index;
     u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     u32vec3 voxel_i = chunk_i * CHUNK_SIZE + inchunk_voxel_i;
@@ -75,27 +75,24 @@ void main() {
     f32 upwards = dot(nrm, f32vec3(0, 0, 1));
 
     if (val > 0) {
-#if SIMPLE
         id = 1;
+#if SIMPLE
         col = f32vec3(1, 0, 1);
 #else
         if (is_exposed && val < 0.05 && upwards > 0.75) {
-            id = 1;
-            col = f32vec3(0.053, 0.2, 0.026);
-            // if (good_rand(val) < 0.5) {
-            //     col *= 0.9;
-            // }
-        } else if (val < 0.1 && upwards > 0.6) { //  + good_rand(val) * 0.2
-            id = 2;
+            col = f32vec3(0.054, 0.22, 0.028);
+            if (good_rand(val) < 0.5) {
+                col *= 0.7;
+            }
+        } else if (val < 0.1 && upwards > 0.6) {
             col = f32vec3(0.08, 0.05, 0.03);
-            // if (good_rand(val) < val) {
-            //     col.r *= 0.8;
-            //     col.g *= 0.9;
-            //     col.b *= 0.8;
-            // }
+            if (good_rand(val) < 0.5) {
+                col.r *= 0.8;
+                col.g *= 0.9;
+                col.b *= 0.8;
+            }
         } else {
-            id = 3;
-            col = f32vec3(0.03, 0.03, 0.03); // * (0.6 - floor((-sin(val * 2 + 3.5) * 0.5 + 0.5 + good_rand(val) * 0.2) * 4) / 50);
+            col = f32vec3(0.08, 0.08, 0.07); // * (0.6 - floor((-sin(val * 2 + 3.5) * 0.5 + 0.5 + good_rand(val) * 0.2) * 4) / 50);
         }
 #endif
     }

@@ -26,9 +26,9 @@ void main() {
     f32vec3 hit_nrm = scene_nrm(hit_pos);
     f32 f = step((int(hit_pos.x) + int(hit_pos.y) + int(hit_pos.z)) % 2, 0.5);
 
-    f32vec3 light_dir = normalize(f32vec3(1, 2, 1));
-    f32vec3 light_col = f32vec3(3, 2.5, 2);
-    f32vec3 sky_col = f32vec3(0.2, 0.22, 0.9);
+    f32vec3 light_dir = normalize(f32vec3(1, 1.7, 2.1));
+    f32vec3 light_col = f32vec3(3, 2.8, 1.2);
+    f32vec3 sky_col = f32vec3(0.16, 0.19, 1.5);
 
     f32vec3 col;
 
