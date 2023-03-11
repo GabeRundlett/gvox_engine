@@ -1,3 +1,5 @@
+#extension GL_EXT_shader_atomic_int64 : require
+
 #include <shared/shared.inl>
 
 #include <utils/math.glsl>
@@ -9,32 +11,30 @@ DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush)
 #define WARP_SIZE 32
 #define SUBGROUP_N (PALETTE_REGION_TOTAL_SIZE / WARP_SIZE)
 
-shared u32 subgroup_mins[SUBGROUP_N];
 shared u32 palette_result[PALETTE_REGION_TOTAL_SIZE];
-shared u32 palette_barrier;
+shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
-    // Thank you to QuantumDeveloper for the suggestion to just select
-    // the voxel for a single unaccounted-for thread, and add that to
-    // the palette. This sped up the algo by a good amount.
+    if (palette_region_voxel_index == 0) {
+        palette_size = 0;
+    }
+    voted_results[palette_region_voxel_index] = 0;
+    barrier();
     for (u32 algo_i = 0; algo_i < PALETTE_MAX_COMPRESSED_VARIANT_N + 1; ++algo_i) {
-        barrier();
-        u32 acquired_lock = 1;
         if (my_palette_index == 0) {
-            acquired_lock = atomicExchange(palette_barrier, 1);
-            if (acquired_lock == 0) {
+            u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, u64(my_voxel) | (u64(1) << u64(32)));
+            if (vote_result == 0) {
+                my_palette_index = algo_i + 1;
                 palette_result[palette_size] = my_voxel;
                 palette_size++;
+            } else if (my_voxel == u32(vote_result)) {
+                my_palette_index = algo_i + 1;
             }
         }
         barrier();
-        u32 last_voxel = palette_result[palette_size - 1];
-        if (my_voxel == last_voxel) {
-            if (acquired_lock == 0) {
-                palette_barrier = 0;
-            }
-            my_palette_index = palette_size;
+        if (voted_results[algo_i] == 0) {
+            break;
         }
     }
 }
@@ -66,11 +66,6 @@ void main() {
 
     u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
     u32 my_palette_index = 0;
-
-    if (palette_region_voxel_index == 0) {
-        palette_size = 0;
-        palette_barrier = 0;
-    }
 
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);
 

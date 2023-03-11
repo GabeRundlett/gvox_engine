@@ -55,7 +55,7 @@ void main() {
             {
                 f32vec3 ray_pos = hit_pos + hit_nrm * 0.01 / VOXEL_SCL;
                 f32vec3 ray_dir = light_dir;
-                trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 32);
+                trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
                 if (dot(ray_pos, ray_pos) > MAX_SD * MAX_SD / 2) {
                     light_contrib += light_col * max(dot(hit_nrm, light_dir), 0);
                 }

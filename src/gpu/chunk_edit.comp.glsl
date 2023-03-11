@@ -14,12 +14,12 @@ f32 terrain_noise(f32vec3 p) {
 #else
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
-        /* .persistance = */ 0.15,
-        /* .scale       = */ 0.05,
-        /* .lacunarity  = */ 6.8,
-        /* .octaves     = */ 4);
+        /* .persistance = */ 0.2,
+        /* .scale       = */ 0.02,
+        /* .lacunarity  = */ 4,
+        /* .octaves     = */ 8);
     f32 val = fractal_noise(p, noise_conf);
-    val -= p.z * 0.10 - 8;
+    val -= p.z * 0.02 - 1;
     return val;
 #endif
 }
