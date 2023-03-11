@@ -15,52 +15,25 @@ shared u32 palette_barrier;
 shared u32 palette_size;
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
-    // TODO: Optimize the heck out of this! There are definitely too many barriers
-    for (u32 algo_i = 0; algo_i < PALETTE_REGION_TOTAL_SIZE; ++algo_i) {
+    // Thank you to QuantumDeveloper for the suggestion to just select
+    // the voxel for a single unaccounted-for thread, and add that to
+    // the palette. This sped up the algo by a good amount.
+    for (u32 algo_i = 0; algo_i < PALETTE_MAX_COMPRESSED_VARIANT_N + 1; ++algo_i) {
         barrier();
-        // make the voxel value of my_voxel to be "considered" only
-        // if my_palette_index == 0
-        u32 least_in_my_subgroup = subgroupMin(my_voxel | (0xffffffff * u32(my_palette_index != 0)));
-        subgroupBarrier();
-        if (gl_SubgroupInvocationID == 0) {
-            subgroup_mins[gl_SubgroupID] = least_in_my_subgroup;
-        }
-        barrier();
-        const u32 LOG2_SUBGROUP_N = 4;
-        for (u32 i = 0; i < LOG2_SUBGROUP_N; ++i) {
-            if (palette_region_voxel_index < (SUBGROUP_N >> (i + 1))) {
-                atomicMin(
-                    subgroup_mins[(palette_region_voxel_index * 2) * (1 << i)],
-                    subgroup_mins[(palette_region_voxel_index * 2 + 1) * (1 << i)]);
+        u32 acquired_lock = 1;
+        if (my_palette_index == 0) {
+            acquired_lock = atomicExchange(palette_barrier, 1);
+            if (acquired_lock == 0) {
+                palette_result[palette_size] = my_voxel;
+                palette_size++;
             }
         }
         barrier();
-        u32 absolute_min = subgroup_mins[0];
-        // In the case that all voxels have been added to the palette,
-        // this will be true for all threads. In such a case, our
-        // palette_index will be non-zero, and we should break.
-        if (absolute_min == my_voxel) {
-            if (my_palette_index != 0) {
-                // As I just said, we should break in this case. This
-                // means the full palette has already been constructed!
-                break;
+        u32 last_voxel = palette_result[palette_size - 1];
+        if (my_voxel == last_voxel) {
+            if (acquired_lock == 0) {
+                palette_barrier = 0;
             }
-            if (subgroupElect()) {
-                u32 already_accounted_for = atomicExchange(palette_barrier, 1);
-                if (already_accounted_for == 0) {
-                    // We're the thread to write to the palette
-                    palette_result[palette_size] = my_voxel;
-                    palette_size++;
-                }
-            }
-        }
-        barrier();
-        if (palette_region_voxel_index == 0) {
-            palette_barrier = 0;
-        }
-        if (absolute_min == my_voxel) {
-            // this should be `palette_size - 1`, but we'll do that later
-            // so that we can test whether we have already written out
             my_palette_index = palette_size;
         }
     }
@@ -99,17 +72,7 @@ void main() {
         palette_barrier = 0;
     }
 
-#if 1
-
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);
-
-#else
-
-    if (palette_region_voxel_index == 0) {
-        palette_size = 512;
-    }
-
-#endif
 
     barrier();
 

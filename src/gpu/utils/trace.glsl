@@ -68,6 +68,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
     ray_pos += ray_dir * 0.01 / VOXEL_SCL;
     if (!inside(ray_pos, b)) {
+        ray_pos = ray_pos + ray_dir * MAX_SD;
         return;
     }
 

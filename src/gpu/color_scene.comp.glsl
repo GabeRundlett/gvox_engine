@@ -26,9 +26,9 @@ void main() {
     f32vec3 hit_nrm = scene_nrm(hit_pos);
     f32 f = step((int(hit_pos.x) + int(hit_pos.y) + int(hit_pos.z)) % 2, 0.5);
 
-    f32vec3 light_del = f32vec3(1, -2, 1);
-    f32 light_dist = 20;
-    f32vec3 light_col = f32vec3(1, 1, 1) * 500;
+    f32vec3 light_dir = normalize(f32vec3(1, 2, 1));
+    f32vec3 light_col = f32vec3(3, 2.5, 2);
+    f32vec3 sky_col = f32vec3(0.2, 0.22, 0.9);
 
     f32vec3 col;
 
@@ -38,17 +38,10 @@ void main() {
         u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
         u32vec3 voxel_i = u32vec3(hit_pos * VOXEL_SCL);
         u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
-        // u32 lod = sample_lod(daxa_push_constant.gpu_gvox_model, CHUNK_PTRS(chunk_index), chunk_i, inchunk_voxel_i);
-        // col = f32vec3(lod) / 7;
-
-        // col = fract(hit_pos);
-        // col = hit_nrm;
         if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
             u32 voxel_data = sample_voxel_chunk(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), inchunk_voxel_i);
             f32vec4 sample_col = uint_to_float4(voxel_data);
-            // col = f32vec3(1);
             col = sample_col.rgb;
-            // col = col * light_col * max(dot(hit_nrm, normalize(light_del)), 0) / (light_dist * light_dist);
 
 #if AMBIENT_OCCLUSION
             f32vec3 ray_pos = hit_pos + hit_nrm * 1 / VOXEL_SCL;
@@ -57,10 +50,21 @@ void main() {
             if (dot(ray_pos, ray_pos) < MAX_SD * MAX_SD / 2) {
                 col *= 0.0;
             }
+#else
+            f32vec3 light_contrib = sky_col * (dot(hit_nrm, f32vec3(0, 0, 1)) * 0.5 + 0.5);
+            {
+                f32vec3 ray_pos = hit_pos + hit_nrm * 0.01 / VOXEL_SCL;
+                f32vec3 ray_dir = light_dir;
+                trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 32);
+                if (dot(ray_pos, ray_pos) > MAX_SD * MAX_SD / 2) {
+                    light_contrib += light_col * max(dot(hit_nrm, light_dir), 0);
+                }
+            }
+            col *= light_contrib;
 #endif
         }
     } else {
-        col = f32vec3(0.1, 0.12, 0.9);
+        col = sky_col;
     }
 
 #if AMBIENT_OCCLUSION

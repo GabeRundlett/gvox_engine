@@ -9,7 +9,7 @@
 void player_startup(
     daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(0, -5, 1);
+    PLAYER.pos = f32vec3(0, -5, 100);
     PLAYER.rot.x = -PI / 2;
 }
 #undef PLAYER

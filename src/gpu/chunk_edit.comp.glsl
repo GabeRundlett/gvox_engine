@@ -6,7 +6,7 @@
 
 DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush)
 
-#define SIMPLE 1
+#define SIMPLE 0
 
 f32 terrain_noise(f32vec3 p) {
 #if SIMPLE
@@ -19,6 +19,7 @@ f32 terrain_noise(f32vec3 p) {
         /* .lacunarity  = */ 6.8,
         /* .octaves     = */ 4);
     f32 val = fractal_noise(p, noise_conf);
+    val -= p.z * 0.10 - 8;
     return val;
 #endif
 }
@@ -78,7 +79,7 @@ void main() {
         id = 1;
         col = f32vec3(1, 0, 1);
 #else
-        if (is_exposed && val < 0.01 && upwards > 0.75) {
+        if (is_exposed && val < 0.05 && upwards > 0.75) {
             id = 1;
             col = f32vec3(0.053, 0.2, 0.026);
             // if (good_rand(val) < 0.5) {
