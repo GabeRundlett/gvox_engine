@@ -784,6 +784,8 @@ void AppUi::update(f32 delta_time) {
         ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
         ImGui::Text("GPU: %s", debug_gpu_name);
         ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
+        ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) * sizeof(u32) / 1000000);
+        ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
 
         if (ImGui::TreeNode("Gpu Resources")) {
             static ImGuiTableFlags flags =

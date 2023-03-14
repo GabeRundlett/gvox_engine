@@ -16,6 +16,8 @@ using namespace daxa::math_operators;
 
 using BDA = daxa::BufferDeviceAddress;
 
+static constexpr usize FRAMES_IN_FLIGHT = 1;
+
 struct GpuInputUploadTransferTask {
     static void record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId input_buffer, GpuInput &gpu_input);
 };
@@ -34,6 +36,7 @@ struct PerframeTask {
         daxa::CommandList &cmd_list,
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
+        BDA output_buffer_ptr,
         BDA globals_buffer_ptr,
         BDA voxel_chunks_buffer_ptr,
         GpuAllocator gpu_allocator) const;
@@ -137,6 +140,10 @@ struct PostprocessingTask {
         u32vec2 render_size) const;
 };
 
+struct GpuOutputDownloadTransferTask {
+    static void record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId output_buffer, daxa::BufferId staging_output_buffer, GpuOutput &gpu_output, u32 frame_index);
+};
+
 struct RenderImages {
     u32vec2 size;
     daxa::ImageId pos_image;
@@ -165,6 +172,8 @@ struct GpuResources {
     RenderImages render_images;
     daxa::BufferId settings_buffer;
     daxa::BufferId input_buffer;
+    daxa::BufferId output_buffer;
+    daxa::BufferId staging_output_buffer;
     daxa::BufferId globals_buffer;
     daxa::BufferId temp_voxel_chunks_buffer;
     daxa::BufferId allocator_state_buffer;
@@ -204,6 +213,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     daxa::TaskBufferId task_settings_buffer;
     daxa::TaskBufferId task_input_buffer;
+    daxa::TaskBufferId task_output_buffer;
+    daxa::TaskBufferId task_staging_output_buffer;
     daxa::TaskBufferId task_globals_buffer;
     daxa::TaskBufferId task_temp_voxel_chunks_buffer;
     daxa::TaskBufferId task_allocator_state_buffer;
@@ -222,11 +233,13 @@ struct VoxelApp : AppWindow<VoxelApp> {
     TracePrimaryTask trace_primary_task;
     ColorSceneTask color_scene_task;
     PostprocessingTask postprocessing_task;
+    GpuOutputDownloadTransferTask gpu_output_download_transfer_task;
 
     daxa::TaskList main_task_list;
     daxa::CommandSubmitInfo submit_info;
 
     GpuInput gpu_input{};
+    GpuOutput gpu_output{};
     Clock::time_point start;
     Clock::time_point prev_time;
     f32 render_res_scl{1.0f};

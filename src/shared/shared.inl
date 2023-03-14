@@ -2,6 +2,7 @@
 
 #include <shared/settings.inl>
 #include <shared/input.inl>
+#include <shared/output.inl>
 #include <shared/globals.inl>
 #include <shared/voxels.inl>
 
@@ -16,8 +17,9 @@ struct StartupComputePush {
 struct PerframeComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_RWBufferPtr(GpuOutput) gpu_output;
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
+    daxa_BufferPtr(VoxelChunk) voxel_chunks;
     GpuAllocator gpu_allocator;
 };
 

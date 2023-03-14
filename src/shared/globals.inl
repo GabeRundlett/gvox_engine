@@ -17,7 +17,7 @@ struct Player {
     f32 max_speed;
 };
 
-#define MAX_CHUNK_UPDATES 10
+#define MAX_CHUNK_UPDATES 16
 struct VoxelChunkUpdateInfo {
     u32vec3 i;
     f32 score;
@@ -37,6 +37,7 @@ struct GpuIndirectDispatch {
 struct GpuGlobals {
     Player player;
     VoxelWorld voxel_world;
+    f32vec3 pick_pos;
     GpuIndirectDispatch indirect_dispatch;
     u32 padding[10];
 };

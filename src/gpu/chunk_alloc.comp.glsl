@@ -69,6 +69,12 @@ void main() {
 
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);
 
+    if (palette_region_voxel_index == 0) {
+        if (deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n > 1) {
+            gpu_free(daxa_push_constant.gpu_allocator, deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset);
+        }
+    }
+
     barrier();
 
     if (palette_size == 1) {

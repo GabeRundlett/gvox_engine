@@ -5,19 +5,15 @@
 #include <utils/math.glsl>
 #include <utils/voxels.glsl>
 
-#define PLAYER deref(globals_ptr).player
-f32vec3 create_view_pos(daxa_BufferPtr(GpuGlobals) globals_ptr) {
-    return PLAYER.cam.pos;
+f32vec3 create_view_pos(in Player player) {
+    return player.cam.pos;
 }
-#undef PLAYER
 
-#define PLAYER deref(globals_ptr).player
-f32vec3 create_view_dir(daxa_BufferPtr(GpuGlobals) globals_ptr, f32vec2 uv) {
-    f32vec3 nrm = normalize(f32vec3(uv.x * PLAYER.cam.tan_half_fov, uv.y * PLAYER.cam.tan_half_fov, 1));
-    nrm = PLAYER.cam.rot_mat * nrm;
+f32vec3 create_view_dir(in Player player, f32vec2 uv) {
+    f32vec3 nrm = normalize(f32vec3(uv.x * player.cam.tan_half_fov, uv.y * player.cam.tan_half_fov, 1));
+    nrm = player.cam.rot_mat * nrm;
     return nrm;
 }
-#undef PLAYER
 
 f32 sdmap(f32vec3 p) {
     f32 value = MAX_SD;
@@ -59,6 +55,10 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 #define TRAVERSAL_MODE 2
 #endif
 
+#if TRAVERSAL_MODE == 3
+#include <utils/hdda.glsl>
+#endif
+
 #define MODEL deref(model_ptr)
 void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
@@ -89,7 +89,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
         to_side_dist.y <= to_side_dist.x && to_side_dist.y < to_side_dist.z,
         to_side_dist.z <= to_side_dist.x && to_side_dist.z <= to_side_dist.y);
 
-    if (sample_gvox_palette_voxel(model_ptr, tile_i, 1) != 0) {
+    if (sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, f32vec3(tile_i) / VOXEL_SCL) == 0) {
         return;
     }
 
@@ -98,7 +98,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
             break;
         }
         to_side_dist = delta_dist * tile_steps_i + start_dist;
-        if (sample_gvox_palette_voxel(model_ptr, tile_i, 1) != 0) {
+        if (sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, f32vec3(tile_i) / VOXEL_SCL) == 0) {
             dist = dot(to_side_dist - delta_dist, f32vec3(mask)) / VOXEL_SCL;
             break;
         }
@@ -109,7 +109,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
         tile_steps_i += abs(ray_step) * i32vec3(mask);
         tile_i += ray_step * i32vec3(mask);
     }
-    ray_pos = ray_pos + ray_dir * dist;
+    ray_pos = ray_pos + ray_dir * (dist + 0.0001);
 #elif TRAVERSAL_MODE == 2
     f32vec3 delta = f32vec3(
         ray_dir.x == 0 ? 3.0 * max_steps : abs(1.0 / ray_dir.x),
@@ -155,6 +155,32 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
         t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / 8);
     }
     ray_pos = ray_pos + ray_dir * dist;
+#elif TRAVERSAL_MODE == 3
+    const f32 DELTA = 1.0001;
+    i32vec3 ijk = hdda_round_down(ray_pos);
+    u32 lod = sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, ray_pos);
+    if (lod == 0) {
+        return;
+    }
+    HDDA hdda;
+    hdda_init(hdda, ray_pos, ray_dir, 1 << lod);
+    while (hdda_step(hdda)) {
+        ijk = hdda_round_down(fma(f32vec3(hdda_time(hdda) + DELTA), ray_dir, ray_pos));
+        if (!inside(f32vec3(ijk), b)) {
+            ray_pos = ray_pos + ray_dir * MAX_SD;
+            break;
+        }
+        u32 lod = sample_lod(gpu_heap, voxel_chunks_ptr, chunk_n, f32vec3(ijk));
+        hdda_update(hdda, ray_pos, ray_dir, 1 << lod);
+        if (hdda_dim(hdda) > 1 || lod != 0)
+            continue;
+        while (hdda_step(hdda)) {
+            if (!hdda_is_active(gpu_heap, voxel_chunks_ptr, chunk_n, hdda_voxel(hdda))) {
+                ray_pos = fma(f32vec3(hdda_time(hdda)), ray_dir, ray_pos);
+                return;
+            }
+        }
+    }
 #endif
 }
 #undef MODEL
@@ -166,8 +192,8 @@ void trace(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_c
 
 f32vec3 scene_nrm(f32vec3 pos) {
     // return -sdmap_nrm(pos);
-    vec3 d = fract(pos * VOXEL_SCL) - .5;
-    vec3 ad = abs(d);
-    float m = max(max(ad.x, ad.y), ad.z);
+    f32vec3 d = fract(pos * VOXEL_SCL) - .5;
+    f32vec3 ad = abs(d);
+    f32 m = max(max(ad.x, ad.y), ad.z);
     return -(abs(sign(ad - m)) - 1.) * sign(d);
 }

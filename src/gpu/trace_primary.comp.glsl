@@ -25,8 +25,8 @@ void main() {
     f32vec2 uv = pixel_p * inv_frame_dim;
 
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
-    f32vec3 ray_pos = create_view_pos(daxa_push_constant.gpu_globals);
-    f32vec3 ray_dir = create_view_dir(daxa_push_constant.gpu_globals, uv);
+    f32vec3 ray_pos = create_view_pos(deref(daxa_push_constant.gpu_globals).player);
+    f32vec3 ray_dir = create_view_dir(deref(daxa_push_constant.gpu_globals).player, uv);
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
     trace(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir);

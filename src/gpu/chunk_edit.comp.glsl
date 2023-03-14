@@ -15,9 +15,9 @@ f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.2,
-        /* .scale       = */ 0.02,
+        /* .scale       = */ 0.16 / VOXEL_SCL,
         /* .lacunarity  = */ 4,
-        /* .octaves     = */ 8);
+        /* .octaves     = */ 5);
     f32 val = fractal_noise(p, noise_conf);
     val -= p.z * 0.02 - 1;
     return val;
@@ -51,24 +51,9 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    f32vec3 voxel_pos = f32vec3(voxel_i) / (CHUNK_SIZE / VOXEL_SCL);
+    f32vec3 voxel_pos = f32vec3(voxel_i) / (CHUNK_SIZE / VOXEL_SCL); // + floor(f32vec3(INPUT.time * 10, 0, 0) * VOXEL_SCL) / VOXEL_SCL;
 
     f32 val = terrain_noise(voxel_pos);
-
-    f32 v0 = terrain_noise(voxel_pos + f32vec3(+1, +0, +0) / VOXEL_SCL);
-    f32 v1 = terrain_noise(voxel_pos + f32vec3(+0, +1, +0) / VOXEL_SCL);
-    f32 v2 = terrain_noise(voxel_pos + f32vec3(+0, +0, +1) / VOXEL_SCL);
-    f32 v3 = terrain_noise(voxel_pos + f32vec3(-1, +0, +0) / VOXEL_SCL);
-    f32 v4 = terrain_noise(voxel_pos + f32vec3(+0, -1, +0) / VOXEL_SCL);
-    f32 v5 = terrain_noise(voxel_pos + f32vec3(+0, +0, -1) / VOXEL_SCL);
-
-    bool is_exposed =
-        !(v0 > 0 &&
-          v1 > 0 &&
-          v2 > 0 &&
-          v3 > 0 &&
-          v4 > 0 &&
-          v5 > 0);
 
     f32vec3 nrm = terrain_nrm(voxel_pos);
 
@@ -79,17 +64,17 @@ void main() {
 #if SIMPLE
         col = f32vec3(1, 0, 1);
 #else
-        if (is_exposed && val < 0.05 && upwards > 0.75) {
+        if (val < 0.012 && upwards > 0.65) {
             col = f32vec3(0.054, 0.22, 0.028);
             if (good_rand(val) < 0.5) {
                 col *= 0.7;
             }
-        } else if (val < 0.1 && upwards > 0.6) {
+        } else if (val < 0.1 && upwards > 0.5) {
             col = f32vec3(0.08, 0.05, 0.03);
             if (good_rand(val) < 0.5) {
-                col.r *= 0.8;
-                col.g *= 0.9;
-                col.b *= 0.8;
+                col.r *= 0.5;
+                col.g *= 0.5;
+                col.b *= 0.5;
             }
         } else {
             col = f32vec3(0.08, 0.08, 0.07); // * (0.6 - floor((-sin(val * 2 + 3.5) * 0.5 + 0.5 + good_rand(val) * 0.2) * 4) / 50);

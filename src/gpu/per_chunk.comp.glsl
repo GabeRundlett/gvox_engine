@@ -2,8 +2,27 @@
 
 DAXA_USE_PUSH_CONSTANT(PerChunkComputePush)
 
+#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
+#define INDIRECT deref(daxa_push_constant.gpu_globals).indirect_dispatch
+#define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
+void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
+    u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
+    if (prev_update_n < MAX_CHUNK_UPDATES) {
+        atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
+        atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
+        atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
+        CHUNKS(chunk_index).edit_stage = edit_stage;
+        VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
+        VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
+    }
+}
+#undef CHUNKS
+#undef INDIRECT
+#undef VOXEL_WORLD
+
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)
+#define GLOBALS deref(daxa_push_constant.gpu_globals)
 #define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
 #define INDIRECT deref(daxa_push_constant.gpu_globals).indirect_dispatch
 #define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
@@ -27,28 +46,37 @@ void main() {
     // Debug - reset all chunks to default
     if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
         CHUNKS(chunk_index).edit_stage = 0;
+        for (u32 i = 0; i < PALETTES_PER_CHUNK; ++i) {
+            CHUNKS(chunk_index).palette_headers[i].variant_n = 0;
+            CHUNKS(chunk_index).palette_headers[i].blob_offset = 0;
+        }
     }
 
     // Bump all previously handled chunks to the next update stage
-    if (CHUNKS(chunk_index).edit_stage == 1) {
+    if (CHUNKS(chunk_index).edit_stage == 1 ||
+        CHUNKS(chunk_index).edit_stage == 3) {
         CHUNKS(chunk_index).edit_stage = 2;
     }
 
     // Select "random" chunks to be updated
     if (CHUNKS(chunk_index).edit_stage == 0) {
-        u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
-        if (prev_update_n < MAX_CHUNK_UPDATES) {
-            atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
-            atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
-            atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
-            CHUNKS(chunk_index).edit_stage = 1;
-            VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
-            VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
+        elect_chunk_for_update(chunk_i, chunk_index, 1);
+    }
+
+    if (INPUT.actions[GAME_ACTION_BREAK] != 0) {
+        if (CHUNKS(chunk_index).edit_stage > 1) {
+            f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+            f32vec3 delta = chunk_pos - GLOBALS.pick_pos;
+            f32vec3 dist3 = abs(delta);
+            if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
+                elect_chunk_for_update(chunk_i, chunk_index, 3);
+            }
         }
     }
 }
 #undef CHUNKS
 #undef INDIRECT
 #undef VOXEL_WORLD
+#undef GLOBALS
 #undef INPUT
 #undef SETTINGS

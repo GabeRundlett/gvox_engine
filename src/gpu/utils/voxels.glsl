@@ -4,7 +4,7 @@
 
 #include <utils/math.glsl>
 
-#define VOXEL_SCL 8
+#define VOXEL_SCL 16
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \
     u32 uniformity_lod_index_##N(u32vec3 index_within_lod) {          \
@@ -119,8 +119,41 @@ u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelCh
         u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
         my_palette_index |= (deref(gpu_heap[palette_header.blob_offset + palette_header.variant_n + data_index + 1]) << shift) & mask;
     }
-    return deref(gpu_heap[palette_header.blob_offset + my_palette_index]);
+    u32 voxel_data = deref(gpu_heap[palette_header.blob_offset + my_palette_index]);
+    return voxel_data;
+    // return ((palette_header.blob_offset / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
 }
+
+u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {
+    u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
+    u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
+    u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+    daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
+    if (chunk_i.x >= chunk_n.x || chunk_i.y >= chunk_n.y || chunk_i.z >= chunk_n.z) {
+        return 0u;
+    }
+    return sample_voxel_chunk(gpu_heap, voxel_chunk_ptr, inchunk_voxel_i);
+}
+
+#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                                                                 \
+    b32 sample_lod_presence_##N(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
+        return true;                                                                                                                               \
+        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                                                     \
+        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                                                   \
+        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                                                    \
+        daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                                                                 \
+        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                                                               \
+        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                                                    \
+        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                                                            \
+    }
+SAMPLE_LOD_PRESENCE_IMPL(2)
+SAMPLE_LOD_PRESENCE_IMPL(4)
+SAMPLE_LOD_PRESENCE_IMPL(8)
+SAMPLE_LOD_PRESENCE_IMPL(16)
+SAMPLE_LOD_PRESENCE_IMPL(32)
+SAMPLE_LOD_PRESENCE_IMPL(64)
+
+#define sample_lod_presence(N) sample_lod_presence_##N
 
 u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i) {
     u32 lod_index_x2 = uniformity_lod_index(2)(inchunk_voxel_i / 2);
@@ -158,6 +191,7 @@ u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) vox
 }
 
 u32 sample_lod(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 voxel_p) {
+    // u32vec3 voxel_i = u32vec3(clamp(voxel_p * VOXEL_SCL, f32vec3(0, 0, 0), (f32vec3(chunk_n) * CHUNK_SIZE - 1) / VOXEL_SCL));
     u32vec3 voxel_i = u32vec3(voxel_p * VOXEL_SCL);
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;

@@ -49,6 +49,8 @@ struct AppUi {
     f32 debug_menu_size{};
     char const *debug_gpu_name{};
     usize debug_vram_usage{};
+    u32 debug_gpu_heap_usage{};
+    f32vec3 debug_player_pos{};
     struct GpuResourceInfo {
         std::string type;
         std::string name;

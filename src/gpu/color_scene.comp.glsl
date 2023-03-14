@@ -9,6 +9,7 @@ DAXA_USE_PUSH_CONSTANT(ColorSceneComputePush)
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)
+#define GLOBALS deref(daxa_push_constant.gpu_globals)
 #define CHUNK_PTRS(i) daxa_push_constant.voxel_chunks[i]
 #define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -39,9 +40,19 @@ void main() {
         u32vec3 voxel_i = u32vec3(hit_pos * VOXEL_SCL);
         u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
         if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
+            // u32 lod = sample_lod(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), chunk_i, inchunk_voxel_i);
+            // col = f32vec3(lod) / 7;
             u32 voxel_data = sample_voxel_chunk(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), inchunk_voxel_i);
             f32vec4 sample_col = uint_to_float4(voxel_data);
             col = sample_col.rgb;
+
+            // if (length(hit_pos - GLOBALS.pick_pos) < 31.0 / VOXEL_SCL) {
+            //     col *= 0.1;
+            // }
+
+            // if (CHUNKS(chunk_index).edit_stage == 3) {
+            //     col += 0.1;
+            // }
 
 #if AMBIENT_OCCLUSION
             f32vec3 ray_pos = hit_pos + hit_nrm * 1 / VOXEL_SCL;
@@ -87,5 +98,7 @@ void main() {
 #endif
 }
 #undef CHUNKS
+#undef CHUNK_PTRS
+#undef GLOBALS
 #undef INPUT
 #undef SETTINGS

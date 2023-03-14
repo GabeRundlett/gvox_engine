@@ -29,6 +29,7 @@ struct MouseInput {
 };
 
 struct GpuInput {
+    u32 frame_index;
     u32vec2 frame_dim;
     f32 time;
     f32 delta_time;

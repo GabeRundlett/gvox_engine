@@ -13,6 +13,8 @@
 
 using namespace std::chrono_literals;
 
+#include <iostream>
+
 void GpuInputUploadTransferTask::record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId input_buffer, GpuInput &gpu_input) {
     auto staging_input_buffer = device.create_buffer({
         .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -48,6 +50,7 @@ void PerframeTask::record(
     daxa::CommandList &cmd_list,
     BDA settings_buffer_ptr,
     BDA input_buffer_ptr,
+    BDA output_buffer_ptr,
     BDA globals_buffer_ptr,
     BDA voxel_chunks_buffer_ptr,
     GpuAllocator gpu_allocator) const {
@@ -58,6 +61,7 @@ void PerframeTask::record(
     cmd_list.push_constant(PerframeComputePush{
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
+        .gpu_output = output_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
         .gpu_allocator = gpu_allocator,
@@ -258,6 +262,17 @@ void PostprocessingTask::record(
     cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
 }
 
+void GpuOutputDownloadTransferTask::record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId output_buffer, daxa::BufferId staging_output_buffer, GpuOutput &gpu_output, u32 frame_index) {
+    auto *buffer_ptr = device.get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer);
+    u32 offset = frame_index % (FRAMES_IN_FLIGHT + 1);
+    gpu_output = (*buffer_ptr)[offset];
+    cmd_list.copy_buffer_to_buffer({
+        .src_buffer = output_buffer,
+        .dst_buffer = staging_output_buffer,
+        .size = sizeof(GpuOutput) * (FRAMES_IN_FLIGHT + 1),
+    });
+}
+
 void RenderImages::create(daxa::Device &device) {
     pos_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
@@ -323,6 +338,15 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(GpuInput),
         .debug_name = "input_buffer",
     });
+    output_buffer = device.create_buffer({
+        .size = sizeof(GpuOutput) * (FRAMES_IN_FLIGHT + 1),
+        .debug_name = "output_buffer",
+    });
+    staging_output_buffer = device.create_buffer({
+        .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+        .size = sizeof(GpuOutput) * (FRAMES_IN_FLIGHT + 1),
+        .debug_name = "staging_output_buffer",
+    });
     globals_buffer = device.create_buffer({
         .size = sizeof(GpuGlobals),
         .debug_name = "globals_buffer",
@@ -341,6 +365,8 @@ void GpuResources::destroy(daxa::Device &device) const {
     render_images.destroy(device);
     device.destroy_buffer(settings_buffer);
     device.destroy_buffer(input_buffer);
+    device.destroy_buffer(output_buffer);
+    device.destroy_buffer(staging_output_buffer);
     device.destroy_buffer(globals_buffer);
     device.destroy_buffer(temp_voxel_chunks_buffer);
     device.destroy_buffer(allocator_state_buffer);
@@ -356,7 +382,7 @@ void VoxelApp::calc_vram_usage() {
     ui.debug_gpu_resource_infos.clear();
     result_size = 0;
 
-    auto format_to_pixel_size = [](daxa::Format format) {
+    auto format_to_pixel_size = [](daxa::Format format) -> u32 {
         switch (format) {
         case daxa::Format::R16G16B16_SFLOAT: return 3 * 2;
         case daxa::Format::R16G16B16A16_SFLOAT: return 4 * 2;
@@ -412,12 +438,16 @@ void VoxelApp::calc_vram_usage() {
 VoxelApp::VoxelApp()
     : AppWindow(APPNAME),
       daxa_ctx{daxa::create_context({.enable_validation = false})},
-      device{daxa_ctx.create_device({.debug_name = APPNAME_PREFIX("device")})},
+      device{daxa_ctx.create_device({
+          // .enable_buffer_device_address_capture_replay = false,
+          .debug_name = APPNAME_PREFIX("device"),
+      })},
       swapchain{device.create_swapchain({
           .native_window = AppWindow::get_native_handle(),
           .native_window_platform = AppWindow::get_native_platform(),
           .present_mode = daxa::PresentMode::IMMEDIATE,
           .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
+          .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
           .debug_name = APPNAME_PREFIX("swapchain"),
       })},
       main_pipeline_manager{daxa::PipelineManager({
@@ -427,6 +457,7 @@ VoxelApp::VoxelApp()
                   DAXA_SHADER_INCLUDE_DIR,
                   "assets",
                   "src",
+                  "gpu",
                   "src/gpu",
               },
               .language = daxa::ShaderLanguage::GLSL,
@@ -649,13 +680,13 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     auto temp_gvox_model = std::vector<uint8_t>{};
     temp_gvox_model.resize(temp_gvox_model_size);
     {
-        time_t start = clock();
+        // time_t start = clock();
         file.seekg(0, std::ios_base::beg);
         file.read(reinterpret_cast<char *>(temp_gvox_model.data()), static_cast<std::streamsize>(temp_gvox_model_size));
         file.close();
-        time_t end = clock();
-        double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        ui.console.add_log("(pulling file into memory: %fs)", cpu_time_used);
+        // time_t end = clock();
+        // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        // ui.console.add_log("(pulling file into memory: %fs)", cpu_time_used);
     }
     GvoxByteBufferInputAdapterConfig i_config = {
         .data = temp_gvox_model.data(),
@@ -691,15 +722,15 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
 
     {
-        time_t start = clock();
+        // time_t start = clock();
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
             nullptr,
             // &ui.gvox_region_range,
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID);
-        time_t end = clock();
-        double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        ui.console.add_log("%fs, new size: %llu bytes", cpu_time_used, result.size);
+        // time_t end = clock();
+        // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        // ui.console.add_log("%fs, new size: %llu bytes", cpu_time_used, result.size);
     }
 
     gvox_destroy_adapter_context(i_ctx);
@@ -766,6 +797,9 @@ void VoxelApp::on_update() {
 
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
+
+    ui.debug_gpu_heap_usage = gpu_output.heap_size;
+    ui.debug_player_pos = gpu_output.player_pos;
 }
 
 void VoxelApp::on_mouse_move(f32 x, f32 y) {
@@ -902,7 +936,7 @@ void VoxelApp::run_startup() {
         .used_buffers = {
             {temp_task_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
         },
-        .task = [this, &temp_task_globals_buffer](daxa::TaskRuntime task_runtime) {
+        .task = [&temp_task_globals_buffer](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             cmd_list.clear_buffer({
                 .buffer = task_runtime.get_buffers(temp_task_globals_buffer)[0],
@@ -1069,6 +1103,16 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
     result_task_list.add_runtime_buffer(task_input_buffer, gpu_resources.input_buffer);
 
+    task_output_buffer = result_task_list.create_task_buffer({
+        .debug_name = APPNAME_PREFIX("task_output_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_output_buffer, gpu_resources.output_buffer);
+
+    task_staging_output_buffer = result_task_list.create_task_buffer({
+        .debug_name = APPNAME_PREFIX("task_staging_output_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_staging_output_buffer, gpu_resources.staging_output_buffer);
+
     task_globals_buffer = result_task_list.create_task_buffer({
         .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ_WRITE,
         .debug_name = APPNAME_PREFIX("task_globals_buffer"),
@@ -1126,15 +1170,18 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .used_buffers = {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_output_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [this](daxa::TaskRuntime task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
+            u32 offset = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
             perframe_task.record(
                 cmd_list,
                 device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_output_buffer)[0]) + offset * sizeof(GpuOutput),
                 device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
                 GpuAllocator{
@@ -1344,6 +1391,20 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 gpu_resources.render_images.size);
         },
         .debug_name = APPNAME_PREFIX("PostprocessingTask"),
+    });
+
+    // GpuOutputDownloadTransferTask
+    result_task_list.add_task({
+        .used_buffers = {
+            {task_output_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
+            {task_staging_output_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
+        },
+        .task = [this](daxa::TaskRuntime task_runtime) {
+            auto cmd_list = task_runtime.get_command_list();
+            ++gpu_input.frame_index;
+            gpu_output_download_transfer_task.record(device, cmd_list, task_runtime.get_buffers(task_output_buffer)[0], gpu_resources.staging_output_buffer, gpu_output, gpu_input.frame_index);
+        },
+        .debug_name = APPNAME_PREFIX("GpuOutputDownloadTransferTask"),
     });
 
     // Blit (render to swapchain)

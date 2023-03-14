@@ -42,32 +42,29 @@ void main() {
 
     f32vec3 col = denoised_color.rgb;
 
-    if (pixel_i.y > INPUT.frame_dim.y - 40) {
-        col = f32vec3(0.05);
-
-        f32 sx = INPUT.frame_dim.x - 20;
-        f32 x = pixel_i.x - 10;
-        x = x / sx;
-
-        f32 max_size = (deref(daxa_push_constant.gpu_settings).gpu_heap_size / 4);
-        f32 raw_size = f32(1u << 27) / max_size;
-        f32 consumed = f32(deref(daxa_push_constant.gpu_allocator_state).offset) / max_size;
-
-        if (raw_size > x - 1.0 / sx && raw_size < x + 1.0 / sx) {
-            col = f32vec3(0.3, 0.1, 0.1);
-        }
-
-        if (pixel_i.x > 10 &&
-            pixel_i.x < INPUT.frame_dim.x - 10 &&
-            pixel_i.y > INPUT.frame_dim.y - 30 &&
-            pixel_i.y < INPUT.frame_dim.y - 10) {
-            if (consumed < x) {
-                col = f32vec3(0.02);
-            } else {
-                col = f32vec3(0, 1, 0);
-            }
-        }
-    }
+    // const f32 BAR_SIZE = 10;
+    // if (pixel_i.y > INPUT.frame_dim.y - BAR_SIZE * 4) {
+    //     col = f32vec3(0.05);
+    //     f32 sx = INPUT.frame_dim.x - 8;
+    //     f32 x = pixel_i.x - BAR_SIZE;
+    //     x = x / sx;
+    //     f32 max_size = (deref(daxa_push_constant.gpu_settings).gpu_heap_size / 4);
+    //     f32 raw_size = f32(1u << 27) / max_size;
+    //     f32 consumed = f32(deref(daxa_push_constant.gpu_allocator_state).offset) / max_size;
+    //     if (raw_size > x - 1.0 / sx && raw_size < x + 1.0 / sx) {
+    //         col = f32vec3(0.3, 0.1, 0.1);
+    //     }
+    //     if (pixel_i.x > BAR_SIZE &&
+    //         pixel_i.x < INPUT.frame_dim.x - BAR_SIZE &&
+    //         pixel_i.y > INPUT.frame_dim.y - BAR_SIZE * 3 &&
+    //         pixel_i.y < INPUT.frame_dim.y - BAR_SIZE) {
+    //         if (consumed < x) {
+    //             col = f32vec3(0.02);
+    //         } else {
+    //             col = f32vec3(0, 1, 0);
+    //         }
+    //     }
+    // }
 
     imageStore(
         daxa_push_constant.final_image_id,

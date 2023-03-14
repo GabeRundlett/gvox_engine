@@ -29,8 +29,7 @@ void voxel_world_startup(
 void voxel_world_perframe(
     daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_BufferPtr(GpuInput) input_ptr,
-    daxa_RWBufferPtr(GpuGlobals) globals_ptr,
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks_ptr) {
+    daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 
     VOXEL_WORLD.chunk_update_n = 0;
 
