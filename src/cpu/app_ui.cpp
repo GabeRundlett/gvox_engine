@@ -127,21 +127,12 @@ AppUi::Console::~Console() {
 }
 
 void AppUi::Console::clear_log() {
-    for (auto &item : items) {
-        free(item);
-    }
     items.clear();
 }
 
-void AppUi::Console::add_log(const char *fmt, ...) IM_FMTARGS(2) {
-    char buf[1024];
-    va_list args = nullptr;
-    va_start(args, fmt);
-    vsnprintf(buf, IM_ARRAYSIZE(buf), fmt, args);
-    buf[IM_ARRAYSIZE(buf) - 1] = 0;
-    va_end(args);
-    items.push_back(Strdup(buf));
-    std::cout << buf << std::endl;
+void AppUi::Console::add_log(std::string const &str) {
+    items.push_back(str);
+    std::cout << str << std::endl;
 }
 
 void AppUi::Console::draw(const char *title, bool *p_open) {
@@ -157,7 +148,7 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
         ImGui::EndPopup();
     }
     // if (ImGui::SmallButton("Add Debug Text")) {
-    //     add_log("%d some text", items.size());
+    //     add_log("{} some text", items.size());
     //     add_log("some more text");
     //     add_log("display very important message here!");
     // }
@@ -194,23 +185,23 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
     if (copy_to_clipboard) {
         ImGui::LogToClipboard();
     }
-    for (auto *item : items) {
-        if (!filter.PassFilter(item)) {
+    for (auto const &item : items) {
+        if (!filter.PassFilter(item.c_str())) {
             continue;
         }
         ImVec4 color;
         bool has_color = false;
-        if (strstr(item, "[error]") != nullptr) {
+        if (strstr(item.c_str(), "[error]") != nullptr) {
             color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
             has_color = true;
-        } else if (strncmp(item, "# ", 2) == 0) {
+        } else if (strncmp(item.c_str(), "# ", 2) == 0) {
             color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f);
             has_color = true;
         }
         if (has_color) {
             ImGui::PushStyleColor(ImGuiCol_Text, color);
         }
-        ImGui::TextUnformatted(item);
+        ImGui::TextUnformatted(item.c_str());
         if (has_color) {
             ImGui::PopStyleColor();
         }
@@ -249,7 +240,7 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
 }
 
 void AppUi::Console::exec_command(const char *command_line) {
-    add_log("# %s\n", command_line);
+    add_log("# {}\n", command_line);
     history_pos = -1;
     for (i32 i = static_cast<i32>(history.size()) - 1; i >= 0; i--) {
         if (Stricmp(history[i], command_line) == 0) {
@@ -259,7 +250,7 @@ void AppUi::Console::exec_command(const char *command_line) {
         }
     }
     history.push_back(Strdup(command_line));
-    add_log("Unknown command: '%s'\n", command_line);
+    add_log("Unknown command: '{}'\n", command_line);
     scroll_to_bottom = true;
 }
 
@@ -282,7 +273,7 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
             }
         }
         if (candidates.empty()) {
-            add_log("No match for \"%.*s\"!\n", (int)(word_end - word_start), word_start);
+            add_log("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start);
         } else if (candidates.size() == 1) {
             data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
             data->InsertChars(data->CursorPos, candidates[0]);
@@ -310,7 +301,7 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
             }
             add_log("Possible matches:\n");
             for (auto &candidate : candidates) {
-                add_log("- %s\n", candidate);
+                add_log("- {}\n", candidate);
             }
         }
         break;
@@ -468,10 +459,10 @@ void AppUi::settings_ui() {
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
-                    console.add_log("Loaded %s", out_path);
+                    console.add_log("Loaded {}", out_path);
                     free(out_path);
                 } else if (result != NFD_CANCEL) {
-                    console.add_log("[error]: %s", NFD_GetError());
+                    console.add_log("[error]: {}", NFD_GetError());
                 }
             }
             {

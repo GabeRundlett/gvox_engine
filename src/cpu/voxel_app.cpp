@@ -489,7 +489,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("startup_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -503,7 +503,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("perframe_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -517,7 +517,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("per_chunk_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -531,7 +531,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("chunk_edit_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -548,7 +548,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("chunk_opt_x2x4"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -565,7 +565,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("chunk_opt_x8up"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -579,7 +579,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("chunk_alloc_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -593,7 +593,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("trace_primary_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -607,7 +607,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("color_scene_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -621,7 +621,7 @@ VoxelApp::VoxelApp()
                   .debug_name = APPNAME_PREFIX("postprocessing_task"),
               });
               if (compile_result.is_err()) {
-                  ui.console.add_log("%s", compile_result.to_string().c_str());
+                  ui.console.add_log(compile_result.to_string());
                   return {};
               }
               return compile_result.value();
@@ -686,7 +686,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
         file.close();
         // time_t end = clock();
         // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        // ui.console.add_log("(pulling file into memory: %fs)", cpu_time_used);
+        // ui.console.add_log("(pulling file into memory: {}s)", cpu_time_used);
     }
     GvoxByteBufferInputAdapterConfig i_config = {
         .data = temp_gvox_model.data(),
@@ -730,7 +730,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID);
         // time_t end = clock();
         // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        // ui.console.add_log("%fs, new size: %llu bytes", cpu_time_used, result.size);
+        // ui.console.add_log("{}s, new size: {} bytes", cpu_time_used, result.size);
     }
 
     gvox_destroy_adapter_context(i_ctx);
@@ -751,7 +751,7 @@ void VoxelApp::on_update() {
         auto reload_result = main_pipeline_manager.reload_all();
         if (reload_result.v.value_or(true)) {
             if (reload_result.is_err()) {
-                ui.console.add_log("%s", reload_result.to_string().c_str());
+                ui.console.add_log(reload_result.to_string());
             }
         }
     }
@@ -1306,7 +1306,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 },
                 task_runtime.get_buffers(task_globals_buffer)[0]);
         },
-        .debug_name = APPNAME_PREFIX("ChunkOpt_x8up"),
+        .debug_name = APPNAME_PREFIX("ChunkAlloc"),
     });
 
     // TracePrimaryTask

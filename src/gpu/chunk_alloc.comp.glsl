@@ -8,12 +8,10 @@
 
 DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush)
 
-#define WARP_SIZE 32
-#define SUBGROUP_N (PALETTE_REGION_TOTAL_SIZE / WARP_SIZE)
-
 shared u32 palette_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
+shared u32 blob_offset;
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
     if (palette_region_voxel_index == 0) {
@@ -33,6 +31,7 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
             }
         }
         barrier();
+        memoryBarrierShared();
         if (voted_results[algo_i] == 0) {
             break;
         }
@@ -76,59 +75,48 @@ void main() {
     }
 
     barrier();
+    memoryBarrierShared();
 
-    if (palette_size == 1) {
-        if (palette_region_voxel_index == 0) {
-            deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = 1;
+    u32 bits_per_variant = ceil_log2(palette_size);
+
+    if (palette_region_voxel_index == 0) {
+        deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
+        if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, PALETTE_REGION_TOTAL_SIZE);
+        } else if (palette_size > 1) {
+            u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32 + 1;
+            compressed_size += palette_size;
+            blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, compressed_size);
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = blob_offset;
+        } else {
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = my_voxel;
         }
-    } else {
-        if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
-            if (palette_region_voxel_index == 0) {
-                deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
-                deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, PALETTE_REGION_TOTAL_SIZE);
-            }
-            barrier();
-            u32 final_blob_offset = deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset;
-            deref(daxa_push_constant.gpu_allocator.heap[final_blob_offset + palette_region_voxel_index]) = my_voxel;
-        } else {
-            u32 bits_per_variant = ceil_log2(palette_size);
-            if (palette_region_voxel_index == 0) {
-                // round up to nearest byte
-                u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 7) / 8;
-                // round up to the nearest uint32_t, and add an extra
-                compressed_size = (compressed_size + 3) / 4 + 1;
-                // add the size of the palette data
-                compressed_size += palette_size;
+    }
 
-                deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
-                u32 blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, compressed_size);
-                deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = blob_offset;
+    barrier();
+    memoryBarrierShared();
 
-                for (u32 i = 0; i < palette_size; ++i) {
-                    deref(daxa_push_constant.gpu_allocator.heap[blob_offset + i]) = palette_result[i];
-                }
-            }
-
-            barrier();
-
-            u32 mask = (~0u) >> (32 - bits_per_variant);
-            u32 bit_index = palette_region_voxel_index * bits_per_variant;
-            u32 data_index = bit_index / 32;
-            u32 data_offset = bit_index - data_index * 32;
-            u32 data = (my_palette_index - 1) & mask;
-            u32 blob_offset = deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset;
-            u32 address = blob_offset + palette_size + data_index;
-            // clang-format off
-            atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 0]), ~(mask << data_offset));
-            atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 0]),   data << data_offset);
-            if (data_offset + bits_per_variant > 32) {
-                u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
-                atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 1]), ~(mask >> shift));
-                atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 1]),   data >> shift);
-            }
-            // clang-format on
+    if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
+        deref(daxa_push_constant.gpu_allocator.heap[blob_offset + palette_region_voxel_index]) = my_voxel;
+    } else if (palette_size > 1) {
+        u32 mask = (~0u) >> (32 - bits_per_variant);
+        u32 bit_index = palette_region_voxel_index * bits_per_variant;
+        u32 data_index = bit_index / 32;
+        u32 data_offset = bit_index - data_index * 32;
+        u32 data = (my_palette_index - 1) & mask;
+        u32 address = blob_offset + palette_size + data_index;
+        // clang-format off
+        atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 0]), ~(mask << data_offset));
+        atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 0]),   data << data_offset);
+        if (data_offset + bits_per_variant > 32) {
+            u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
+            atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 1]), ~(mask >> shift));
+            atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 1]),   data >> shift);
         }
+        if (palette_region_voxel_index < palette_size) {
+            deref(daxa_push_constant.gpu_allocator.heap[blob_offset + palette_region_voxel_index]) = palette_result[palette_region_voxel_index];
+        }
+        // clang-format on
     }
 }
 #undef VOXEL_WORLD

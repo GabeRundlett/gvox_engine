@@ -7,13 +7,14 @@ struct ImFont;
 #include <imgui.h>
 #include <chrono>
 #include <filesystem>
+#include <fmt/format.h>
 
 #include <gvox/gvox.h>
 
 struct AppUi {
     struct Console {
         char input_buffer[256]{};
-        std::vector<char *> items;
+        std::vector<std::string> items;
         std::vector<const char *> commands;
         std::vector<char *> history;
         int history_pos{-1};
@@ -25,7 +26,11 @@ struct AppUi {
         ~Console();
 
         void clear_log();
-        void add_log(const char *fmt, ...);
+        void add_log(std::string const &str);
+        template <typename... Args>
+        void add_log(fmt::format_string<Args...> format_string, Args &&...args) {
+            add_log(fmt::vformat(format_string, fmt::make_format_args(std::forward<Args>(args)...)));
+        }
         void draw(const char *title, bool *p_open);
         void exec_command(const char *command_line);
         int on_text_edit(ImGuiInputTextCallbackData *data);
