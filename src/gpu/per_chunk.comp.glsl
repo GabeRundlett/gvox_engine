@@ -7,7 +7,7 @@ DAXA_USE_PUSH_CONSTANT(PerChunkComputePush)
 #define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
 void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
-    if (prev_update_n < MAX_CHUNK_UPDATES) {
+    if (prev_update_n < MAX_CHUNK_UPDATES_PER_FRAME) {
         atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
         atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
@@ -48,7 +48,7 @@ void main() {
         CHUNKS(chunk_index).edit_stage = 0;
         for (u32 i = 0; i < PALETTES_PER_CHUNK; ++i) {
             CHUNKS(chunk_index).palette_headers[i].variant_n = 0;
-            CHUNKS(chunk_index).palette_headers[i].blob_offset = 0;
+            CHUNKS(chunk_index).palette_headers[i].blob_ptr = 0;
         }
     }
 

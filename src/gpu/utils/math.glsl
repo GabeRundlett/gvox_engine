@@ -66,16 +66,44 @@ f32vec3 hsv2rgb(f32vec3 c) {
 }
 f32vec4 uint_to_float4(u32 u) {
     f32vec4 result;
-    result.r = f32((u >> 0x00) & 0xff) / 255;
-    result.g = f32((u >> 0x08) & 0xff) / 255;
-    result.b = f32((u >> 0x10) & 0xff) / 255;
-    result.a = f32((u >> 0x18) & 0xff) / 255;
+    result.r = f32((u >> 0x00) & 0xff) / 255.0;
+    result.g = f32((u >> 0x08) & 0xff) / 255.0;
+    result.b = f32((u >> 0x10) & 0xff) / 255.0;
+    result.a = f32((u >> 0x18) & 0xff) / 255.0;
+
     result = pow(result, f32vec4(2.2));
+
+    // result = result * f32vec4(16, 32, 8, 32);
+    // result.gba = pow(result.gba, f32vec3(2.2));
+    // result.g = 1 - result.g;
+    // result.rgb = hsv2rgb(result.rgb);
+
+    // f32 c = result.r - ( 16.0 / 256.0);
+    // f32 d = result.g - (128.0 / 256.0);
+    // f32 e = result.b - (128.0 / 256.0);
+    // result.r = (298.0 / 256.0) * c + (409.0 / 256.0) * e + (128.0 / 256.0);
+    // result.g = (298.0 / 256.0) * c + (100.0 / 256.0) * d + (208.0 / 256.0) * e + 128.0 / 256.0;
+    // result.b = (298.0 / 256.0) * c + (516.0 / 256.0) * d + (128.0 / 256.0);
+
     return result;
 }
 u32 float4_to_uint(f32vec4 f) {
-    u32 result = 0;
+    f = clamp(f, f32vec4(0), f32vec4(1));
+
+    // f32vec3 yuv = f32vec3(
+    //     dot(f32vec3(0.299, 0.587, 0.114), f.rgb),
+    //     dot(f32vec3(-0.174, -0.289, 0.436), f.rgb),
+    //     dot(f32vec3(0.615, -0.515, -0.100), f.rgb));
+    // f.rgb = yuv;
+
+    // f.rgb = rgb2hsv(f.rgb);
+    // f.g = 1 - f.g;
+    // f.gba = pow(f.gba, f32vec3(1.0 / 2.2));
+    // f = f / f32vec4(16, 32, 8, 32);
+
     f = pow(f, f32vec4(1.0 / 2.2));
+
+    u32 result = 0;
     result |= u32(clamp(f.r, 0, 1) * 255) << 0x00;
     result |= u32(clamp(f.g, 0, 1) * 255) << 0x08;
     result |= u32(clamp(f.b, 0, 1) * 255) << 0x10;
@@ -83,21 +111,20 @@ u32 float4_to_uint(f32vec4 f) {
     return result;
 }
 u32 ceil_log2(u32 x) {
-    u32 t[5] = u32[5](
-        0xFFFF0000,
-        0x0000FF00,
-        0x000000F0,
-        0x0000000C,
-        0x00000002);
-    u32 y = (((x & (x - 1)) == 0) ? 0 : 1);
-    i32 j = 16;
-    for (u32 i = 0; i < 5; i++) {
-        i32 k = (((x & t[i]) == 0) ? 0 : j);
-        y += u32(k);
-        x >>= k;
-        j >>= 1;
+    return findMSB(x) + u32(bitCount(x) > 1);
+}
+
+// Bit Functions
+
+void flag_set(in out u32 bitfield, u32 index, bool value) {
+    if (value) {
+        bitfield |= 1u << index;
+    } else {
+        bitfield &= ~(1u << index);
     }
-    return y;
+}
+bool flag_get(u32 bitfield, u32 index) {
+    return ((bitfield >> index) & 1u) == 1u;
 }
 
 // Shape Functions

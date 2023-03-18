@@ -17,14 +17,13 @@ struct Player {
     f32 max_speed;
 };
 
-#define MAX_CHUNK_UPDATES 16
 struct VoxelChunkUpdateInfo {
     u32vec3 i;
     f32 score;
 };
 
 struct VoxelWorld {
-    VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES];
+    VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
     u32 chunk_update_n;
 };
 
@@ -42,13 +41,3 @@ struct GpuGlobals {
     u32 padding[10];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
-
-struct GpuAllocatorState {
-    u32 offset;
-};
-DAXA_ENABLE_BUFFER_PTR(GpuAllocatorState)
-
-struct GpuAllocator {
-    daxa_RWBufferPtr(GpuAllocatorState) state;
-    daxa_RWBufferPtr(daxa_u32) heap;
-};

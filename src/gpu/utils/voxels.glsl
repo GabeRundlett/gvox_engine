@@ -73,8 +73,8 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
     u32 in_region_index = in_region_i.x + in_region_i.y * PALETTE_REGION_SIZE + in_region_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
     u32 channel_offset = (region_index * MODEL.channel_n + channel_index) * 2;
     u32 variant_n = MODEL.data[channel_offset + 0];
-    u32 blob_offset = MODEL.data[channel_offset + 1];
-    u32 v_data_offset = 2 * region_header_n * MODEL.channel_n + blob_offset / 4;
+    u32 blob_ptr = MODEL.data[channel_offset + 1];
+    u32 v_data_offset = 2 * region_header_n * MODEL.channel_n + blob_ptr / 4;
     u32 bits_per_variant = ceil_log2(variant_n);
     if (variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
         packed_voxel_data = MODEL.data[v_data_offset + in_region_index];
@@ -90,7 +90,7 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
         }
         packed_voxel_data = MODEL.data[v_data_offset + my_palette_index];
     } else {
-        packed_voxel_data = blob_offset;
+        packed_voxel_data = blob_ptr;
     }
     return packed_voxel_data;
 }
@@ -103,10 +103,10 @@ u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelCh
     u32 palette_voxel_index = palette_voxel_i.x + palette_voxel_i.y * PALETTE_REGION_SIZE + palette_voxel_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
     if (palette_header.variant_n == 1) {
-        return palette_header.blob_offset;
+        return palette_header.blob_ptr;
     }
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
-        u32 heap_index = palette_header.blob_offset + palette_voxel_index;
+        u32 heap_index = palette_header.blob_ptr + palette_voxel_index;
         return deref(gpu_heap[heap_index]);
     }
     u32 bits_per_variant = ceil_log2(palette_header.variant_n);
@@ -114,14 +114,14 @@ u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelCh
     u32 bit_index = palette_voxel_index * bits_per_variant;
     u32 data_index = bit_index / 32;
     u32 data_offset = bit_index - data_index * 32;
-    u32 my_palette_index = (deref(gpu_heap[palette_header.blob_offset + palette_header.variant_n + data_index + 0]) >> data_offset) & mask;
+    u32 my_palette_index = (deref(gpu_heap[palette_header.blob_ptr + palette_header.variant_n + data_index + 0]) >> data_offset) & mask;
     if (data_offset + bits_per_variant > 32) {
         u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
-        my_palette_index |= (deref(gpu_heap[palette_header.blob_offset + palette_header.variant_n + data_index + 1]) << shift) & mask;
+        my_palette_index |= (deref(gpu_heap[palette_header.blob_ptr + palette_header.variant_n + data_index + 1]) << shift) & mask;
     }
-    u32 voxel_data = deref(gpu_heap[palette_header.blob_offset + my_palette_index]);
+    u32 voxel_data = deref(gpu_heap[palette_header.blob_ptr + my_palette_index]);
     return voxel_data;
-    // return ((palette_header.blob_offset / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
+    // return ((palette_header.blob_ptr / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
 }
 
 u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {
@@ -135,16 +135,15 @@ u32 sample_voxel_chunk(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelCh
     return sample_voxel_chunk(gpu_heap, voxel_chunk_ptr, inchunk_voxel_i);
 }
 
-#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                                                                 \
-    b32 sample_lod_presence_##N(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
-        return true;                                                                                                                               \
-        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                                                     \
-        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                                                   \
-        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                                                    \
-        daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                                                                 \
-        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                                                               \
-        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                                                    \
-        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                                                            \
+#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                              \
+    b32 sample_lod_presence_##N(daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
+        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                  \
+        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                \
+        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                 \
+        daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                              \
+        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                            \
+        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                 \
+        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                         \
     }
 SAMPLE_LOD_PRESENCE_IMPL(2)
 SAMPLE_LOD_PRESENCE_IMPL(4)

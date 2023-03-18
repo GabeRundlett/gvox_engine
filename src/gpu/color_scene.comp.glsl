@@ -42,6 +42,9 @@ void main() {
         if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
             // u32 lod = sample_lod(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), chunk_i, inchunk_voxel_i);
             // col = f32vec3(lod) / 7;
+
+            // col = f32vec3(0.1);
+
             u32 voxel_data = sample_voxel_chunk(daxa_push_constant.gpu_heap, CHUNK_PTRS(chunk_index), inchunk_voxel_i);
             f32vec4 sample_col = uint_to_float4(voxel_data);
             col = sample_col.rgb;
@@ -54,25 +57,25 @@ void main() {
             //     col += 0.1;
             // }
 
+            f32vec3 light_contrib = sky_col; // * (dot(hit_nrm, f32vec3(0, 0, 1)) * 0.5 + 0.5);
+
 #if AMBIENT_OCCLUSION
             f32vec3 ray_pos = hit_pos + hit_nrm * 1 / VOXEL_SCL;
-            f32vec3 ray_dir = rand_lambertian_nrm(hit_nrm, fract(rand2(pixel_i) * INPUT.time * 100));
-            trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 64);
+            f32vec3 ray_dir = rand_lambertian_nrm(hit_nrm, fract(rand2(pixel_i + fract(INPUT.time))));
+            trace_sparse(daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 2);
             if (dot(ray_pos, ray_pos) < MAX_SD * MAX_SD / 2) {
-                col *= 0.0;
+                light_contrib *= 0.0;
             }
-#else
-            f32vec3 light_contrib = sky_col * (dot(hit_nrm, f32vec3(0, 0, 1)) * 0.5 + 0.5);
+#endif
             {
                 f32vec3 ray_pos = hit_pos + hit_nrm * 0.01 / VOXEL_SCL;
                 f32vec3 ray_dir = light_dir;
-                trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
+                trace_hierarchy_traversal(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 256);
                 if (dot(ray_pos, ray_pos) > MAX_SD * MAX_SD / 2) {
                     light_contrib += light_col * max(dot(hit_nrm, light_dir), 0);
                 }
             }
             col *= light_contrib;
-#endif
         }
     } else {
         col = sky_col;
@@ -84,7 +87,7 @@ void main() {
             daxa_push_constant.render_col_image_id,
             i32vec2(pixel_i))
             .rgb;
-    f32 alpha = 0.1;
+    f32 alpha = 0.5;
     col = clamp(col, f32vec3(0), f32vec3(5));
     imageStore(
         daxa_push_constant.render_col_image_id,

@@ -59,11 +59,10 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 #include <utils/hdda.glsl>
 #endif
 
-#define MODEL deref(model_ptr)
 void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL); // f32vec3(MODEL.extent_x, MODEL.extent_y, MODEL.extent_z) / VOXEL_SCL;
+    b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
 
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
     ray_pos += ray_dir * 0.01 / VOXEL_SCL;
@@ -152,7 +151,7 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
         }
         cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
         t_next = (0.5 + sign(ray_dir) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
-        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.001 / 8);
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.002 / VOXEL_SCL);
     }
     ray_pos = ray_pos + ray_dir * dist;
 #elif TRAVERSAL_MODE == 3
@@ -183,7 +182,39 @@ void trace_hierarchy_traversal(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr
     }
 #endif
 }
-#undef MODEL
+
+void trace_sparse(daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
+    BoundingBox b;
+    b.bound_min = f32vec3(0, 0, 0);
+    b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
+
+    intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
+    ray_pos += ray_dir * 0.01 / VOXEL_SCL;
+    if (!inside(ray_pos, b)) {
+        ray_pos = ray_pos + ray_dir * MAX_SD;
+        return;
+    }
+
+#define STEP(N)                                                                                        \
+    for (u32 i = 0; i < max_steps; ++i) {                                                              \
+        ray_pos += ray_dir * N / 8;                                                                    \
+        if (!inside(f32vec3(ray_pos), b)) {                                                            \
+            ray_pos += ray_dir * MAX_SD;                                                               \
+            return;                                                                                    \
+        }                                                                                              \
+        b32 present = sample_lod_presence(N)(voxel_chunks_ptr, chunk_n, u32vec3(ray_pos * VOXEL_SCL)); \
+        if (present) {                                                                                 \
+            return;                                                                                    \
+        }                                                                                              \
+    }
+    STEP(2)
+    STEP(4)
+    STEP(8)
+    STEP(16)
+    STEP(32)
+    STEP(64)
+    ray_pos += ray_dir * MAX_SD;
+}
 
 void trace(daxa_BufferPtr(daxa_u32) gpu_heap, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
     // trace_sphere_trace(ray_pos, ray_dir);

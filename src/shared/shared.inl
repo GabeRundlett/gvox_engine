@@ -20,7 +20,7 @@ struct PerframeComputePush {
     daxa_RWBufferPtr(GpuOutput) gpu_output;
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
-    GpuAllocator gpu_allocator;
+    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator;
 };
 
 struct PerChunkComputePush {
@@ -50,7 +50,7 @@ struct ChunkAllocComputePush {
     daxa_BufferPtr(GpuGlobals) gpu_globals;
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-    GpuAllocator gpu_allocator;
+    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator;
 };
 
 struct TracePrimaryComputePush {

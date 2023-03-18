@@ -53,7 +53,7 @@ void PerframeTask::record(
     BDA output_buffer_ptr,
     BDA globals_buffer_ptr,
     BDA voxel_chunks_buffer_ptr,
-    GpuAllocator gpu_allocator) const {
+    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator) const {
     if (!pipeline) {
         return;
     }
@@ -64,7 +64,7 @@ void PerframeTask::record(
         .gpu_output = output_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
-        .gpu_allocator = gpu_allocator,
+        .voxel_malloc_global_allocator = voxel_malloc_global_allocator,
     });
     cmd_list.dispatch(1, 1, 1);
 }
@@ -168,7 +168,7 @@ void ChunkAlloc::record(
     BDA globals_buffer_ptr,
     BDA temp_voxel_chunks_ptr,
     BDA voxel_chunks_buffer_ptr,
-    GpuAllocator gpu_allocator,
+    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator,
     daxa::BufferId globals_buffer_id) const {
     if (!pipeline) {
         return;
@@ -179,7 +179,7 @@ void ChunkAlloc::record(
         .gpu_globals = globals_buffer_ptr,
         .temp_voxel_chunks = temp_voxel_chunks_ptr,
         .voxel_chunks = voxel_chunks_buffer_ptr,
-        .gpu_allocator = gpu_allocator,
+        .voxel_malloc_global_allocator = voxel_malloc_global_allocator,
     });
     cmd_list.dispatch_indirect({
         .indirect_buffer = globals_buffer_id,
@@ -315,6 +315,114 @@ void VoxelChunks::destroy(daxa::Device &device) const {
     }
 }
 
+void VoxelMalloc::create(daxa::Device &device, u32 page_count) {
+    u32 prev_page_count = current_page_count;
+    if (page_count > current_page_count) {
+        current_page_count = page_count * 2;
+        device.wait_idle();
+        auto new_pages_buffer = device.create_buffer({
+            .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * current_page_count,
+            .debug_name = "voxel_malloc_pages_buffer",
+        });
+        auto new_available_pages_stack_buffer = device.create_buffer({
+            .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * current_page_count,
+            .debug_name = "available_pages_stack_buffer",
+        });
+        auto new_released_pages_stack_buffer = device.create_buffer({
+            .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * current_page_count,
+            .debug_name = "released_pages_stack_buffer",
+        });
+        if (!pages_buffer.is_empty()) {
+            auto temp_task_list = daxa::TaskList({
+                .device = device,
+                .use_split_barriers = false,
+                .debug_name = APPNAME_PREFIX("temp_task_list"),
+            });
+
+            auto temp_task_pages_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("pages_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_pages_buffer, pages_buffer);
+            auto temp_task_new_pages_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("new_pages_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_new_pages_buffer, new_pages_buffer);
+
+            auto temp_task_available_pages_stack_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("available_pages_stack_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_available_pages_stack_buffer, available_pages_stack_buffer);
+            auto temp_task_new_available_pages_stack_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("new_available_pages_stack_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_new_available_pages_stack_buffer, new_available_pages_stack_buffer);
+
+            auto temp_task_released_pages_stack_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("released_pages_stack_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_released_pages_stack_buffer, released_pages_stack_buffer);
+            auto temp_task_new_released_pages_stack_buffer = temp_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("new_released_pages_stack_buffer")});
+            temp_task_list.add_runtime_buffer(temp_task_new_released_pages_stack_buffer, new_released_pages_stack_buffer);
+
+            temp_task_list.add_task({
+                .used_buffers = {
+                    {temp_task_pages_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
+                    {temp_task_new_pages_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+                    {temp_task_available_pages_stack_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
+                    {temp_task_new_available_pages_stack_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+                    {temp_task_released_pages_stack_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
+                    {temp_task_new_released_pages_stack_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+                },
+                .task = [&](daxa::TaskRuntime task_runtime) {
+                    auto cmd_list = task_runtime.get_command_list();
+                    cmd_list.copy_buffer_to_buffer({
+                        .src_buffer = task_runtime.get_buffers(temp_task_pages_buffer)[0],
+                        .src_offset = 0,
+                        .dst_buffer = task_runtime.get_buffers(temp_task_new_pages_buffer)[0],
+                        .dst_offset = 0,
+                        .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * prev_page_count,
+                    });
+                    cmd_list.copy_buffer_to_buffer({
+                        .src_buffer = task_runtime.get_buffers(temp_task_available_pages_stack_buffer)[0],
+                        .src_offset = 0,
+                        .dst_buffer = task_runtime.get_buffers(temp_task_new_available_pages_stack_buffer)[0],
+                        .dst_offset = 0,
+                        .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * sizeof(VoxelMalloc_PageIndex),
+                    });
+                    cmd_list.copy_buffer_to_buffer({
+                        .src_buffer = task_runtime.get_buffers(temp_task_released_pages_stack_buffer)[0],
+                        .src_offset = 0,
+                        .dst_buffer = task_runtime.get_buffers(temp_task_new_released_pages_stack_buffer)[0],
+                        .dst_offset = 0,
+                        .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * sizeof(VoxelMalloc_PageIndex),
+                    });
+                },
+                .debug_name = APPNAME_PREFIX("Transfer Task"),
+            });
+            temp_task_list.add_task({
+                .used_buffers = {
+                    {temp_task_new_pages_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {temp_task_new_available_pages_stack_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                    {temp_task_new_released_pages_stack_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+                },
+                .task = [](daxa::TaskRuntime) {},
+                .debug_name = APPNAME_PREFIX("Dummy task"),
+            });
+            auto temp_submit_info = daxa::CommandSubmitInfo{};
+            temp_task_list.submit(&temp_submit_info);
+            temp_task_list.complete();
+            temp_task_list.execute();
+            device.wait_idle();
+            destroy(device);
+        }
+        pages_buffer = new_pages_buffer;
+        available_pages_stack_buffer = new_available_pages_stack_buffer;
+        released_pages_stack_buffer = new_released_pages_stack_buffer;
+    }
+}
+
+void VoxelMalloc::destroy(daxa::Device &device) const {
+    if (!pages_buffer.is_empty()) {
+        device.destroy_buffer(pages_buffer);
+    }
+    if (!available_pages_stack_buffer.is_empty()) {
+        device.destroy_buffer(available_pages_stack_buffer);
+    }
+    if (!released_pages_stack_buffer.is_empty()) {
+        device.destroy_buffer(released_pages_stack_buffer);
+    }
+}
+
 void GpuHeap::create(daxa::Device &device, u32 size) {
     buffer = device.create_buffer({
         .size = size,
@@ -352,7 +460,7 @@ void GpuResources::create(daxa::Device &device) {
         .debug_name = "globals_buffer",
     });
     temp_voxel_chunks_buffer = device.create_buffer({
-        .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES,
+        .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES_PER_FRAME,
         .debug_name = "temp_voxel_chunks_buffer",
     });
     allocator_state_buffer = device.create_buffer({
@@ -371,6 +479,7 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(temp_voxel_chunks_buffer);
     device.destroy_buffer(allocator_state_buffer);
     voxel_chunks.destroy(device);
+    voxel_malloc.destroy(device);
     gpu_heap.destroy(device);
     if (!gvox_model_buffer.is_empty()) {
         device.destroy_buffer(gvox_model_buffer);
@@ -426,6 +535,9 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.temp_voxel_chunks_buffer);
     buffer_size(gpu_resources.allocator_state_buffer);
     buffer_size(gpu_resources.voxel_chunks.buffer);
+    buffer_size(gpu_resources.voxel_malloc.pages_buffer);
+    buffer_size(gpu_resources.voxel_malloc.available_pages_stack_buffer);
+    buffer_size(gpu_resources.voxel_malloc.released_pages_stack_buffer);
     buffer_size(gpu_resources.gpu_heap.buffer);
     buffer_size(gpu_resources.gvox_model_buffer);
 
@@ -630,6 +742,7 @@ VoxelApp::VoxelApp()
       main_task_list{[this]() {
           gpu_resources.create(device);
           gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
+          gpu_resources.voxel_malloc.create(device, (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME);
           gpu_resources.gpu_heap.create(device, ui.settings.gpu_heap_size);
           return record_main_task_list();
       }()} {
@@ -641,6 +754,14 @@ VoxelApp::~VoxelApp() {
     device.wait_idle();
     device.collect_garbage();
     gpu_resources.destroy(device);
+}
+
+void VoxelApp::run() {
+    while (true) {
+        if (update()) {
+            break;
+        }
+    }
 }
 
 auto VoxelApp::update() -> bool {
@@ -798,8 +919,15 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
+    if (gpu_output.heap_size * sizeof(u32) + VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_PAGE_SIZE_BYTES >
+        gpu_resources.voxel_malloc.current_page_count * VOXEL_MALLOC_PAGE_SIZE_BYTES) {
+        gpu_resources.voxel_malloc.create(device, gpu_resources.voxel_malloc.current_page_count + VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1));
+        needs_vram_calc = true;
+    }
+
     ui.debug_gpu_heap_usage = gpu_output.heap_size;
     ui.debug_player_pos = gpu_output.player_pos;
+    ui.debug_page_count = gpu_resources.voxel_malloc.current_page_count;
 }
 
 void VoxelApp::on_mouse_move(f32 x, f32 y) {
@@ -1134,6 +1262,24 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
     result_task_list.add_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
 
+    task_voxel_malloc_pages_buffer = result_task_list.create_task_buffer({
+        .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+        .debug_name = APPNAME_PREFIX("task_voxel_malloc_pages_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_voxel_malloc_pages_buffer, gpu_resources.voxel_malloc.pages_buffer);
+
+    task_voxel_malloc_available_pages_stack_buffer = result_task_list.create_task_buffer({
+        .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+        .debug_name = APPNAME_PREFIX("task_voxel_malloc_available_pages_stack_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_voxel_malloc_available_pages_stack_buffer, gpu_resources.voxel_malloc.available_pages_stack_buffer);
+
+    task_voxel_malloc_released_pages_stack_buffer = result_task_list.create_task_buffer({
+        .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+        .debug_name = APPNAME_PREFIX("task_voxel_malloc_released_pages_stack_buffer"),
+    });
+    result_task_list.add_runtime_buffer(task_voxel_malloc_released_pages_stack_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer);
+
     task_gpu_heap_buffer = result_task_list.create_task_buffer({
         .debug_name = APPNAME_PREFIX("task_gpu_heap_buffer"),
     });
@@ -1184,7 +1330,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 device.get_device_address(task_runtime.get_buffers(task_output_buffer)[0]) + offset * sizeof(GpuOutput),
                 device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                GpuAllocator{
+                VoxelMalloc_GlobalAllocator{
                     .state = device.get_device_address(task_runtime.get_buffers(task_allocator_state_buffer)[0]),
                     .heap = device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
                 });
@@ -1300,7 +1446,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
-                GpuAllocator{
+                VoxelMalloc_GlobalAllocator{
                     .state = device.get_device_address(task_runtime.get_buffers(task_allocator_state_buffer)[0]),
                     .heap = device.get_device_address(task_runtime.get_buffers(task_gpu_heap_buffer)[0]),
                 },

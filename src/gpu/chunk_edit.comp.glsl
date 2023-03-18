@@ -7,21 +7,32 @@
 DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush)
 
 #define SIMPLE 0
+#define DEBUG 1
+#define TERRAIN 2
+
+#define SCENE TERRAIN
 
 f32 terrain_noise(f32vec3 p) {
-#if SIMPLE
+#if SCENE == SIMPLE
     return fract((p.x + p.y + p.z) * 0.05) - 0.5;
-#else
+#elif SCENE == DEBUG
+    p = f32vec3(2, 2, 180) - p;
+    f32 dist = MAX_SD;
+    dist = min(dist, -p.z);
+    dist = min(dist, length(p + f32vec3(0, 0, 1)) - 1);
+    return dist;
+#elif SCENE == TERRAIN
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.2,
-        /* .scale       = */ 0.16 / VOXEL_SCL,
-        /* .lacunarity  = */ 4,
-        /* .octaves     = */ 5);
+        /* .scale       = */ 0.002,
+        /* .lacunarity  = */ 4.5,
+        /* .octaves     = */ 6);
     f32 val = fractal_noise(p, noise_conf);
-    val -= p.z * 0.02 - 1;
+    val += p.z * 0.003 - 1;
     return val;
 #endif
+    return 0;
 }
 
 f32vec3 terrain_nrm(f32vec3 pos) {
@@ -30,7 +41,7 @@ f32vec3 terrain_nrm(f32vec3 pos) {
         f32vec3 e = 0.5773 * (2.0 * f32vec3((((i + 3) >> 1) & 1), ((i >> 1) & 1), (i & 1)) - 1.0);
         n += e * terrain_noise(pos + 1.0 / VOXEL_SCL * e);
     }
-    return -normalize(n);
+    return normalize(n);
 }
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
@@ -51,34 +62,49 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    f32vec3 voxel_pos = f32vec3(voxel_i) / (CHUNK_SIZE / VOXEL_SCL); // + floor(f32vec3(INPUT.time * 10, 0, 0) * VOXEL_SCL) / VOXEL_SCL;
+    f32vec3 voxel_pos = f32vec3(voxel_i) / VOXEL_SCL + f32vec3(1700, 1600, 150);
 
     f32 val = terrain_noise(voxel_pos);
-
     f32vec3 nrm = terrain_nrm(voxel_pos);
-
     f32 upwards = dot(nrm, f32vec3(0, 0, 1));
 
-    if (val > 0) {
+    if (val < 0) {
         id = 1;
-#if SIMPLE
+#if SCENE == SIMPLE
         col = f32vec3(1, 0, 1);
-#else
-        if (val < 0.012 && upwards > 0.65) {
+#elif SCENE == DEBUG
+        col = f32vec3(0.1);
+#elif SCENE == TERRAIN
+        f32 r = good_rand(-val);
+        if (val > -0.002 && upwards > 0.65) {
+            // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
             col = f32vec3(0.054, 0.22, 0.028);
-            if (good_rand(val) < 0.5) {
+            if (r < 0.5) {
                 col *= 0.7;
             }
-        } else if (val < 0.1 && upwards > 0.5) {
+        } else if (val > -0.05 && upwards > 0.5) {
             col = f32vec3(0.08, 0.05, 0.03);
-            if (good_rand(val) < 0.5) {
+            if (r < 0.5) {
                 col.r *= 0.5;
                 col.g *= 0.5;
                 col.b *= 0.5;
+            } else if (r < 0.52) {
+                col.r *= 1.5;
+                col.g *= 1.5;
+                col.b *= 1.5;
+            }
+        } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
+            col = f32vec3(0.09, 0.08, 0.07);
+            if (r < 0.5) {
+                col.r *= 0.75;
+                col.g *= 0.75;
+                col.b *= 0.75;
             }
         } else {
-            col = f32vec3(0.08, 0.08, 0.07); // * (0.6 - floor((-sin(val * 2 + 3.5) * 0.5 + 0.5 + good_rand(val) * 0.2) * 4) / 50);
+            col = f32vec3(0.08, 0.08, 0.07);
         }
+#else
+        col = f32vec3(1, 1, 0);
 #endif
     }
 

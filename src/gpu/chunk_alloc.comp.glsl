@@ -3,15 +3,16 @@
 #include <shared/shared.inl>
 
 #include <utils/math.glsl>
-#include <utils/allocator.glsl>
+#include <utils/voxel_malloc.glsl>
 #include <utils/voxels.glsl>
 
 DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush)
 
-shared u32 palette_result[PALETTE_REGION_TOTAL_SIZE];
+shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
-shared u32 blob_offset;
+shared u32 compressed_size;
+shared VoxelMalloc_Pointer blob_ptr;
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
     if (palette_region_voxel_index == 0) {
@@ -24,7 +25,7 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
             u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, u64(my_voxel) | (u64(1) << u64(32)));
             if (vote_result == 0) {
                 my_palette_index = algo_i + 1;
-                palette_result[palette_size] = my_voxel;
+                compression_result[palette_size] = my_voxel;
                 palette_size++;
             } else if (my_voxel == u32(vote_result)) {
                 my_palette_index = algo_i + 1;
@@ -70,7 +71,7 @@ void main() {
 
     if (palette_region_voxel_index == 0) {
         if (deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n > 1) {
-            gpu_free(daxa_push_constant.gpu_allocator, deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset);
+            VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr);
         }
     }
 
@@ -80,43 +81,45 @@ void main() {
     u32 bits_per_variant = ceil_log2(palette_size);
 
     if (palette_region_voxel_index == 0) {
-        deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
         if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
-            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, PALETTE_REGION_TOTAL_SIZE);
+            compressed_size = PALETTE_REGION_TOTAL_SIZE;
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
         } else if (palette_size > 1) {
-            u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32 + 1;
-            compressed_size += palette_size;
-            blob_offset = gpu_malloc(daxa_push_constant.gpu_allocator, compressed_size);
-            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = blob_offset;
+            compressed_size = palette_size + (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32;
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
         } else {
-            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_offset = my_voxel;
+            compressed_size = 0;
+            blob_ptr = my_voxel;
         }
+        deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
+        deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
     }
 
-    barrier();
-    memoryBarrierShared();
-
     if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
-        deref(daxa_push_constant.gpu_allocator.heap[blob_offset + palette_region_voxel_index]) = my_voxel;
+        compression_result[palette_region_voxel_index] = my_voxel;
     } else if (palette_size > 1) {
         u32 mask = (~0u) >> (32 - bits_per_variant);
         u32 bit_index = palette_region_voxel_index * bits_per_variant;
         u32 data_index = bit_index / 32;
         u32 data_offset = bit_index - data_index * 32;
         u32 data = (my_palette_index - 1) & mask;
-        u32 address = blob_offset + palette_size + data_index;
+        u32 address = palette_size + data_index;
         // clang-format off
-        atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 0]), ~(mask << data_offset));
-        atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 0]),   data << data_offset);
+        atomicAnd(compression_result[address + 0], ~(mask << data_offset));
+        atomicOr (compression_result[address + 0],   data << data_offset);
         if (data_offset + bits_per_variant > 32) {
             u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
-            atomicAnd(deref(daxa_push_constant.gpu_allocator.heap[address + 1]), ~(mask >> shift));
-            atomicOr (deref(daxa_push_constant.gpu_allocator.heap[address + 1]),   data >> shift);
-        }
-        if (palette_region_voxel_index < palette_size) {
-            deref(daxa_push_constant.gpu_allocator.heap[blob_offset + palette_region_voxel_index]) = palette_result[palette_region_voxel_index];
+            atomicAnd(compression_result[address + 1], ~(mask >> shift));
+            atomicOr (compression_result[address + 1],   data >> shift);
         }
         // clang-format on
+    }
+
+    barrier();
+    memoryBarrierShared();
+
+    if (palette_region_voxel_index < compressed_size) {
+        deref(daxa_push_constant.voxel_malloc_global_allocator.heap[blob_ptr + palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
     }
 }
 #undef VOXEL_WORLD

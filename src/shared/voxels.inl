@@ -1,22 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
-
-#define CHUNK_SIZE 64
-
-#define PALETTE_REGION_SIZE 8
-#define PALETTE_REGION_TOTAL_SIZE (PALETTE_REGION_SIZE * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE)
-
-#if PALETTE_REGION_SIZE == 8
-#define PALETTE_MAX_COMPRESSED_VARIANT_N 367
-#elif PALETTE_REGION_SIZE == 16
-#define PALETTE_MAX_COMPRESSED_VARIANT_N 2559
-#else
-#error Unsupported Palette Region Size
-#endif
-
-#define PALETTES_PER_CHUNK_AXIS (CHUNK_SIZE / PALETTE_REGION_SIZE)
-#define PALETTES_PER_CHUNK (PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS)
+#include <shared/voxel_malloc.inl>
 
 struct GpuGvoxModel {
     u32 magic;
@@ -33,6 +17,8 @@ struct GpuGvoxModel {
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGvoxModel)
 
+// 1364 u32's
+// 10.65625 bytes per 8x8x8
 struct VoxelChunkUniformity {
     u32 lod_x2[1024];
     u32 lod_x4[256];
@@ -41,14 +27,16 @@ struct VoxelChunkUniformity {
     u32 lod_x32[4];
 };
 
+// 8 bytes per 8x8x8
 struct PaletteHeader {
     u32 variant_n;
-    u32 blob_offset;
+    VoxelMalloc_Pointer blob_ptr;
 };
 
 struct VoxelChunk {
     u32 edit_stage;
     VoxelChunkUniformity uniformity;
+    VoxelMalloc_ChunkLocalPageSubAllocatorState sub_allocator_state;
     PaletteHeader palette_headers[PALETTES_PER_CHUNK];
 };
 DAXA_ENABLE_BUFFER_PTR(VoxelChunk)
