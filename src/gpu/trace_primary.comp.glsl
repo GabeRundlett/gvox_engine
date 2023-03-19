@@ -29,7 +29,7 @@ void main() {
     f32vec3 ray_dir = create_view_dir(deref(daxa_push_constant.gpu_globals).player, uv);
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    trace(daxa_push_constant.gpu_heap, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir);
+    trace(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir);
 
     imageStore(
         daxa_push_constant.render_pos_image_id,

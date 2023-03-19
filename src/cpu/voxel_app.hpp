@@ -38,8 +38,8 @@ struct PerframeTask {
         BDA input_buffer_ptr,
         BDA output_buffer_ptr,
         BDA globals_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator) const;
+        BDA voxel_malloc_global_allocator_buffer_ptr,
+        BDA voxel_chunks_buffer_ptr) const;
 };
 
 struct PerChunkTask {
@@ -94,9 +94,9 @@ struct ChunkAlloc {
         daxa::CommandList &cmd_list,
         BDA settings_buffer_ptr,
         BDA globals_buffer_ptr,
+        BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA temp_voxel_chunks_ptr,
         BDA voxel_chunks_buffer_ptr,
-        VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator,
         daxa::BufferId globals_buffer_id) const;
 };
 
@@ -107,7 +107,7 @@ struct TracePrimaryTask {
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
         BDA globals_buffer_ptr,
-        BDA gpu_heap_buffer_ptr,
+        BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA voxel_chunks_buffer_ptr,
         daxa::ImageId render_image,
         u32vec2 render_size) const;
@@ -120,7 +120,7 @@ struct ColorSceneTask {
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
         BDA globals_buffer_ptr,
-        BDA gpu_heap_buffer_ptr,
+        BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA voxel_chunks_buffer_ptr,
         daxa::ImageId render_pos_image,
         daxa::ImageId render_col_image,
@@ -134,7 +134,6 @@ struct PostprocessingTask {
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
         BDA globals_buffer_ptr,
-        BDA allocator_state_buffer_ptr,
         daxa::ImageId render_col_image,
         daxa::ImageId final_image,
         u32vec2 render_size) const;
@@ -162,10 +161,13 @@ struct VoxelChunks {
 };
 
 struct VoxelMalloc {
+    daxa::BufferId global_allocator_buffer;
     daxa::BufferId pages_buffer;
     daxa::BufferId available_pages_stack_buffer;
     daxa::BufferId released_pages_stack_buffer;
     u32 current_page_count = 0;
+
+    daxa::BufferId gpu_heap_buffer;
 
     void create(daxa::Device &device, u32 page_count);
     void destroy(daxa::Device &device) const;
@@ -186,7 +188,6 @@ struct GpuResources {
     daxa::BufferId staging_output_buffer;
     daxa::BufferId globals_buffer;
     daxa::BufferId temp_voxel_chunks_buffer;
-    daxa::BufferId allocator_state_buffer;
     VoxelChunks voxel_chunks;
     VoxelMalloc voxel_malloc;
     GpuHeap gpu_heap;
@@ -228,7 +229,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBufferId task_staging_output_buffer;
     daxa::TaskBufferId task_globals_buffer;
     daxa::TaskBufferId task_temp_voxel_chunks_buffer;
-    daxa::TaskBufferId task_allocator_state_buffer;
+    daxa::TaskBufferId task_voxel_malloc_global_allocator_buffer;
     daxa::TaskBufferId task_voxel_chunks_buffer;
     daxa::TaskBufferId task_voxel_malloc_pages_buffer;
     daxa::TaskBufferId task_voxel_malloc_available_pages_stack_buffer;

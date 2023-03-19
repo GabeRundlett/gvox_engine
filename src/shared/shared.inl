@@ -19,8 +19,8 @@ struct PerframeComputePush {
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_RWBufferPtr(GpuOutput) gpu_output;
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
+    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
-    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator;
 };
 
 struct PerChunkComputePush {
@@ -48,16 +48,16 @@ struct ChunkOptComputePush {
 struct ChunkAllocComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuGlobals) gpu_globals;
+    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-    VoxelMalloc_GlobalAllocator voxel_malloc_global_allocator;
 };
 
 struct TracePrimaryComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_BufferPtr(daxa_u32) gpu_heap;
+    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
     daxa_RWImage2Df32 render_pos_image_id;
 };
@@ -66,7 +66,7 @@ struct ColorSceneComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_BufferPtr(daxa_u32) gpu_heap;
+    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
     daxa_RWImage2Df32 render_pos_image_id;
     daxa_RWImage2Df32 render_col_image_id;
@@ -76,7 +76,6 @@ struct PostprocessingComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_BufferPtr(GpuAllocatorState) gpu_allocator_state;
     daxa_RWImage2Df32 render_col_image_id;
     daxa_RWImage2Df32 final_image_id;
 };

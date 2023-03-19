@@ -39,13 +39,13 @@ struct VoxelMalloc_Page {
 DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_Page)
 
 // bits
-//  [0-4]: chunk_local_allocator_page_index
-//  [5-9]: page_bits_consumed
-//  [5-31]: unused
+//  [ 0-8 ]: chunk_local_allocator_page_index
+//  [ 9-13]: page_bits_consumed
+//  [14-31]: unused
 #define VoxelMalloc_AllocationMetadata daxa_u32
 
 // bits
-//  [0-4]  local_page_alloc_offset
+//  [0-4 ] local_page_alloc_offset
 //  [6-31] global_page_index
 #define VoxelMalloc_Pointer daxa_u32
 
@@ -53,7 +53,7 @@ DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_Page)
 DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_PageIndex)
 
 // bits (needs to be packed as we use atomics to sync access)
-//  [ 0-28]: consumption bitfield
+//  [ 0-28]: local_consumption_bitmask
 //  [29-55]: global_page_index
 //  [56-63]: unused
 #define VoxelMalloc_PageInfo daxa_u64
@@ -67,25 +67,22 @@ struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
 
 #if USE_OLD_ALLOC
 
-struct GpuAllocatorState {
-    u32 offset;
-};
-DAXA_ENABLE_BUFFER_PTR(GpuAllocatorState)
-
 struct VoxelMalloc_GlobalAllocator {
-    daxa_RWBufferPtr(GpuAllocatorState) state;
+    u32 offset;
     daxa_RWBufferPtr(daxa_u32) heap;
 };
+DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 
 #else
 
 struct VoxelMalloc_GlobalAllocator {
     daxa_RWBufferPtr(VoxelMalloc_Page) pages;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) available_pages_stack;
-    u32 available_pages_stack_size;
+    i32 available_pages_stack_size;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) released_pages_stack;
-    u32 released_pages_stack_size;
-    u32 page_count;
+    i32 released_pages_stack_size;
+    i32 page_count;
 };
+DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 
 #endif

@@ -119,7 +119,8 @@ void main() {
     memoryBarrierShared();
 
     if (palette_region_voxel_index < compressed_size) {
-        deref(daxa_push_constant.voxel_malloc_global_allocator.heap[blob_ptr + palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
+        daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(daxa_push_constant.voxel_malloc_global_allocator, blob_ptr);
+        deref(blob_u32s[palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
     }
 }
 #undef VOXEL_WORLD
