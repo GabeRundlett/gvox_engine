@@ -166,8 +166,7 @@ struct VoxelMalloc {
     daxa::BufferId available_pages_stack_buffer;
     daxa::BufferId released_pages_stack_buffer;
     u32 current_page_count = 0;
-
-    daxa::BufferId gpu_heap_buffer;
+    u32 next_page_count = 0;
 
     void create(daxa::Device &device, u32 page_count);
     void destroy(daxa::Device &device) const;
@@ -230,10 +229,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBufferId task_globals_buffer;
     daxa::TaskBufferId task_temp_voxel_chunks_buffer;
     daxa::TaskBufferId task_voxel_malloc_global_allocator_buffer;
-    daxa::TaskBufferId task_voxel_chunks_buffer;
     daxa::TaskBufferId task_voxel_malloc_pages_buffer;
-    daxa::TaskBufferId task_voxel_malloc_available_pages_stack_buffer;
-    daxa::TaskBufferId task_voxel_malloc_released_pages_stack_buffer;
+    daxa::TaskBufferId task_voxel_malloc_new_pages_buffer;
+    daxa::TaskBufferId task_voxel_chunks_buffer;
     daxa::TaskBufferId task_gpu_heap_buffer;
     daxa::TaskBufferId task_gvox_model_buffer;
 
@@ -250,8 +248,16 @@ struct VoxelApp : AppWindow<VoxelApp> {
     PostprocessingTask postprocessing_task;
     GpuOutputDownloadTransferTask gpu_output_download_transfer_task;
 
+    enum class Conditions {
+        STARTUP,
+        UPLOAD_SETTINGS,
+        UPLOAD_GVOX_MODEL,
+        VOXEL_MALLOC_REALLOC,
+        LAST,
+    };
     daxa::TaskList main_task_list;
     daxa::CommandSubmitInfo submit_info;
+    std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -270,10 +276,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void run();
 
-    void recreate_render_images();
-    void recreate_voxel_chunks();
+    void calc_vram_usage();
+    auto load_gvox_data() -> GvoxModelData;
 
-    auto update() -> bool;
     void on_update();
     void on_mouse_move(f32 x, f32 y);
     void on_mouse_scroll(f32 dx, f32 dy);
@@ -281,12 +286,13 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_key(i32 key_id, i32 action);
     void on_resize(u32 sx, u32 sy);
 
-    void calc_vram_usage();
+    void recreate_render_images();
+    void recreate_voxel_chunks();
 
-    void run_startup();
-    void upload_settings();
-    void upload_model();
-    auto load_gvox_data() -> GvoxModelData;
+    void run_startup(daxa::TaskList &temp_task_list);
+    void upload_settings(daxa::TaskList &temp_task_list);
+    void upload_model(daxa::TaskList &temp_task_list);
+    void voxel_malloc_realloc(daxa::TaskList &temp_task_list);
 
     auto record_main_task_list() -> daxa::TaskList;
 };

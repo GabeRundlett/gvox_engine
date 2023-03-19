@@ -78,10 +78,10 @@ DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 struct VoxelMalloc_GlobalAllocator {
     daxa_RWBufferPtr(VoxelMalloc_Page) pages;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) available_pages_stack;
-    i32 available_pages_stack_size;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) released_pages_stack;
-    i32 released_pages_stack_size;
     i32 page_count;
+    i32 available_pages_stack_size;
+    i32 released_pages_stack_size;
 };
 DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 
