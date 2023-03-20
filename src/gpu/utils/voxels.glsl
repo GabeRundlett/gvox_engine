@@ -97,6 +97,7 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
 }
 #undef MODEL
 
+#define READ_FROM_HEAP 1
 u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
     u32vec3 palette_region_i = inchunk_voxel_i / PALETTE_REGION_SIZE;
     u32vec3 palette_voxel_i = inchunk_voxel_i - palette_region_i * PALETTE_REGION_SIZE;
@@ -106,10 +107,17 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     if (palette_header.variant_n == 1) {
         return palette_header.blob_ptr;
     }
+#if READ_FROM_HEAP
     daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr);
+#endif
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
+#if READ_FROM_HEAP
         return deref(blob_u32s[palette_voxel_index]);
+#else
+        return 0x01ffff00;
+#endif
     }
+#if READ_FROM_HEAP
     u32 bits_per_variant = ceil_log2(palette_header.variant_n);
     u32 mask = (~0u) >> (32 - bits_per_variant);
     u32 bit_index = palette_voxel_index * bits_per_variant;
@@ -123,6 +131,9 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     u32 voxel_data = deref(blob_u32s[my_palette_index]);
     return voxel_data;
     // return ((palette_header.blob_ptr / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
+#else
+    return 0x01ff00ff;
+#endif
 }
 
 u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {

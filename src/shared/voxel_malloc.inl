@@ -45,17 +45,17 @@ DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_Page)
 #define VoxelMalloc_AllocationMetadata daxa_u32
 
 // bits
-//  [0-4 ] local_page_alloc_offset
-//  [6-31] global_page_index
+//  [ 0-4 ] local_page_alloc_offset
+//  [ 5-31] global_page_index
 #define VoxelMalloc_Pointer daxa_u32
 
 #define VoxelMalloc_PageIndex daxa_u32
 DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_PageIndex)
 
 // bits (needs to be packed as we use atomics to sync access)
-//  [ 0-28]: local_consumption_bitmask
-//  [29-55]: global_page_index
-//  [56-63]: unused
+//  [ 0-26]: local_consumption_bitmask
+//  [27-53]: global_page_index
+//  [54-63]: unused
 #define VoxelMalloc_PageInfo daxa_u64
 
 struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
@@ -63,7 +63,7 @@ struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
     VoxelMalloc_PageInfo page_allocation_infos[VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK];
 };
 
-#define USE_OLD_ALLOC 1
+#define USE_OLD_ALLOC 0
 
 #if USE_OLD_ALLOC
 

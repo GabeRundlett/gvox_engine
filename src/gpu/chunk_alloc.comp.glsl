@@ -1,4 +1,5 @@
 #extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_debug_printf : require
 
 #include <shared/shared.inl>
 
@@ -11,8 +12,9 @@ DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush)
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
-shared u32 compressed_size;
+#if USE_OLD_ALLOC
 shared VoxelMalloc_Pointer blob_ptr;
+#endif
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
     if (palette_region_voxel_index == 0) {
@@ -43,10 +45,7 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
 #define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
-    u32vec3 chunk_n;
-    chunk_n.x = 1u << SETTINGS.log2_chunks_per_axis;
-    chunk_n.y = chunk_n.x;
-    chunk_n.z = chunk_n.x;
+    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
@@ -80,24 +79,42 @@ void main() {
 
     u32 bits_per_variant = ceil_log2(palette_size);
 
-    if (palette_region_voxel_index == 0) {
-        if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
-            compressed_size = PALETTE_REGION_TOTAL_SIZE;
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
-        } else if (palette_size > 1) {
-            compressed_size = palette_size + (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32;
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
-        } else {
-            compressed_size = 0;
-            blob_ptr = my_voxel;
-        }
-        deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
-        deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
-    }
+    u32 compressed_size = 0;
+#if USE_OLD_ALLOC
+#else
+    VoxelMalloc_Pointer blob_ptr = my_voxel;
+#endif
 
     if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
+        compressed_size = PALETTE_REGION_TOTAL_SIZE;
+#if USE_OLD_ALLOC
+        if (palette_region_voxel_index == 0) {
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+#else
+        blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        if (palette_region_voxel_index == 0) {
+#endif
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
+        }
+
         compression_result[palette_region_voxel_index] = my_voxel;
     } else if (palette_size > 1) {
+        compressed_size = palette_size + (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32;
+#if USE_OLD_ALLOC
+        if (palette_region_voxel_index == 0) {
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+#else
+        blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        if (palette_region_voxel_index == 0) {
+#endif
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
+            VoxelMalloc_AllocationMetadata alloc_metadata = deref(voxel_malloc_address_to_base_u32_ptr(daxa_push_constant.voxel_malloc_global_allocator, blob_ptr)[0]);
+
+            // debugPrintfEXT("blob: local = %u, chunk_local = %u, global = %u\n", blob_ptr & 0x1f, alloc_metadata & 0x1ff, blob_ptr >> 5);
+        }
+
         u32 mask = (~0u) >> (32 - bits_per_variant);
         u32 bit_index = palette_region_voxel_index * bits_per_variant;
         u32 data_index = bit_index / 32;
@@ -113,6 +130,11 @@ void main() {
             atomicOr (compression_result[address + 1],   data >> shift);
         }
         // clang-format on
+    } else {
+        if (palette_region_voxel_index == 0) {
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
+            deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = my_voxel;
+        }
     }
 
     barrier();
