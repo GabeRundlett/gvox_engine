@@ -105,7 +105,7 @@ static auto Strdup(const char *s) -> char * {
     size_t const len = strlen(s) + 1;
     void *buf = malloc(len);
     IM_ASSERT(buf);
-    return (char *)memcpy(buf, (const void *)s, len);
+    return static_cast<char *>(memcpy(buf, static_cast<const void *>(s), len));
 }
 
 static void Strtrim(char *s) {
@@ -222,10 +222,10 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
     ImGuiInputTextFlags const input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
     if (ImGui::InputText(
             "Input", input_buffer, IM_ARRAYSIZE(input_buffer), input_text_flags, [](ImGuiInputTextCallbackData *data) -> int {
-                auto *console = (Console *)data->UserData;
-                return console->on_text_edit(data);
+                auto *user_console = static_cast<Console *>(data->UserData);
+                return user_console->on_text_edit(data);
             },
-            (void *)this)) {
+            static_cast<void *>(this))) {
         char *s = input_buffer;
         Strtrim(s);
         if (s[0] != 0) {
@@ -245,8 +245,8 @@ void AppUi::Console::exec_command(const char *command_line) {
     add_log("# {}\n", command_line);
     history_pos = -1;
     for (i32 i = static_cast<i32>(history.size()) - 1; i >= 0; i--) {
-        if (Stricmp(history[i], command_line) == 0) {
-            free(history[i]);
+        if (Stricmp(history[static_cast<usize>(i)], command_line) == 0) {
+            free(history[static_cast<usize>(i)]);
             history.erase(history.begin() + i);
             break;
         }
@@ -270,18 +270,18 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
         }
         ImVector<const char *> candidates;
         for (auto &command : commands) {
-            if (Strnicmp(command, word_start, (int)(word_end - word_start)) == 0) {
+            if (Strnicmp(command, word_start, static_cast<i32>(word_end - word_start)) == 0) {
                 candidates.push_back(command);
             }
         }
         if (candidates.empty()) {
             add_log("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start);
         } else if (candidates.size() == 1) {
-            data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
+            data->DeleteChars(static_cast<i32>(word_start - data->Buf), static_cast<i32>(word_end - word_start));
             data->InsertChars(data->CursorPos, candidates[0]);
             data->InsertChars(data->CursorPos, " ");
         } else {
-            int match_len = (int)(word_end - word_start);
+            int match_len = static_cast<i32>(word_end - word_start);
             for (;;) {
                 int c = 0;
                 bool all_candidates_matches = true;
@@ -298,7 +298,7 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
                 match_len++;
             }
             if (match_len > 0) {
-                data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
+                data->DeleteChars(static_cast<i32>(word_start - data->Buf), static_cast<i32>(word_end - word_start));
                 data->InsertChars(data->CursorPos, candidates[0], candidates[0] + match_len);
             }
             add_log("Possible matches:\n");
@@ -318,13 +318,13 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
             }
         } else if (data->EventKey == ImGuiKey_DownArrow) {
             if (history_pos != -1) {
-                if (++history_pos >= history.size()) {
+                if (static_cast<usize>(++history_pos) >= history.size()) {
                     history_pos = -1;
                 }
             }
         }
         if (prev_history_pos != history_pos) {
-            const char *history_str = (history_pos >= 0) ? history[history_pos] : "";
+            const char *history_str = (history_pos >= 0) ? history[static_cast<usize>(history_pos)] : "";
             data->DeleteChars(0, data->BufTextLen);
             data->InsertChars(0, history_str);
         }
@@ -579,13 +579,13 @@ void AppUi::settings_controls_ui() {
         ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
         ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
         ImGui::TableHeadersRow();
-        for (i32 i = 0; i < static_cast<i32>(control_strings.size()); ++i) {
+        for (usize i = 0; i < control_strings.size(); ++i) {
             ImGui::TableNextRow(ImGuiTableRowFlags_None);
             if (ImGui::TableSetColumnIndex(0)) {
                 ImGui::Text("%s", control_strings[i]);
             }
             if (ImGui::TableSetColumnIndex(1)) {
-                if (i == limbo_action_index) {
+                if (static_cast<i32>(i) == limbo_action_index) {
                     ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
                     if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
                         if (limbo_is_button) {
@@ -662,7 +662,7 @@ void AppUi::settings_controls_ui() {
                         auto action_key_iter = std::find_if(
                             settings.keybinds.begin(),
                             settings.keybinds.end(),
-                            [i](const auto &mo) { return mo.second == i; });
+                            [i](const auto &mo) { return mo.second == static_cast<i32>(i); });
                         if (action_key_iter != settings.keybinds.end()) {
                             key_name = get_key_string(action_key_iter->first);
                             temp_limbo_key_index = action_key_iter->first;
@@ -673,7 +673,7 @@ void AppUi::settings_controls_ui() {
                         auto action_button_iter = std::find_if(
                             settings.mouse_button_binds.begin(),
                             settings.mouse_button_binds.end(),
-                            [i](const auto &mo) { return mo.second == i; });
+                            [i](const auto &mo) { return mo.second == static_cast<i32>(i); });
                         if (action_button_iter != settings.mouse_button_binds.end()) {
                             key_name = get_button_string(action_button_iter->first);
                             temp_limbo_key_index = action_button_iter->first;
@@ -686,7 +686,7 @@ void AppUi::settings_controls_ui() {
                     auto key_str = std::string{key_name} + "##" + std::to_string(i);
                     if (ImGui::Button(key_str.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
                         if (limbo_action_index == GAME_ACTION_LAST + 1) {
-                            limbo_action_index = i;
+                            limbo_action_index = static_cast<i32>(i);
                             limbo_key_index = temp_limbo_key_index;
                             limbo_is_button = temp_limbo_is_button;
                         }
@@ -701,15 +701,15 @@ void AppUi::settings_controls_ui() {
 static ImGuiTableSortSpecs *current_gpu_resource_info_sort_specs = nullptr;
 
 static int compare_gpu_resource_infos(const void *lhs, const void *rhs) {
-    auto const *a = (AppUi::GpuResourceInfo const *)lhs;
-    auto const *b = (AppUi::GpuResourceInfo const *)rhs;
+    auto const *a = static_cast<AppUi::GpuResourceInfo const *>(lhs);
+    auto const *b = static_cast<AppUi::GpuResourceInfo const *>(rhs);
     for (int n = 0; n < current_gpu_resource_info_sort_specs->SpecsCount; n++) {
         auto const *sort_spec = &current_gpu_resource_info_sort_specs->Specs[n];
         int delta = 0;
         switch (sort_spec->ColumnUserID) {
         case 0: delta = a->type.compare(b->type); break;
         case 1: delta = a->name.compare(b->name); break;
-        case 2: delta = a->size - b->size; break;
+        case 2: delta = static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size)); break;
         default: break;
         }
         if (delta > 0)
@@ -717,7 +717,7 @@ static int compare_gpu_resource_infos(const void *lhs, const void *rhs) {
         if (delta < 0)
             return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? -1 : +1;
     }
-    return a->size - b->size;
+    return static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size));
 }
 
 void AppUi::update(f32 delta_time) {
@@ -813,10 +813,10 @@ void AppUi::update(f32 delta_time) {
                 }
 
                 ImGuiListClipper clipper;
-                clipper.Begin(debug_gpu_resource_infos.size());
+                clipper.Begin(static_cast<i32>(debug_gpu_resource_infos.size()));
                 while (clipper.Step()) {
                     for (int row_i = clipper.DisplayStart; row_i < clipper.DisplayEnd; row_i++) {
-                        auto const &res_info = debug_gpu_resource_infos[row_i];
+                        auto const &res_info = debug_gpu_resource_infos[static_cast<usize>(row_i)];
                         ImGui::PushID(&res_info);
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();

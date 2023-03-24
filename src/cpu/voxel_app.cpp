@@ -1142,10 +1142,10 @@ void VoxelApp::voxel_malloc_realloc(daxa::TaskList &temp_task_list) {
             {task_voxel_malloc_new_pages_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [&](daxa::TaskRuntimeInterface task_runtime) {
-            assert(next_page_count > current_page_count);
-
             auto &current_page_count = gpu_resources.voxel_malloc.current_page_count;
             auto const &next_page_count = gpu_resources.voxel_malloc.next_page_count;
+
+            assert(next_page_count > current_page_count);
 
             u32 prev_page_count = current_page_count;
             current_page_count = next_page_count * 2;
