@@ -164,6 +164,7 @@ void ChunkOpt_x8up::record(
 
 void ChunkAlloc::record(
     daxa::CommandList &cmd_list,
+    // u32vec3 palette_i,
     BDA settings_buffer_ptr,
     BDA globals_buffer_ptr,
     BDA voxel_malloc_global_allocator_buffer_ptr,
@@ -175,6 +176,7 @@ void ChunkAlloc::record(
     }
     cmd_list.set_pipeline(*pipeline);
     cmd_list.push_constant(ChunkAllocComputePush{
+        // .palette_i = palette_i,
         .gpu_settings = settings_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
         .voxel_malloc_global_allocator = voxel_malloc_global_allocator_buffer_ptr,
@@ -184,6 +186,7 @@ void ChunkAlloc::record(
     cmd_list.dispatch_indirect({
         .indirect_buffer = globals_buffer_id,
         // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
+        // .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_alloc_dispatch),
         .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
     });
 }
@@ -899,10 +902,8 @@ void VoxelApp::on_key(i32 key_id, i32 action) {
     }
 
     if (key_id == GLFW_KEY_R && action == GLFW_PRESS) {
-        if (glfwGetKey(glfw_window_ptr, GLFW_KEY_LEFT_CONTROL) != GLFW_RELEASE) {
-            ui.should_run_startup = true;
-            start = Clock::now();
-        }
+        ui.should_run_startup = true;
+        start = Clock::now();
     }
 
     if (ui.settings.keybinds.contains(key_id)) {
@@ -960,6 +961,50 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
                 .buffer = task_runtime.get_buffers(task_globals_buffer)[0],
                 .offset = 0,
                 .size = sizeof(GpuGlobals),
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0],
+                .offset = 0,
+                .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES_PER_FRAME,
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_global_allocator_buffer)[0],
+                .offset = 0,
+                .size = sizeof(VoxelMalloc_GlobalAllocator),
+                .clear_value = 0,
+            });
+            auto chunk_n = (1u << ui.settings.log2_chunks_per_axis);
+            chunk_n = chunk_n * chunk_n * chunk_n;
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_voxel_chunks_buffer)[0],
+                .offset = 0,
+                .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_gpu_heap_buffer)[0],
+                .offset = 0,
+                .size = ui.settings.gpu_heap_size,
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
+                .offset = 0,
+                .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * gpu_resources.voxel_malloc.current_page_count,
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
+                .offset = 0,
+                .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
+                .clear_value = 0,
+            });
+            cmd_list.clear_buffer({
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
+                .offset = 0,
+                .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
                 .clear_value = 0,
             });
         },

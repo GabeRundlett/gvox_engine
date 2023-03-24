@@ -62,7 +62,8 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    f32vec3 voxel_pos = f32vec3(voxel_i) / VOXEL_SCL + f32vec3(1700, 1600, 150);
+    // f32vec3 voxel_pos = f32vec3(voxel_i) / VOXEL_SCL + f32vec3(1700, 1600, 150);
+    f32vec3 voxel_pos = f32vec3(voxel_i) / VOXEL_SCL + f32vec3(1700, 1600, 173.5);
 
     f32 val = terrain_noise(voxel_pos);
     f32vec3 nrm = terrain_nrm(voxel_pos);

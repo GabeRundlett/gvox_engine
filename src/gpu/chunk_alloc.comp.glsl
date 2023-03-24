@@ -1,5 +1,4 @@
 #extension GL_EXT_shader_atomic_int64 : require
-#extension GL_EXT_debug_printf : require
 
 #include <shared/shared.inl>
 
@@ -110,9 +109,6 @@ void main() {
 #endif
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
-            VoxelMalloc_AllocationMetadata alloc_metadata = deref(voxel_malloc_address_to_base_u32_ptr(daxa_push_constant.voxel_malloc_global_allocator, blob_ptr)[0]);
-
-            // debugPrintfEXT("blob: local = %u, chunk_local = %u, global = %u\n", blob_ptr & 0x1f, alloc_metadata & 0x1ff, blob_ptr >> 5);
         }
 
         u32 mask = (~0u) >> (32 - bits_per_variant);

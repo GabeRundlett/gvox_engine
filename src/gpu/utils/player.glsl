@@ -9,8 +9,9 @@
 void player_startup(
     daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(0.1, -5, 25);
-    PLAYER.rot.x = -PI / 2;
+    PLAYER.pos = f32vec3(32.01, 32.01, 46.07);
+    PLAYER.rot.x = -PI;
+    PLAYER.rot.z = 0.01;
 }
 #undef PLAYER
 #undef SETTINGS
@@ -36,7 +37,7 @@ void player_perframe(
     // clang-format off
     PLAYER.cam.prev_rot_mat = PLAYER.cam.rot_mat;
     PLAYER.cam.prev_pos = PLAYER.cam.pos;
-    PLAYER.cam.rot_mat = 
+    PLAYER.cam.rot_mat =
         f32mat3x3(
             cos_rot_z, -sin_rot_z, 0,
             sin_rot_z,  cos_rot_z, 0,
