@@ -1572,6 +1572,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .src_offsets = {{{0, 0, 0}, {static_cast<i32>(gpu_resources.render_images.size.x), static_cast<i32>(gpu_resources.render_images.size.y), 1}}},
                 .dst_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
                 .dst_offsets = {{{0, 0, 0}, {static_cast<i32>(window_size.x), static_cast<i32>(window_size.y), 1}}},
+                .filter = daxa::Filter::LINEAR,
             });
         },
         .debug_name = APPNAME_PREFIX("Blit (render to swapchain)"),
