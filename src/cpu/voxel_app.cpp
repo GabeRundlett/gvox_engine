@@ -346,6 +346,7 @@ void VoxelMalloc::destroy(daxa::Device &device) const {
     device.destroy_buffer(global_allocator_buffer);
 }
 
+#if USE_OLD_ALLOC
 void GpuHeap::create(daxa::Device &device, u32 size) {
     buffer = device.create_buffer({
         .size = size,
@@ -357,6 +358,7 @@ void GpuHeap::destroy(daxa::Device &device) const {
         device.destroy_buffer(buffer);
     }
 }
+#endif
 
 void GpuResources::create(daxa::Device &device) {
     render_images.create(device);
@@ -396,7 +398,9 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(temp_voxel_chunks_buffer);
     voxel_chunks.destroy(device);
     voxel_malloc.destroy(device);
+#if USE_OLD_ALLOC
     gpu_heap.destroy(device);
+#endif
     if (!gvox_model_buffer.is_empty()) {
         device.destroy_buffer(gvox_model_buffer);
     }
@@ -597,7 +601,9 @@ VoxelApp::VoxelApp()
       main_task_list{[this]() {
           gpu_resources.create(device);
           gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
+#if USE_OLD_ALLOC
           gpu_resources.gpu_heap.create(device, ui.settings.gpu_heap_size);
+#endif
 
           // Full size
           // u32 pages = 1 << ui.settings.log2_chunks_per_axis;
@@ -605,10 +611,10 @@ VoxelApp::VoxelApp()
           // pages = VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK * pages;
 
           // Min size
-          // u32 pages = (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME;
+          u32 pages = (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME;
 
           // 1GB
-          u32 pages = (1 << 30) / VOXEL_MALLOC_PAGE_SIZE_BYTES;
+          // u32 pages = (1 << 30) / VOXEL_MALLOC_PAGE_SIZE_BYTES;
 
           gpu_resources.voxel_malloc.create(device, pages);
           return record_main_task_list();
@@ -698,7 +704,9 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.voxel_malloc.pages_buffer);
     buffer_size(gpu_resources.voxel_malloc.available_pages_stack_buffer);
     buffer_size(gpu_resources.voxel_malloc.released_pages_stack_buffer);
+#if USE_OLD_ALLOC
     buffer_size(gpu_resources.gpu_heap.buffer);
+#endif
     buffer_size(gpu_resources.gvox_model_buffer);
 
     needs_vram_calc = false;
@@ -953,7 +961,13 @@ void VoxelApp::recreate_voxel_chunks() {
 void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
     temp_task_list.add_task({
         .used_buffers = {
-            {task_globals_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
+            {task_globals_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+            {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+            {task_voxel_chunks_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+#if USE_OLD_ALLOC
+            {task_gpu_heap_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+#endif
+            {task_voxel_malloc_pages_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
         },
         .task = [this](daxa::TaskRuntimeInterface task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
@@ -969,12 +983,6 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
                 .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES_PER_FRAME,
                 .clear_value = 0,
             });
-            cmd_list.clear_buffer({
-                .buffer = task_runtime.get_buffers(task_voxel_malloc_global_allocator_buffer)[0],
-                .offset = 0,
-                .size = sizeof(VoxelMalloc_GlobalAllocator),
-                .clear_value = 0,
-            });
             auto chunk_n = (1u << ui.settings.log2_chunks_per_axis);
             chunk_n = chunk_n * chunk_n * chunk_n;
             cmd_list.clear_buffer({
@@ -983,12 +991,14 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
                 .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
                 .clear_value = 0,
             });
+#if USE_OLD_ALLOC
             cmd_list.clear_buffer({
                 .buffer = task_runtime.get_buffers(task_gpu_heap_buffer)[0],
                 .offset = 0,
                 .size = ui.settings.gpu_heap_size,
                 .clear_value = 0,
             });
+#endif
             cmd_list.clear_buffer({
                 .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
                 .offset = 0,
@@ -996,13 +1006,13 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
                 .clear_value = 0,
             });
             cmd_list.clear_buffer({
-                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[1],
                 .offset = 0,
                 .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
                 .clear_value = 0,
             });
             cmd_list.clear_buffer({
-                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[0],
+                .buffer = task_runtime.get_buffers(task_voxel_malloc_pages_buffer)[2],
                 .offset = 0,
                 .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
                 .clear_value = 0,
@@ -1054,7 +1064,7 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
             };
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_global_allocator_buffer,
-                .dst_buffer = gpu_resources.voxel_malloc.global_allocator_buffer,
+                .dst_buffer = task_runtime.get_buffers(task_voxel_malloc_global_allocator_buffer)[0],
                 .size = sizeof(VoxelMalloc_GlobalAllocator),
             });
         },
@@ -1079,7 +1089,6 @@ void VoxelApp::upload_settings(daxa::TaskList &temp_task_list) {
                 .fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f),
                 .sensitivity = ui.settings.mouse_sensitivity,
                 .log2_chunks_per_axis = ui.settings.log2_chunks_per_axis,
-                .gpu_heap_size = ui.settings.gpu_heap_size,
             };
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_settings_buffer,
@@ -1268,8 +1277,10 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     result_task_list.add_runtime_buffer(task_voxel_malloc_pages_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer);
     task_voxel_malloc_new_pages_buffer = result_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_voxel_malloc_new_pages_buffer")});
 
+#if USE_OLD_ALLOC
     task_gpu_heap_buffer = result_task_list.create_task_buffer({.execution_persistent = true, .debug_name = APPNAME_PREFIX("task_gpu_heap_buffer")});
     result_task_list.add_runtime_buffer(task_gpu_heap_buffer, gpu_resources.gpu_heap.buffer);
+#endif
 
     task_gvox_model_buffer = result_task_list.create_task_buffer({.debug_name = APPNAME_PREFIX("task_gvox_model_buffer")});
 

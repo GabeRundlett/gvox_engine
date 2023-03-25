@@ -1,4 +1,5 @@
 #extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_debug_printf : require
 
 #include <shared/shared.inl>
 
@@ -54,10 +55,11 @@ void main() {
         gl_LocalInvocationID.x +
         gl_LocalInvocationID.y * PALETTE_REGION_SIZE +
         gl_LocalInvocationID.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
+    u32vec3 palette_i = u32vec3(gl_WorkGroupID.xy, gl_WorkGroupID.z - temp_chunk_index * PALETTES_PER_CHUNK_AXIS);
     u32 palette_region_index =
-        gl_WorkGroupID.x +
-        gl_WorkGroupID.y * PALETTES_PER_CHUNK_AXIS +
-        (gl_WorkGroupID.z - temp_chunk_index * PALETTES_PER_CHUNK_AXIS) * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
+        palette_i.x +
+        palette_i.y * PALETTES_PER_CHUNK_AXIS +
+        palette_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
 
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + temp_chunk_index;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;

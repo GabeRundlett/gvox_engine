@@ -1,6 +1,7 @@
 #pragma once
 
 #extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_debug_printf : require
 
 #include <shared/shared.inl>
 
@@ -32,7 +33,6 @@ shared i32 VoxelMalloc_malloc_elected_fallback_page_local_consumption_bitmask;
 shared bool VoxelMalloc_malloc_allocation_success;
 shared u32 VoxelMalloc_malloc_global_page_index;
 shared u32 VoxelMalloc_malloc_global_page_local_consumption_bitmask_first_used_bit;
-shared u32 DEBUG_SHARED_VAR;
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
 VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, u32 size) {
 #if USE_OLD_ALLOC
@@ -49,13 +49,14 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
         VoxelMalloc_malloc_allocation_success = false;
     }
 
-    barrier();
-    memoryBarrierShared();
-
     // First try to allocate into existing pages:
     bool page_unallocated = false;
+    bool did_it_already = false;
+    bool did_it_already1 = false;
     const u32 chunk_local_allocator_page_index = group_local_thread_index;
-    while (!VoxelMalloc_malloc_allocation_success) {
+    while (true) {
+        memoryBarrierShared();
+        barrier();
         const VoxelMalloc_PageInfo const_page_info_copy = atomicAdd(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), 0);
         const u32 page_local_consumption_bitmask_before = VoxelMalloc_extract_page_local_consumption_bitmask(const_page_info_copy);
         const u32 global_page_index = VoxelMalloc_extract_global_page_index(const_page_info_copy);
@@ -72,29 +73,6 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
                     page_local_consumption_bitmask_first_used_bit = offset;
                     page_local_consumption_bitmask_with_new_allocation = potential_local_allocation_bitmask;
                     can_allocate = true;
-                    // u32 bits_a[VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD];
-                    // u32 bits_b[VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD];
-                    // for (u32 i = 0; i < VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD; ++i) {
-                    //     bits_a[i] = (page_local_consumption_bitmask_before >> i) & 1;
-                    //     bits_b[i] = (page_local_consumption_bitmask_with_new_allocation >> i) & 1;
-                    // }
-                    // debugPrintfEXT("before: %x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x \nafter:  %x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x'%x%x%x%x\nbit count: %i\n\n",
-                    // bits_a[4 * 6 + 2], bits_a[4 * 6 + 1], bits_a[4 * 6 + 0],
-                    // bits_a[4 * 5 + 3], bits_a[4 * 5 + 2], bits_a[4 * 5 + 1], bits_a[4 * 5 + 0],
-                    // bits_a[4 * 4 + 3], bits_a[4 * 4 + 2], bits_a[4 * 4 + 1], bits_a[4 * 4 + 0],
-                    // bits_a[4 * 3 + 3], bits_a[4 * 3 + 2], bits_a[4 * 3 + 1], bits_a[4 * 3 + 0],
-                    // bits_a[4 * 2 + 3], bits_a[4 * 2 + 2], bits_a[4 * 2 + 1], bits_a[4 * 2 + 0],
-                    // bits_a[4 * 1 + 3], bits_a[4 * 1 + 2], bits_a[4 * 1 + 1], bits_a[4 * 1 + 0],
-                    // bits_a[4 * 0 + 3], bits_a[4 * 0 + 2], bits_a[4 * 0 + 1], bits_a[4 * 0 + 0],
-                    // bits_b[4 * 6 + 2], bits_b[4 * 6 + 1], bits_b[4 * 6 + 0],
-                    // bits_b[4 * 5 + 3], bits_b[4 * 5 + 2], bits_b[4 * 5 + 1], bits_b[4 * 5 + 0],
-                    // bits_b[4 * 4 + 3], bits_b[4 * 4 + 2], bits_b[4 * 4 + 1], bits_b[4 * 4 + 0],
-                    // bits_b[4 * 3 + 3], bits_b[4 * 3 + 2], bits_b[4 * 3 + 1], bits_b[4 * 3 + 0],
-                    // bits_b[4 * 2 + 3], bits_b[4 * 2 + 2], bits_b[4 * 2 + 1], bits_b[4 * 2 + 0],
-                    // bits_b[4 * 1 + 3], bits_b[4 * 1 + 2], bits_b[4 * 1 + 1], bits_b[4 * 1 + 0],
-                    // bits_b[4 * 0 + 3], bits_b[4 * 0 + 2], bits_b[4 * 0 + 1], bits_b[4 * 0 + 0],
-                    // local_allocation_bit_n
-                    // );
                     break;
                 }
             }
@@ -121,20 +99,18 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
         // the need for the second set of barriers.
         barrier();
         memoryBarrierShared();
-        const bool no_thread_elected = VoxelMalloc_malloc_elected_thread == -1;
-        // When no thread gets elected, it means that no page can be allocated into.
         // We need to break and allocate a new page in the fallback loop below.
-        if (no_thread_elected) {
+        // If no thread got elected to try and allocate, its impossible to allocate into an existing palette.
+        const bool allocation_impossible = VoxelMalloc_malloc_elected_thread == -1;
+        const bool uniform_breaking_condition = allocation_impossible || VoxelMalloc_malloc_allocation_success;
+        barrier();
+        if (uniform_breaking_condition) {
             // THIS IS NON DIVERGENT!
             break;
         } else if (group_local_thread_index == 0) {
             VoxelMalloc_malloc_elected_thread = -1;
         }
-        barrier();
-        memoryBarrierShared();
     }
-    barrier();
-    memoryBarrierShared();
     // If allocating into existing pages fails because all current pages have too little space,
     // allocate a new page and set one of the free page metadatas to contain it.
     if (!VoxelMalloc_malloc_allocation_success) {
@@ -186,14 +162,17 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
             memoryBarrierShared();
             // Reset the thread voting value for the text allocation attempt.
             // TODO: use two election values to avoid a memory and execution barrier to reset the election value.
-            VoxelMalloc_malloc_elected_thread = -1;
+            if (group_local_thread_index == 0) {
+                VoxelMalloc_malloc_elected_thread = -1;
+            }
         }
     }
 
     barrier();
     memoryBarrierShared();
 
-    return VoxelMalloc_create_pointer(VoxelMalloc_malloc_global_page_index, VoxelMalloc_malloc_global_page_local_consumption_bitmask_first_used_bit);
+    VoxelMalloc_Pointer blob_ptr = VoxelMalloc_create_pointer(VoxelMalloc_malloc_global_page_index, VoxelMalloc_malloc_global_page_local_consumption_bitmask_first_used_bit);
+    return blob_ptr;
 #endif
 }
 #undef PAGE_ALLOC_INFOS
@@ -289,11 +268,11 @@ void voxel_malloc_perframe(
         deref(allocator).offset = 0;
     }
 #else
-    if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
-        deref(allocator).page_count = 0;
-        deref(allocator).available_pages_stack_size = 0;
-        deref(allocator).released_pages_stack_size = 0;
-    }
+    // if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
+    //     deref(allocator).page_count = 0;
+    //     deref(allocator).available_pages_stack_size = 0;
+    //     deref(allocator).released_pages_stack_size = 0;
+    // }
 
     deref(allocator).available_pages_stack_size = 0;
     while (deref(allocator).released_pages_stack_size > 0) {

@@ -172,12 +172,14 @@ struct VoxelMalloc {
     void destroy(daxa::Device &device) const;
 };
 
+#if USE_OLD_ALLOC
 struct GpuHeap {
     daxa::BufferId buffer;
 
     void create(daxa::Device &device, u32 size);
     void destroy(daxa::Device &device) const;
 };
+#endif
 
 struct GpuResources {
     RenderImages render_images;
@@ -189,7 +191,9 @@ struct GpuResources {
     daxa::BufferId temp_voxel_chunks_buffer;
     VoxelChunks voxel_chunks;
     VoxelMalloc voxel_malloc;
+#if USE_OLD_ALLOC
     GpuHeap gpu_heap;
+#endif
     daxa::BufferId gvox_model_buffer;
 
     void create(daxa::Device &device);
@@ -232,7 +236,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBufferId task_voxel_malloc_pages_buffer;
     daxa::TaskBufferId task_voxel_malloc_new_pages_buffer;
     daxa::TaskBufferId task_voxel_chunks_buffer;
+#if USE_OLD_ALLOC
     daxa::TaskBufferId task_gpu_heap_buffer;
+#endif
     daxa::TaskBufferId task_gvox_model_buffer;
 
     GpuInputUploadTransferTask gpu_input_upload_transfer_task;

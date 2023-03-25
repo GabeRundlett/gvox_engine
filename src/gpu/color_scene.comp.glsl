@@ -138,6 +138,16 @@ void main() {
             // col = fract(final_pos);
             // col = fract(hit_pos);
             // col = ((hit_pos) - (final_pos));
+
+            // Naive frame blending:
+            // f32vec3 prev_col =
+            //     imageLoad(
+            //         daxa_push_constant.render_col_image_id,
+            //         i32vec2(pixel_i))
+            //         .rgb;
+            // f32 alpha = 0.01; // pow(finaldist, 1);
+            // col = clamp(col, f32vec3(0), f32vec3(5));
+            // col = col * alpha + prev_col * (1.0 - alpha);
         }
     } else {
         col = sky_col;

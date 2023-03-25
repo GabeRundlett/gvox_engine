@@ -59,7 +59,6 @@ DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_PageIndex)
 #define VoxelMalloc_PageInfo daxa_u64
 
 struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
-    u32 page_count;
     VoxelMalloc_PageInfo page_allocation_infos[VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK];
 };
 
