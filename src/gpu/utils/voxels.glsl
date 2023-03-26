@@ -98,7 +98,7 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
 #undef MODEL
 
 #define READ_FROM_HEAP 1
-u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
+u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i, bool is_drawing) {
     u32vec3 palette_region_i = inchunk_voxel_i / PALETTE_REGION_SIZE;
     u32vec3 palette_voxel_i = inchunk_voxel_i - palette_region_i * PALETTE_REGION_SIZE;
     u32 palette_region_index = palette_region_i.x + palette_region_i.y * PALETTES_PER_CHUNK_AXIS + palette_region_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
@@ -129,14 +129,18 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
         my_palette_index |= (deref(blob_u32s[palette_header.variant_n + data_index + 1]) << shift) & mask;
     }
     u32 voxel_data = deref(blob_u32s[my_palette_index]);
-    return voxel_data;
-    // return ((palette_header.blob_ptr / 512) & 0x000000ff) | (voxel_data & 0xff000000);
+    if (is_drawing) {
+        return voxel_data;
+        // return ((palette_header.blob_ptr / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
+    } else {
+        return voxel_data;
+    }
 #else
     return 0x01ff00ff;
 #endif
 }
 
-u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {
+u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i, bool is_drawing) {
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
@@ -144,7 +148,7 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     if (chunk_i.x >= chunk_n.x || chunk_i.y >= chunk_n.y || chunk_i.z >= chunk_n.z) {
         return 0u;
     }
-    return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, is_drawing);
 }
 
 #define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                              \
@@ -183,7 +187,7 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     u32 chunk_edit_stage = deref(voxel_chunk_ptr).edit_stage;
     if (chunk_edit_stage == 0)
         return 7;
-    if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i) & 0xff000000) != 0)
+    if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, false) & 0xff000000) != 0)
         return 0;
     if (voxel_uniformity_lod_nonuniform(2)(voxel_chunk_ptr, lod_index_x2, lod_mask_x2))
         return 1;

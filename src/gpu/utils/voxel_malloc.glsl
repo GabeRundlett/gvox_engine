@@ -288,10 +288,10 @@ void voxel_malloc_perframe(
     //     deref(allocator).released_pages_stack_size = 0;
     // }
 
-    deref(allocator).available_pages_stack_size = 0;
+    deref(allocator).available_pages_stack_size = max(deref(allocator).available_pages_stack_size, 0);
     while (deref(allocator).released_pages_stack_size > 0) {
         --deref(allocator).released_pages_stack_size;
-        deref(deref(allocator).available_pages_stack[deref(allocator).available_pages_stack_size]) = deref(deref(allocator).available_pages_stack[deref(allocator).released_pages_stack_size]);
+        deref(deref(allocator).available_pages_stack[deref(allocator).available_pages_stack_size]) = deref(deref(allocator).released_pages_stack[deref(allocator).released_pages_stack_size]);
         ++deref(allocator).available_pages_stack_size;
     }
 #endif

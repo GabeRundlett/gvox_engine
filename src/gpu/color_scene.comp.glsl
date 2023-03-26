@@ -63,7 +63,7 @@ void main() {
 
             // col = f32vec3(0.1);
 
-            u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, CHUNK_PTRS(chunk_index), inchunk_voxel_i);
+            u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, CHUNK_PTRS(chunk_index), inchunk_voxel_i, true);
             f32vec4 sample_col = uint_to_float4(voxel_data);
             col = sample_col.rgb;
 
