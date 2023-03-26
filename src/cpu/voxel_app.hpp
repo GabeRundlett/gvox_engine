@@ -60,7 +60,9 @@ struct ChunkEdit {
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
         BDA globals_buffer_ptr,
+        BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA temp_voxel_chunks_ptr,
+        BDA voxel_chunks_buffer_ptr,
         daxa::BufferId globals_buffer_id) const;
 };
 
@@ -262,7 +264,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
         LAST,
     };
     daxa::TaskList main_task_list;
-    daxa::CommandSubmitInfo submit_info;
     std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
 
     GpuInput gpu_input{};

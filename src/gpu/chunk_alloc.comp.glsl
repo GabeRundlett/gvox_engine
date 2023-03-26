@@ -69,14 +69,19 @@ void main() {
 
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);
 
+    u32 prev_variant_n = deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n;
+    VoxelMalloc_Pointer prev_blob_ptr = deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr;
+
+#if USE_OLD_ALLOC
     if (palette_region_voxel_index == 0) {
-        if (deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n > 1) {
-            VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr);
+        if (prev_variant_n > 1) {
+            VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
         }
     }
 
     barrier();
     memoryBarrierShared();
+#endif
 
     u32 bits_per_variant = ceil_log2(palette_size);
 
@@ -92,7 +97,12 @@ void main() {
         if (palette_region_voxel_index == 0) {
             blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
 #else
-        blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        if (prev_variant_n > 1) {
+            blob_ptr = prev_blob_ptr;
+            VoxelMalloc_realloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
+        } else {
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        }
         if (palette_region_voxel_index == 0) {
 #endif
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
@@ -106,7 +116,12 @@ void main() {
         if (palette_region_voxel_index == 0) {
             blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
 #else
-        blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        if (prev_variant_n > 1) {
+            blob_ptr = prev_blob_ptr;
+            VoxelMalloc_realloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
+        } else {
+            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+        }
         if (palette_region_voxel_index == 0) {
 #endif
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
@@ -130,6 +145,9 @@ void main() {
         // clang-format on
     } else {
         if (palette_region_voxel_index == 0) {
+            if (prev_variant_n > 1) {
+                VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
+            }
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = my_voxel;
         }

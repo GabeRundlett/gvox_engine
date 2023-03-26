@@ -63,16 +63,16 @@ void main() {
         elect_chunk_for_update(chunk_i, chunk_index, 1);
     }
 
-    // if (INPUT.actions[GAME_ACTION_BREAK] != 0) {
-    //     if (CHUNKS(chunk_index).edit_stage > 1) {
-    //         f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
-    //         f32vec3 delta = chunk_pos - GLOBALS.pick_pos;
-    //         f32vec3 dist3 = abs(delta);
-    //         if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
-    //             elect_chunk_for_update(chunk_i, chunk_index, 3);
-    //         }
-    //     }
-    // }
+    if (INPUT.actions[GAME_ACTION_BREAK] != 0) {
+        if (CHUNKS(chunk_index).edit_stage > 1) {
+            f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+            f32vec3 delta = chunk_pos - GLOBALS.pick_pos;
+            f32vec3 dist3 = abs(delta);
+            if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
+                elect_chunk_for_update(chunk_i, chunk_index, 3);
+            }
+        }
+    }
 }
 #undef CHUNKS
 #undef INDIRECT

@@ -94,7 +94,9 @@ void ChunkEdit::record(
     BDA settings_buffer_ptr,
     BDA input_buffer_ptr,
     BDA globals_buffer_ptr,
+    BDA voxel_malloc_global_allocator_buffer_ptr,
     BDA temp_voxel_chunks_ptr,
+    BDA voxel_chunks_buffer_ptr,
     daxa::BufferId globals_buffer_id) const {
     if (!pipeline) {
         return;
@@ -104,7 +106,9 @@ void ChunkEdit::record(
         .gpu_settings = settings_buffer_ptr,
         .gpu_input = input_buffer_ptr,
         .gpu_globals = globals_buffer_ptr,
+        .voxel_malloc_global_allocator = voxel_malloc_global_allocator_buffer_ptr,
         .temp_voxel_chunks = temp_voxel_chunks_ptr,
+        .voxel_chunks = voxel_chunks_buffer_ptr,
     });
     cmd_list.dispatch_indirect({
         .indirect_buffer = globals_buffer_id,
@@ -1374,6 +1378,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             {task_settings_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_globals_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_voxel_malloc_global_allocator_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_temp_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE_ONLY},
             {task_voxel_chunks_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
         },
@@ -1384,7 +1389,9 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 device.get_device_address(task_runtime.get_buffers(task_settings_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_input_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_globals_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_malloc_global_allocator_buffer)[0]),
                 device.get_device_address(task_runtime.get_buffers(task_temp_voxel_chunks_buffer)[0]),
+                device.get_device_address(task_runtime.get_buffers(task_voxel_chunks_buffer)[0]),
                 task_runtime.get_buffers(task_globals_buffer)[0]);
         },
         .debug_name = APPNAME_PREFIX("ChunkEdit"),
@@ -1590,9 +1597,9 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .debug_name = APPNAME_PREFIX("ImGui draw"),
     });
 
-    result_task_list.submit(&submit_info);
+    result_task_list.submit({});
     result_task_list.present({});
-    result_task_list.complete();
+    result_task_list.complete({});
 
     return result_task_list;
 }

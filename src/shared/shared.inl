@@ -34,7 +34,9 @@ struct ChunkEditComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(GpuGlobals) gpu_globals;
+    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks;
+    daxa_BufferPtr(VoxelChunk) voxel_chunks;
 };
 
 struct ChunkOptComputePush {

@@ -92,6 +92,8 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
                 if (VoxelMalloc_malloc_allocation_success) {
                     VoxelMalloc_malloc_global_page_local_consumption_bitmask_first_used_bit = page_local_consumption_bitmask_first_used_bit;
                     VoxelMalloc_malloc_global_page_index = global_page_index;
+                    daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[VoxelMalloc_malloc_global_page_index];
+                    deref(page).data[page_local_consumption_bitmask_first_used_bit * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT] = (chunk_local_allocator_page_index << 0) | (local_allocation_bit_n << 9);
                 }
             }
         }
@@ -225,8 +227,8 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, d
         }
 
         const VoxelMalloc_PageInfo fetched_page_info = atomicCompSwap(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), const_page_info_copy, our_page_info);
-        const bool free_successfull = fetched_page_info == const_page_info_copy;
-        if (free_successfull) {
+        const bool free_successful = fetched_page_info == const_page_info_copy;
+        if (free_successful) {
             break;
         }
     }
@@ -283,3 +285,21 @@ void voxel_malloc_perframe(
 #endif
 }
 #undef INPUT
+
+// Must enter with 512 thread work group with all threads active.
+void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
+#if USE_OLD_ALLOC
+#else
+    u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+    VoxelMalloc_AllocationMetadata prev_alloc_metadata = deref(voxel_malloc_address_to_base_u32_ptr(allocator, prev_address));
+    u32 prev_local_allocation_bit_n = (prev_alloc_metadata >> 9);
+    if (prev_local_allocation_bit_n == new_local_allocation_bit_n) {
+        return;
+    }
+    if (gl_LocalInvocationIndex == 0) {
+        VoxelMalloc_free(allocator, voxel_chunk_ptr, prev_address);
+    }
+    barrier();
+    prev_address = VoxelMalloc_malloc(allocator, voxel_chunk_ptr, size);
+#endif
+}
