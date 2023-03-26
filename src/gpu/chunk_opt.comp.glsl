@@ -102,7 +102,7 @@ void main() {
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
-    if (deref(voxel_chunk_ptr).edit_stage == 2)
+    if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
 }
@@ -245,7 +245,7 @@ void main() {
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
-    if (deref(voxel_chunk_ptr).edit_stage == 2)
+    if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
 }

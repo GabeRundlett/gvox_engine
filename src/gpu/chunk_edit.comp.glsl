@@ -54,7 +54,9 @@ u32vec3 inchunk_voxel_i;
 u32vec3 voxel_i;
 f32vec3 voxel_pos;
 
-void worldgen(in f32vec3 voxel_pos, in out f32vec3 col, in out u32 id) {
+void worldgen(in out f32vec3 col, in out u32 id) {
+    voxel_pos += f32vec3(1700, 1600, 150);
+
     f32 val = terrain_noise(voxel_pos);
     f32vec3 nrm = terrain_nrm(voxel_pos);
     f32 upwards = dot(nrm, f32vec3(0, 0, 1));
@@ -100,7 +102,7 @@ void worldgen(in f32vec3 voxel_pos, in out f32vec3 col, in out u32 id) {
     }
 }
 
-void brushgen(in f32vec3 voxel_pos, in out f32vec3 col, in out u32 id) {
+void brushgen_a(in out f32vec3 col, in out u32 id) {
     u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
@@ -108,14 +110,24 @@ void brushgen(in f32vec3 voxel_pos, in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (length(voxel_pos - deref(daxa_push_constant.gpu_globals).pick_pos) < 2) {
+    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2) < 0) {
         col = f32vec3(0, 0, 0);
         id = 0;
     }
+}
 
-    // if (prev_id == 1) {
-    //     col = floor(fract(voxel_pos) * 5) / 5;
-    // }
+void brushgen_b(in out f32vec3 col, in out u32 id) {
+    u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
+    u32 prev_id = voxel_data >> 0x18;
+
+    col = prev_col;
+    id = prev_id;
+
+    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2) < 0) {
+        col = f32vec3(0.1, 0.1, 1);
+        id = 1;
+    }
 }
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
@@ -136,10 +148,10 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    if (deref(voxel_chunk_ptr).edit_stage == 1) {
-        worldgen(voxel_pos + f32vec3(1700, 1600, 150), col, id);
-    } else if (deref(voxel_chunk_ptr).edit_stage == 3) {
-        brushgen(voxel_pos, col, id);
+    switch (deref(voxel_chunk_ptr).edit_stage) {
+    case CHUNK_STAGE_WORLD_BRUSH: worldgen(col, id); break;
+    case CHUNK_STAGE_USER_BRUSH_A: brushgen_a(col, id); break;
+    case CHUNK_STAGE_USER_BRUSH_B: brushgen_b(col, id); break;
     }
 
     TempVoxel result;

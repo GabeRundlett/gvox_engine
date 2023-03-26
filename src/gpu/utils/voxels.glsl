@@ -130,7 +130,7 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     }
     u32 voxel_data = deref(blob_u32s[my_palette_index]);
     return voxel_data;
-    // return ((palette_header.blob_ptr / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
+    // return ((palette_header.blob_ptr / 512) & 0x000000ff) | (voxel_data & 0xff000000);
 #else
     return 0x01ff00ff;
 #endif
@@ -181,7 +181,7 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     u32 lod_mask_x64 = uniformity_lod_mask(inchunk_voxel_i / 64);
 
     u32 chunk_edit_stage = deref(voxel_chunk_ptr).edit_stage;
-    if (chunk_edit_stage < 1)
+    if (chunk_edit_stage == 0)
         return 7;
     if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i) & 0xff000000) != 0)
         return 0;

@@ -7,6 +7,7 @@ DAXA_USE_PUSH_CONSTANT(PerframeComputePush)
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)
+#define BRUSH_STATE deref(daxa_push_constant.gpu_globals).brush_state
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     player_perframe(
@@ -24,10 +25,23 @@ void main() {
         f32 aspect = frame_dim.x * inv_frame_dim.y;
         f32vec2 uv = (deref(daxa_push_constant.gpu_input).mouse.pos * inv_frame_dim - 0.5) * f32vec2(2 * aspect, 2);
         f32vec3 ray_pos = create_view_pos(deref(daxa_push_constant.gpu_globals).player);
+        f32vec3 cam_pos = ray_pos;
         f32vec3 ray_dir = create_view_dir(deref(daxa_push_constant.gpu_globals).player, uv);
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
         trace(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir);
-        deref(daxa_push_constant.gpu_globals).pick_pos = ray_pos;
+
+        if (BRUSH_STATE.is_editing == 0) {
+            BRUSH_STATE.initial_ray = ray_pos - cam_pos;
+        }
+
+        BRUSH_STATE.prev_pos = BRUSH_STATE.pos;
+        BRUSH_STATE.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos;
+
+        if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0 || INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
+            BRUSH_STATE.is_editing = 1;
+        } else {
+            BRUSH_STATE.is_editing = 0;
+        }
     }
 
     deref(daxa_push_constant.gpu_output).player_pos = deref(daxa_push_constant.gpu_globals).player.pos;

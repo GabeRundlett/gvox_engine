@@ -53,23 +53,25 @@ void main() {
     // }
 
     // Bump all previously handled chunks to the next update stage
-    if (CHUNKS(chunk_index).edit_stage == 1 ||
-        CHUNKS(chunk_index).edit_stage == 3) {
-        CHUNKS(chunk_index).edit_stage = 2;
+    if (CHUNKS(chunk_index).edit_stage != 0 &&
+        CHUNKS(chunk_index).edit_stage != CHUNK_STAGE_FINISHED) {
+        CHUNKS(chunk_index).edit_stage = CHUNK_STAGE_FINISHED;
     }
 
     // Select "random" chunks to be updated
     if (CHUNKS(chunk_index).edit_stage == 0) {
-        elect_chunk_for_update(chunk_i, chunk_index, 1);
+        elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
     }
 
-    if (INPUT.actions[GAME_ACTION_BREAK] != 0) {
-        if (CHUNKS(chunk_index).edit_stage > 1) {
-            f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
-            f32vec3 delta = chunk_pos - GLOBALS.pick_pos;
-            f32vec3 dist3 = abs(delta);
-            if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
-                elect_chunk_for_update(chunk_i, chunk_index, 3);
+    if (CHUNKS(chunk_index).edit_stage == CHUNK_STAGE_FINISHED) {
+        f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+        f32vec3 delta = chunk_pos - GLOBALS.brush_state.pos;
+        f32vec3 dist3 = abs(delta);
+        if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
+            if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
+                elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_A);
+            } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
+                elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_B);
             }
         }
     }

@@ -17,9 +17,9 @@
 #define GAME_ACTION_WALK               11
 #define GAME_ACTION_CYCLE_VIEW         12
 #define GAME_ACTION_TOGGLE_BRUSH       13
-#define GAME_ACTION_BREAK              14
-#define GAME_ACTION_PLACE              15
-#define GAME_ACTION_LAST               GAME_ACTION_PLACE
+#define GAME_ACTION_BRUSH_A            14
+#define GAME_ACTION_BRUSH_B            15
+#define GAME_ACTION_LAST               GAME_ACTION_BRUSH_B
 // clang-format on
 
 struct MouseInput {

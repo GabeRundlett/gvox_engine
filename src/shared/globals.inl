@@ -33,10 +33,17 @@ struct GpuIndirectDispatch {
     u32vec3 subchunk_x8up_dispatch;
 };
 
+struct BrushState {
+    f32vec3 pos;
+    f32vec3 prev_pos;
+    f32vec3 initial_ray;
+    u32 is_editing;
+};
+
 struct GpuGlobals {
     Player player;
+    BrushState brush_state;
     VoxelWorld voxel_world;
-    f32vec3 pick_pos;
     GpuIndirectDispatch indirect_dispatch;
     u32 padding[10];
 };

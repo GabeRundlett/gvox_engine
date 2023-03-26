@@ -27,8 +27,8 @@ static constexpr std::array control_strings = {
     "Walk",
     "Change Camera",
     "Toggle Brush Placement",
-    "Break",
-    "Place",
+    "Brush A",
+    "Brush B",
 };
 
 static constexpr std::array conflict_resolution_strings = {

@@ -108,7 +108,7 @@ void AppSettings::reset_default() {
     keybinds[GLFW_KEY_F5]            = GAME_ACTION_CYCLE_VIEW;
     keybinds[GLFW_KEY_B]             = GAME_ACTION_TOGGLE_BRUSH;
 
-    mouse_button_binds[GLFW_MOUSE_BUTTON_1] = GAME_ACTION_BREAK;
-    mouse_button_binds[GLFW_MOUSE_BUTTON_2] = GAME_ACTION_PLACE;
+    mouse_button_binds[GLFW_MOUSE_BUTTON_1] = GAME_ACTION_BRUSH_A;
+    mouse_button_binds[GLFW_MOUSE_BUTTON_2] = GAME_ACTION_BRUSH_B;
     // clang-format on
 }

@@ -67,12 +67,12 @@ void main() {
             f32vec4 sample_col = uint_to_float4(voxel_data);
             col = sample_col.rgb;
 
-            // if (length(hit_pos - GLOBALS.pick_pos) < 31.0 / VOXEL_SCL) {
+            // if (length(hit_pos - GLOBALS.brush_state.pos) < 31.0 / VOXEL_SCL) {
             //     col *= 0.1;
             // }
 
-            // if (CHUNKS(chunk_index).edit_stage == 3) {
-            //     col += 0.1;
+            // if (CHUNKS(chunk_index).edit_stage != CHUNK_STAGE_FINISHED) {
+            //     col += 1.5;
             // }
 
             f32vec3 light_contrib = sky_col; // * (dot(hit_nrm, f32vec3(0, 0, 1)) * 0.5 + 0.5);

@@ -61,7 +61,7 @@ void player_perframe(
     PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
 
     const f32 accel_rate = 30.0;
-    const f32 speed = 10.5;
+    const f32 speed = 2.5;
     const f32 sprint_speed = 20.5;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
