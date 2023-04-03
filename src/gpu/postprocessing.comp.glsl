@@ -36,15 +36,13 @@ void main() {
         pixel_i.y >= INPUT.frame_dim.y)
         return;
 
-    f32vec4 denoised_color = imageLoad(
+    f32vec4 final_color = imageLoad(
         daxa_push_constant.render_col_image_id,
         i32vec2(pixel_i));
-
-    f32vec3 col = denoised_color.rgb;
 
     imageStore(
         daxa_push_constant.final_image_id,
         i32vec2(pixel_i),
-        f32vec4(color_correct(col), 0));
+        f32vec4(color_correct(final_color.rgb), 0));
 }
 #undef INPUT

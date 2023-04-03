@@ -43,15 +43,7 @@ void main() {
 
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
 
-    // Debug - reset all chunks to default
-    // if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
-    //     CHUNKS(chunk_index).edit_stage = 0;
-    //     for (u32 i = 0; i < PALETTES_PER_CHUNK; ++i) {
-    //         CHUNKS(chunk_index).palette_headers[i].variant_n = 0;
-    //         CHUNKS(chunk_index).palette_headers[i].blob_ptr = 0;
-    //     }
-    // }
-
+#if 1
     // Bump all previously handled chunks to the next update stage
     if (CHUNKS(chunk_index).edit_stage != 0 &&
         CHUNKS(chunk_index).edit_stage != CHUNK_STAGE_FINISHED) {
@@ -75,6 +67,16 @@ void main() {
             }
         }
     }
+#else
+    elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
+
+    // Debug - reset all chunks to default
+    // for (u32 i = 0; i < PALETTES_PER_CHUNK; ++i) {
+    //     CHUNKS(chunk_index).palette_headers[i].variant_n = 0;
+    //     CHUNKS(chunk_index).palette_headers[i].blob_ptr = 0;
+    //     CHUNKS(chunk_index).sub_allocator_state.page_allocation_infos[i] = 0;
+    // }
+#endif
 }
 #undef CHUNKS
 #undef INDIRECT

@@ -39,12 +39,17 @@ VoxelMalloc_Pointer VoxelMalloc_Pointer_pack(u32 global_page_index, u32 local_pa
 }
 
 // Must enter with 512 thread work group with all threads active.
-shared i32 VoxelMalloc_malloc_elected_thread;
 shared i32 VoxelMalloc_malloc_elected_fallback_thread;
 shared i32 VoxelMalloc_malloc_elected_fallback_page_local_consumption_bitmask;
 shared bool VoxelMalloc_malloc_allocation_success;
 shared u32 VoxelMalloc_malloc_global_page_index;
 shared u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
+// We need three of these variables.
+// We read from the last iteration's variable, we write to the current iteration's variable and we reset the next iteration's variable.
+// To perform all these actions with just one barrier, we must use three distinct variables for each action to avoid race conditions.
+// As all threads run asynchronously between barriers, we can only ever do one of these things
+// at a time as this would cause race conditions.
+shared i32 VoxelMalloc_malloc_elected_thread[3];
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
 VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, u32 size) {
 #if USE_OLD_ALLOC
@@ -56,7 +61,9 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
     u32 local_allocation_bitmask_no_offset = (1 << local_allocation_bit_n) - 1;
     i32 group_local_thread_index = i32(gl_LocalInvocationIndex);
     if (group_local_thread_index == 0) {
-        VoxelMalloc_malloc_elected_thread = -1;
+        VoxelMalloc_malloc_elected_thread[0] = -1;
+        VoxelMalloc_malloc_elected_thread[1] = -1;
+        VoxelMalloc_malloc_elected_thread[2] = -1;
         VoxelMalloc_malloc_elected_fallback_thread = -1;
         VoxelMalloc_malloc_allocation_success = false;
     }
@@ -65,10 +72,12 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
     bool page_unallocated = false;
     bool did_it_already = false;
     bool did_it_already1 = false;
+    barrier();
+    memoryBarrierShared();
     const u32 chunk_local_allocator_page_index = group_local_thread_index;
-    while (true) {
-        memoryBarrierShared();
-        barrier();
+    for (u32 iteration = 0; true; ++iteration) {
+        const uint current_election_variable = iteration % 3;
+        const uint prev_iteration_election_variable = (iteration + 2) % 3;
         const VoxelMalloc_PageInfo const_page_info_copy = atomicAdd(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), 0);
         const u32 page_local_consumption_bitmask_before = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(const_page_info_copy);
         const u32 global_page_index = VoxelMalloc_PageInfo_extract_global_page_index(const_page_info_copy);
@@ -79,7 +88,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
         if (!page_unallocated) {
             const u32 bit_count_before = bitCount(page_local_consumption_bitmask_before);
             const u32 first_zero_bit_offset = findLSB(~page_local_consumption_bitmask_before);
-            for (u32 offset = first_zero_bit_offset; offset < (VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD - local_allocation_bit_n); ++offset) {
+            for (u32 offset = first_zero_bit_offset; offset < (VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD - local_allocation_bit_n) + 1; ++offset) {
                 const u32 potential_local_allocation_bitmask = page_local_consumption_bitmask_before | (local_allocation_bitmask_no_offset << offset);
                 if (bitCount(potential_local_allocation_bitmask) == bit_count_before + local_allocation_bit_n) {
                     page_local_consumption_bitmask_first_used_bit = offset;
@@ -90,7 +99,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
             }
         }
         if (can_allocate) {
-            i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread, -1, group_local_thread_index);
+            i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
             if (election_fetch == -1) {
                 // Thread won election.
                 // Try to publish the allocation into the local page.
@@ -109,20 +118,20 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
                 }
             }
         }
-        // NOTE: Potentially speed up by using 2 `VoxelMalloc_malloc_elected_thread`'s, removing
-        // the need for the second set of barriers.
         barrier();
         memoryBarrierShared();
-        // We need to break and allocate a new page in the fallback loop below.
-        // If no thread got elected to try and allocate, its impossible to allocate into an existing palette.
-        const bool allocation_impossible = VoxelMalloc_malloc_elected_thread == -1;
+        // Allocation is impossible when all threads were unable to be elected for the allocation.
+        // In this case we break and use the fallback loop below to allocate a completely new page, we write out result into.`
+        const bool allocation_impossible = (VoxelMalloc_malloc_elected_thread[current_election_variable] == -1) && (iteration != 0);
         const bool uniform_breaking_condition = allocation_impossible || VoxelMalloc_malloc_allocation_success;
-        barrier();
         if (uniform_breaking_condition) {
             // THIS IS NON DIVERGENT!
             break;
-        } else if (group_local_thread_index == 0) {
-            VoxelMalloc_malloc_elected_thread = -1;
+        }
+        if (group_local_thread_index == 0) {
+            // Reset the election variable of the previous iteration.
+            // We can do this safely in here, as the current and the next iterations election variables are the only ones that are used right now.
+            VoxelMalloc_malloc_elected_thread[prev_iteration_election_variable] = -1;
         }
     }
     // If allocating into existing pages fails because all current pages have too little space,
@@ -146,15 +155,15 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
         // When one is found, write the metadata to it.
         barrier();
         memoryBarrierShared();
-        i32 loop_iter = 0;
-        while (!VoxelMalloc_malloc_allocation_success) {
-            barrier();
-            memoryBarrierShared();
-
-            ++loop_iter;
+        for (u32 iteration = 0; !VoxelMalloc_malloc_allocation_success; ++iteration) {
+            const uint current_election_variable = iteration % 2;
+            const uint next_iteration_election_variable = (iteration + 1) % 2;
+            if (group_local_thread_index == 0) {
+                VoxelMalloc_malloc_elected_thread[next_iteration_election_variable] = -1;
+            }
             if (page_unallocated) {
                 // Elect ONE of the threads that map to an empty page.
-                i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread, -1, group_local_thread_index);
+                i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
                 if (election_fetch == -1) {
                     // Pack metadata.
                     const u64 new_page_info = VoxelMalloc_PageInfo_pack(local_allocation_bitmask_no_offset, VoxelMalloc_malloc_global_page_index);
@@ -174,11 +183,6 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
             }
             barrier();
             memoryBarrierShared();
-            // Reset the thread voting value for the text allocation attempt.
-            // TODO: use two election values to avoid a memory and execution barrier to reset the election value.
-            if (group_local_thread_index == 0) {
-                VoxelMalloc_malloc_elected_thread = -1;
-            }
         }
     }
 

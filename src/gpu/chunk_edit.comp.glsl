@@ -6,22 +6,34 @@
 
 DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush)
 
-#define SIMPLE 0
-#define DEBUG 1
-#define TERRAIN 2
-
-#define SCENE TERRAIN
+#define INPUT deref(daxa_push_constant.gpu_input)
+b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
+    f32vec3 z = c;
+    u32 i = 0;
+    const f32 n = 8 + sin(INPUT.time) * 4;
+    const u32 MAX_ITER = 4;
+    f32 m = dot(z, z);
+    f32vec4 trap = f32vec4(abs(z), m);
+    for (; i < MAX_ITER; ++i) {
+        f32 r = length(z);
+        f32 p = atan(z.y / z.x);
+        f32 t = acos(z.z / r);
+        z = f32vec3(
+            sin(n * t) * cos(n * p),
+            sin(n * t) * sin(n * p),
+            cos(n * t));
+        z = z * pow(r, n) + c;
+        trap = min(trap, f32vec4(abs(z), m));
+        m = dot(z, z);
+        if (m > 256.0)
+            break;
+    }
+    color = f32vec3(m, trap.yz) * trap.w;
+    return i == MAX_ITER;
+}
+#undef INPUT
 
 f32 terrain_noise(f32vec3 p) {
-#if SCENE == SIMPLE
-    return fract((p.x + p.y + p.z) * 0.05) - 0.5;
-#elif SCENE == DEBUG
-    p = f32vec3(2, 2, 180) - p;
-    f32 dist = MAX_SD;
-    dist = min(dist, -p.z);
-    dist = min(dist, length(p + f32vec3(0, 0, 1)) - 1);
-    return dist;
-#elif SCENE == TERRAIN
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.2,
@@ -31,8 +43,6 @@ f32 terrain_noise(f32vec3 p) {
     f32 val = fractal_noise(p, noise_conf);
     val += p.z * 0.003 - 1;
     return val;
-#endif
-    return 0;
 }
 
 f32vec3 terrain_nrm(f32vec3 pos) {
@@ -54,7 +64,14 @@ u32vec3 inchunk_voxel_i;
 u32vec3 voxel_i;
 f32vec3 voxel_pos;
 
-void worldgen(in out f32vec3 col, in out u32 id) {
+void brushgen_world(in out f32vec3 col, in out u32 id) {
+#if 1
+    f32vec3 mandelbulb_color;
+    if (mandelbulb((voxel_pos / (CHUNK_SIZE / VOXEL_SCL * 4) * 2 - 1) * 1, mandelbulb_color)) {
+        col = f32vec3(0.98);
+        id = 1;
+    }
+#else
     voxel_pos += f32vec3(1700, 1600, 150);
 
     f32 val = terrain_noise(voxel_pos);
@@ -63,11 +80,6 @@ void worldgen(in out f32vec3 col, in out u32 id) {
 
     if (val < 0) {
         id = 1;
-#if SCENE == SIMPLE
-        col = f32vec3(1, 0, 1);
-#elif SCENE == DEBUG
-        col = f32vec3(0.1);
-#elif SCENE == TERRAIN
         f32 r = good_rand(-val);
         if (val > -0.002 && upwards > 0.65) {
             // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
@@ -96,10 +108,8 @@ void worldgen(in out f32vec3 col, in out u32 id) {
         } else {
             col = f32vec3(0.08, 0.08, 0.07);
         }
-#else
-        col = f32vec3(1, 1, 0);
-#endif
     }
+#endif
 }
 
 void brushgen_a(in out f32vec3 col, in out u32 id) {
@@ -124,9 +134,17 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2) < 0) {
-        col = f32vec3(0.1, 0.1, 1);
-        id = 1;
+    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 0.5) < 0) {
+        // f32 val = noise(voxel_pos);
+        // if (val > 0.2) {
+        //     col = f32vec3(0.90, 0.01, 0.01);
+        // } else if (val > -0.2) {
+        //     col = f32vec3(0.01, 0.90, 0.01);
+        // } else {
+        //     col = f32vec3(0.01, 0.01, 0.90);
+        // }
+        col = f32vec3(0.01, 0.91, 0.91);
+        id = 2;
     }
 }
 
@@ -145,11 +163,13 @@ void main() {
     voxel_i = chunk_i * CHUNK_SIZE + inchunk_voxel_i;
     voxel_pos = f32vec3(voxel_i) / VOXEL_SCL;
 
+    rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
+
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
     switch (deref(voxel_chunk_ptr).edit_stage) {
-    case CHUNK_STAGE_WORLD_BRUSH: worldgen(col, id); break;
+    case CHUNK_STAGE_WORLD_BRUSH: brushgen_world(col, id); break;
     case CHUNK_STAGE_USER_BRUSH_A: brushgen_a(col, id); break;
     case CHUNK_STAGE_USER_BRUSH_B: brushgen_b(col, id); break;
     }

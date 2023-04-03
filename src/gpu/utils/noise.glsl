@@ -126,7 +126,7 @@ f32 voronoi_noise(f32vec3 pos) {
             for (i32 xi = 0; xi < 3; ++xi) {
                 f32vec3 p = pos + f32vec3(xi - 1, yi - 1, zi - 1);
                 p = floor(p) + 0.5;
-                p += f32vec3(rand(p + 71.444), rand(p + 25.170), rand(p + -54.766));
+                p += f32vec3(rand(), rand(), rand());
                 value = min(value, dot(pos - p, pos - p));
             }
         }

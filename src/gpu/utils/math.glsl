@@ -418,149 +418,43 @@ f32 good_rand(f32vec2 v) { return good_rand_float_construct(good_rand_hash(float
 f32 good_rand(f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 f32 good_rand(f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 
-/// Hash without Sine
-// MIT License...
-/* Copyright (c)2014 David Hoskins.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.*/
-
-// Gabe Rundlett
-// Modified mostly for my own naming
-
-f32 rand(f32 p) {
-    p = fract(p * .1031);
-    p *= p + 33.33;
-    p *= p + p;
-    return fract(p) * 2 - 1;
-}
-f32 rand(f32vec2 p) {
-    f32vec3 p3 = fract(f32vec3(p.xyx) * .1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z) * 2 - 1;
-}
-f32 rand(f32vec3 p3) {
-    p3 = fract(p3 * .1031);
-    p3 += dot(p3, p3.zyx + 31.32);
-    return fract((p3.x + p3.y) * p3.z) * 2 - 1;
-}
-f32 rand(f32vec4 p4) {
-    p4 = fract(p4 * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.x + p4.y) * (p4.z + p4.w)) * 2 - 1;
+u32 _rand_state;
+void rand_seed(u32 seed) {
+    _rand_state = seed;
 }
 
-f32vec2 rand2(f32 p) {
-    f32vec3 p3 = fract(f32vec3(p) * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xx + p3.yz) * p3.zy);
-}
-f32vec2 rand2(f32vec2 p) {
-    f32vec3 p3 = fract(f32vec3(p.xyx) * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xx + p3.yz) * p3.zy);
-}
-f32vec2 rand2(f32vec3 p3) {
-    p3 = fract(p3 * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xx + p3.yz) * p3.zy);
-}
-f32vec2 rand2(f32vec4 p4) {
-    p4 = fract(p4 * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xy + p4.yz) * p4.zy);
+f32 rand() {
+    // https://www.pcg-random.org/
+    _rand_state = _rand_state * 747796405u + 2891336453u;
+    u32 result = ((_rand_state >> ((_rand_state >> 28u) + 4u)) ^ _rand_state) * 277803737u;
+    result = (result >> 22u) ^ result;
+    return result / 4294967295.0;
 }
 
-f32vec3 rand3(f32 p) {
-    f32vec3 p3 = fract(f32vec3(p) * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xxy + p3.yzz) * p3.zyx);
-}
-f32vec3 rand3(f32vec2 p) {
-    f32vec3 p3 = fract(f32vec3(p.xyx) * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yxz + 33.33);
-    return fract((p3.xxy + p3.yzz) * p3.zyx);
-}
-f32vec3 rand3(f32vec3 p3) {
-    p3 = fract(p3 * f32vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yxz + 33.33);
-    return fract((p3.xxy + p3.yxx) * p3.zyx);
-}
-f32vec3 rand3(f32vec4 p4) {
-    p4 = fract(p4 * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xyz + p4.yzw) * p4.zyw);
+f32 rand_normal_dist() {
+    f32 theta = 2.0 * PI * rand();
+    f32 rho = sqrt(-2.0 * log(rand()));
+    return rho * cos(theta);
 }
 
-f32vec4 rand4(f32 p) {
-    f32vec4 p4 = fract(f32vec4(p) * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xxyz + p4.yzzw) * p4.zywx);
-}
-f32vec4 rand4(f32vec2 p) {
-    f32vec4 p4 = fract(f32vec4(p.xyxy) * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xxyz + p4.yzzw) * p4.zywx);
-}
-f32vec4 rand4(f32vec3 p) {
-    f32vec4 p4 = fract(f32vec4(p.xyzx) * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xxyz + p4.yzzw) * p4.zywx);
-}
-f32vec4 rand4(f32vec4 p4) {
-    p4 = fract(p4 * f32vec4(.1031, .1030, .0973, .1099));
-    p4 += dot(p4, p4.wzxy + 33.33);
-    return fract((p4.xxyz + p4.yzzw) * p4.zywx);
+f32vec3 rand_dir() {
+    return normalize(f32vec3(
+        rand_normal_dist(),
+        rand_normal_dist(),
+        rand_normal_dist()));
 }
 
-/// end Hash without Sine
-
-f32vec3 ortho(f32vec3 v) {
-    return mix(f32vec3(-v.y, v.x, 0.0), f32vec3(0.0, -v.z, v.y), step(abs(v.x), abs(v.z)));
+f32vec3 rand_hemi_dir(f32vec3 nrm) {
+    f32vec3 result = rand_dir();
+    return result * sign(dot(nrm, result));
 }
 
-f32vec3 around(f32vec3 v, f32vec3 z) {
-    f32vec3 t = ortho(z), b = cross(z, t);
-    return t * f32vec3(v.x, v.x, v.x) + (b * f32vec3(v.y, v.y, v.y) + (z * v.z));
+f32vec3 rand_lambertian_nrm(f32vec3 nrm) {
+    return normalize(nrm + rand_dir());
 }
 
-f32vec3 isotropic(f32 rp, f32 c) {
-    f32 p = 2 * 3.14159 * rp, s = sqrt(1.0 - c * c);
-    return f32vec3(cos(p) * s, sin(p) * s, c);
-}
-
-f32vec3 rand_pt(f32vec3 n, f32vec2 rnd) {
-    f32 c = sqrt(rnd.y);
-    return around(isotropic(rnd.x, c), n);
-}
-
-f32vec3 rand_pt_in_sphere(f32vec2 rnd) {
-    f32 l = acos(2 * rnd.x - 1) - PI / 2;
-    f32 p = 2 * PI * rnd.y;
-    return f32vec3(cos(l) * cos(p), cos(l) * sin(p), sin(l));
-}
-
-f32vec3 rand_lambertian_nrm(f32vec3 n, f32vec2 rnd) {
-    f32vec3 pt = rand_pt_in_sphere(rnd);
-    return normalize(pt + n);
-}
-
-f32vec3 rand_lambertian_reflect(f32vec3 i, f32vec3 n, f32vec2 rnd, f32 roughness) {
-    f32vec3 pt = rand_pt_in_sphere(rnd) * clamp(roughness, 0, 1);
-    return normalize(pt + reflect(i, n));
+f32vec2 rand_circle_pt() {
+    f32 theta = 2.0 * PI * rand();
+    f32 mag = sqrt(rand());
+    return f32vec2(cos(theta), sin(theta)) * mag;
 }

@@ -21,6 +21,7 @@ struct AppSettings {
 
     bool show_debug_info;
     bool show_console;
+    bool show_node_editor;
     bool show_help;
     bool autosave;
     bool battery_saving_mode;

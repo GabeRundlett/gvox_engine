@@ -10,6 +10,7 @@ add_executable(${PROJECT_NAME}
     "src/cpu/voxel_app.cpp"
     "src/cpu/app_ui.cpp"
     "src/cpu/app_settings.cpp"
+    "src/cpu/node_editor.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
@@ -22,6 +23,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
+find_package(imgui-node-editor CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
@@ -31,6 +33,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     sago::platform_folders
     unofficial::nativefiledialog::nfd
+    imgui-node-editor::imgui-node-editor
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"

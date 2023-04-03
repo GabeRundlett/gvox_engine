@@ -71,13 +71,21 @@ struct ColorSceneComputePush {
     daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
     daxa_RWImage2Df32 render_pos_image_id;
+    daxa_RWImage2Df32 render_prev_pos_image_id;
     daxa_RWImage2Df32 render_col_image_id;
+    daxa_RWImage2Df32 render_prev_col_image_id;
+};
+
+struct SpatialBlurComputePush {
+    daxa_BufferPtr(GpuSettings) gpu_settings;
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_RWImage2Df32 render_col_image_id;
+    daxa_RWImage2Df32 final_image_id;
 };
 
 struct PostprocessingComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
     daxa_RWImage2Df32 render_col_image_id;
     daxa_RWImage2Df32 final_image_id;
 };

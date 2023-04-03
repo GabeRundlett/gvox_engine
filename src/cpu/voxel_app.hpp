@@ -125,9 +125,22 @@ struct ColorSceneTask {
         BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA voxel_chunks_buffer_ptr,
         daxa::ImageId render_pos_image,
+        daxa::ImageId render_prev_pos_image,
         daxa::ImageId render_col_image,
+        daxa::ImageId render_prev_col_image,
         u32vec2 render_size) const;
 };
+
+// struct SpatialBlurTask {
+//     std::shared_ptr<daxa::ComputePipeline> pipeline;
+//     void record(
+//         daxa::CommandList &cmd_list,
+//         BDA settings_buffer_ptr,
+//         BDA input_buffer_ptr,
+//         daxa::ImageId render_col_image,
+//         daxa::ImageId final_image,
+//         u32vec2 render_size) const;
+// };
 
 struct PostprocessingTask {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
@@ -135,7 +148,6 @@ struct PostprocessingTask {
         daxa::CommandList &cmd_list,
         BDA settings_buffer_ptr,
         BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
         daxa::ImageId render_col_image,
         daxa::ImageId final_image,
         u32vec2 render_size) const;
@@ -147,8 +159,8 @@ struct GpuOutputDownloadTransferTask {
 
 struct RenderImages {
     u32vec2 size;
-    daxa::ImageId pos_image;
-    daxa::ImageId col_image;
+    std::array<daxa::ImageId, 2> pos_images;
+    std::array<daxa::ImageId, 2> col_images;
     daxa::ImageId final_image;
 
     void create(daxa::Device &device);
@@ -225,7 +237,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     GpuResources gpu_resources;
 
     daxa::TaskImageId task_render_pos_image;
+    daxa::TaskImageId task_render_prev_pos_image;
     daxa::TaskImageId task_render_col_image;
+    daxa::TaskImageId task_render_prev_col_image;
     daxa::TaskImageId task_render_final_image;
 
     daxa::TaskBufferId task_settings_buffer;
@@ -253,6 +267,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkAlloc chunk_alloc_task;
     TracePrimaryTask trace_primary_task;
     ColorSceneTask color_scene_task;
+    // SpatialBlurTask spatial_blur_task;
     PostprocessingTask postprocessing_task;
     GpuOutputDownloadTransferTask gpu_output_download_transfer_task;
 

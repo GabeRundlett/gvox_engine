@@ -221,10 +221,27 @@ void trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferP
     trace_hierarchy_traversal(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512);
 }
 
-f32vec3 scene_nrm(f32vec3 pos) {
+f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
+#if 0
+    const i32 RANGE = 1;
+    f32vec3 result = f32vec3(0);
+    for (i32 zi = -RANGE; zi <= RANGE; ++zi) {
+        for (i32 yi = -RANGE; yi <= RANGE; ++yi) {
+            for (i32 xi = -RANGE; xi <= RANGE; ++xi) {
+                u32 voxel = sample_voxel_chunk(allocator, voxel_chunks_ptr, chunk_n, u32vec3(pos * VOXEL_SCL + f32vec3(xi, yi, zi)), true);
+                u32 id = voxel >> 0x18;
+                if (voxel != 0) {
+                    result += f32vec3(xi, yi, zi);
+                }
+            }
+        }
+    }
+    return -normalize(result);
+#else
     // return -sdmap_nrm(pos);
     f32vec3 d = fract(pos * VOXEL_SCL) - .5;
     f32vec3 ad = abs(d);
     f32 m = max(max(ad.x, ad.y), ad.z);
     return -(abs(sign(ad - m)) - 1.) * sign(d);
+#endif
 }

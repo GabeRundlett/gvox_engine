@@ -144,10 +144,10 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
-    daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
     if (chunk_i.x >= chunk_n.x || chunk_i.y >= chunk_n.y || chunk_i.z >= chunk_n.z) {
         return 0u;
     }
+    daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
     return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, is_drawing);
 }
 

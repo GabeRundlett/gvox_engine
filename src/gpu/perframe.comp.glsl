@@ -53,6 +53,11 @@ void main() {
         (deref(daxa_push_constant.voxel_malloc_global_allocator).page_count -
          deref(daxa_push_constant.voxel_malloc_global_allocator).available_pages_stack_size) *
         VOXEL_MALLOC_PAGE_SIZE_U32S;
+
+    // Debug - reset the allocator
+    // deref(daxa_push_constant.voxel_malloc_global_allocator).page_count = 0;
+    // deref(daxa_push_constant.voxel_malloc_global_allocator).available_pages_stack_size = 0;
+    // deref(daxa_push_constant.voxel_malloc_global_allocator).released_pages_stack_size = 0;
 #endif
 
     voxel_malloc_perframe(

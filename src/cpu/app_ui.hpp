@@ -4,6 +4,7 @@ struct GLFWwindow;
 struct ImFont;
 
 #include "app_settings.hpp"
+#include "node_editor.hpp"
 #include <imgui.h>
 #include <chrono>
 #include <filesystem>
@@ -67,6 +68,7 @@ struct AppUi {
     bool needs_saving = false;
     Clock::time_point last_save_time{};
     Console console{};
+    NodeEditor node_editor{};
 
     u32 conflict_resolution_mode = 0;
     i32 new_key_id{};
@@ -102,6 +104,7 @@ struct AppUi {
     void toggle_debug();
     void toggle_help();
     void toggle_console();
+    void toggle_node_editor();
 
   private:
     void settings_ui();
