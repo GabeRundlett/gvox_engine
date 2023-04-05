@@ -6,6 +6,7 @@ struct Camera {
     f32mat3x3 rot_mat, prev_rot_mat;
     f32vec3 pos, prev_pos;
     f32 tan_half_fov;
+    f32 prev_tan_half_fov;
     f32 focal_dist;
 };
 

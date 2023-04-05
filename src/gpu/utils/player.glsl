@@ -54,6 +54,7 @@ void player_perframe(
             0, -sin_rot_x,  cos_rot_x
         );
     // clang-format on
+    PLAYER.cam.prev_tan_half_fov = PLAYER.cam.tan_half_fov;
     PLAYER.cam.tan_half_fov = tan(SETTINGS.fov * 0.5);
 
     f32vec3 move_vec = f32vec3(0, 0, 0);

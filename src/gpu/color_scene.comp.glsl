@@ -7,12 +7,10 @@ DAXA_USE_PUSH_CONSTANT(ColorSceneComputePush)
 
 #define AMBIENT_OCCLUSION 0
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-f32vec2 prev_uv_from_pos(in out Player player, f32 aspect, f32vec3 pos) {
+f32vec2 prev_uv_from_pos(in out Player player, f32 aspect, f32 fov, f32vec3 pos) {
     f32vec3 dir = normalize(pos - player.cam.prev_pos) * player.cam.prev_rot_mat;
-    return dir.xy / dir.z * f32vec2(0.5 / aspect, 0.5);
+    return dir.xy / dir.z * f32vec2(0.5 / aspect, 0.5) / player.cam.prev_tan_half_fov;
 }
-#undef SETTINGS
 
 f32vec4 get_prev_sample(i32vec2 prev_pixel_i, f32vec3 hit, i32vec2 frame_dim) {
     if (min(frame_dim, prev_pixel_i) != prev_pixel_i || max(i32vec2(0, 0), prev_pixel_i) != prev_pixel_i)
@@ -113,7 +111,7 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     reflect_ray(ray_dir, ray_col, hit_info);
 
     if (hit_info.is_hit) {
-        for (u32 i = 0; i < 1; ++i) {
+        for (u32 i = 0; i < 2; ++i) {
             trace_hierarchy_traversal(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
             hit_info = get_hit_info(ray_pos, ray_dir);
             result += hit_info.emit_col * ray_col;
@@ -165,7 +163,7 @@ void main() {
 
     f32 hit_dist = length(cam_pos - hit_pos);
 
-    f32vec2 prev_uv = prev_uv_from_pos(GLOBALS.player, aspect, hit_pos);
+    f32vec2 prev_uv = prev_uv_from_pos(GLOBALS.player, aspect, SETTINGS.fov, hit_pos);
     i32vec2 prev_pixel_i = i32vec2(round((prev_uv + 0.5) * frame_dim));
 
     i32vec2 pfc, finalpfc;
@@ -178,7 +176,7 @@ void main() {
     f32 accepted_count = 1;
     f32vec3 hit_nrm = scene_nrm(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, hit_pos);
 
-    hit_dist = ceil(pow(hit_dist * 0.1, 0.5));
+    hit_dist = ceil(pow(hit_dist * 0.1, 0.5) / SETTINGS.fov * PI / 2);
 
     for (i32 x = -SEARCH_RADIUS; x <= SEARCH_RADIUS; x++) {
         for (i32 y = -SEARCH_RADIUS; y <= SEARCH_RADIUS; y++) {
