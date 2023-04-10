@@ -7,10 +7,14 @@
 
 // See 'VoxelMalloc_PageInfo' in shared/voxel_malloc.inl
 u32 VoxelMalloc_PageInfo_extract_local_consumption_bitmask(VoxelMalloc_PageInfo page_info_bits) {
+#if VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD == 32
+    return u32(page_info_bits);
+#else
     return u32(page_info_bits >> 0) & ((1 << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) - 1);
+#endif
 }
 u32 VoxelMalloc_PageInfo_extract_global_page_index(VoxelMalloc_PageInfo page_info_bits) {
-    return u32(page_info_bits >> VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) & ((1 << 27) - 1);
+    return u32(page_info_bits >> VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) & ((1 << VOXEL_MALLOC_LOG2_MAX_GLOBAL_PAGE_COUNT) - 1);
 }
 VoxelMalloc_PageInfo VoxelMalloc_PageInfo_pack(u32 page_local_consumption_bitmask, u32 global_page_index) {
     return (u64(page_local_consumption_bitmask) << 0) | (u64(global_page_index) << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD);

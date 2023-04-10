@@ -221,7 +221,7 @@ void main() {
     // col = col * alpha + prev_col * (1.0 - alpha);
 
 #if 0
-    const u32 ALLOC_DEBUG_VIEW_SIZE = 27 * 32 * 2;
+    const u32 ALLOC_DEBUG_VIEW_SIZE = VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD * 32 * 2;
     if (pixel_i.x < ALLOC_DEBUG_VIEW_SIZE) {
         u32 index = pixel_i.x + pixel_i.y * ALLOC_DEBUG_VIEW_SIZE;
 
