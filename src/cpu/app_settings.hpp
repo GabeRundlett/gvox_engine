@@ -6,7 +6,6 @@ using namespace daxa::types;
 #include <map>
 #include <filesystem>
 
-#include <shared/shared.inl>
 #include <GLFW/glfw3.h>
 
 struct AppSettings {

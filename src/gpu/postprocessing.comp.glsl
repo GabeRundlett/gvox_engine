@@ -3,7 +3,7 @@
 // #include <virtual/postprocessing>
 #define FILMIC
 
-DAXA_USE_PUSH_CONSTANT(PostprocessingComputePush)
+DAXA_USE_PUSH_CONSTANT(PostprocessingComputePush, daxa_push_constant)
 
 f32vec3 srgb_encode(f32vec3 x) {
     return mix(12.92 * x, 1.055 * pow(x, f32vec3(.41666)) - .055, step(.0031308, x));

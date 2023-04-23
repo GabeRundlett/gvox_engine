@@ -12,6 +12,8 @@ struct ImFont;
 
 #include <gvox/gvox.h>
 
+#include <shared/input.inl>
+
 struct AppUi {
     struct Console {
         char input_buffer[256]{};

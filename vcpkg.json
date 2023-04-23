@@ -2,7 +2,12 @@
   "name": "my-app",
   "version": "0.1.0",
   "dependencies": [
-    "daxa",
+    {
+      "name": "daxa",
+      "features": [
+        "utils-pipeline-manager-spirv-validation"
+      ]
+    },
     "gvox",
     "fmt",
     "stb",
@@ -34,7 +39,7 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "../gvox/cmake/vcpkg-port",
+      "../../rust/gvox-rs/gvox-sys/gvox/cmake/vcpkg-port",
       "../Daxa/cmake/vcpkg-port",
       "../Daxa/cmake/vcpkg-overlay-ports/dxc",
       "../Daxa/cmake/vcpkg-overlay-ports/glfw3",

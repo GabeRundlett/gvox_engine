@@ -1,6 +1,6 @@
 #include <shared/shared.inl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkOptComputePush)
+DAXA_USE_PUSH_CONSTANT(ChunkOptComputePush, daxa_push_constant)
 
 #include <utils/voxels.glsl>
 

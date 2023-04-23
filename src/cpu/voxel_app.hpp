@@ -63,6 +63,7 @@ struct ChunkEdit {
         BDA voxel_malloc_global_allocator_buffer_ptr,
         BDA temp_voxel_chunks_ptr,
         BDA voxel_chunks_buffer_ptr,
+        BDA gvox_model_buffer_ptr,
         daxa::BufferId globals_buffer_id) const;
 };
 
@@ -227,7 +228,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     daxa::Swapchain swapchain;
     daxa::ImageId swapchain_image{};
-    daxa::TaskImageId task_swapchain_image;
+    daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
     daxa::PipelineManager main_pipeline_manager;
 
@@ -235,32 +236,37 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImGuiRenderer imgui_renderer;
 
     GpuResources gpu_resources;
+    daxa::BufferId prev_gvox_model_buffer{};
+    u32 prev_page_count{};
 
-    daxa::TaskImageId task_render_pos_image;
-    daxa::TaskImageId task_render_prev_pos_image;
-    daxa::TaskImageId task_render_col_image;
-    daxa::TaskImageId task_render_prev_col_image;
-    daxa::TaskImageId task_render_final_image;
+    daxa::TaskImage task_render_pos_image{{.name = "task_render_pos_image"}};
+    daxa::TaskImage task_render_prev_pos_image{{.name = "task_render_prev_pos_image"}};
+    daxa::TaskImage task_render_col_image{{.name = "task_render_col_image"}};
+    daxa::TaskImage task_render_prev_col_image{{.name = "task_render_prev_col_image"}};
+    daxa::TaskImage task_render_final_image{{.name = "task_render_final_image"}};
 
-    daxa::TaskBufferId task_settings_buffer;
-    daxa::TaskBufferId task_input_buffer;
-    daxa::TaskBufferId task_output_buffer;
-    daxa::TaskBufferId task_staging_output_buffer;
-    daxa::TaskBufferId task_globals_buffer;
-    daxa::TaskBufferId task_temp_voxel_chunks_buffer;
-    daxa::TaskBufferId task_voxel_malloc_global_allocator_buffer;
-    daxa::TaskBufferId task_voxel_malloc_pages_buffer;
-    daxa::TaskBufferId task_voxel_malloc_new_pages_buffer;
-    daxa::TaskBufferId task_voxel_chunks_buffer;
+    daxa::TaskBuffer task_settings_buffer{{.name = "task_settings_buffer"}};
+    daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
+    daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
+    daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
+    daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
+    daxa::TaskBuffer task_temp_voxel_chunks_buffer{{.name = "task_temp_voxel_chunks_buffer"}};
+    daxa::TaskBuffer task_voxel_malloc_global_allocator_buffer{{.name = "task_voxel_malloc_global_allocator_buffer"}};
+    daxa::TaskBuffer task_voxel_malloc_pages_buffer{{.name = "task_voxel_malloc_pages_buffer"}};
+    daxa::TaskBuffer task_voxel_malloc_old_pages_buffer{{.name = "task_voxel_malloc_old_pages_buffer"}};
+    daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
 #if USE_OLD_ALLOC
-    daxa::TaskBufferId task_gpu_heap_buffer;
+    daxa::TaskBuffer task_gpu_heap_buffer{{.name = "task_gpu_heap_buffer"}};
 #endif
-    daxa::TaskBufferId task_gvox_model_buffer;
+    daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
 
     GpuInputUploadTransferTask gpu_input_upload_transfer_task;
     StartupTask startup_task;
     PerframeTask perframe_task;
     PerChunkTask per_chunk_task;
+    // StartupComputeTaskState startup_task_state;
+    // PerframeComputeTaskState perframe_task_state;
+    // PerChunkComputeTaskState per_chunk_task_state;
     ChunkEdit chunk_edit_task;
     ChunkOpt_x2x4 chunk_opt_x2x4_task;
     ChunkOpt_x8up chunk_opt_x8up_task;
@@ -291,6 +297,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     bool has_model = false;
     std::future<GvoxModelData> gvox_model_data_future;
+    GvoxModelData gvox_model_data;
     bool model_is_loading = false;
 
     VoxelApp();
@@ -299,7 +306,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void run();
 
     void calc_vram_usage();
-    auto load_gvox_data() -> GvoxModelData;
+    auto load_gvox_data(bool load_from_file = true) -> GvoxModelData;
 
     void on_update();
     void on_mouse_move(f32 x, f32 y);

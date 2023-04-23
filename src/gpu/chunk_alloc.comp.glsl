@@ -7,7 +7,7 @@
 #include <utils/voxel_malloc.glsl>
 #include <utils/voxels.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush)
+DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush, daxa_push_constant)
 
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];

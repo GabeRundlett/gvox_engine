@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 
-#include <shared/shared.inl>
+#include <shared/voxel_malloc.inl>
 
 using namespace std::literals;
 

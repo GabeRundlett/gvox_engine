@@ -6,6 +6,8 @@
 #undef DAXA_ENABLE_SHADER_NO_NAMESPACE
 #undef DAXA_ENABLE_IMAGE_OVERLOADS_BASIC
 
+#include <daxa/utils/task_list.inl>
+
 #define CHUNK_SIZE 64
 
 #define PALETTE_REGION_SIZE 8
@@ -25,3 +27,9 @@
 #define CHUNK_STAGE_USER_BRUSH_A 2
 #define CHUNK_STAGE_USER_BRUSH_B 3
 #define CHUNK_STAGE_FINISHED 4
+
+#if defined(__cplusplus)
+#include <memory>
+#include <daxa/utils/pipeline_manager.hpp>
+#include <cpu/app_ui.hpp>
+#endif

@@ -1,6 +1,6 @@
 #include <utils/voxel_world.glsl>
 
-DAXA_USE_PUSH_CONSTANT(PerChunkComputePush)
+DAXA_USE_PUSH_CONSTANT(PerChunkComputePush, daxa_push_constant)
 
 #define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
 #define INDIRECT deref(daxa_push_constant.gpu_globals).indirect_dispatch

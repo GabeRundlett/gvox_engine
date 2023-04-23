@@ -2,7 +2,7 @@
 
 #include <utils/trace.glsl>
 
-DAXA_USE_PUSH_CONSTANT(TracePrimaryComputePush)
+DAXA_USE_PUSH_CONSTANT(TracePrimaryComputePush, daxa_push_constant)
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)

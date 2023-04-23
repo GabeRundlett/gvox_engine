@@ -5,12 +5,10 @@
 #include <utils/math.glsl>
 #include <utils/voxels.glsl>
 
-#define SETTINGS deref(settings_ptr)
 #define PLAYER deref(globals_ptr).player
 #define VOXEL_WORLD deref(globals_ptr).voxel_world
 #define CHUNKS(i) deref(voxel_chunks_ptr + i)
 void voxel_world_startup(
-    daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr,
     daxa_RWBufferPtr(VoxelChunk) voxel_chunks_ptr) {
 
@@ -19,7 +17,6 @@ void voxel_world_startup(
 #undef CHUNKS
 #undef VOXEL_WORLD
 #undef PLAYER
-#undef SETTINGS
 
 #define SETTINGS deref(settings_ptr)
 #define INPUT deref(input_ptr)

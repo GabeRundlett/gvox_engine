@@ -8,12 +8,18 @@
 
 #include <shared/core.inl>
 
+// #if STARTUP_COMPUTE || defined(__cplusplus)
+// #include <shared/tasks/startup.inl>
+// #endif
 struct StartupComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_RWBufferPtr(GpuGlobals) gpu_globals;
     daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
 };
 
+// #if PERFRAME_COMPUTE || defined(__cplusplus)
+// #include <shared/tasks/perframe.inl>
+// #endif
 struct PerframeComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
@@ -23,6 +29,9 @@ struct PerframeComputePush {
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
 };
 
+// #if PER_CHUNK_COMPUTE || defined(__cplusplus)
+// #include <shared/tasks/per_chunk.inl>
+// #endif
 struct PerChunkComputePush {
     daxa_BufferPtr(GpuSettings) gpu_settings;
     daxa_BufferPtr(GpuInput) gpu_input;
@@ -37,6 +46,7 @@ struct ChunkEditComputePush {
     daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks;
     daxa_BufferPtr(VoxelChunk) voxel_chunks;
+    daxa_BufferPtr(GpuGvoxModel) gvox_model;
 };
 
 struct ChunkOptComputePush {

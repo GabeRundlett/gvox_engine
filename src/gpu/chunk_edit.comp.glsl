@@ -4,8 +4,9 @@
 #include <utils/voxels.glsl>
 #include <utils/noise.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush)
+DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush, daxa_push_constant)
 
+#if 1
 #define INPUT deref(daxa_push_constant.gpu_input)
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
@@ -65,12 +66,27 @@ u32vec3 voxel_i;
 f32vec3 voxel_pos;
 
 void brushgen_world(in out f32vec3 col, in out u32 id) {
-#if 1
+#if 0
     f32vec3 mandelbulb_color;
     if (mandelbulb((voxel_pos / (CHUNK_SIZE / VOXEL_SCL * 4) * 2 - 1) * 1, mandelbulb_color)) {
-        col = f32vec3(0.98);
+        col = f32vec3(0.02);
         id = 1;
     }
+#elif 1
+
+    id = 1;
+    col = f32vec3(0.5, 0.1, 0.8);
+
+#elif 0
+
+    u32 packed_col_data = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 0);
+    id = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 1);
+    u32 packed_emi_data = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 2);
+    col = uint_to_float4(packed_col_data).rgb;
+    if (packed_emi_data != 0) {
+        id = 2;
+    }
+
 #else
     voxel_pos += f32vec3(1700, 1600, 150);
 
@@ -120,7 +136,7 @@ void brushgen_a(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2) < 0) {
+    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2.0 / VOXEL_SCL) < 0) {
         col = f32vec3(0, 0, 0);
         id = 0;
     }
@@ -134,19 +150,20 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 0.5) < 0) {
-        // f32 val = noise(voxel_pos);
-        // if (val > 0.2) {
-        //     col = f32vec3(0.90, 0.01, 0.01);
-        // } else if (val > -0.2) {
-        //     col = f32vec3(0.01, 0.90, 0.01);
+    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 0.5 / VOXEL_SCL) < 0) {
+        // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
+        // if (val > 0.3) {
+        //     col = f32vec3(0.99, 0.03, 0.01);
+        // } else if (val > -0.3) {
+        //     col = f32vec3(0.91, 0.05, 0.01);
         // } else {
-        //     col = f32vec3(0.01, 0.01, 0.90);
+        //     col = f32vec3(0.91, 0.15, 0.01);
         // }
-        col = f32vec3(0.01, 0.91, 0.91);
+        col = f32vec3(1.0);
         id = 2;
     }
 }
+#endif
 
 #define SETTINGS deref(daxa_push_constant.gpu_settings)
 #define INPUT deref(daxa_push_constant.gpu_input)

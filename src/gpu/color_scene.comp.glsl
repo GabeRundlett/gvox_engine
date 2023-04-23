@@ -3,7 +3,7 @@
 #include <utils/trace.glsl>
 #include <utils/voxels.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ColorSceneComputePush)
+DAXA_USE_PUSH_CONSTANT(ColorSceneComputePush, daxa_push_constant)
 
 #define AMBIENT_OCCLUSION 0
 
@@ -43,6 +43,7 @@ f32vec3 sample_sky(f32vec3 nrm) {
     light += sun_val * SUN_COL;
     return light;
     // return f32vec3(0.02);
+    // return f32vec3(1);
 }
 
 bool is_hit(f32 hit_dist2) {
@@ -75,7 +76,7 @@ HitInfo get_hit_info(f32vec3 pos, f32vec3 ray_dir) {
                 result.emit_col = sample_col.rgb * 20;
                 result.is_hit = false;
             } else {
-                result.diff_col = sample_col.rgb;
+                result.diff_col = max(sample_col.rgb, f32vec3(0.01));
                 result.emit_col = f32vec3(0);
             }
         }
@@ -111,6 +112,7 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     reflect_ray(ray_dir, ray_col, hit_info);
 
     if (hit_info.is_hit) {
+        // result = hit_info.diff_col;
         for (u32 i = 0; i < 2; ++i) {
             trace_hierarchy_traversal(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
             hit_info = get_hit_info(ray_pos, ray_dir);
@@ -178,6 +180,11 @@ void main() {
 
     hit_dist = ceil(pow(hit_dist * 0.1, 0.5) / SETTINGS.fov * PI / 2);
 
+    // hit_dist = 0 + ceil(
+    //     pow((dot(hit_nrm, cam_dir) * 0.5 + 0.5) * 2, 10)
+    //     + pow(hit_dist * 0.1, 0.5) / SETTINGS.fov * PI / 2
+    //     );
+
     for (i32 x = -SEARCH_RADIUS; x <= SEARCH_RADIUS; x++) {
         for (i32 y = -SEARCH_RADIUS; y <= SEARCH_RADIUS; y++) {
             pfc = prev_pixel_i + i32vec2(x, y);
@@ -197,7 +204,7 @@ void main() {
                     daxa_push_constant.render_prev_col_image_id,
                     pfc);
                 blurred_color += prev_col.rgb;
-                accepted_count = max(accepted_count, min(prev_col.a + 1, 100));
+                accepted_count = max(accepted_count, min(prev_col.a + 1, 200));
                 blurred_samples += 1.0;
             }
         }
@@ -208,6 +215,7 @@ void main() {
     // finaldist = clamp(finaldist, 0.01, 1.0 / VOXEL_SCL) / (1.0 / VOXEL_SCL);
     f32 alpha = mix(1.0, 1.0 / (accepted_count + 1), f32(accepted));
     col = col * alpha + (blurred_color / max(blurred_samples, 1)) * (1.0 - alpha);
+    // col = blurred_color / blurred_samples;
     // col = hit_nrm;
 
     // Naive frame blending:
