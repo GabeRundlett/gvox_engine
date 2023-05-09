@@ -3,8 +3,6 @@
 #include <utils/trace.glsl>
 #include <utils/voxels.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ColorSceneComputePush, daxa_push_constant)
-
 #define AMBIENT_OCCLUSION 0
 
 f32vec2 prev_uv_from_pos(in out Player player, f32 aspect, f32 fov, f32vec3 pos) {
@@ -15,7 +13,7 @@ f32vec2 prev_uv_from_pos(in out Player player, f32 aspect, f32 fov, f32vec3 pos)
 f32vec4 get_prev_sample(i32vec2 prev_pixel_i, f32vec3 hit, i32vec2 frame_dim) {
     if (min(frame_dim, prev_pixel_i) != prev_pixel_i || max(i32vec2(0, 0), prev_pixel_i) != prev_pixel_i)
         return f32vec4(f32vec3(0), MAX_SD);
-    f32vec3 prev_hit_pos = imageLoad(daxa_push_constant.render_prev_pos_image_id, prev_pixel_i).xyz;
+    f32vec3 prev_hit_pos = imageLoad(render_prev_pos_image_id, prev_pixel_i).xyz;
     f32vec3 p0 = prev_hit_pos; // floor(prev_hit_pos * VOXEL_SCL);
     f32vec3 p1 = hit;          // floor(hit * VOXEL_SCL);
     f32vec3 del = p0 - p1;
@@ -33,6 +31,7 @@ f32vec3 sample_sky_ambient(f32vec3 nrm) {
     sun_val = pow(sun_val, 2) * 0.2;
     f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.2 + 0.5, 0, 1);
     return mix(SKY_COL + sun_val * SUN_COL, SKY_COL_B, pow(sky_val, 2));
+    // return f32vec3(0.1, 0.15, 0.9);
 }
 
 f32vec3 sample_sky(f32vec3 nrm) {
@@ -43,7 +42,7 @@ f32vec3 sample_sky(f32vec3 nrm) {
     light += sun_val * SUN_COL;
     return light;
     // return f32vec3(0.02);
-    // return f32vec3(1);
+    // return f32vec3(0.1, 0.15, 0.9);
 }
 
 bool is_hit(f32 hit_dist2) {
@@ -69,7 +68,7 @@ HitInfo get_hit_info(f32vec3 pos, f32vec3 ray_dir) {
         u32vec3 voxel_i = u32vec3(pos * VOXEL_SCL);
         u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
         if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
-            u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks[chunk_index], inchunk_voxel_i, true);
+            u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunks[chunk_index], inchunk_voxel_i, true);
             f32vec4 sample_col = uint_to_float4(voxel_data);
             if ((voxel_data >> 0x18) == 2) {
                 result.diff_col = f32vec3(0);
@@ -80,7 +79,7 @@ HitInfo get_hit_info(f32vec3 pos, f32vec3 ray_dir) {
                 result.emit_col = f32vec3(0);
             }
         }
-        result.nrm = scene_nrm(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, pos);
+        result.nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, pos);
     } else {
         result.diff_col = f32vec3(0.0);
         result.emit_col = sample_sky(ray_dir);
@@ -114,7 +113,8 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     if (hit_info.is_hit) {
         // result = hit_info.diff_col;
         for (u32 i = 0; i < 2; ++i) {
-            trace_hierarchy_traversal(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
+            trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 512);
+            // trace_sparse(voxel_chunks, chunk_n, ray_pos, ray_dir, 6);
             hit_info = get_hit_info(ray_pos, ray_dir);
             result += hit_info.emit_col * ray_col;
             if (hit_info.is_hit) {
@@ -130,11 +130,11 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     return result;
 }
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define INPUT deref(daxa_push_constant.gpu_input)
-#define GLOBALS deref(daxa_push_constant.gpu_globals)
-#define CHUNK_PTRS(i) daxa_push_constant.voxel_chunks[i]
-#define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
+#define SETTINGS deref(settings)
+#define INPUT deref(gpu_input)
+#define GLOBALS deref(globals)
+#define CHUNK_PTRS(i) voxel_chunks[i]
+#define CHUNKS(i) deref(voxel_chunks[i])
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     f32vec2 frame_dim = INPUT.frame_dim;
@@ -147,16 +147,43 @@ void main() {
         return;
 
     f32vec3 col = f32vec3(0);
-
-    chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    f32 accepted_count = 1;
 
     f32vec2 uv = f32vec2(pixel_i) * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
-    f32vec3 cam_pos = create_view_pos(deref(daxa_push_constant.gpu_globals).player);
-    f32vec3 cam_dir = create_view_dir(deref(daxa_push_constant.gpu_globals).player, uv);
+
+    chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+
+#if 1
+    f32vec3 cam_pos = create_view_pos(deref(globals).player);
+    f32vec3 cam_dir = create_view_dir(deref(globals).player, uv);
     f32vec3 hit_pos =
         imageLoad(
-            daxa_push_constant.render_pos_image_id,
+            render_pos_image_id,
+            i32vec2(pixel_i))
+            .xyz;
+    HitInfo hit_info = get_hit_info(hit_pos, cam_dir);
+    // col = hit_info.nrm * 0.5 + 0.5;
+
+    f32vec3 temp_pos = hit_pos; // + hit_info.nrm * 0.001;
+    trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, SUN_DIR, 512);
+    HitInfo sun_hit_info = get_hit_info(temp_pos, SUN_DIR);
+    f32vec3 light = sample_sky_ambient(hit_info.nrm);
+    if (!sun_hit_info.is_hit) {
+        light += SUN_COL * 0.2 * dot(hit_info.nrm, SUN_DIR);
+    }
+    col = hit_info.diff_col * light + hit_info.emit_col;
+
+    f32 fog_factor = clamp(length(hit_pos - cam_pos) * 0.002, 0, 1);
+    f32vec3 fog_col = sample_sky_ambient(cam_dir);
+    col = mix(col, fog_col, fog_factor);
+#elif 1
+
+    f32vec3 cam_pos = create_view_pos(deref(globals).player);
+    f32vec3 cam_dir = create_view_dir(deref(globals).player, uv);
+    f32vec3 hit_pos =
+        imageLoad(
+            render_pos_image_id,
             i32vec2(pixel_i))
             .xyz;
 
@@ -164,6 +191,7 @@ void main() {
     col = color_trace(hit_pos, cam_dir);
 
     f32 hit_dist = length(cam_pos - hit_pos);
+    hit_dist = ceil(pow(hit_dist * 0.1, 1) / SETTINGS.fov * PI / 2);
 
     f32vec2 prev_uv = prev_uv_from_pos(GLOBALS.player, aspect, SETTINGS.fov, hit_pos);
     i32vec2 prev_pixel_i = i32vec2(round((prev_uv + 0.5) * frame_dim));
@@ -171,14 +199,11 @@ void main() {
     i32vec2 pfc, finalpfc;
     f32 finaldist = MAX_SD;
     f32vec3 final_pos = f32vec3(0);
-    const i32 SEARCH_RADIUS = 2;
+    const i32 SEARCH_RADIUS = 1;
 
     f32vec3 blurred_color = f32vec3(0);
     f32 blurred_samples = 0;
-    f32 accepted_count = 1;
-    f32vec3 hit_nrm = scene_nrm(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, hit_pos);
-
-    hit_dist = ceil(pow(hit_dist * 0.1, 0.5) / SETTINGS.fov * PI / 2);
+    f32vec3 hit_nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, hit_pos);
 
     // hit_dist = 0 + ceil(
     //     pow((dot(hit_nrm, cam_dir) * 0.5 + 0.5) * 2, 10)
@@ -195,16 +220,16 @@ void main() {
                 finalpfc = pfc;
                 finaldist = dist;
             }
-            f32vec3 prev_nrm = scene_nrm(daxa_push_constant.voxel_malloc_global_allocator, daxa_push_constant.voxel_chunks, chunk_n, prev_pos);
-            bool normals_equal = prev_nrm == hit_nrm;
+            f32vec3 prev_nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, prev_pos);
+            bool normals_equal = prev_nrm == hit_nrm || dot(hit_nrm, cam_dir) < 0.5;
             bool positions_equal = floor(prev_pos * VOXEL_SCL / hit_dist) == floor(hit_pos * VOXEL_SCL / hit_dist);
             bool is_close_enough = dist < 0.01 * hit_dist;
             if (is_close_enough && positions_equal && normals_equal) {
                 f32vec4 prev_col = imageLoad(
-                    daxa_push_constant.render_prev_col_image_id,
+                    render_prev_col_image_id,
                     pfc);
                 blurred_color += prev_col.rgb;
-                accepted_count = max(accepted_count, min(prev_col.a + 1, 200));
+                accepted_count = max(accepted_count, min(prev_col.a + 1, 100));
                 blurred_samples += 1.0;
             }
         }
@@ -217,16 +242,19 @@ void main() {
     col = col * alpha + (blurred_color / max(blurred_samples, 1)) * (1.0 - alpha);
     // col = blurred_color / blurred_samples;
     // col = hit_nrm;
+#endif
 
+#if 0
     // Naive frame blending:
-    // f32vec3 prev_col =
-    //     imageLoad(
-    //         daxa_push_constant.render_col_image_id,
-    //         i32vec2(pixel_i))
-    //         .rgb;
-    // f32 alpha = 0.01;
-    // col = clamp(col, f32vec3(0), f32vec3(5));
-    // col = col * alpha + prev_col * (1.0 - alpha);
+    f32vec3 prev_col =
+        imageLoad(
+            render_col_image_id,
+            i32vec2(pixel_i))
+            .rgb;
+    f32 alpha = 0.1;
+    col = clamp(col, f32vec3(0), f32vec3(5));
+    col = col * alpha + prev_col * (1.0 - alpha);
+#endif
 
 #if 0
     const u32 ALLOC_DEBUG_VIEW_SIZE = VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD * 32 * 2;
@@ -238,7 +266,7 @@ void main() {
         u32 chunk_index = alloc_index / 512;
         u32 in_chunk_index = alloc_index - chunk_index * 512;
 
-        VoxelMalloc_PageInfo page_info = deref(daxa_push_constant.voxel_chunks[chunk_index]).sub_allocator_state.page_allocation_infos[in_chunk_index];
+        VoxelMalloc_PageInfo page_info = deref(voxel_chunks[chunk_index]).sub_allocator_state.page_allocation_infos[in_chunk_index];
         u32 local_consumption_bitmask = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(page_info);
 
         if (chunk_index < chunk_n.x * chunk_n.y * chunk_n.z) {
@@ -256,7 +284,7 @@ void main() {
 #endif
 
     imageStore(
-        daxa_push_constant.render_col_image_id,
+        render_col_image_id,
         i32vec2(pixel_i),
         f32vec4(col, accepted_count));
 }

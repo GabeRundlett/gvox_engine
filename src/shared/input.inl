@@ -30,6 +30,7 @@ struct MouseInput {
 
 struct GpuInput {
     u32 frame_index;
+    u32 fif_index;
     u32vec2 frame_dim;
     f32 time;
     f32 delta_time;
@@ -38,3 +39,9 @@ struct GpuInput {
     u32 actions[GAME_ACTION_LAST + 1];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuInput)
+
+struct GpuOutput {
+    f32vec3 player_pos;
+    u32 heap_size;
+};
+DAXA_ENABLE_BUFFER_PTR(GpuOutput)

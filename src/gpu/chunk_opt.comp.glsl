@@ -1,7 +1,5 @@
 #include <shared/shared.inl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkOptComputePush, daxa_push_constant)
-
 #include <utils/voxels.glsl>
 
 #define WAVE_SIZE gl_SubgroupSize
@@ -12,12 +10,11 @@ u32 sample_temp_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in
     return deref(temp_voxel_chunk_ptr).voxels[in_chunk_index].col_and_id >> 24;
 }
 
-#if defined(SUBCHUNK_X2X4)
+#if CHUNK_OPT_STAGE == 0
 
 shared u32 local_x2_copy[4][4];
 
 #define VOXEL_CHUNK deref(voxel_chunk_ptr)
-#define MODEL_PTR daxa_push_constant.gpu_gvox_model
 void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, in u32 chunk_local_workgroup) {
     u32vec2 x2_in_group_location = u32vec2(
         (gl_LocalInvocationID.x >> 5) & 0x3,
@@ -87,11 +84,10 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         VOXEL_CHUNK.uniformity.lod_x4[index] = result;
     }
 }
-#undef MODEL_PTR
 #undef VOXEL_CHUNK
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
+#define SETTINGS deref(settings)
+#define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
     u32vec3 chunk_n;
@@ -100,8 +96,8 @@ void main() {
     chunk_n.z = chunk_n.x;
     u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
+    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
+    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
@@ -111,13 +107,12 @@ void main() {
 
 #endif
 
-#if defined(SUBCHUNK_X8UP)
+#if CHUNK_OPT_STAGE == 1
 
 shared u32 local_x8_copy[64];
 shared u32 local_x16_copy[16];
 
 #define VOXEL_CHUNK deref(voxel_chunk_ptr)
-#define MODEL_PTR daxa_push_constant.gpu_gvox_model
 void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr) {
     u32vec3 x8_i = u32vec3(
         (gl_LocalInvocationID.x >> 3) & 0x7,
@@ -230,11 +225,10 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         VOXEL_CHUNK.uniformity.lod_x32[index] = result;
     }
 }
-#undef MODEL_PTR
 #undef VOXEL_CHUNK
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
+#define SETTINGS deref(settings)
+#define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
     u32vec3 chunk_n;
@@ -243,8 +237,8 @@ void main() {
     chunk_n.z = chunk_n.x;
     u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
+    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
+    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);

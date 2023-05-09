@@ -1,9 +1,6 @@
 #include <shared/shared.inl>
 
-// #include <virtual/postprocessing>
 #define FILMIC
-
-DAXA_USE_PUSH_CONSTANT(PostprocessingComputePush, daxa_push_constant)
 
 f32vec3 srgb_encode(f32vec3 x) {
     return mix(12.92 * x, 1.055 * pow(x, f32vec3(.41666)) - .055, step(.0031308, x));
@@ -28,7 +25,7 @@ f32vec3 color_correct(f32vec3 x) {
     return x;
 }
 
-#define INPUT deref(daxa_push_constant.gpu_input)
+#define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     u32vec2 pixel_i = gl_GlobalInvocationID.xy;
@@ -37,11 +34,11 @@ void main() {
         return;
 
     f32vec4 final_color = imageLoad(
-        daxa_push_constant.render_col_image_id,
+        render_col_image_id,
         i32vec2(pixel_i));
 
     imageStore(
-        daxa_push_constant.final_image_id,
+        final_image_id,
         i32vec2(pixel_i),
         f32vec4(color_correct(final_color.rgb), 0));
 }

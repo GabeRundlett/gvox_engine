@@ -1,10 +1,8 @@
 #include <utils/voxel_world.glsl>
 
-DAXA_USE_PUSH_CONSTANT(PerChunkComputePush, daxa_push_constant)
-
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
-#define INDIRECT deref(daxa_push_constant.gpu_globals).indirect_dispatch
-#define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
+#define VOXEL_WORLD deref(globals).voxel_world
+#define INDIRECT deref(globals).indirect_dispatch
+#define CHUNKS(i) deref(voxel_chunks[i])
 void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
     if (prev_update_n < MAX_CHUNK_UPDATES_PER_FRAME) {
@@ -20,12 +18,13 @@ void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
 #undef INDIRECT
 #undef VOXEL_WORLD
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define INPUT deref(daxa_push_constant.gpu_input)
-#define GLOBALS deref(daxa_push_constant.gpu_globals)
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
-#define INDIRECT deref(daxa_push_constant.gpu_globals).indirect_dispatch
-#define CHUNKS(i) deref(daxa_push_constant.voxel_chunks[i])
+#define SETTINGS deref(settings)
+#define INPUT deref(gpu_input)
+#define GLOBALS deref(globals)
+#define VOXEL_WORLD deref(globals).voxel_world
+#define INDIRECT deref(globals).indirect_dispatch
+#define CHUNKS(i) deref(voxel_chunks[i])
+#define MODEL deref(gvox_model)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     u32vec3 chunk_n;
@@ -52,7 +51,11 @@ void main() {
 
     // Select "random" chunks to be updated
     if (CHUNKS(chunk_index).edit_stage == 0) {
-        elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
+        u32vec3 chunk_ai = chunk_i + 1;
+        u32vec3 chunk_bi = chunk_i + 0;
+        if (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6)) {
+            elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
+        }
     }
 
     if (CHUNKS(chunk_index).edit_stage == CHUNK_STAGE_FINISHED) {
@@ -78,6 +81,7 @@ void main() {
     // }
 #endif
 }
+#undef MODEL
 #undef CHUNKS
 #undef INDIRECT
 #undef VOXEL_WORLD

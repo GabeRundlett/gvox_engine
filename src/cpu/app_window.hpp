@@ -19,6 +19,8 @@ using namespace daxa::types;
 
 #include <stb_image.h>
 
+#include <span>
+
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;
@@ -60,6 +62,12 @@ struct AppWindow {
             [](GLFWwindow *window_ptr, i32 sx, i32 sy) {
                 auto &app = *reinterpret_cast<App *>(glfwGetWindowUserPointer(window_ptr));
                 app.on_resize(static_cast<u32>(sx), static_cast<u32>(sy));
+            });
+        glfwSetDropCallback(
+            glfw_window_ptr,
+            [](GLFWwindow *window_ptr, int path_count, char const *paths[]) {
+                auto &app = *reinterpret_cast<App *>(glfwGetWindowUserPointer(window_ptr));
+                app.on_drop(std::span<char const *>{paths, static_cast<size_t>(path_count)});
             });
 
         GLFWimage images[1];

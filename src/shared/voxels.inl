@@ -50,3 +50,9 @@ struct TempVoxelChunk {
     TempVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
 DAXA_ENABLE_BUFFER_PTR(TempVoxelChunk)
+
+struct VoxelParentChunk {
+    u32 children[512];
+    u32 is_pointer[16];
+};
+DAXA_ENABLE_BUFFER_PTR(VoxelParentChunk)

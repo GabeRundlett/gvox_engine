@@ -18,146 +18,6 @@ using BDA = daxa::BufferDeviceAddress;
 
 static constexpr usize FRAMES_IN_FLIGHT = 1;
 
-struct GpuInputUploadTransferTask {
-    static void record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId input_buffer, GpuInput &gpu_input);
-};
-
-struct StartupTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA globals_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr) const;
-};
-
-struct PerframeTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA output_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_malloc_global_allocator_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr) const;
-};
-
-struct PerChunkTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        u32vec3 chunk_n) const;
-};
-
-struct ChunkEdit {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_malloc_global_allocator_buffer_ptr,
-        BDA temp_voxel_chunks_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        BDA gvox_model_buffer_ptr,
-        daxa::BufferId globals_buffer_id) const;
-};
-
-struct ChunkOpt_x2x4 {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA temp_voxel_chunks_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        daxa::BufferId globals_buffer_id) const;
-};
-
-struct ChunkOpt_x8up {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA temp_voxel_chunks_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        daxa::BufferId globals_buffer_id) const;
-};
-
-struct ChunkAlloc {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_malloc_global_allocator_buffer_ptr,
-        BDA temp_voxel_chunks_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        daxa::BufferId globals_buffer_id) const;
-};
-
-struct TracePrimaryTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_malloc_global_allocator_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        daxa::ImageId render_image,
-        u32vec2 render_size) const;
-};
-
-struct ColorSceneTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        BDA globals_buffer_ptr,
-        BDA voxel_malloc_global_allocator_buffer_ptr,
-        BDA voxel_chunks_buffer_ptr,
-        daxa::ImageId render_pos_image,
-        daxa::ImageId render_prev_pos_image,
-        daxa::ImageId render_col_image,
-        daxa::ImageId render_prev_col_image,
-        u32vec2 render_size) const;
-};
-
-// struct SpatialBlurTask {
-//     std::shared_ptr<daxa::ComputePipeline> pipeline;
-//     void record(
-//         daxa::CommandList &cmd_list,
-//         BDA settings_buffer_ptr,
-//         BDA input_buffer_ptr,
-//         daxa::ImageId render_col_image,
-//         daxa::ImageId final_image,
-//         u32vec2 render_size) const;
-// };
-
-struct PostprocessingTask {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
-    void record(
-        daxa::CommandList &cmd_list,
-        BDA settings_buffer_ptr,
-        BDA input_buffer_ptr,
-        daxa::ImageId render_col_image,
-        daxa::ImageId final_image,
-        u32vec2 render_size) const;
-};
-
-struct GpuOutputDownloadTransferTask {
-    static void record(daxa::Device &device, daxa::CommandList &cmd_list, daxa::BufferId output_buffer, daxa::BufferId staging_output_buffer, GpuOutput &gpu_output, u32 frame_index);
-};
-
 struct RenderImages {
     u32vec2 size;
     std::array<daxa::ImageId, 2> pos_images;
@@ -260,22 +120,16 @@ struct VoxelApp : AppWindow<VoxelApp> {
 #endif
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
 
-    GpuInputUploadTransferTask gpu_input_upload_transfer_task;
-    StartupTask startup_task;
-    PerframeTask perframe_task;
-    PerChunkTask per_chunk_task;
-    // StartupComputeTaskState startup_task_state;
-    // PerframeComputeTaskState perframe_task_state;
-    // PerChunkComputeTaskState per_chunk_task_state;
-    ChunkEdit chunk_edit_task;
-    ChunkOpt_x2x4 chunk_opt_x2x4_task;
-    ChunkOpt_x8up chunk_opt_x8up_task;
-    ChunkAlloc chunk_alloc_task;
-    TracePrimaryTask trace_primary_task;
-    ColorSceneTask color_scene_task;
-    // SpatialBlurTask spatial_blur_task;
-    PostprocessingTask postprocessing_task;
-    GpuOutputDownloadTransferTask gpu_output_download_transfer_task;
+    StartupComputeTaskState startup_task_state;
+    PerframeComputeTaskState perframe_task_state;
+    PerChunkComputeTaskState per_chunk_task_state;
+    ChunkEditComputeTaskState chunk_edit_task_state;
+    ChunkOpt_x2x4_ComputeTaskState chunk_opt_x2x4_task_state;
+    ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
+    ChunkAllocComputeTaskState chunk_alloc_task_state;
+    TracePrimaryComputeTaskState trace_primary_task_state;
+    ColorSceneComputeTaskState color_scene_task_state;
+    PostprocessingComputeTaskState postprocessing_task_state;
 
     enum class Conditions {
         STARTUP,
@@ -306,7 +160,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void run();
 
     void calc_vram_usage();
-    auto load_gvox_data(bool load_from_file = true) -> GvoxModelData;
+    auto load_gvox_data() -> GvoxModelData;
 
     void on_update();
     void on_mouse_move(f32 x, f32 y);
@@ -314,6 +168,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_mouse_button(i32 button_id, i32 action);
     void on_key(i32 key_id, i32 action);
     void on_resize(u32 sx, u32 sy);
+    void on_drop(std::span<char const *> filepaths);
 
     void recreate_render_images();
     void recreate_voxel_chunks();

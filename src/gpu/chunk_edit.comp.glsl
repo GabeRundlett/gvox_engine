@@ -4,10 +4,8 @@
 #include <utils/voxels.glsl>
 #include <utils/noise.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkEditComputePush, daxa_push_constant)
-
 #if 1
-#define INPUT deref(daxa_push_constant.gpu_input)
+#define INPUT deref(gpu_input)
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
     u32 i = 0;
@@ -72,22 +70,23 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         col = f32vec3(0.02);
         id = 1;
     }
-#elif 1
+#elif 0
 
     id = 1;
     col = f32vec3(0.5, 0.1, 0.8);
 
-#elif 0
+#elif 1
 
-    u32 packed_col_data = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 0);
-    id = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 1);
-    u32 packed_emi_data = sample_gvox_palette_voxel(daxa_push_constant.gvox_model, voxel_i, 2);
+    u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
+    id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
+    // id = packed_col_data >> 0x18;
+    // u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 2);
     col = uint_to_float4(packed_col_data).rgb;
-    if (packed_emi_data != 0) {
-        id = 2;
-    }
+    // if (id != 0) {
+    //     id = 2;
+    // }
 
-#else
+#elif 0
     voxel_pos += f32vec3(1700, 1600, 150);
 
     f32 val = terrain_noise(voxel_pos);
@@ -125,32 +124,39 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             col = f32vec3(0.08, 0.08, 0.07);
         }
     }
+#else
+    f32 val = (terrain_noise(voxel_pos) + 1.75) * 20;
+    val += length(voxel_pos - 64) - 48;
+    if (val < 0) {
+        id = 1;
+        col = f32vec3(0.1);
+    }
 #endif
 }
 
 void brushgen_a(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
     f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 2.0 / VOXEL_SCL) < 0) {
+    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 32.0 / VOXEL_SCL) < 0) {
         col = f32vec3(0, 0, 0);
         id = 0;
     }
 }
 
 void brushgen_b(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
     f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(daxa_push_constant.gpu_globals).brush_state.pos, deref(daxa_push_constant.gpu_globals).brush_state.prev_pos, 0.5 / VOXEL_SCL) < 0) {
+    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 2.5 / VOXEL_SCL) < 0) {
         // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
         // if (val > 0.3) {
         //     col = f32vec3(0.99, 0.03, 0.01);
@@ -160,22 +166,22 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
         //     col = f32vec3(0.91, 0.15, 0.01);
         // }
         col = f32vec3(1.0);
-        id = 2;
+        id = 1;
     }
 }
 #endif
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define INPUT deref(daxa_push_constant.gpu_input)
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
+#define SETTINGS deref(settings)
+#define INPUT deref(gpu_input)
+#define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
-    temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + temp_chunk_index;
-    voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
+    temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    voxel_chunk_ptr = voxel_chunks + chunk_index;
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     voxel_i = chunk_i * CHUNK_SIZE + inchunk_voxel_i;
     voxel_pos = f32vec3(voxel_i) / VOXEL_SCL;

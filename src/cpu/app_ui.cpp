@@ -459,7 +459,7 @@ void AppUi::settings_ui() {
             }
             if (ImGui::Button("Open Model")) {
                 nfdchar_t *out_path = NULL;
-                nfdresult_t result = NFD_OpenDialog("gvox,vox,vxl", (data_directory / "models").string().c_str(), &out_path);
+                nfdresult_t result = NFD_OpenDialog("gvox,vox,vxl,gvp,rle,oct,glp,brk", (data_directory / "models").string().c_str(), &out_path);
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
@@ -560,6 +560,7 @@ void AppUi::settings_ui() {
     if (ImGui::Button("Reset")) {
         settings.reset_default();
         rescale_ui();
+        should_upload_settings = true;
         needs_saving = true;
     }
     ImGui::End();

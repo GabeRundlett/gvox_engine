@@ -7,8 +7,6 @@
 #include <utils/voxel_malloc.glsl>
 #include <utils/voxels.glsl>
 
-DAXA_USE_PUSH_CONSTANT(ChunkAllocComputePush, daxa_push_constant)
-
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
@@ -41,8 +39,8 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
     }
 }
 
-#define SETTINGS deref(daxa_push_constant.gpu_settings)
-#define VOXEL_WORLD deref(daxa_push_constant.gpu_globals).voxel_world
+#define SETTINGS deref(settings)
+#define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
@@ -61,8 +59,8 @@ void main() {
         palette_i.y * PALETTES_PER_CHUNK_AXIS +
         palette_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
 
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = daxa_push_constant.temp_voxel_chunks + temp_chunk_index;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = daxa_push_constant.voxel_chunks + chunk_index;
+    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
 
     u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
     u32 my_palette_index = 0;
@@ -75,7 +73,7 @@ void main() {
 #if USE_OLD_ALLOC
     if (palette_region_voxel_index == 0) {
         if (prev_variant_n > 1) {
-            VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
+            VoxelMalloc_free(voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
         }
     }
 
@@ -95,13 +93,13 @@ void main() {
         compressed_size = PALETTE_REGION_TOTAL_SIZE;
 #if USE_OLD_ALLOC
         if (palette_region_voxel_index == 0) {
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+            blob_ptr = VoxelMalloc_malloc(voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
 #else
         if (prev_variant_n > 1) {
             blob_ptr = prev_blob_ptr;
-            VoxelMalloc_realloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
+            VoxelMalloc_realloc(voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
         } else {
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+            blob_ptr = VoxelMalloc_malloc(voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
         }
         if (palette_region_voxel_index == 0) {
 #endif
@@ -114,13 +112,13 @@ void main() {
         compressed_size = palette_size + (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32;
 #if USE_OLD_ALLOC
         if (palette_region_voxel_index == 0) {
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+            blob_ptr = VoxelMalloc_malloc(voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
 #else
         if (prev_variant_n > 1) {
             blob_ptr = prev_blob_ptr;
-            VoxelMalloc_realloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
+            VoxelMalloc_realloc(voxel_malloc_global_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
         } else {
-            blob_ptr = VoxelMalloc_malloc(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
+            blob_ptr = VoxelMalloc_malloc(voxel_malloc_global_allocator, voxel_chunk_ptr, compressed_size);
         }
         if (palette_region_voxel_index == 0) {
 #endif
@@ -146,7 +144,7 @@ void main() {
     } else {
         if (palette_region_voxel_index == 0) {
             if (prev_variant_n > 1) {
-                VoxelMalloc_free(daxa_push_constant.voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
+                VoxelMalloc_free(voxel_malloc_global_allocator, voxel_chunk_ptr, prev_blob_ptr);
             }
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = my_voxel;
@@ -157,7 +155,7 @@ void main() {
     memoryBarrierShared();
 
     if (palette_region_voxel_index < compressed_size) {
-        daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(daxa_push_constant.voxel_malloc_global_allocator, blob_ptr);
+        daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(voxel_malloc_global_allocator, blob_ptr);
         deref(blob_u32s[palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
     }
 }

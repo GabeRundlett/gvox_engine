@@ -151,7 +151,10 @@ void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) all
         }
         cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
         t_next = (0.5 + sign(ray_dir) * (0.5 - fract(current_pos / cell_size))) * cell_size * delta;
-        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.002 / VOXEL_SCL);
+        // HACK to mitigate fp imprecision...
+        t_next += 0.00001 * (sign(ray_dir) * -0.5 + 0.5);
+        // t_curr += (min(min(t_next.x, t_next.y), t_next.z));
+        t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 / VOXEL_SCL);
     }
     ray_pos = ray_pos + ray_dir * dist;
 #elif TRAVERSAL_MODE == 3

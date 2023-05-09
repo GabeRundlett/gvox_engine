@@ -31,5 +31,4 @@
 #if defined(__cplusplus)
 #include <memory>
 #include <daxa/utils/pipeline_manager.hpp>
-#include <cpu/app_ui.hpp>
 #endif

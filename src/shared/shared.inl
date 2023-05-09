@@ -1,101 +1,35 @@
 #pragma once
 
-#include <shared/settings.inl>
 #include <shared/input.inl>
-#include <shared/output.inl>
 #include <shared/globals.inl>
 #include <shared/voxels.inl>
 
 #include <shared/core.inl>
 
-// #if STARTUP_COMPUTE || defined(__cplusplus)
-// #include <shared/tasks/startup.inl>
-// #endif
-struct StartupComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-};
-
-// #if PERFRAME_COMPUTE || defined(__cplusplus)
-// #include <shared/tasks/perframe.inl>
-// #endif
-struct PerframeComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_RWBufferPtr(GpuOutput) gpu_output;
-    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
-    daxa_BufferPtr(VoxelChunk) voxel_chunks;
-};
-
-// #if PER_CHUNK_COMPUTE || defined(__cplusplus)
-// #include <shared/tasks/per_chunk.inl>
-// #endif
-struct PerChunkComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_RWBufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-};
-
-struct ChunkEditComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
-    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks;
-    daxa_BufferPtr(VoxelChunk) voxel_chunks;
-    daxa_BufferPtr(GpuGvoxModel) gvox_model;
-};
-
-struct ChunkOptComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-};
-
-struct ChunkAllocComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunks;
-};
-
-struct TracePrimaryComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
-    daxa_BufferPtr(VoxelChunk) voxel_chunks;
-    daxa_RWImage2Df32 render_pos_image_id;
-};
-
-struct ColorSceneComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_BufferPtr(GpuGlobals) gpu_globals;
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) voxel_malloc_global_allocator;
-    daxa_BufferPtr(VoxelChunk) voxel_chunks;
-    daxa_RWImage2Df32 render_pos_image_id;
-    daxa_RWImage2Df32 render_prev_pos_image_id;
-    daxa_RWImage2Df32 render_col_image_id;
-    daxa_RWImage2Df32 render_prev_col_image_id;
-};
-
-struct SpatialBlurComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_RWImage2Df32 render_col_image_id;
-    daxa_RWImage2Df32 final_image_id;
-};
-
-struct PostprocessingComputePush {
-    daxa_BufferPtr(GpuSettings) gpu_settings;
-    daxa_BufferPtr(GpuInput) gpu_input;
-    daxa_RWImage2Df32 render_col_image_id;
-    daxa_RWImage2Df32 final_image_id;
-};
+#if STARTUP_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/startup.inl>
+#endif
+#if PERFRAME_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/perframe.inl>
+#endif
+#if PER_CHUNK_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/per_chunk.inl>
+#endif
+#if CHUNK_EDIT_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/chunk_edit.inl>
+#endif
+#if CHUNK_OPT_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/chunk_opt.inl>
+#endif
+#if CHUNK_ALLOC_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/chunk_alloc.inl>
+#endif
+#if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/trace_primary.inl>
+#endif
+#if COLOR_SCENE_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/color_scene.inl>
+#endif
+#if POSTPROCESSING_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/postprocessing.inl>
+#endif
