@@ -59,7 +59,7 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 #include <utils/hdda.glsl>
 #endif
 
-void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
+void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
     b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
@@ -186,7 +186,7 @@ void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) all
 #endif
 }
 
-void trace_sparse(daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
+void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
     b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
@@ -219,12 +219,12 @@ void trace_sparse(daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, 
     ray_pos += ray_dir * MAX_SD;
 }
 
-void trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
+void trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
     // trace_sphere_trace(ray_pos, ray_dir);
     trace_hierarchy_traversal(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512);
 }
 
-f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
+f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
 #if 0
     const i32 RANGE = 1;
     f32vec3 result = f32vec3(0);

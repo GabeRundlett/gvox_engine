@@ -15,7 +15,7 @@ u32 sample_temp_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in
 shared u32 local_x2_copy[4][4];
 
 #define VOXEL_CHUNK deref(voxel_chunk_ptr)
-void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, in u32 chunk_local_workgroup) {
+void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in u32 chunk_local_workgroup) {
     u32vec2 x2_in_group_location = u32vec2(
         (gl_LocalInvocationID.x >> 5) & 0x3,
         (gl_LocalInvocationID.x >> 7) & 0x3);
@@ -97,7 +97,7 @@ void main() {
     u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
@@ -113,7 +113,7 @@ shared u32 local_x8_copy[64];
 shared u32 local_x16_copy[16];
 
 #define VOXEL_CHUNK deref(voxel_chunk_ptr)
-void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr) {
+void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr) {
     u32vec3 x8_i = u32vec3(
         (gl_LocalInvocationID.x >> 3) & 0x7,
         (gl_LocalInvocationID.x >> 6) & 0x7,
@@ -238,7 +238,7 @@ void main() {
     u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);

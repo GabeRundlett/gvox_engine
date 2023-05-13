@@ -5,7 +5,7 @@
 #include <utils/voxels.glsl>
 #include <utils/math.glsl>
 
-bool hdda_is_active(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelChunk) voxel_chunks_ptr, u32vec3 chunk_n, i32vec3 voxel_i) {
+bool hdda_is_active(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, i32vec3 voxel_i) {
     voxel_i = clamp(voxel_i, i32vec3(0, 0, 0), i32vec3(chunk_n) * CHUNK_SIZE - 1);
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;

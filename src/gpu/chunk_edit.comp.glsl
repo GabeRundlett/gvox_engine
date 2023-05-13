@@ -58,7 +58,7 @@ u32 temp_chunk_index;
 u32vec3 chunk_i;
 u32 chunk_index;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
-daxa_BufferPtr(VoxelChunk) voxel_chunk_ptr;
+daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
 u32vec3 inchunk_voxel_i;
 u32vec3 voxel_i;
 f32vec3 voxel_pos;
@@ -75,7 +75,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     id = 1;
     col = f32vec3(0.5, 0.1, 0.8);
 
-#elif 1
+#elif 0
 
     u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
@@ -124,9 +124,16 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             col = f32vec3(0.08, 0.08, 0.07);
         }
     }
+#elif 0
+    u32vec3 voxel_i = u32vec3(voxel_pos / (CHUNK_SIZE / VOXEL_SCL));
+    if ((voxel_i.x + voxel_i.y + voxel_i.z) % 2 == 1) {
+        id = 1;
+        col = f32vec3(0.1);
+    }
 #else
-    f32 val = (terrain_noise(voxel_pos) + 1.75) * 20;
-    val += length(voxel_pos - 64) - 48;
+    const f32 scl = f32(1u << (2 + 3));
+    f32 val = 0;
+    val += length(voxel_pos - scl) - scl * 1.1;
     if (val < 0) {
         id = 1;
         col = f32vec3(0.1);

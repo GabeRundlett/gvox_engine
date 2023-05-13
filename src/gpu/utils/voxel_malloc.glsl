@@ -55,7 +55,7 @@ shared u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
 // at a time as this would cause race conditions.
 shared i32 VoxelMalloc_malloc_elected_thread[3];
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
-VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, u32 size) {
+VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 size) {
 #if USE_OLD_ALLOC
     u32 result_address = atomicAdd(deref(allocator).offset, size + 1);
     deref(deref(allocator).heap[result_address]) = size + 1;
@@ -201,7 +201,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
 
 // Can enter with any workgroup and warp configuration.
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
-void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
+void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
 #if USE_OLD_ALLOC
     // Doesn't matter for now...
 
@@ -307,7 +307,7 @@ void voxel_malloc_perframe(
 #undef INPUT
 
 // Must enter with 512 thread work group with all threads active.
-void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
+void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
 #if USE_OLD_ALLOC
 #else
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;

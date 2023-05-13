@@ -33,13 +33,13 @@ struct PaletteHeader {
     VoxelMalloc_Pointer blob_ptr;
 };
 
-struct VoxelChunk {
+struct VoxelLeafChunk {
     u32 edit_stage;
     VoxelChunkUniformity uniformity;
     VoxelMalloc_ChunkLocalPageSubAllocatorState sub_allocator_state;
     PaletteHeader palette_headers[PALETTES_PER_CHUNK];
 };
-DAXA_ENABLE_BUFFER_PTR(VoxelChunk)
+DAXA_ENABLE_BUFFER_PTR(VoxelLeafChunk)
 
 struct TempVoxel {
     u32 col_and_id;
@@ -53,6 +53,6 @@ DAXA_ENABLE_BUFFER_PTR(TempVoxelChunk)
 
 struct VoxelParentChunk {
     u32 children[512];
-    u32 is_pointer[16];
+    u32 is_leaf[16];
 };
 DAXA_ENABLE_BUFFER_PTR(VoxelParentChunk)

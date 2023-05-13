@@ -58,7 +58,7 @@ void VoxelChunks::create(daxa::Device &device, u32 log2_chunks_per_axis) {
     auto chunk_n = (1u << log2_chunks_per_axis);
     chunk_n = chunk_n * chunk_n * chunk_n;
     buffer = device.create_buffer({
-        .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
+        .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
         .name = "voxel_chunks_buffer",
     });
 }
@@ -689,7 +689,7 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
             cmd_list.clear_buffer({
                 .buffer = task_voxel_chunks_buffer.get_state().buffers[0],
                 .offset = 0,
-                .size = static_cast<u32>(sizeof(VoxelChunk)) * chunk_n,
+                .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
                 .clear_value = 0,
             });
 #if USE_OLD_ALLOC

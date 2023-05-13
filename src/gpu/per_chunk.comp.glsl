@@ -51,11 +51,11 @@ void main() {
 
     // Select "random" chunks to be updated
     if (CHUNKS(chunk_index).edit_stage == 0) {
-        u32vec3 chunk_ai = chunk_i + 1;
-        u32vec3 chunk_bi = chunk_i + 0;
-        if (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6)) {
+        // u32vec3 chunk_ai = chunk_i + 1;
+        // u32vec3 chunk_bi = chunk_i + 0;
+        // if (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6)) {
             elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
-        }
+        // }
     }
 
     if (CHUNKS(chunk_index).edit_stage == CHUNK_STAGE_FINISHED) {

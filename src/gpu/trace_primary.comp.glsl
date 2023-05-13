@@ -16,9 +16,9 @@ void main() {
     f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
     f32 aspect = frame_dim.x * inv_frame_dim.y;
 
-    rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
-    f32vec2 uv_offset = f32vec2(rand(), rand()) - 0.5;
-    pixel_p += uv_offset * 1.0;
+    // rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
+    // f32vec2 uv_offset = f32vec2(rand(), rand()) - 0.5;
+    // pixel_p += uv_offset * 1.0;
 
     f32vec2 uv = pixel_p * inv_frame_dim;
 

@@ -60,7 +60,7 @@ void main() {
         palette_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
 
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
-    daxa_RWBufferPtr(VoxelChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
 
     u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
     u32 my_palette_index = 0;
