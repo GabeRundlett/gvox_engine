@@ -14,6 +14,11 @@ struct ImFont;
 
 #include <shared/input.inl>
 
+struct ChunkHierarchyJobCounters {
+    u32 jobs_total_count;
+    u32 jobs_finished_count;
+};
+
 struct AppUi {
     struct Console {
         char input_buffer[256]{};
@@ -60,6 +65,8 @@ struct AppUi {
     u32 debug_page_count{};
     u32 debug_gpu_heap_usage{};
     f32vec3 debug_player_pos{};
+    ChunkHierarchyJobCounters debug_job_counters{};
+
     struct GpuResourceInfo {
         std::string type;
         std::string name;

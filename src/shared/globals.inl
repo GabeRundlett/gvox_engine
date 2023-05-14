@@ -28,6 +28,16 @@ struct VoxelWorld {
     u32 chunk_update_n;
 };
 
+struct ChunkNodeWorkItem {
+    u32 i;
+};
+
+struct ChunkThreadPoolState {
+    u64 job_counters_packed;
+    u64 job_counters_packed2;
+    ChunkNodeWorkItem chunk_node_work_items[MAX_NODE_UPDATES_PER_FRAME];
+};
+
 struct GpuIndirectDispatch {
     u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
@@ -46,6 +56,7 @@ struct GpuGlobals {
     BrushState brush_state;
     VoxelWorld voxel_world;
     GpuIndirectDispatch indirect_dispatch;
+    ChunkThreadPoolState chunk_thread_pool_state;
     u32 padding[10];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)

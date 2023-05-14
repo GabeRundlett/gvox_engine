@@ -788,6 +788,8 @@ void AppUi::update(f32 delta_time) {
         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
         ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) * sizeof(u32) / 1'000'000);
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
+        ImGui::Text("jobs_total_count: %u", debug_job_counters.jobs_total_count);
+        ImGui::Text("jobs_finished_count: %u", debug_job_counters.jobs_finished_count);
 
         if (ImGui::TreeNode("Gpu Resources")) {
             static ImGuiTableFlags flags =

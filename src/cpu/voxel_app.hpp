@@ -131,6 +131,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ColorSceneComputeTaskState color_scene_task_state;
     PostprocessingComputeTaskState postprocessing_task_state;
 
+    ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
+
     enum class Conditions {
         STARTUP,
         UPLOAD_SETTINGS,

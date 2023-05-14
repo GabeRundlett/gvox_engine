@@ -41,6 +41,7 @@ struct GpuInput {
 DAXA_ENABLE_BUFFER_PTR(GpuInput)
 
 struct GpuOutput {
+    u64 job_counters_packed;
     f32vec3 player_pos;
     u32 heap_size;
 };

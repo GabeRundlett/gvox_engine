@@ -221,6 +221,7 @@ VoxelApp::VoxelApp()
       trace_primary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
       color_scene_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
       postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
+      chunk_hierarchy_task_state{main_pipeline_manager, ui},
       // clang-format on
       main_task_list{[this]() {
           gpu_resources.create(device);
@@ -540,6 +541,7 @@ void VoxelApp::on_update() {
     ui.debug_gpu_heap_usage = gpu_output.heap_size;
     ui.debug_player_pos = gpu_output.player_pos;
     ui.debug_page_count = gpu_resources.voxel_malloc.current_page_count;
+    ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
 
     task_render_pos_image.swap_images(task_render_prev_pos_image);
     task_render_col_image.swap_images(task_render_prev_col_image);
@@ -1027,6 +1029,16 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             },
         },
         &chunk_edit_task_state,
+    });
+
+    // ChunkHierarchy
+    result_task_list.add_task(ChunkHierarchyComputeTask{
+        {
+            .uses = {
+                .globals = task_globals_buffer.handle(),
+            },
+        },
+        &chunk_hierarchy_task_state,
     });
 
     // ChunkOpt_x2x4

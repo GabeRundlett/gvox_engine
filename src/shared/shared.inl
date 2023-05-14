@@ -33,3 +33,7 @@
 #if POSTPROCESSING_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/postprocessing.inl>
 #endif
+
+#if CHUNK_HIERARCHY_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/chunk_hierarchy.inl>
+#endif

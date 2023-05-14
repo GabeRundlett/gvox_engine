@@ -52,6 +52,14 @@ void main() {
     // deref(voxel_malloc_global_allocator).released_pages_stack_size = 0;
 #endif
 
+    deref(gpu_output[INPUT.fif_index]).job_counters_packed = deref(globals).chunk_thread_pool_state.job_counters_packed;
+    deref(globals).chunk_thread_pool_state.job_counters_packed = 1;
+    deref(globals).chunk_thread_pool_state.job_counters_packed2 = 1;
+
+    ChunkNodeWorkItem new_work_item;
+    new_work_item.i = 0;
+    deref(globals).chunk_thread_pool_state.chunk_node_work_items[0] = new_work_item;
+
     voxel_malloc_perframe(
         gpu_input,
         voxel_malloc_global_allocator);
