@@ -4,80 +4,66 @@
 
 #define THREAD_POOL deref(globals).chunk_thread_pool_state
 
-shared u32 acquired_job_index;
-
-void acquire_job() {
-    if (gl_LocalInvocationIndex == 0) {
-        u64 packed_counters = atomicAdd(THREAD_POOL.job_counters_packed, 0);
-        u64 packed_counters2 = atomicAdd(THREAD_POOL.job_counters_packed2, u64(1u) << 0x20);
-        u32 jobs_total_count = u32(packed_counters >> 0x00) & 0xffffffff;
-        u32 jobs_ready_count = u32(packed_counters2 >> 0x00) & 0xffffffff;
-        u32 jobs_finished_count = u32(packed_counters >> 0x20) & 0xffffffff;
-        acquired_job_index = u32(packed_counters2 >> 0x20) & 0xffffffff;
-        if (acquired_job_index < MAX_NODE_UPDATES_PER_FRAME && jobs_total_count != jobs_finished_count) {
-            // Wait until our work state has been written out
-            while (jobs_ready_count <= acquired_job_index) {
-                packed_counters = atomicAdd(THREAD_POOL.job_counters_packed, 0);
-                packed_counters2 = atomicAdd(THREAD_POOL.job_counters_packed2, 0);
-                jobs_total_count = u32(packed_counters >> 0x00) & 0xffffffff;
-                jobs_ready_count = u32(packed_counters2 >> 0x00) & 0xffffffff;
-                jobs_finished_count = u32(packed_counters >> 0x20) & 0xffffffff;
-                if (jobs_total_count == jobs_finished_count) {
-                    acquired_job_index = 0xffffffff;
-                    break;
-                }
-            }
-        } else {
-            acquired_job_index = 0xffffffff;
-        }
-    }
-    barrier();
-    memoryBarrier();
-}
-
-void finish_job() {
-    // I would have thought this was necessary
-    // barrier();
-
-    if (gl_LocalInvocationIndex == 0) {
-        atomicAdd(THREAD_POOL.job_counters_packed, u64(1u) << 0x20);
-    }
-}
-
-void spawn_job(ChunkNodeWorkItem new_work_item) {
-    u64 packed_counters = atomicAdd(THREAD_POOL.job_counters_packed, 1);
-    u32 output_job_index = u32(packed_counters >> 0x00) & 0xffffffff;
-    // write job desc
-    if (output_job_index < MAX_NODE_UPDATES_PER_FRAME) {
-        THREAD_POOL.chunk_node_work_items[output_job_index] = new_work_item;
-        // notify worker that the job desc is ready
-        atomicAdd(THREAD_POOL.job_counters_packed2, 1);
-    }
-}
-
-void do_job() {
-    ChunkNodeWorkItem work_item = THREAD_POOL.chunk_node_work_items[acquired_job_index];
-
-    // potentially 0-512 new jobs can be spawned!
-    if (work_item.i < 2) {
-        ChunkNodeWorkItem new_work_item;
-        new_work_item.i = work_item.i + 1;
-        spawn_job(new_work_item);
-    }
-}
+u32 work_index;
+ChunkNodeWorkItem work_item;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
-    while (true) {
-        acquire_job();
+    work_index = gl_WorkGroupID.x;
 
-        // No more work to do!
-        if (acquired_job_index == 0xffffffff) {
+    while (true) {
+        barrier();
+        memoryBarrier();
+        u32 prev_threads_ran = atomicAdd(THREAD_POOL.total_jobs_ran, 0);
+        if (prev_threads_ran >= 1) {
             break;
         }
-
-        do_job();
-
-        finish_job();
+        work_item = THREAD_POOL.chunk_node_work_items[work_index];
+        // barrier, then we'll add our thread to the queue of available threads
+        barrier();
+        if (work_item.flags != 0) {
+            // say you can write a job to our worker
+            if (gl_LocalInvocationIndex == 0) {
+                atomicAdd(THREAD_POOL.total_jobs_ran, 1);
+                if ((work_item.flags & CHUNK_WORK_FLAG_IS_READY_BIT) == 1) {
+                    // make unready
+                    atomicOr(THREAD_POOL.chunk_node_work_items[work_index].flags, CHUNK_WORK_FLAG_IS_ACTIVE_BIT);
+                    // push myself to the available queue
+                    u32 index = u32(atomicAdd(THREAD_POOL.job_counters_packed, u64(1) << 0x00)) & (MAX_NODE_THREADS - 1);
+                    THREAD_POOL.available_threads_queue[index] = work_index;
+                }
+            }
+            // now we can do our work
+            if (work_item.i < 2) {
+                ChunkNodeWorkItem new_work_item;
+                new_work_item.i = work_item.i + 1;
+                // push new job to the queue
+                while (true) {
+                    prev_threads_ran = atomicAdd(THREAD_POOL.total_jobs_ran, 0);
+                    if (prev_threads_ran >= 1) {
+                        break;
+                    }
+                    u64 packed_counters = atomicAdd(THREAD_POOL.job_counters_packed, 0);
+                    u32 available_threads_queue_top = u32(packed_counters >> 0x00);
+                    u32 available_threads_queue_bottom = u32(packed_counters >> 0x20);
+                    if (available_threads_queue_top - available_threads_queue_bottom > 0) {
+                        u64 new_packed_counters = packed_counters + (u64(1) << 0x20);
+                        u64 old_value = atomicCompSwap(THREAD_POOL.job_counters_packed, packed_counters, new_packed_counters);
+                        if (packed_counters == old_value) {
+                            // I managed to swap in!
+                            u32 out_work_index = available_threads_queue_bottom & (MAX_NODE_THREADS - 1);
+                            atomicOr(THREAD_POOL.chunk_node_work_items[out_work_index].flags, CHUNK_WORK_FLAG_IS_READY_BIT);
+                            THREAD_POOL.chunk_node_work_items[out_work_index].i = new_work_item.i;
+                            break;
+                        }
+                    }
+                }
+                if (gl_LocalInvocationIndex == 0) {
+                    atomicAnd(THREAD_POOL.chunk_node_work_items[work_index].flags, ~CHUNK_WORK_FLAG_IS_ACTIVE_BIT);
+                }
+            }
+            // OOPS... this can't work at all. if one thread succeeds but the rest are waiting, the first thread
+            // will be waiting in the barrier. This means that thread is just dead-locked by its workgroup peers.
+        }
     }
 }

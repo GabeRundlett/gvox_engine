@@ -28,20 +28,28 @@ struct VoxelWorld {
     u32 chunk_update_n;
 };
 
+#define CHUNK_WORK_FLAG_IS_READY_BIT (0x01)
+#define CHUNK_WORK_FLAG_IS_ACTIVE_BIT (0x02)
+
 struct ChunkNodeWorkItem {
+    u32 flags;
     u32 i;
 };
 
 struct ChunkThreadPoolState {
     u64 job_counters_packed;
     u64 job_counters_packed2;
-    ChunkNodeWorkItem chunk_node_work_items[MAX_NODE_UPDATES_PER_FRAME];
+    ChunkNodeWorkItem chunk_node_work_items[MAX_NODE_THREADS];
+    u32 available_threads_queue[MAX_NODE_THREADS];
+    u32 total_jobs_ran;
+    u32 total_jobs_ran2;
 };
 
 struct GpuIndirectDispatch {
     u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
     u32vec3 subchunk_x8up_dispatch;
+    u32vec3 chunk_hierarchy_dispatch;
 };
 
 struct BrushState {

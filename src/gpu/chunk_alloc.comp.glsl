@@ -1,5 +1,4 @@
 #extension GL_EXT_shader_atomic_int64 : require
-#extension GL_EXT_debug_printf : require
 
 #include <shared/shared.inl>
 

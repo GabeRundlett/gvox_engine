@@ -781,15 +781,23 @@ void AppUi::update(f32 delta_time) {
         }
         average /= static_cast<float>(frametimes.size());
         fmt_str.clear();
+        auto [min_frametime_iter, max_frametime_iter] = std::minmax_element(frametimes.begin(), frametimes.end());
+        auto min_frametime = *min_frametime_iter;
+        auto max_frametime = *max_frametime_iter;
+        auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
+        auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
         fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
-        ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), 0, 0.05f, ImVec2(0, 120.0f));
+        ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
+        ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
         ImGui::Text("GPU: %s", debug_gpu_name);
         ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
         ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) * sizeof(u32) / 1'000'000);
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
-        ImGui::Text("jobs_total_count: %u", debug_job_counters.jobs_total_count);
-        ImGui::Text("jobs_finished_count: %u", debug_job_counters.jobs_finished_count);
+        ImGui::Text("job_queue_bottom: %u", debug_job_counters.available_threads_queue_bottom);
+        ImGui::Text("job_queue_top:    %u", debug_job_counters.available_threads_queue_top);
+        ImGui::Text("available_job_n:  %u", (debug_job_counters.available_threads_queue_top + MAX_NODE_THREADS - debug_job_counters.available_threads_queue_bottom) & (MAX_NODE_THREADS - 1));
+        ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
         if (ImGui::TreeNode("Gpu Resources")) {
             static ImGuiTableFlags flags =

@@ -30,18 +30,17 @@ struct ChunkHierarchyComputeTaskState {
 
     ChunkHierarchyComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {}
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
         if (!pipeline) {
             compile_pipeline();
             if (!pipeline)
                 return;
         }
         cmd_list.set_pipeline(*pipeline);
-        // cmd_list.dispatch_indirect({
-        //     .indirect_buffer = globals_buffer_id,
-        //     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_hierarchy_dispatch),
-        // });
-        cmd_list.dispatch(2000, 1, 1);
+        cmd_list.dispatch_indirect({
+            .indirect_buffer = globals_buffer_id,
+            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_hierarchy_dispatch),
+        });
     }
 };
 
@@ -50,7 +49,7 @@ struct ChunkHierarchyComputeTask : ChunkHierarchyComputeUses {
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_constant_buffer(ti.uses.constant_buffer_set_info());
-        state->record_commands(cmd_list);
+        state->record_commands(cmd_list, uses.globals.buffer());
     }
 };
 

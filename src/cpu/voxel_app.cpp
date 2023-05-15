@@ -542,6 +542,7 @@ void VoxelApp::on_update() {
     ui.debug_player_pos = gpu_output.player_pos;
     ui.debug_page_count = gpu_resources.voxel_malloc.current_page_count;
     ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
+    ui.debug_total_jobs_ran = gpu_output.total_jobs_ran;
 
     task_render_pos_image.swap_images(task_render_prev_pos_image);
     task_render_col_image.swap_images(task_render_prev_col_image);

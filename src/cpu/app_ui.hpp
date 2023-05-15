@@ -15,8 +15,8 @@ struct ImFont;
 #include <shared/input.inl>
 
 struct ChunkHierarchyJobCounters {
-    u32 jobs_total_count;
-    u32 jobs_finished_count;
+    u32 available_threads_queue_top;
+    u32 available_threads_queue_bottom;
 };
 
 struct AppUi {
@@ -55,7 +55,7 @@ struct AppUi {
     ImFont *mono_font = nullptr;
     ImFont *menu_font = nullptr;
 
-    std::array<float, 40> frametimes = {};
+    std::array<float, 200> frametimes = {};
     u64 frametime_rotation_index = 0;
     std::string fmt_str;
 
@@ -66,6 +66,7 @@ struct AppUi {
     u32 debug_gpu_heap_usage{};
     f32vec3 debug_player_pos{};
     ChunkHierarchyJobCounters debug_job_counters{};
+    u32 debug_total_jobs_ran{};
 
     struct GpuResourceInfo {
         std::string type;
