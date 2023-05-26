@@ -8,6 +8,7 @@ DAXA_INL_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_REA
 DAXA_INL_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator), COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+DAXA_INL_TASK_USE_IMAGE(blue_noise_cosine_vec3, daxa_Image3Df32, COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_IMAGE(render_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_IMAGE(render_prev_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_IMAGE(render_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_WRITE)

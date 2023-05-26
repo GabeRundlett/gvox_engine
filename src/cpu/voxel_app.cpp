@@ -14,6 +14,8 @@ using namespace std::chrono_literals;
 
 #include <iostream>
 
+#include <minizip/unzip.h>
+
 void RenderImages::create(daxa::Device &device) {
     pos_images[0] = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
@@ -114,8 +116,38 @@ void GpuHeap::destroy(daxa::Device &device) const {
 }
 #endif
 
+constexpr auto test_data_size = sizeof(f32vec3) * 512 * 512 * 512;
+
 void GpuResources::create(daxa::Device &device) {
     render_images.create(device);
+    blue_noise_vec1_image = device.create_image({
+        .dimensions = 3,
+        .format = daxa::Format::R8G8B8A8_UNORM,
+        .size = {128, 128, 64},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "blue_noise_vec1_image",
+    });
+    blue_noise_vec2_image = device.create_image({
+        .dimensions = 3,
+        .format = daxa::Format::R8G8B8A8_UNORM,
+        .size = {128, 128, 64},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "blue_noise_vec2_image",
+    });
+    blue_noise_unit_vec3_image = device.create_image({
+        .dimensions = 3,
+        .format = daxa::Format::R8G8B8A8_UNORM,
+        .size = {128, 128, 64},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "blue_noise_unit_vec3_image",
+    });
+    blue_noise_cosine_vec3_image = device.create_image({
+        .dimensions = 3,
+        .format = daxa::Format::R8G8B8A8_UNORM,
+        .size = {128, 128, 64},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "blue_noise_cosine_vec3_image",
+    });
     settings_buffer = device.create_buffer({
         .size = sizeof(GpuSettings),
         .name = "settings_buffer",
@@ -137,6 +169,12 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(GpuGlobals),
         .name = "globals_buffer",
     });
+#if 0
+    test_data_buffer = device.create_buffer({
+        .size = test_data_size,
+        .name = "test_data_buffer",
+    });
+#endif
     temp_voxel_chunks_buffer = device.create_buffer({
         .size = sizeof(TempVoxelChunk) * MAX_CHUNK_UPDATES_PER_FRAME,
         .name = "temp_voxel_chunks_buffer",
@@ -148,11 +186,18 @@ void GpuResources::create(daxa::Device &device) {
 }
 void GpuResources::destroy(daxa::Device &device) const {
     render_images.destroy(device);
+    device.destroy_image(blue_noise_vec1_image);
+    device.destroy_image(blue_noise_vec2_image);
+    device.destroy_image(blue_noise_unit_vec3_image);
+    device.destroy_image(blue_noise_cosine_vec3_image);
     device.destroy_buffer(settings_buffer);
     device.destroy_buffer(input_buffer);
     device.destroy_buffer(output_buffer);
     device.destroy_buffer(staging_output_buffer);
     device.destroy_buffer(globals_buffer);
+#if 0
+    device.destroy_buffer(test_data_buffer);
+#endif
     device.destroy_buffer(temp_voxel_chunks_buffer);
     voxel_chunks.destroy(device);
     voxel_malloc.destroy(device);
@@ -246,6 +291,139 @@ VoxelApp::VoxelApp()
       }()} {
     gvox_ctx = gvox_create_context();
     start = Clock::now();
+
+#if 0
+    {
+        daxa::TaskList temp_task_list = daxa::TaskList({
+            .device = device,
+            .name = "temp_task_list",
+        });
+        temp_task_list.use_persistent_buffer(task_test_data_buffer);
+        temp_task_list.add_task({
+            .uses = {
+                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_test_data_buffer},
+            },
+            .task = [this](daxa::TaskInterface task_runtime) {
+                auto file_handle = std::ifstream{"assets/mag1.bin", std::ios::binary};
+                auto cmd_list = task_runtime.get_command_list();
+                cmd_list.pipeline_barrier({
+                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                });
+                auto staging_buffer = device.create_buffer({
+                    .size = static_cast<u32>(test_data_size),
+                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "staging_buffer",
+                });
+                cmd_list.destroy_buffer_deferred(staging_buffer);
+                char *buffer_ptr = device.get_host_address_as<char>(staging_buffer);
+                file_handle.read(reinterpret_cast<char *>(buffer_ptr), static_cast<std::streamsize>(test_data_size));
+                cmd_list.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = gpu_resources.test_data_buffer,
+                    .size = static_cast<u32>(test_data_size),
+                });
+                needs_vram_calc = true;
+            },
+            .name = "upload_model",
+        });
+        temp_task_list.submit({});
+        temp_task_list.complete({});
+        temp_task_list.execute({});
+    }
+#endif
+
+    {
+        daxa::TaskList temp_task_list = daxa::TaskList({
+            .device = device,
+            .name = "temp_task_list",
+        });
+        temp_task_list.use_persistent_image(task_blue_noise_vec1_image);
+        temp_task_list.use_persistent_image(task_blue_noise_vec2_image);
+        temp_task_list.use_persistent_image(task_blue_noise_unit_vec3_image);
+        temp_task_list.use_persistent_image(task_blue_noise_cosine_vec3_image);
+        temp_task_list.add_task({
+            .uses = {
+                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec1_image},
+                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec2_image},
+                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_unit_vec3_image},
+                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_cosine_vec3_image},
+            },
+            .task = [this](daxa::TaskInterface task_runtime) {
+                auto staging_buffer = device.create_buffer({
+                    .size = static_cast<u32>(128 * 128 * 4 * 64 * 4),
+                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "staging_buffer",
+                });
+                auto buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
+                auto *stbn_zip = unzOpen("assets/STBN.zip");
+                for (auto i = 0; i < 64; ++i) {
+                    [[maybe_unused]] int err = 0;
+                    i32 size_x = 0, size_y = 0, channel_n = 0;
+                    auto load_image = [&](char const *path, u8 *buffer_out_ptr) {
+                        err = unzLocateFile(stbn_zip, path, 1);
+                        assert(err == UNZ_OK);
+                        auto file_info = unz_file_info{};
+                        err = unzGetCurrentFileInfo(stbn_zip, &file_info, nullptr, 0, nullptr, 0, nullptr, 0);
+                        assert(err == UNZ_OK);
+                        auto file_data = std::vector<uint8_t>{};
+                        file_data.resize(file_info.uncompressed_size);
+                        err = unzOpenCurrentFile(stbn_zip);
+                        assert(err == UNZ_OK);
+                        err = unzReadCurrentFile(stbn_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
+                        assert(err == file_data.size());
+                        auto temp_data = stbi_load_from_memory(file_data.data(), static_cast<int>(file_data.size()), &size_x, &size_y, &channel_n, 4);
+                        if (temp_data) {
+                            assert(size_x == 128 && size_y == 128);
+                            std::copy(temp_data + 0, temp_data + 128 * 128 * 4, buffer_out_ptr);
+                        }
+                    };
+                    auto vec1_name = std::string{"STBN/stbn_vec1_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    auto vec2_name = std::string{"STBN/stbn_vec2_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    auto vec3_name = std::string{"STBN/stbn_unitvec3_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    auto cosine_vec3_name = std::string{"STBN/stbn_unitvec3_cosine_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    load_image(vec1_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
+                    load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 1);
+                    load_image(vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 2);
+                    load_image(cosine_vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 3);
+                }
+
+                auto cmd_list = task_runtime.get_command_list();
+                cmd_list.pipeline_barrier({
+                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                });
+                cmd_list.destroy_buffer_deferred(staging_buffer);
+                cmd_list.copy_buffer_to_image({
+                    .buffer = staging_buffer,
+                    .buffer_offset = (128 * 128 * 4 * 64) * 0,
+                    .image = task_blue_noise_vec1_image.get_state().images[0],
+                    .image_extent = {128, 128, 64},
+                });
+                cmd_list.copy_buffer_to_image({
+                    .buffer = staging_buffer,
+                    .buffer_offset = (128 * 128 * 4 * 64) * 1,
+                    .image = task_blue_noise_vec2_image.get_state().images[0],
+                    .image_extent = {128, 128, 64},
+                });
+                cmd_list.copy_buffer_to_image({
+                    .buffer = staging_buffer,
+                    .buffer_offset = (128 * 128 * 4 * 64) * 2,
+                    .image = task_blue_noise_unit_vec3_image.get_state().images[0],
+                    .image_extent = {128, 128, 64},
+                });
+                cmd_list.copy_buffer_to_image({
+                    .buffer = staging_buffer,
+                    .buffer_offset = (128 * 128 * 4 * 64) * 3,
+                    .image = task_blue_noise_cosine_vec3_image.get_state().images[0],
+                    .image_extent = {128, 128, 64},
+                });
+                needs_vram_calc = true;
+            },
+            .name = "upload_blue_noise",
+        });
+        temp_task_list.submit({});
+        temp_task_list.complete({});
+        temp_task_list.execute({});
+    }
 }
 VoxelApp::~VoxelApp() {
     gvox_destroy_context(gvox_ctx);
@@ -326,6 +504,9 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.settings_buffer);
     buffer_size(gpu_resources.input_buffer);
     buffer_size(gpu_resources.globals_buffer);
+#if 0
+    buffer_size(gpu_resources.test_data_buffer);
+#endif
     buffer_size(gpu_resources.temp_voxel_chunks_buffer);
     buffer_size(gpu_resources.voxel_malloc.global_allocator_buffer);
     buffer_size(gpu_resources.voxel_chunks.buffer);
@@ -904,11 +1085,21 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .name = "main_task_list",
     });
 
+    result_task_list.use_persistent_image(task_blue_noise_vec1_image);
+    result_task_list.use_persistent_image(task_blue_noise_vec2_image);
+    result_task_list.use_persistent_image(task_blue_noise_unit_vec3_image);
+    result_task_list.use_persistent_image(task_blue_noise_cosine_vec3_image);
+    task_blue_noise_vec1_image.set_images({.images = std::array{gpu_resources.blue_noise_vec1_image}});
+    task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
+    task_blue_noise_unit_vec3_image.set_images({.images = std::array{gpu_resources.blue_noise_unit_vec3_image}});
+    task_blue_noise_cosine_vec3_image.set_images({.images = std::array{gpu_resources.blue_noise_cosine_vec3_image}});
+
     result_task_list.use_persistent_buffer(task_settings_buffer);
     result_task_list.use_persistent_buffer(task_input_buffer);
     result_task_list.use_persistent_buffer(task_output_buffer);
     result_task_list.use_persistent_buffer(task_staging_output_buffer);
     result_task_list.use_persistent_buffer(task_globals_buffer);
+    result_task_list.use_persistent_buffer(task_test_data_buffer);
     result_task_list.use_persistent_buffer(task_temp_voxel_chunks_buffer);
     result_task_list.use_persistent_buffer(task_voxel_malloc_global_allocator_buffer);
     result_task_list.use_persistent_buffer(task_voxel_chunks_buffer);
@@ -921,6 +1112,9 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     task_output_buffer.set_buffers({.buffers = std::array{gpu_resources.output_buffer}});
     task_staging_output_buffer.set_buffers({.buffers = std::array{gpu_resources.staging_output_buffer}});
     task_globals_buffer.set_buffers({.buffers = std::array{gpu_resources.globals_buffer}});
+#if 0
+    task_test_data_buffer.set_buffers({.buffers = std::array{gpu_resources.test_data_buffer}});
+#endif
     task_temp_voxel_chunks_buffer.set_buffers({.buffers = std::array{gpu_resources.temp_voxel_chunks_buffer}});
     task_voxel_malloc_global_allocator_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_malloc.global_allocator_buffer}});
     task_voxel_chunks_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_chunks.buffer}});
@@ -1024,6 +1218,9 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .gpu_input = task_input_buffer.handle(),
                 .globals = task_globals_buffer.handle(),
                 .gvox_model = task_gvox_model_buffer.handle(),
+#if 0
+                .test_data_buffer = task_test_data_buffer.handle(),
+#endif
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
                 .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
@@ -1033,14 +1230,14 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkHierarchy
-    result_task_list.add_task(ChunkHierarchyComputeTask{
-        {
-            .uses = {
-                .globals = task_globals_buffer.handle(),
-            },
-        },
-        &chunk_hierarchy_task_state,
-    });
+    // result_task_list.add_task(ChunkHierarchyComputeTask{
+    //     {
+    //         .uses = {
+    //             .globals = task_globals_buffer.handle(),
+    //         },
+    //     },
+    //     &chunk_hierarchy_task_state,
+    // });
 
     // ChunkOpt_x2x4
     result_task_list.add_task(ChunkOpt_x2x4_ComputeTask{
@@ -1093,6 +1290,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .globals = task_globals_buffer.handle(),
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .blue_noise_vec2 = task_blue_noise_vec2_image.handle(),
                 .render_pos_image_id = task_render_pos_image.handle(),
             },
         },
@@ -1108,6 +1306,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .globals = task_globals_buffer.handle(),
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .blue_noise_cosine_vec3 = task_blue_noise_cosine_vec3_image.handle(),
                 .render_pos_image_id = task_render_pos_image.handle(),
                 .render_prev_pos_image_id = task_render_prev_pos_image.handle(),
                 .render_col_image_id = task_render_col_image.handle(),

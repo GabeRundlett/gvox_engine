@@ -75,7 +75,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     id = 1;
     col = f32vec3(0.5, 0.1, 0.8);
 
-#elif 0
+#elif 1
 
     u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
@@ -131,13 +131,22 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         col = f32vec3(0.1);
     }
 #else
-    const f32 scl = f32(1u << (2 + 3));
-    f32 val = 0;
-    val += length(voxel_pos - scl) - scl * 1.1;
-    if (val < 0) {
-        id = 1;
-        col = f32vec3(0.1);
+    if (voxel_i.x > 511 || voxel_i.y > 511 || voxel_i.z > 511) {
+        return;
     }
+    u32 voxel_index = voxel_i.x + voxel_i.y * 512 + voxel_i.z * 512 * 512;
+    f32vec3 vec = deref(test_data_buffer[voxel_index]);
+    if (fract(length(vec) * 5) > 0.5) {
+        id = 1;
+        col.rgb = hsv2rgb(f32vec3(length(vec), 1, 1));
+    }
+    // const f32 scl = f32(1u << (2 + 3));
+    // f32 val = 0;
+    // val += length(voxel_pos - scl) - scl * 1.1;
+    // if (val < 0) {
+    //     id = 1;
+    //     col = f32vec3(0.1);
+    // }
 #endif
 }
 
@@ -163,7 +172,7 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 2.5 / VOXEL_SCL) < 0) {
+    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 8.0 / VOXEL_SCL) < 0) {
         // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
         // if (val > 0.3) {
         //     col = f32vec3(0.99, 0.03, 0.01);
@@ -172,7 +181,9 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
         // } else {
         //     col = f32vec3(0.91, 0.15, 0.01);
         // }
-        col = f32vec3(1.0);
+        // col = f32vec3(rand(), rand(), rand());
+        // col = f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
+        col = f32vec3(0.5, 0.2, 0.8);
         id = 1;
     }
 }

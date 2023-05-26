@@ -79,7 +79,7 @@ void AppSettings::clear() {
     camera_fov = 90.0f;
     mouse_sensitivity = 1.0f;
     render_res_scl = 1.0f;
-    log2_chunks_per_axis = 3;
+    log2_chunks_per_axis = 5;
     gpu_heap_size = 1u << 30;
 
     show_debug_info = false;

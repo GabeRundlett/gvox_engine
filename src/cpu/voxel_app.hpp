@@ -58,11 +58,16 @@ struct GpuHeap {
 
 struct GpuResources {
     RenderImages render_images;
+    daxa::ImageId blue_noise_vec1_image;
+    daxa::ImageId blue_noise_vec2_image;
+    daxa::ImageId blue_noise_unit_vec3_image;
+    daxa::ImageId blue_noise_cosine_vec3_image;
     daxa::BufferId settings_buffer;
     daxa::BufferId input_buffer;
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
     daxa::BufferId globals_buffer;
+    // daxa::BufferId test_data_buffer;
     daxa::BufferId temp_voxel_chunks_buffer;
     VoxelChunks voxel_chunks;
     VoxelMalloc voxel_malloc;
@@ -105,11 +110,17 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_prev_col_image{{.name = "task_render_prev_col_image"}};
     daxa::TaskImage task_render_final_image{{.name = "task_render_final_image"}};
 
+    daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
+    daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
+    daxa::TaskImage task_blue_noise_unit_vec3_image{{.name = "task_blue_noise_unit_vec3_image"}};
+    daxa::TaskImage task_blue_noise_cosine_vec3_image{{.name = "task_blue_noise_cosine_vec3_image"}};
+
     daxa::TaskBuffer task_settings_buffer{{.name = "task_settings_buffer"}};
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
+    daxa::TaskBuffer task_test_data_buffer{{.name = "task_test_data_buffer"}};
     daxa::TaskBuffer task_temp_voxel_chunks_buffer{{.name = "task_temp_voxel_chunks_buffer"}};
     daxa::TaskBuffer task_voxel_malloc_global_allocator_buffer{{.name = "task_voxel_malloc_global_allocator_buffer"}};
     daxa::TaskBuffer task_voxel_malloc_pages_buffer{{.name = "task_voxel_malloc_pages_buffer"}};

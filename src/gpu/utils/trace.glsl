@@ -59,7 +59,7 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 #include <utils/hdda.glsl>
 #endif
 
-void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
+void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps, bool extend_to_max_dist) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
     b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
@@ -156,33 +156,42 @@ void trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) all
         // t_curr += (min(min(t_next.x, t_next.y), t_next.z));
         t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 / VOXEL_SCL);
     }
-    ray_pos = ray_pos + ray_dir * dist;
-#elif TRAVERSAL_MODE == 3
-    const f32 DELTA = 1.0001;
-    i32vec3 ijk = hdda_round_down(ray_pos);
-    u32 lod = sample_lod(allocator, voxel_chunks_ptr, chunk_n, ray_pos);
-    if (lod == 0) {
-        return;
+    if (extend_to_max_dist) {
+        ray_pos = ray_pos + ray_dir * dist;
+    } else {
+        ray_pos = ray_pos + ray_dir * t_curr;
     }
+#elif TRAVERSAL_MODE == 3
+    const f32 DELTA = 0.0001;
+    f32vec3 ray_orig = ray_pos;
+    ivec3 ijk = hdda_round_down(ray_orig);
+    u32 lod = sample_lod(allocator, voxel_chunks_ptr, chunk_n, ray_orig);
     HDDA hdda;
-    hdda_init(hdda, ray_pos, ray_dir, 1 << lod);
-    while (hdda_step(hdda)) {
-        ijk = hdda_round_down(fma(f32vec3(hdda_time(hdda) + DELTA), ray_dir, ray_pos));
+    hdda_init(hdda, ray_orig, ray_dir, 1 << lod);
+    f32 dist = MAX_SD;
+
+    while (true) {
         if (!inside(f32vec3(ijk), b)) {
-            ray_pos = ray_pos + ray_dir * MAX_SD;
             break;
         }
-        u32 lod = sample_lod(allocator, voxel_chunks_ptr, chunk_n, f32vec3(ijk));
-        hdda_update(hdda, ray_pos, ray_dir, 1 << lod);
-        if (hdda_dim(hdda) > 1 || lod != 0)
-            continue;
-        while (hdda_step(hdda)) {
-            if (!hdda_is_active(allocator, voxel_chunks_ptr, chunk_n, hdda_voxel(hdda))) {
-                ray_pos = fma(f32vec3(hdda_time(hdda)), ray_dir, ray_pos);
-                return;
-            }
+
+        lod = sample_lod(allocator, voxel_chunks_ptr, chunk_n, f32vec3(ijk));
+        if (lod == 0) {
+            dist = hdda.t0;
+            break;
         }
+
+        hdda_update(hdda, ray_pos, ray_dir, 1 << lod);
+
+        if (!hdda_step(hdda)) {
+            break;
+        }
+
+        ijk = hdda_round_down(ray_pos);
+        ray_pos = fma(vec3(hdda.t0 + DELTA), ray_dir, ray_orig);
     }
+
+    ray_pos = f32vec3(ijk);
 #endif
 }
 
@@ -192,7 +201,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
 
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
-    ray_pos += ray_dir * 0.01 / VOXEL_SCL;
+    ray_pos += ray_dir * 0.001 / VOXEL_SCL;
     if (!inside(ray_pos, b)) {
         ray_pos = ray_pos + ray_dir * MAX_SD;
         return;
@@ -221,7 +230,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
 
 void trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
     // trace_sphere_trace(ray_pos, ray_dir);
-    trace_hierarchy_traversal(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512);
+    trace_hierarchy_traversal(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512, true);
 }
 
 f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
