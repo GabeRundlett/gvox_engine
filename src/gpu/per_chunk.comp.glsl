@@ -11,7 +11,7 @@ void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
         CHUNKS(chunk_index).edit_stage = edit_stage;
         VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
-        VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
+        // VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
     }
 }
 #undef CHUNKS

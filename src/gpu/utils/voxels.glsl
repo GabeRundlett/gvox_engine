@@ -212,3 +212,9 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE);
 }
+
+void zero_work_item_children(in out ChunkWorkItem work_item) {
+    for (u32 i = 0; i < 16; ++i) {
+        work_item.children_finished[i] = 0;
+    }
+}

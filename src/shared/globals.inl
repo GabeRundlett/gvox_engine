@@ -20,7 +20,6 @@ struct Player {
 
 struct VoxelChunkUpdateInfo {
     u32vec3 i;
-    f32 score;
 };
 
 struct VoxelWorld {
@@ -28,28 +27,37 @@ struct VoxelWorld {
     u32 chunk_update_n;
 };
 
-#define CHUNK_WORK_FLAG_IS_READY_BIT (0x01)
-#define CHUNK_WORK_FLAG_IS_ACTIVE_BIT (0x02)
+struct ChunkWorkItem {
+    u32 packed_coordinate;
+    u32 brush_id;
 
-struct ChunkNodeWorkItem {
-    u32 flags;
-    u32 i;
+    u32 children_finished[16];
 };
 
 struct ChunkThreadPoolState {
-    u64 job_counters_packed;
-    u64 job_counters_packed2;
-    ChunkNodeWorkItem chunk_node_work_items[MAX_NODE_THREADS];
-    u32 available_threads_queue[MAX_NODE_THREADS];
     u32 total_jobs_ran;
-    u32 total_jobs_ran2;
+
+    u32 work_items_l0_queued;
+    u32 work_items_l0_dispatch_y;
+    u32 work_items_l0_dispatch_z;
+
+    u32 work_items_l1_queued;
+    u32 work_items_l1_dispatch_y;
+    u32 work_items_l1_dispatch_z;
+
+    u32 work_items_l0_begin;
+    u32 work_items_l0_completed;
+    ChunkWorkItem chunk_work_items_l0[MAX_CHUNK_WORK_ITEMS_L0];
+
+    u32 work_items_l1_begin;
+    u32 work_items_l1_completed;
+    ChunkWorkItem chunk_work_items_l1[MAX_CHUNK_WORK_ITEMS_L1];
 };
 
 struct GpuIndirectDispatch {
     u32vec3 chunk_edit_dispatch;
     u32vec3 subchunk_x2x4_dispatch;
     u32vec3 subchunk_x8up_dispatch;
-    u32vec3 chunk_hierarchy_dispatch;
 };
 
 struct BrushState {

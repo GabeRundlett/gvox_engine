@@ -6,17 +6,17 @@ void main() {
     player_startup(globals);
     voxel_world_startup(globals, voxel_chunks);
 
-    // TEMP: init thread pool
+    // start world-gen by issuing a chunk update!
 #define THREAD_POOL deref(globals).chunk_thread_pool_state
-    for (u32 i = 0; i < MAX_NODE_THREADS; ++i) {
-        THREAD_POOL.available_threads_queue[i] = i;
-    }
-    THREAD_POOL.job_counters_packed = u64(MAX_NODE_THREADS) << 0x00;
+    THREAD_POOL.chunk_work_items_l0[0].packed_coordinate = 0;
+    THREAD_POOL.chunk_work_items_l0[0].brush_id = 0;
+    zero_work_item_children(THREAD_POOL.chunk_work_items_l0[0]);
+    THREAD_POOL.work_items_l0_begin = 0;
+    THREAD_POOL.work_items_l0_queued = 1;
 
-    ChunkNodeWorkItem new_work_item;
-    new_work_item.i = 0;
-    new_work_item.flags = CHUNK_WORK_FLAG_IS_READY_BIT;
+    THREAD_POOL.work_items_l0_dispatch_y = 1;
+    THREAD_POOL.work_items_l0_dispatch_z = 1;
 
-    u32 work_index = u32(atomicAdd(THREAD_POOL.job_counters_packed, u64(1) << 0x20)) & (MAX_NODE_THREADS - 1);
-    THREAD_POOL.chunk_node_work_items[work_index] = new_work_item;
+    THREAD_POOL.work_items_l1_dispatch_y = 1;
+    THREAD_POOL.work_items_l1_dispatch_z = 1;
 }

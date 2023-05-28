@@ -1197,7 +1197,21 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // PerChunkTask
-    result_task_list.add_task(PerChunkComputeTask{
+    // result_task_list.add_task(PerChunkComputeTask{
+    //     {
+    //         .uses = {
+    //             .settings = task_settings_buffer.handle(),
+    //             .gpu_input = task_input_buffer.handle(),
+    //             .gvox_model = task_gvox_model_buffer.handle(),
+    //             .globals = task_globals_buffer.handle(),
+    //             .voxel_chunks = task_voxel_chunks_buffer.handle(),
+    //         },
+    //     },
+    //     &per_chunk_task_state,
+    // });
+
+    // ChunkHierarchy
+    result_task_list.add_task(ChunkHierarchyComputeTaskL0{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1207,7 +1221,19 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
             },
         },
-        &per_chunk_task_state,
+        &chunk_hierarchy_task_state,
+    });
+    result_task_list.add_task(ChunkHierarchyComputeTaskL1{
+        {
+            .uses = {
+                .settings = task_settings_buffer.handle(),
+                .gpu_input = task_input_buffer.handle(),
+                .gvox_model = task_gvox_model_buffer.handle(),
+                .globals = task_globals_buffer.handle(),
+                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+            },
+        },
+        &chunk_hierarchy_task_state,
     });
 
     // ChunkEdit
@@ -1228,16 +1254,6 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         },
         &chunk_edit_task_state,
     });
-
-    // ChunkHierarchy
-    // result_task_list.add_task(ChunkHierarchyComputeTask{
-    //     {
-    //         .uses = {
-    //             .globals = task_globals_buffer.handle(),
-    //         },
-    //     },
-    //     &chunk_hierarchy_task_state,
-    // });
 
     // ChunkOpt_x2x4
     result_task_list.add_task(ChunkOpt_x2x4_ComputeTask{

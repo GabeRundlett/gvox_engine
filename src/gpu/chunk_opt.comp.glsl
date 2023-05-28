@@ -242,6 +242,11 @@ void main() {
     if (deref(voxel_chunk_ptr).edit_stage == CHUNK_STAGE_FINISHED)
         return;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
+
+    // Finish the chunk
+    if (gl_LocalInvocationIndex == 0) {
+        deref(voxel_chunk_ptr).edit_stage = CHUNK_STAGE_FINISHED;
+    }
 }
 #undef VOXEL_WORLD
 #undef SETTINGS

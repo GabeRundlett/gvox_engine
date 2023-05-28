@@ -796,7 +796,6 @@ void AppUi::update(f32 delta_time) {
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
         ImGui::Text("job_queue_bottom: %u", debug_job_counters.available_threads_queue_bottom);
         ImGui::Text("job_queue_top:    %u", debug_job_counters.available_threads_queue_top);
-        ImGui::Text("available_job_n:  %u", (debug_job_counters.available_threads_queue_top + MAX_NODE_THREADS - debug_job_counters.available_threads_queue_bottom) & (MAX_NODE_THREADS - 1));
         ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
         if (ImGui::TreeNode("Gpu Resources")) {
