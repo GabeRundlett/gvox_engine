@@ -28,7 +28,7 @@ struct VoxelWorld {
 };
 
 struct ChunkWorkItem {
-    u32 packed_coordinate;
+    u32vec3 i;
     u32 brush_id;
 
     u32 children_finished[16];
@@ -36,6 +36,7 @@ struct ChunkWorkItem {
 
 struct ChunkThreadPoolState {
     u32 total_jobs_ran;
+    u32 queue_index;
 
     u32 work_items_l0_queued;
     u32 work_items_l0_dispatch_y;
@@ -45,13 +46,13 @@ struct ChunkThreadPoolState {
     u32 work_items_l1_dispatch_y;
     u32 work_items_l1_dispatch_z;
 
-    u32 work_items_l0_begin;
     u32 work_items_l0_completed;
-    ChunkWorkItem chunk_work_items_l0[MAX_CHUNK_WORK_ITEMS_L0];
+    u32 work_items_l0_uncompleted;
+    ChunkWorkItem chunk_work_items_l0[2][MAX_CHUNK_WORK_ITEMS_L0];
 
-    u32 work_items_l1_begin;
     u32 work_items_l1_completed;
-    ChunkWorkItem chunk_work_items_l1[MAX_CHUNK_WORK_ITEMS_L1];
+    u32 work_items_l1_uncompleted;
+    ChunkWorkItem chunk_work_items_l1[2][MAX_CHUNK_WORK_ITEMS_L1];
 };
 
 struct GpuIndirectDispatch {

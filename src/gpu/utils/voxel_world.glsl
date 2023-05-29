@@ -39,3 +39,16 @@ void voxel_world_perframe(
 #undef PLAYER
 #undef INPUT
 #undef SETTINGS
+
+#define A_THREAD_POOL deref(globals).chunk_thread_pool_state
+bool queue_root_work_item(daxa_RWBufferPtr(GpuGlobals) globals_ptr, in ChunkWorkItem new_work_item) {
+    u32 queue_offset = atomicAdd(A_THREAD_POOL.work_items_l0_uncompleted, 1);
+    atomicMin(A_THREAD_POOL.work_items_l0_uncompleted, MAX_CHUNK_WORK_ITEMS_L0);
+    if (queue_offset < MAX_CHUNK_WORK_ITEMS_L0) {
+        A_THREAD_POOL.chunk_work_items_l0[1 - A_THREAD_POOL.queue_index][queue_offset] = new_work_item;
+        return true;
+    } else {
+        return false;
+    }
+}
+#undef A_THREAD_POOL
