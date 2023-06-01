@@ -24,7 +24,7 @@
       ]
     }
   ],
-  "builtin-baseline": "959f8e317599dd439bc86f5cb5f0aca648d88c3f",
+  "builtin-baseline": "d1e2ff0c340f89cc14ca67883dd069c6ada93582",
   "overrides": [
     {
       "name": "glfw3",
@@ -33,10 +33,7 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "../Daxa/cmake/vcpkg-port",
-      "../Daxa/cmake/vcpkg-overlay-ports/dxc",
-      "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
-      "../Daxa/cmake/vcpkg-overlay-ports/fsr2"
+      "./cmake/vcpkg-overlay-ports/glfw3"
     ]
   }
 }
