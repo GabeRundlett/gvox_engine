@@ -184,8 +184,8 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     u32 lod_index_x64 = uniformity_lod_index(64)(inchunk_voxel_i / 64);
     u32 lod_mask_x64 = uniformity_lod_mask(inchunk_voxel_i / 64);
 
-    u32 chunk_edit_stage = deref(voxel_chunk_ptr).edit_stage;
-    if (chunk_edit_stage == 0)
+    u32 chunk_flags = deref(voxel_chunk_ptr).flags;
+    if ((chunk_flags & 1) == 0)
         return 7;
     if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, false) & 0xff000000) != 0)
         return 0;

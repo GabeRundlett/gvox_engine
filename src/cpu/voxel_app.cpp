@@ -210,7 +210,7 @@ void GpuResources::destroy(daxa::Device &device) const {
 }
 
 VoxelApp::VoxelApp()
-    : AppWindow(APPNAME),
+    : AppWindow(APPNAME, {1400, 1200}),
       daxa_ctx{daxa::create_context({.enable_validation = false})},
       device{daxa_ctx.create_device({
           // .enable_buffer_device_address_capture_replay = false,
@@ -565,16 +565,19 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
             gvox_model_type = "magicavoxel";
         }
         if (ext == ".rle") {
-            gvox_model_type = "run_length_encoding";
+            gvox_model_type = "gvox_run_length_encoding";
         }
         if (ext == ".oct") {
-            gvox_model_type = "octree";
+            gvox_model_type = "gvox_octree";
         }
         if (ext == ".glp") {
-            gvox_model_type = "global_palette";
+            gvox_model_type = "gvox_global_palette";
         }
         if (ext == ".brk") {
-            gvox_model_type = "brickmap";
+            gvox_model_type = "gvox_brickmap";
+        }
+        if (ext == ".gvr") {
+            gvox_model_type = "gvox_raw";
         }
         if (ext == ".vxl") {
             i_config_ptr = &voxlap_config;

@@ -18,8 +18,15 @@ struct Player {
     f32 max_speed;
 };
 
+struct BrushInput {
+    f32vec3 pos;
+    f32vec3 prev_pos;
+};
+
 struct VoxelChunkUpdateInfo {
     u32vec3 i;
+    u32 flags;
+    BrushInput brush_input;
 };
 
 struct VoxelWorld {
@@ -30,6 +37,7 @@ struct VoxelWorld {
 struct ChunkWorkItem {
     u32vec3 i;
     u32 brush_id;
+    BrushInput brush_input;
 
     u32 children_finished[16];
 };
@@ -62,14 +70,14 @@ struct GpuIndirectDispatch {
 };
 
 struct BrushState {
-    f32vec3 pos;
-    f32vec3 prev_pos;
+    u32 initial_frame;
     f32vec3 initial_ray;
     u32 is_editing;
 };
 
 struct GpuGlobals {
     Player player;
+    BrushInput brush_input;
     BrushState brush_state;
     VoxelWorld voxel_world;
     GpuIndirectDispatch indirect_dispatch;

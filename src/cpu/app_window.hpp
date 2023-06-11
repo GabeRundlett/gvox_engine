@@ -24,11 +24,11 @@ using namespace daxa::types;
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;
-    u32vec2 window_size{800, 600};
+    u32vec2 window_size;
     bool minimized = false;
     bool mouse_captured = false;
 
-    AppWindow(char const *window_name) {
+    AppWindow(char const *window_name, u32vec2 a_size = u32vec2{800, 600}) : window_size{a_size} {
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfw_window_ptr = glfwCreateWindow(static_cast<i32>(window_size.x), static_cast<i32>(window_size.y), window_name, nullptr, nullptr);

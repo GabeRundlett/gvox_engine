@@ -4,12 +4,22 @@
 #include <utils/voxels.glsl>
 #include <utils/noise.glsl>
 
+u32vec3 chunk_n;
+u32 temp_chunk_index;
+u32vec3 chunk_i;
+u32 chunk_index;
+daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
+daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
+u32vec3 inchunk_voxel_i;
+u32vec3 voxel_i;
+f32vec3 voxel_pos;
+BrushInput brush_input;
+
 #if 1
-#define INPUT deref(gpu_input)
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
     u32 i = 0;
-    const f32 n = 8 + sin(INPUT.time) * 4;
+    const f32 n = 8 + floor(good_rand(brush_input.pos) * 5);
     const u32 MAX_ITER = 4;
     f32 m = dot(z, z);
     f32vec4 trap = f32vec4(abs(z), m);
@@ -30,7 +40,6 @@ b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     color = f32vec3(m, trap.yz) * trap.w;
     return i == MAX_ITER;
 }
-#undef INPUT
 
 f32 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
@@ -52,16 +61,6 @@ f32vec3 terrain_nrm(f32vec3 pos) {
     }
     return normalize(n);
 }
-
-u32vec3 chunk_n;
-u32 temp_chunk_index;
-u32vec3 chunk_i;
-u32 chunk_index;
-daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
-daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
-u32vec3 inchunk_voxel_i;
-u32vec3 voxel_i;
-f32vec3 voxel_pos;
 
 void brushgen_world(in out f32vec3 col, in out u32 id) {
 #if 0
@@ -158,7 +157,7 @@ void brushgen_a(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 32.0 / VOXEL_SCL) < 0) {
+    if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
         col = f32vec3(0, 0, 0);
         id = 0;
     }
@@ -172,31 +171,37 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    if (sd_capsule(voxel_pos, deref(globals).brush_state.pos, deref(globals).brush_state.prev_pos, 8.0 / VOXEL_SCL) < 0) {
-        // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
-        // if (val > 0.3) {
-        //     col = f32vec3(0.99, 0.03, 0.01);
-        // } else if (val > -0.3) {
-        //     col = f32vec3(0.91, 0.05, 0.01);
-        // } else {
-        //     col = f32vec3(0.91, 0.15, 0.01);
-        // }
-        // col = f32vec3(rand(), rand(), rand());
-        // col = f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
-        col = f32vec3(0.5, 0.2, 0.8);
+    f32vec3 mandelbulb_color;
+    if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_SIZE / VOXEL_SCL * 8 / 2) / (CHUNK_SIZE / VOXEL_SCL * 8) * 2 - 1) * 1, mandelbulb_color)) {
+        col = floor(mandelbulb_color * 10) / 10;
         id = 1;
     }
+
+    // if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 255.0 / VOXEL_SCL) < 0) {
+    //     // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
+    //     // if (val > 0.3) {
+    //     //     col = f32vec3(0.99, 0.03, 0.01);
+    //     // } else if (val > -0.3) {
+    //     //     col = f32vec3(0.91, 0.05, 0.01);
+    //     // } else {
+    //     //     col = f32vec3(0.91, 0.15, 0.01);
+    //     // }
+    //     // col = f32vec3(rand(), rand(), rand());
+    //     // col = f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
+    //     col = f32vec3(0.5, 0.2, 0.8);
+    //     id = 1;
+    // }
 }
 #endif
 
 #define SETTINGS deref(settings)
-#define INPUT deref(gpu_input)
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+    brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
     chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     voxel_chunk_ptr = voxel_chunks + chunk_index;
@@ -209,10 +214,16 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    switch (deref(voxel_chunk_ptr).edit_stage) {
-    case CHUNK_STAGE_WORLD_BRUSH: brushgen_world(col, id); break;
-    case CHUNK_STAGE_USER_BRUSH_A: brushgen_a(col, id); break;
-    case CHUNK_STAGE_USER_BRUSH_B: brushgen_b(col, id); break;
+    u32 chunk_flags = deref(voxel_chunk_ptr).flags;
+
+    if ((chunk_flags & CHUNK_FLAGS_WORLD_BRUSH) != 0) {
+        brushgen_world(col, id);
+    }
+    if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_A) != 0) {
+        brushgen_a(col, id);
+    }
+    if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
+        brushgen_b(col, id);
     }
 
     TempVoxel result;
@@ -220,5 +231,4 @@ void main() {
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
 }
 #undef VOXEL_WORLD
-#undef INPUT
 #undef SETTINGS

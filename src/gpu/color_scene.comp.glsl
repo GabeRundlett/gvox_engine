@@ -6,8 +6,9 @@
 #define LIGHTING 1
 
 #if LIGHTING
-#define AMBIENT_OCCLUSION 1
+#define AMBIENT_OCCLUSION 0
 #define SHADOWS 1
+#define SOFT_SHADOWS 0
 #endif
 
 #define LINEAR_FOG 0
@@ -212,7 +213,11 @@ void main() {
     temp_pos = hit_pos;
 
     f32mat3x3 sun_tbn = tbn_from_normal(SUN_DIR);
+#if SOFT_SHADOWS
     f32vec3 sun_nrm = normalize(sun_tbn * blue_noise * 0.05 + SUN_DIR);
+#else
+    f32vec3 sun_nrm = SUN_DIR;
+#endif
 
     trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, sun_nrm, 512, true);
     HitInfo sun_hit_info = get_hit_info(temp_pos, sun_nrm);

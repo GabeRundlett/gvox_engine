@@ -28,6 +28,10 @@ void voxel_world_perframe(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 
+    for (u32 i = 0; i < MAX_CHUNK_UPDATES_PER_FRAME; ++i) {
+        VOXEL_WORLD.chunk_update_infos[i].flags = 0;
+    }
+
     VOXEL_WORLD.chunk_update_n = 0;
 
     INDIRECT.chunk_edit_dispatch = u32vec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);

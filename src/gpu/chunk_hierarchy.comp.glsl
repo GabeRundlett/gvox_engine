@@ -77,15 +77,20 @@ void complete_work_item() {
 #define VOXEL_WORLD deref(globals).voxel_world
 #define INDIRECT deref(globals).indirect_dispatch
 #define CHUNKS(i) deref(voxel_chunks[i])
-bool elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
+bool elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 brush_flags, in out BrushInput brush_input) {
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
     if (prev_update_n < MAX_CHUNK_UPDATES_PER_FRAME) {
         atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
         atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
-        // TODO: RACE CONDITION
-        CHUNKS(chunk_index).edit_stage = edit_stage;
+        u32 prev_flags = atomicOr(CHUNKS(chunk_index).flags, brush_flags);
         VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
+        VOXEL_WORLD.chunk_update_infos[prev_update_n].brush_input = brush_input;
+        if ((prev_flags & CHUNK_FLAGS_BRUSH_MASK) == 0) {
+            VOXEL_WORLD.chunk_update_infos[prev_update_n].flags = 1;
+        } else {
+            VOXEL_WORLD.chunk_update_infos[prev_update_n].flags = 0;
+        }
         return true;
     }
     return false;
@@ -109,15 +114,22 @@ void perform_work_item() {
         (sub_node_chunk_i.y < chunk_n.y) &&
         (sub_node_chunk_i.z < chunk_n.z);
 
-    if (work_item.brush_id == CHUNK_STAGE_WORLD_BRUSH) {
+    if ((work_item.brush_id & CHUNK_FLAGS_WORLD_BRUSH) != 0) {
         u32vec3 chunk_bi = sub_node_chunk_i + 0;
         needs_subdiv = needs_subdiv && (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6));
-    } else if (work_item.brush_id == CHUNK_STAGE_USER_BRUSH_A || work_item.brush_id == CHUNK_STAGE_USER_BRUSH_B) {
+    } else if ((work_item.brush_id & CHUNK_FLAGS_USER_BRUSH_A) != 0) {
         f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
-        f32vec3 delta = chunk_pos - deref(globals).brush_state.pos;
+        f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;
         f32vec3 dist3 = abs(delta);
         if (CHUNK_LEVEL > 0) {
-            needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (63.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
+            needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
+        }
+    } else if ((work_item.brush_id & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
+        f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+        f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;
+        f32vec3 dist3 = abs(delta);
+        if (CHUNK_LEVEL > 0) {
+            needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (255.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
         }
     }
 
@@ -126,12 +138,13 @@ void perform_work_item() {
         ChunkWorkItem new_work_item;
         new_work_item.i = sub_node_i;
         new_work_item.brush_id = work_item.brush_id;
+        new_work_item.brush_input = work_item.brush_input;
         zero_work_item_children(new_work_item);
         thread_completed = queue_sub_work_item(new_work_item);
 #elif CHUNK_LEVEL == 1
         u32vec3 chunk_i = sub_node_i;
         u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
-        thread_completed = elect_chunk_for_update(chunk_i, chunk_index, work_item.brush_id);
+        thread_completed = elect_chunk_for_update(chunk_i, chunk_index, work_item.brush_id, work_item.brush_input);
 #endif
     } else {
         thread_completed = true;

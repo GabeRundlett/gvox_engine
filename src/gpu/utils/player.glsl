@@ -7,9 +7,9 @@
 #define PLAYER deref(globals_ptr).player
 void player_startup(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(10.01, 10.02, 54.01);
+    PLAYER.pos = f32vec3(-10.01, -10.02, 14.01);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
-    PLAYER.rot.x = PI * -0.601;
+    PLAYER.rot.x = PI * -0.551;
     PLAYER.rot.z = PI * 0.25;
 }
 #undef PLAYER

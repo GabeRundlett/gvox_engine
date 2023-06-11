@@ -9,7 +9,7 @@ void elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 edit_stage) {
         atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
         atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
-        CHUNKS(chunk_index).edit_stage = edit_stage;
+        // CHUNKS(chunk_index).edit_stage = edit_stage;
         VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
         // VOXEL_WORLD.chunk_update_infos[prev_update_n].score = length(f32vec3(chunk_i));
     }
@@ -44,32 +44,32 @@ void main() {
 
 #if 1
     // Bump all previously handled chunks to the next update stage
-    if (CHUNKS(chunk_index).edit_stage != 0 &&
-        CHUNKS(chunk_index).edit_stage != CHUNK_STAGE_FINISHED) {
-        CHUNKS(chunk_index).edit_stage = CHUNK_STAGE_FINISHED;
-    }
+    // if (CHUNKS(chunk_index).edit_stage != 0 &&
+    //     CHUNKS(chunk_index).edit_stage != CHUNK_STAGE_FINISHED) {
+    //     CHUNKS(chunk_index).edit_stage = CHUNK_STAGE_FINISHED;
+    // }
 
     // Select "random" chunks to be updated
-    if (CHUNKS(chunk_index).edit_stage == 0) {
-        u32vec3 chunk_ai = chunk_i + 1;
-        u32vec3 chunk_bi = chunk_i + 0;
-        if (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6)) {
-            elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
-        }
-    }
+    // if (CHUNKS(chunk_index).edit_stage == 0) {
+    //     u32vec3 chunk_ai = chunk_i + 1;
+    //     u32vec3 chunk_bi = chunk_i + 0;
+    //     if (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6)) {
+    //         elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
+    //     }
+    // }
 
-    if (CHUNKS(chunk_index).edit_stage == CHUNK_STAGE_FINISHED) {
-        f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
-        f32vec3 delta = chunk_pos - GLOBALS.brush_state.pos;
-        f32vec3 dist3 = abs(delta);
-        if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
-            if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
-                elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_A);
-            } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
-                elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_B);
-            }
-        }
-    }
+    // if (CHUNKS(chunk_index).edit_stage == CHUNK_STAGE_FINISHED) {
+    //     f32vec3 chunk_pos = (f32vec3(chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+    //     f32vec3 delta = chunk_pos - GLOBALS.brush_input.pos;
+    //     f32vec3 dist3 = abs(delta);
+    //     if (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL) {
+    //         if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
+    //             elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_A);
+    //         } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
+    //             elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_USER_BRUSH_B);
+    //         }
+    //     }
+    // }
 #else
     elect_chunk_for_update(chunk_i, chunk_index, CHUNK_STAGE_WORLD_BRUSH);
 
