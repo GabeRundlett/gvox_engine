@@ -261,21 +261,21 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, d
 }
 #undef PAGE_ALLOC_INFOS
 
-daxa_RWBufferPtr(daxa_u32) voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address) {
+void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
 #if USE_OLD_ALLOC
-    return deref(allocator).heap + address;
+    result = deref(allocator).heap + address;
 #else
     daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
-    return page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+    result = page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
 #endif
 }
 
-daxa_RWBufferPtr(daxa_u32) voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address) {
+void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
 #if USE_OLD_ALLOC
-    return deref(allocator).heap + address;
+    result = deref(allocator).heap + address;
 #else
     daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
-    return page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
+    result = page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
 #endif
 }
 
@@ -309,7 +309,9 @@ void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator
 #if USE_OLD_ALLOC
 #else
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
-    VoxelMalloc_AllocationMetadata prev_alloc_metadata = deref(voxel_malloc_address_to_base_u32_ptr(allocator, prev_address));
+    daxa_RWBufferPtr(daxa_u32) temp_ptr;
+    voxel_malloc_address_to_base_u32_ptr(allocator, prev_address, temp_ptr);
+    VoxelMalloc_AllocationMetadata prev_alloc_metadata = deref(temp_ptr);
     u32 prev_local_allocation_bit_n = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(prev_alloc_metadata);
     if (prev_local_allocation_bit_n == new_local_allocation_bit_n) {
         return;

@@ -108,7 +108,8 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
         return palette_header.blob_ptr;
     }
 #if READ_FROM_HEAP
-    daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr);
+    daxa_RWBufferPtr(daxa_u32) blob_u32s;
+    voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
 #endif
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
 #if READ_FROM_HEAP

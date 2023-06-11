@@ -154,7 +154,8 @@ void main() {
     memoryBarrierShared();
 
     if (palette_region_voxel_index < compressed_size) {
-        daxa_RWBufferPtr(daxa_u32) blob_u32s = voxel_malloc_address_to_u32_ptr(voxel_malloc_global_allocator, blob_ptr);
+        daxa_RWBufferPtr(daxa_u32) blob_u32s;
+        voxel_malloc_address_to_u32_ptr(voxel_malloc_global_allocator, blob_ptr, blob_u32s);
         deref(blob_u32s[palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
     }
 }
