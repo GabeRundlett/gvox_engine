@@ -38,12 +38,6 @@
 
 #define VOXEL_MALLOC_LOG2_MAX_GLOBAL_PAGE_COUNT (32 - VOXEL_MALLOC_CEIL_LOG2_MAX_ALLOCATIONS_IN_PAGE_BITFIELD)
 
-struct VoxelMalloc_Page {
-    u32 data[VOXEL_MALLOC_PAGE_SIZE_U32S];
-};
-// A resizable "vector" of pages
-DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_Page)
-
 // bits
 //  [ 0-8 ]: chunk_local_allocator_page_index
 //  [ 9-13]: page_bits_consumed
@@ -88,7 +82,7 @@ DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 #else
 
 struct VoxelMalloc_GlobalAllocator {
-    daxa_RWBufferPtr(VoxelMalloc_Page) pages;
+    daxa_RWBufferPtr(daxa_u32) heap;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) available_pages_stack;
     daxa_RWBufferPtr(VoxelMalloc_PageIndex) released_pages_stack;
     i32 page_count;

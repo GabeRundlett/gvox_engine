@@ -117,8 +117,8 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
                 if (VoxelMalloc_malloc_allocation_success) {
                     VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit = page_local_consumption_bitmask_first_used_bit;
                     VoxelMalloc_malloc_global_page_index = global_page_index;
-                    daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[VoxelMalloc_malloc_global_page_index];
-                    deref(page).data[page_local_consumption_bitmask_first_used_bit * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT] = VoxelMalloc_AllocationMetadata_pack(chunk_local_allocator_page_index, local_allocation_bit_n);
+                    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_malloc_global_page_index * VOXEL_MALLOC_PAGE_SIZE_U32S];
+                    deref(page[page_local_consumption_bitmask_first_used_bit * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT]) = VoxelMalloc_AllocationMetadata_pack(chunk_local_allocator_page_index, local_allocation_bit_n);
                 }
             }
         }
@@ -180,8 +180,8 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
                     // If that happenes we need to update the boolean determining if we can update the meta data of the page the thread maps to.
                     page_unallocated = fetched_page_info == u64(0);
                     if (VoxelMalloc_malloc_allocation_success) {
-                        daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[VoxelMalloc_malloc_global_page_index];
-                        deref(page).data[0] = VoxelMalloc_AllocationMetadata_pack(chunk_local_allocator_page_index, local_allocation_bit_n);
+                        daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_malloc_global_page_index * VOXEL_MALLOC_PAGE_SIZE_U32S];
+                        deref(page[0]) = VoxelMalloc_AllocationMetadata_pack(chunk_local_allocator_page_index, local_allocation_bit_n);
                     }
                 }
             }
@@ -216,9 +216,9 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, d
     u32 local_page_alloc_offset = VoxelMalloc_Pointer_extract_local_page_alloc_offset(address);
 
     // Only ONE thread should ever enter this!
-    daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[global_page_index];
+    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[global_page_index * VOXEL_MALLOC_PAGE_SIZE_U32S];
 
-    const VoxelMalloc_AllocationMetadata allocation_metadata = deref(page).data[local_page_alloc_offset * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT];
+    const VoxelMalloc_AllocationMetadata allocation_metadata = deref(page[local_page_alloc_offset * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT]);
     const u32 chunk_local_allocator_page_index = VoxelMalloc_AllocationMetadata_extract_chunk_local_allocator_page_index(allocation_metadata);
     const u32 page_bits_consumed = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(allocation_metadata);
 
@@ -265,9 +265,8 @@ daxa_RWBufferPtr(daxa_u32) voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr
 #if USE_OLD_ALLOC
     return deref(allocator).heap + address;
 #else
-    daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[VoxelMalloc_Pointer_extract_global_page_index(address)];
-    daxa_RWBufferPtr(daxa_u32) result = daxa_RWBufferPtr(daxa_u32)(page);
-    return result + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
+    return page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
 #endif
 }
 
@@ -275,9 +274,8 @@ daxa_RWBufferPtr(daxa_u32) voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(Voxe
 #if USE_OLD_ALLOC
     return deref(allocator).heap + address;
 #else
-    daxa_RWBufferPtr(VoxelMalloc_Page) page = deref(allocator).pages[VoxelMalloc_Pointer_extract_global_page_index(address)];
-    daxa_RWBufferPtr(daxa_u32) result = daxa_RWBufferPtr(daxa_u32)(page);
-    return result + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
+    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
+    return page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
 #endif
 }
 

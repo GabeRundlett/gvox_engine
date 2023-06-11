@@ -937,7 +937,7 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
                 .offset = 0,
                 .heap = device.get_device_address(gpu_resources.gpu_heap.buffer),
 #else
-                .pages = device.get_device_address(gpu_resources.voxel_malloc.pages_buffer),
+                .heap = device.get_device_address(gpu_resources.voxel_malloc.pages_buffer),
                 .available_pages_stack = device.get_device_address(gpu_resources.voxel_malloc.available_pages_stack_buffer),
                 .released_pages_stack = device.get_device_address(gpu_resources.voxel_malloc.released_pages_stack_buffer),
                 .page_count = 0,
@@ -1063,7 +1063,7 @@ void VoxelApp::voxel_malloc_realloc(daxa::TaskList &temp_task_list) {
             cmd_list.destroy_buffer_deferred(staging_global_allocator_buffer);
             auto *buffer_ptr = device.get_host_address_as<VoxelMalloc_GlobalAllocator>(staging_global_allocator_buffer);
             *buffer_ptr = VoxelMalloc_GlobalAllocator{
-                .pages = device.get_device_address(gpu_resources.voxel_malloc.pages_buffer),
+                .heap = device.get_device_address(gpu_resources.voxel_malloc.pages_buffer),
                 .available_pages_stack = device.get_device_address(gpu_resources.voxel_malloc.available_pages_stack_buffer),
                 .released_pages_stack = device.get_device_address(gpu_resources.voxel_malloc.released_pages_stack_buffer),
             };
