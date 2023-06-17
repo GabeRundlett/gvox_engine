@@ -36,7 +36,7 @@ f32vec4 get_prev_sample(i32vec2 prev_pixel_i, f32vec3 hit, i32vec2 frame_dim) {
 // #define SUN_TIME (deref(gpu_input).time)
 #define SUN_TIME 1.8
 #define SUN_COL (f32vec3(1, 0.85, 0.5) * 20)
-#define SUN_DIR normalize(f32vec3(0.5 * abs(sin(SUN_TIME)), -cos(SUN_TIME), abs(sin(SUN_TIME))))
+#define SUN_DIR normalize(f32vec3(-0.5 * abs(sin(SUN_TIME)), -cos(SUN_TIME), abs(sin(SUN_TIME))))
 
 f32vec3 sample_sky_ambient(f32vec3 nrm) {
     f32 sun_val = dot(nrm, SUN_DIR) * 0.1 + 0.06;
@@ -94,32 +94,61 @@ struct HitInfo {
     bool is_hit;
 };
 
-HitInfo get_hit_info(f32vec3 pos, f32vec3 ray_dir) {
+f32vec3 cam_pos;
+u32vec2 pixel_i;
+
+HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
     HitInfo result;
-    result.is_hit = is_hit(pos);
-    if (result.is_hit) {
-        u32vec3 chunk_i = u32vec3(floor(pos * (f32(VOXEL_SCL) / CHUNK_SIZE)));
-        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
-        u32vec3 voxel_i = u32vec3(pos * VOXEL_SCL);
-        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
-        if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
-            u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunks[chunk_index], inchunk_voxel_i, true);
-            f32vec4 sample_col = uint_to_float4(voxel_data);
-            if ((voxel_data >> 0x18) == 2) {
-                result.diff_col = f32vec3(0);
-                result.emit_col = sample_col.rgb * 20;
-                result.is_hit = false;
-            } else {
-                result.diff_col = max(sample_col.rgb, f32vec3(0.01));
-                result.emit_col = f32vec3(0);
-            }
+
+    f32vec4 raster_color = texelFetch(
+        raster_color_image,
+        i32vec2(pixel_i), 0);
+
+    f32 dist2_a = dot(pos - cam_pos, pos - cam_pos);
+    f32 dist2_b = dot(raster_color.xyz - cam_pos, raster_color.xyz - cam_pos);
+    if (is_primary && raster_color.a > 0.0 && abs(dist2_b) < abs(dist2_a)) {
+        uint id = uint(raster_color.w - 1);
+        pos = raster_color.xyz;
+        SimulatedVoxelParticle self = deref(simulated_voxel_particles[id]);
+        result.is_hit = true;
+        if (self.flags == 2) {
+            result.diff_col = f32vec3(0.2);
+            result.emit_col = f32vec3(0.0);
+        } else {
+            result.emit_col = f32vec3(0.8, 0.06, 0.01) * dot(self.vel, self.vel) * 0.1 * (0.5 + good_rand(floor(pos * 8 + self.vel * 3)));
+            result.diff_col = f32vec3(0.01);
         }
+        // result.emit_col = f32vec3(0);
+        // result.nrm = f32vec3(0, 0, 1);
         result.nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, pos);
     } else {
-        result.diff_col = f32vec3(0.0);
-        result.emit_col = sample_sky(ray_dir);
-        result.nrm = -ray_dir;
+        result.is_hit = is_hit(pos);
+        if (result.is_hit) {
+            u32vec3 chunk_i = u32vec3(floor(pos * (f32(VOXEL_SCL) / CHUNK_SIZE)));
+            u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+            u32vec3 voxel_i = u32vec3(pos * VOXEL_SCL);
+            u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
+            if ((chunk_i.x < chunk_n.x) && (chunk_i.y < chunk_n.y) && (chunk_i.z < chunk_n.z)) {
+                u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunks[chunk_index], inchunk_voxel_i, true);
+                f32vec4 sample_col = uint_to_float4(voxel_data);
+                if ((voxel_data >> 0x18) == 2) {
+                    result.diff_col = f32vec3(0);
+                    result.emit_col = sample_col.rgb * 20;
+                    result.is_hit = false;
+                } else {
+                    result.diff_col = max(sample_col.rgb, f32vec3(0.01));
+                    // result.diff_col = f32vec3(0.02);
+                    result.emit_col = f32vec3(0);
+                }
+            }
+            result.nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, pos);
+        } else {
+            result.diff_col = f32vec3(0.0);
+            result.emit_col = sample_sky(ray_dir);
+            result.nrm = -ray_dir;
+        }
     }
+
     result.fresnel_fac = pow(1.0 - dot(-ray_dir, result.nrm), 5.0);
     return result;
 }
@@ -140,7 +169,7 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     f32vec3 result = f32vec3(0);
     f32vec3 ray_col = f32vec3(1);
 
-    HitInfo hit_info = get_hit_info(ray_pos, ray_dir);
+    HitInfo hit_info = get_hit_info(ray_pos, ray_dir, false);
     ray_pos += hit_info.nrm * 0.01 / VOXEL_SCL;
     result += hit_info.emit_col * ray_col;
     reflect_ray(ray_dir, ray_col, hit_info);
@@ -148,9 +177,9 @@ f32vec3 color_trace(f32vec3 ray_pos, f32vec3 ray_dir) {
     if (hit_info.is_hit) {
         // result = hit_info.diff_col;
         for (u32 i = 0; i < 2; ++i) {
-            trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 512, true);
+            trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 512, MAX_SD, true);
             // trace_sparse(voxel_chunks, chunk_n, ray_pos, ray_dir, 6);
-            hit_info = get_hit_info(ray_pos, ray_dir);
+            hit_info = get_hit_info(ray_pos, ray_dir, false);
             result += hit_info.emit_col * ray_col;
             if (hit_info.is_hit) {
                 ray_pos += hit_info.nrm * 0.01 / VOXEL_SCL;
@@ -176,7 +205,7 @@ void main() {
     f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
     f32 aspect = frame_dim.x * inv_frame_dim.y;
 
-    u32vec2 pixel_i = gl_GlobalInvocationID.xy;
+    pixel_i = gl_GlobalInvocationID.xy;
     if (pixel_i.x >= frame_dim.x || pixel_i.y >= frame_dim.y)
         return;
 
@@ -184,10 +213,10 @@ void main() {
     f32 accepted_count = 1;
     f32vec2 uv = f32vec2(pixel_i) * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
-    chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    chunk_n = u32vec3(1u << deref(settings).log2_chunks_per_axis);
     rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
     f32vec3 blue_noise = texelFetch(blue_noise_cosine_vec3, ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xyz * 2 - 1;
-    f32vec3 cam_pos = create_view_pos(deref(globals).player);
+    cam_pos = create_view_pos(deref(globals).player);
     f32vec3 cam_dir = create_view_dir(deref(globals).player, uv);
     f32vec3 hit_pos = imageLoad(render_pos_image_id, i32vec2(pixel_i)).xyz;
 
@@ -204,7 +233,7 @@ void main() {
 #endif
 
 #if 1
-    HitInfo hit_info = get_hit_info(hit_pos, cam_dir);
+    HitInfo hit_info = get_hit_info(hit_pos, cam_dir, true);
 
     f32vec3 light = f32vec3(0);
     f32vec3 temp_pos;
@@ -219,10 +248,10 @@ void main() {
     f32vec3 sun_nrm = SUN_DIR;
 #endif
 
-    trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, sun_nrm, 512, true);
-    HitInfo sun_hit_info = get_hit_info(temp_pos, sun_nrm);
+    trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, sun_nrm, 512, MAX_SD, true);
+    HitInfo sun_hit_info = get_hit_info(temp_pos, sun_nrm, false);
     if (!sun_hit_info.is_hit) {
-        light += SUN_COL * 0.2 * dot(hit_info.nrm, sun_nrm);
+        light += SUN_COL * 0.2 * max(dot(hit_info.nrm, sun_nrm), 0.0);
     }
 #endif
 
@@ -234,18 +263,18 @@ void main() {
 
     // f32vec3 ao_ray_dir = rand_lambertian_nrm(hit_info.nrm);
 
-    trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, ao_ray_dir, 16, false);
+    trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, ao_ray_dir, 16, MAX_SD, false);
     trace_sparse(voxel_chunks, chunk_n, temp_pos, ao_ray_dir, 5);
 
-    // trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, ao_ray_dir, 512, true);
+    // trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, temp_pos, ao_ray_dir, 512, MAX_SD, true);
 
-    HitInfo ao_hit_info = get_hit_info(temp_pos, ao_ray_dir);
+    HitInfo ao_hit_info = get_hit_info(temp_pos, ao_ray_dir, false);
     if (!ao_hit_info.is_hit) {
         light += sample_sky_ambient(ao_ray_dir);
     }
 #elif LIGHTING
     f32vec3 ao_ray_dir = hit_info.nrm;
-    light += sample_sky_ambient(ao_ray_dir);
+    light += sample_sky_ambient(ao_ray_dir) * 0.5;
 #else
     light = f32vec3(1);
 #endif

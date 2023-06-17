@@ -2,7 +2,15 @@
 
 #include <shared/core.inl>
 
+struct IndirectDrawParams {
+    u32 vertex_count;
+    u32 instance_count;
+    u32 first_vertex;
+    u32 first_instance;
+};
+
 struct Camera {
+    f32mat4x4 proj_mat;
     f32mat3x3 rot_mat, prev_rot_mat;
     f32vec3 pos, prev_pos;
     f32 tan_half_fov;
@@ -75,6 +83,19 @@ struct BrushState {
     u32 is_editing;
 };
 
+struct VoxelParticlesState {
+    u32vec3 simulation_dispatch;
+    IndirectDrawParams draw_params;
+};
+struct SimulatedVoxelParticle {
+    f32vec3 pos;
+    f32 duration_alive;
+    f32vec3 vel;
+    u32 voxel_data;
+    u32 flags;
+};
+DAXA_ENABLE_BUFFER_PTR(SimulatedVoxelParticle)
+
 struct GpuGlobals {
     Player player;
     BrushInput brush_input;
@@ -82,6 +103,7 @@ struct GpuGlobals {
     VoxelWorld voxel_world;
     GpuIndirectDispatch indirect_dispatch;
     ChunkThreadPoolState chunk_thread_pool_state;
+    VoxelParticlesState voxel_particles_state;
     u32 padding[10];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGlobals)

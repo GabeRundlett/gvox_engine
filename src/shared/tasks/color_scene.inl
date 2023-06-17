@@ -13,6 +13,8 @@ DAXA_INL_TASK_USE_IMAGE(render_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_R
 DAXA_INL_TASK_USE_IMAGE(render_prev_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
 DAXA_INL_TASK_USE_IMAGE(render_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_WRITE)
 DAXA_INL_TASK_USE_IMAGE(render_prev_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
+DAXA_INL_TASK_USE_IMAGE(raster_color_image, daxa_Image2Df32, COMPUTE_SHADER_READ)
+DAXA_INL_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
 DAXA_INL_TASK_USE_END()
 
 #if defined(__cplusplus)

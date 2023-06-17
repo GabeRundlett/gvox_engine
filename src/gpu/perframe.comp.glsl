@@ -2,6 +2,7 @@
 #include <utils/player.glsl>
 #include <utils/voxel_world.glsl>
 #include <utils/voxel_malloc.glsl>
+#include <utils/voxel_particle.glsl>
 #include <utils/trace.glsl>
 
 #define SETTINGS deref(settings)
@@ -47,7 +48,7 @@ void main() {
             {
                 BRUSH_STATE.initial_frame = INPUT.frame_index;
             }
-            if (((INPUT.frame_index - BRUSH_STATE.initial_frame) & 15) == 0)
+            // if (((INPUT.frame_index - BRUSH_STATE.initial_frame) & 15) == 0)
             {
                 ChunkWorkItem brush_work_item;
                 brush_work_item.i = u32vec3(0);
@@ -98,6 +99,20 @@ void main() {
     voxel_malloc_perframe(
         gpu_input,
         voxel_malloc_global_allocator);
+
+    deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES/64, 1, 1);
+    deref(globals).voxel_particles_state.draw_params.vertex_count = 0;
+    deref(globals).voxel_particles_state.draw_params.instance_count = 1;
+    deref(globals).voxel_particles_state.draw_params.first_vertex = 0;
+    deref(globals).voxel_particles_state.draw_params.first_instance = 0;
+
+    if (INPUT.frame_index == 0) {
+        for (u32 i = 0; i < MAX_SIMULATED_VOXEL_PARTICLES; ++i) {
+            SimulatedVoxelParticle self = deref(simulated_voxel_particles[i]);
+            particle_spawn(self, i);
+            deref(simulated_voxel_particles[i]) = self;
+        }
+    }
 }
 #undef INPUT
 #undef SETTINGS

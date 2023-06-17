@@ -129,7 +129,7 @@ void perform_work_item() {
         f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;
         f32vec3 dist3 = abs(delta);
         if (CHUNK_LEVEL > 0) {
-            needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (255.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
+            needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
         }
     }
 

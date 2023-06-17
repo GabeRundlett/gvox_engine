@@ -12,9 +12,6 @@
 #if PERFRAME_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/perframe.inl>
 #endif
-#if PER_CHUNK_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/per_chunk.inl>
-#endif
 #if CHUNK_EDIT_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/chunk_edit.inl>
 #endif
@@ -36,4 +33,11 @@
 
 #if CHUNK_HIERARCHY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/chunk_hierarchy.inl>
+#endif
+
+#if VOXEL_PARTICLE_SIM_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/voxel_particle_sim.inl>
+#endif
+#if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
+#include <shared/tasks/voxel_particle_raster.inl>
 #endif

@@ -171,26 +171,26 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     col = prev_col;
     id = prev_id;
 
-    f32vec3 mandelbulb_color;
-    if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_SIZE / VOXEL_SCL * 8 / 2) / (CHUNK_SIZE / VOXEL_SCL * 8) * 2 - 1) * 1, mandelbulb_color)) {
-        col = floor(mandelbulb_color * 10) / 10;
-        id = 1;
-    }
-
-    // if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 255.0 / VOXEL_SCL) < 0) {
-    //     // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
-    //     // if (val > 0.3) {
-    //     //     col = f32vec3(0.99, 0.03, 0.01);
-    //     // } else if (val > -0.3) {
-    //     //     col = f32vec3(0.91, 0.05, 0.01);
-    //     // } else {
-    //     //     col = f32vec3(0.91, 0.15, 0.01);
-    //     // }
-    //     // col = f32vec3(rand(), rand(), rand());
-    //     // col = f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
-    //     col = f32vec3(0.5, 0.2, 0.8);
+    // f32vec3 mandelbulb_color;
+    // if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_SIZE / VOXEL_SCL * 8 / 2) / (CHUNK_SIZE / VOXEL_SCL * 8) * 2 - 1) * 1, mandelbulb_color)) {
+    //     col = floor(mandelbulb_color * 10) / 10;
     //     id = 1;
     // }
+
+    if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
+        // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
+        // if (val > 0.3) {
+        //     col = f32vec3(0.99, 0.03, 0.01);
+        // } else if (val > -0.3) {
+        //     col = f32vec3(0.91, 0.05, 0.01);
+        // } else {
+        //     col = f32vec3(0.91, 0.15, 0.01);
+        // }
+        // col = f32vec3(rand(), rand(), rand());
+        // col = f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
+        col = f32vec3(0.1, 0.3, 0.8);
+        id = 1;
+    }
 }
 #endif
 

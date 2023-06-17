@@ -7,9 +7,9 @@
 #define PLAYER deref(globals_ptr).player
 void player_startup(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(-10.01, -10.02, 14.01);
+    PLAYER.pos = f32vec3(10.01, 10.02, 10.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
-    PLAYER.rot.x = PI * -0.551;
+    PLAYER.rot.x = PI * -0.651;
     PLAYER.rot.z = PI * 0.25;
 }
 #undef PLAYER
@@ -85,6 +85,41 @@ void player_perframe(
     PLAYER.pos += PLAYER.vel * INPUT.delta_time;
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 0);
+
+    float aspect = float(INPUT.frame_dim.x) / float(INPUT.frame_dim.y);
+    float near = 0.01;
+
+    vec3 eye = PLAYER.cam.pos;
+    vec3 center = PLAYER.cam.pos + PLAYER.cam.rot_mat * vec3(0, 0, 1);
+    vec3 up = vec3(0, 0, 1);
+
+    vec3 f = normalize(center - eye);
+    vec3 s = normalize(cross(f, up));
+    vec3 u = cross(s, f);
+
+    mat4 proj_mat = mat4(0.0);
+    proj_mat[0][0] =  1.0 / PLAYER.cam.tan_half_fov / aspect;
+    proj_mat[1][1] = -1.0 / PLAYER.cam.tan_half_fov;
+    proj_mat[2][2] =  0.0;
+    proj_mat[2][3] = -1.0;
+    proj_mat[3][2] =  near;
+
+    mat4 view_mat = mat4(0.0);
+    view_mat[0][0] = s.x;
+    view_mat[1][0] = s.y;
+    view_mat[2][0] = s.z;
+    view_mat[0][1] = u.x;
+    view_mat[1][1] = u.y;
+    view_mat[2][1] = u.z;
+    view_mat[0][2] = -f.x;
+    view_mat[1][2] = -f.y;
+    view_mat[2][2] = -f.z;
+    view_mat[3][0] = -dot(s, eye);
+    view_mat[3][1] = -dot(u, eye);
+    view_mat[3][2] = dot(f, eye);
+    view_mat[3][3] = 1.0;
+
+    PLAYER.cam.proj_mat = proj_mat * view_mat;
 }
 #undef PLAYER
 #undef INPUT

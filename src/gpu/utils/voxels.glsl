@@ -24,12 +24,12 @@ u32 uniformity_lod_mask(u32vec3 index_within_lod) {
 
 #define uniformity_lod_index(N) uniformity_lod_index_##N
 
-#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                                                       \
+#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                                                           \
     b32 VoxelUniformityChunk_lod_nonuniform_##N(daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) {      \
-        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                         \
-    }                                                                                                                   \
+        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                             \
+    }                                                                                                                       \
     b32 rw_VoxelUniformityChunk_lod_nonuniform_##N(daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) { \
-        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                         \
+        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                             \
     }
 
 VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(2)
@@ -152,15 +152,15 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, is_drawing);
 }
 
-#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                              \
+#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                                  \
     b32 sample_lod_presence_##N(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
-        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                  \
-        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                \
-        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                 \
+        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                      \
+        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                    \
+        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                     \
         daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                              \
-        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                            \
-        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                 \
-        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                         \
+        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                                \
+        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                     \
+        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                             \
     }
 SAMPLE_LOD_PRESENCE_IMPL(2)
 SAMPLE_LOD_PRESENCE_IMPL(4)

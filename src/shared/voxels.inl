@@ -13,7 +13,7 @@ struct GpuGvoxModel {
     u32 blob_size;
     u32 channel_flags;
     u32 channel_n;
-    u32 data[1 << 28];
+    u32 data[1];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuGvoxModel)
 

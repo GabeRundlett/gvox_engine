@@ -47,6 +47,19 @@ void RenderImages::create(daxa::Device &device) {
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .name = "final_image",
     });
+
+    raster_color_image = device.create_image({
+        .format = daxa::Format::R32G32B32A32_SFLOAT,
+        .size = {size.x, size.y, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "raster_color_image",
+    });
+    raster_depth_image = device.create_image({
+        .format = daxa::Format::D32_SFLOAT,
+        .size = {size.x, size.y, 1},
+        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .name = "raster_depth_image",
+    });
 }
 void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(pos_images[0]);
@@ -54,6 +67,8 @@ void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(col_images[0]);
     device.destroy_image(col_images[1]);
     device.destroy_image(final_image);
+    device.destroy_image(raster_color_image);
+    device.destroy_image(raster_depth_image);
 }
 
 void VoxelChunks::create(daxa::Device &device, u32 log2_chunks_per_axis) {
@@ -115,8 +130,6 @@ void GpuHeap::destroy(daxa::Device &device) const {
     }
 }
 #endif
-
-constexpr auto test_data_size = sizeof(f32vec3) * 512 * 512 * 512;
 
 void GpuResources::create(daxa::Device &device) {
     render_images.create(device);
@@ -183,6 +196,14 @@ void GpuResources::create(daxa::Device &device) {
         .size = offsetof(GpuGvoxModel, data),
         .name = "gvox_model_buffer",
     });
+    simulated_voxel_particles_buffer = device.create_buffer({
+        .size = sizeof(SimulatedVoxelParticle) * MAX_SIMULATED_VOXEL_PARTICLES,
+        .name = "simulated_voxel_particles_buffer",
+    });
+    rendered_voxel_particles_buffer = device.create_buffer({
+        .size = sizeof(u32) * MAX_RENDERED_VOXEL_PARTICLES,
+        .name = "rendered_voxel_particles_buffer",
+    });
 }
 void GpuResources::destroy(daxa::Device &device) const {
     render_images.destroy(device);
@@ -207,6 +228,8 @@ void GpuResources::destroy(daxa::Device &device) const {
     if (!gvox_model_buffer.is_empty()) {
         device.destroy_buffer(gvox_model_buffer);
     }
+    device.destroy_buffer(simulated_voxel_particles_buffer);
+    device.destroy_buffer(rendered_voxel_particles_buffer);
 }
 
 VoxelApp::VoxelApp()
@@ -258,7 +281,6 @@ VoxelApp::VoxelApp()
       // clang-format off
       startup_task_state{main_pipeline_manager, ui},
       perframe_task_state{main_pipeline_manager, ui},
-      per_chunk_task_state{main_pipeline_manager, ui},
       chunk_edit_task_state{main_pipeline_manager, ui},
       chunk_opt_x2x4_task_state{main_pipeline_manager, ui},
       chunk_opt_x8up_task_state{main_pipeline_manager, ui},
@@ -267,6 +289,8 @@ VoxelApp::VoxelApp()
       color_scene_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
       postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
       chunk_hierarchy_task_state{main_pipeline_manager, ui},
+      voxel_particle_sim_task_state{main_pipeline_manager, ui},
+      voxel_particle_raster_task_state{main_pipeline_manager, ui},
       // clang-format on
       main_task_list{[this]() {
           gpu_resources.create(device);
@@ -517,6 +541,8 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.gpu_heap.buffer);
 #endif
     buffer_size(gpu_resources.gvox_model_buffer);
+    buffer_size(gpu_resources.simulated_voxel_particles_buffer);
+    buffer_size(gpu_resources.rendered_voxel_particles_buffer);
 
     needs_vram_calc = false;
 }
@@ -835,6 +861,8 @@ void VoxelApp::recreate_render_images() {
     task_render_prev_pos_image.set_images({.images = {&gpu_resources.render_images.pos_images[(gpu_input.frame_index + 1) % 2], 1}});
     task_render_prev_col_image.set_images({.images = {&gpu_resources.render_images.col_images[(gpu_input.frame_index + 1) % 2], 1}});
     task_render_final_image.set_images({.images = {&gpu_resources.render_images.final_image, 1}});
+    task_render_raster_color_image.set_images({.images = std::array{gpu_resources.render_images.raster_color_image}});
+    task_render_raster_depth_image.set_images({.images = std::array{gpu_resources.render_images.raster_depth_image}});
     needs_vram_calc = true;
 }
 void VoxelApp::recreate_voxel_chunks() {
@@ -1125,6 +1153,11 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     task_voxel_malloc_pages_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_malloc.pages_buffer, gpu_resources.voxel_malloc.available_pages_stack_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer}});
     task_voxel_malloc_old_pages_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_malloc.pages_buffer, gpu_resources.voxel_malloc.available_pages_stack_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer}});
 
+    result_task_list.use_persistent_buffer(task_simulated_voxel_particles_buffer);
+    result_task_list.use_persistent_buffer(task_rendered_voxel_particles_buffer);
+    task_simulated_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.simulated_voxel_particles_buffer}});
+    task_rendered_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.rendered_voxel_particles_buffer}});
+
 #if USE_OLD_ALLOC
     result_task_list.use_persistent_buffer(task_gpu_heap_buffer);
     task_gpu_heap_buffer.set_buffers({.buffers = std::array{gpu_resources.gpu_heap.buffer}});
@@ -1136,12 +1169,16 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     result_task_list.use_persistent_image(task_render_prev_pos_image);
     result_task_list.use_persistent_image(task_render_prev_col_image);
     result_task_list.use_persistent_image(task_render_final_image);
+    result_task_list.use_persistent_image(task_render_raster_color_image);
+    result_task_list.use_persistent_image(task_render_raster_depth_image);
     task_swapchain_image.set_images({.images = std::array{swapchain_image}});
     task_render_pos_image.set_images({.images = std::array{gpu_resources.render_images.pos_images[gpu_input.frame_index % 2]}});
     task_render_col_image.set_images({.images = std::array{gpu_resources.render_images.col_images[gpu_input.frame_index % 2]}});
     task_render_prev_pos_image.set_images({.images = std::array{gpu_resources.render_images.pos_images[(gpu_input.frame_index + 1) % 2]}});
     task_render_prev_col_image.set_images({.images = std::array{gpu_resources.render_images.col_images[(gpu_input.frame_index + 1) % 2]}});
     task_render_final_image.set_images({.images = std::array{gpu_resources.render_images.final_image}});
+    task_render_raster_color_image.set_images({.images = std::array{gpu_resources.render_images.raster_color_image}});
+    task_render_raster_depth_image.set_images({.images = std::array{gpu_resources.render_images.raster_depth_image}});
 
     result_task_list.conditional({
         .condition_index = static_cast<u32>(Conditions::STARTUP),
@@ -1192,6 +1229,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .gpu_input = task_input_buffer.handle(),
                 .gpu_output = task_output_buffer.handle(),
                 .globals = task_globals_buffer.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
             },
@@ -1199,19 +1237,35 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         &perframe_task_state,
     });
 
-    // PerChunkTask
-    // result_task_list.add_task(PerChunkComputeTask{
-    //     {
-    //         .uses = {
-    //             .settings = task_settings_buffer.handle(),
-    //             .gpu_input = task_input_buffer.handle(),
-    //             .gvox_model = task_gvox_model_buffer.handle(),
-    //             .globals = task_globals_buffer.handle(),
-    //             .voxel_chunks = task_voxel_chunks_buffer.handle(),
-    //         },
-    //     },
-    //     &per_chunk_task_state,
-    // });
+    // VoxelParticleSimComputeTask
+    result_task_list.add_task(VoxelParticleSimComputeTask{
+        {
+            .uses = {
+                .settings = task_settings_buffer.handle(),
+                .gpu_input = task_input_buffer.handle(),
+                .globals = task_globals_buffer.handle(),
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
+                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
+            },
+        },
+        &voxel_particle_sim_task_state,
+    });
+
+    // VoxelParticleRasterTask
+    result_task_list.add_task(VoxelParticleRasterTask{
+        {
+            .uses = {
+                .globals = task_globals_buffer.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
+                .render_image = task_render_raster_color_image.handle(),
+                .depth_image = task_render_raster_depth_image.handle(),
+            },
+        },
+        &voxel_particle_raster_task_state,
+    });
 
     // ChunkHierarchy
     result_task_list.add_task(ChunkHierarchyComputeTaskL0{
@@ -1330,6 +1384,8 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .render_prev_pos_image_id = task_render_prev_pos_image.handle(),
                 .render_col_image_id = task_render_col_image.handle(),
                 .render_prev_col_image_id = task_render_prev_col_image.handle(),
+                .raster_color_image = task_render_raster_color_image.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
             },
         },
         &color_scene_task_state,

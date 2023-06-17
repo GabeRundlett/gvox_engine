@@ -24,6 +24,9 @@ struct RenderImages {
     std::array<daxa::ImageId, 2> col_images;
     daxa::ImageId final_image;
 
+    daxa::ImageId raster_color_image;
+    daxa::ImageId raster_depth_image;
+
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
 };
@@ -76,6 +79,9 @@ struct GpuResources {
 #endif
     daxa::BufferId gvox_model_buffer;
 
+    daxa::BufferId simulated_voxel_particles_buffer;
+    daxa::BufferId rendered_voxel_particles_buffer;
+
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
 };
@@ -109,6 +115,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_col_image{{.name = "task_render_col_image"}};
     daxa::TaskImage task_render_prev_col_image{{.name = "task_render_prev_col_image"}};
     daxa::TaskImage task_render_final_image{{.name = "task_render_final_image"}};
+    daxa::TaskImage task_render_raster_color_image{{.name = "task_render_raster_color_image"}};
+    daxa::TaskImage task_render_raster_depth_image{{.name = "task_render_raster_depth_image"}};
 
     daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -130,10 +138,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_gpu_heap_buffer{{.name = "task_gpu_heap_buffer"}};
 #endif
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
+    daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
+    daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
 
     StartupComputeTaskState startup_task_state;
     PerframeComputeTaskState perframe_task_state;
-    PerChunkComputeTaskState per_chunk_task_state;
     ChunkEditComputeTaskState chunk_edit_task_state;
     ChunkOpt_x2x4_ComputeTaskState chunk_opt_x2x4_task_state;
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
@@ -143,6 +152,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     PostprocessingComputeTaskState postprocessing_task_state;
 
     ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
+
+    VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
+    VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
     enum class Conditions {
         STARTUP,
