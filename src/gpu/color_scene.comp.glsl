@@ -23,7 +23,7 @@ f32vec2 prev_uv_from_pos(in out Player player, f32 aspect, f32 fov, f32vec3 pos)
 f32vec4 get_prev_sample(i32vec2 prev_pixel_i, f32vec3 hit, i32vec2 frame_dim) {
     if (min(frame_dim, prev_pixel_i) != prev_pixel_i || max(i32vec2(0, 0), prev_pixel_i) != prev_pixel_i)
         return f32vec4(f32vec3(0), MAX_SD);
-    f32vec3 prev_hit_pos = imageLoad(render_prev_pos_image_id, prev_pixel_i).xyz;
+    f32vec3 prev_hit_pos = imageLoad(daxa_image2D(render_prev_pos_image_id), prev_pixel_i).xyz;
     f32vec3 p0 = prev_hit_pos; // floor(prev_hit_pos * VOXEL_SCL);
     f32vec3 p1 = hit;          // floor(hit * VOXEL_SCL);
     f32vec3 del = p0 - p1;
@@ -100,9 +100,7 @@ u32vec2 pixel_i;
 HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
     HitInfo result;
 
-    f32vec4 raster_color = texelFetch(
-        raster_color_image,
-        i32vec2(pixel_i), 0);
+    f32vec4 raster_color = texelFetch(daxa_texture2D(raster_color_image), i32vec2(pixel_i), 0);
 
     f32 dist2_a = dot(pos - cam_pos, pos - cam_pos);
     f32 dist2_b = dot(raster_color.xyz - cam_pos, raster_color.xyz - cam_pos);
@@ -115,7 +113,7 @@ HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
             result.diff_col = f32vec3(0.2);
             result.emit_col = f32vec3(0.0);
         } else {
-            result.emit_col = f32vec3(0.8, 0.06, 0.01) * dot(self.vel, self.vel) * 0.1 * (0.5 + good_rand(floor(pos * 8 + self.vel * 3)));
+            result.emit_col = f32vec3(0.8, 0.06, 0.01) * dot(self.vel, self.vel) * 0.1 * (0.5 + good_rand(floor(pos * 8) + self.vel * 3));
             result.diff_col = f32vec3(0.01);
         }
         // result.emit_col = f32vec3(0);
@@ -215,10 +213,10 @@ void main() {
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
     chunk_n = u32vec3(1u << deref(settings).log2_chunks_per_axis);
     rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
-    f32vec3 blue_noise = texelFetch(blue_noise_cosine_vec3, ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xyz * 2 - 1;
+    f32vec3 blue_noise = texelFetch(daxa_texture3D(blue_noise_cosine_vec3), ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xyz * 2 - 1;
     cam_pos = create_view_pos(deref(globals).player);
     f32vec3 cam_dir = create_view_dir(deref(globals).player, uv);
-    f32vec3 hit_pos = imageLoad(render_pos_image_id, i32vec2(pixel_i)).xyz;
+    f32vec3 hit_pos = imageLoad(daxa_image2D(render_pos_image_id), i32vec2(pixel_i)).xyz;
 
 #if 0
     f32vec3 ray_pos = cam_pos;
@@ -327,7 +325,7 @@ void main() {
             bool positions_equal = floor(prev_pos * VOXEL_SCL / hit_dist) == floor(hit_pos * VOXEL_SCL / hit_dist);
             bool is_close_enough = dist < 0.01 * hit_dist;
             if (is_close_enough && positions_equal && normals_equal) {
-                f32vec4 prev_col = imageLoad(render_prev_col_image_id, pfc);
+                f32vec4 prev_col = imageLoad(daxa_image2D(render_prev_col_image_id), pfc);
                 blurred_color += prev_col.rgb;
                 accepted_count = max(accepted_count, min(prev_col.a + 1, 100));
                 blurred_samples += 1.0;
@@ -346,7 +344,7 @@ void main() {
 
 #if 0
     // Naive frame blending:
-    f32vec3 prev_col = imageLoad(render_col_image_id, i32vec2(pixel_i)).rgb;
+    f32vec3 prev_col = imageLoad(daxa_image2D(render_col_image_id), i32vec2(pixel_i)).rgb;
     f32 alpha = 0.1;
     col = clamp(col, f32vec3(0), f32vec3(5));
     col = col * alpha + prev_col * (1.0 - alpha);
@@ -389,7 +387,7 @@ void main() {
     bool accepted = blurred_samples > 0;
 
     if (accepted) {
-        f32vec4 prev_col = imageLoad(render_prev_col_image_id, finalpfc);
+        f32vec4 prev_col = imageLoad(daxa_image2D(render_prev_col_image_id), finalpfc);
         blurred_color = prev_col.rgb;
         accepted_count = max(accepted_count, min(prev_col.a + 1, 10));
     }
@@ -425,7 +423,7 @@ void main() {
     }
 #endif
 
-    imageStore(render_col_image_id, i32vec2(pixel_i), f32vec4(col, accepted_count));
+    imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(col, accepted_count));
 }
 #undef CHUNKS
 #undef CHUNK_PTRS

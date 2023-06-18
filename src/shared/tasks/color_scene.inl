@@ -2,20 +2,20 @@
 
 #include "../core.inl"
 
-DAXA_INL_TASK_USE_BEGIN(ColorSceneComputeUses, DAXA_CBUFFER_SLOT0)
-DAXA_INL_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(blue_noise_cosine_vec3, daxa_Image3Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(render_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(render_prev_pos_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(render_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_WRITE)
-DAXA_INL_TASK_USE_IMAGE(render_prev_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(raster_color_image, daxa_Image2Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
-DAXA_INL_TASK_USE_END()
+DAXA_DECL_TASK_USES_BEGIN(ColorSceneComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(blue_noise_cosine_vec3, REGULAR_3D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_pos_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_prev_pos_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_col_image_id, REGULAR_2D, COMPUTE_SHADER_WRITE)
+DAXA_TASK_USE_IMAGE(render_prev_col_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(raster_color_image, REGULAR_2D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
+DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
@@ -57,7 +57,7 @@ struct ColorSceneComputeTask : ColorSceneComputeUses {
     ColorSceneComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
-        cmd_list.set_constant_buffer(ti.uses.constant_buffer_set_info());
+        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         state->record_commands(cmd_list);
     }
 };

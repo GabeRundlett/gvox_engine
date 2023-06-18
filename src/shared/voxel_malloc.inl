@@ -51,7 +51,7 @@
 #define VoxelMalloc_Pointer daxa_u32
 
 #define VoxelMalloc_PageIndex daxa_u32
-DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_PageIndex)
+DAXA_DECL_BUFFER_PTR(VoxelMalloc_PageIndex)
 
 // bits (needs to be packed as we use atomics to sync access)
 // N = VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD
@@ -77,7 +77,7 @@ struct VoxelMalloc_GlobalAllocator {
     u32 offset;
     daxa_RWBufferPtr(daxa_u32) heap;
 };
-DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
+DAXA_DECL_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 
 #else
 
@@ -89,6 +89,6 @@ struct VoxelMalloc_GlobalAllocator {
     i32 available_pages_stack_size;
     i32 released_pages_stack_size;
 };
-DAXA_ENABLE_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
+DAXA_DECL_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
 
 #endif

@@ -15,7 +15,7 @@ struct GpuGvoxModel {
     u32 channel_n;
     u32 data[1];
 };
-DAXA_ENABLE_BUFFER_PTR(GpuGvoxModel)
+DAXA_DECL_BUFFER_PTR(GpuGvoxModel)
 
 // 1364 u32's
 // 10.65625 bytes per 8x8x8
@@ -39,7 +39,7 @@ struct VoxelLeafChunk {
     VoxelMalloc_ChunkLocalPageSubAllocatorState sub_allocator_state;
     PaletteHeader palette_headers[PALETTES_PER_CHUNK];
 };
-DAXA_ENABLE_BUFFER_PTR(VoxelLeafChunk)
+DAXA_DECL_BUFFER_PTR(VoxelLeafChunk)
 
 struct TempVoxel {
     u32 col_and_id;
@@ -48,10 +48,10 @@ struct TempVoxel {
 struct TempVoxelChunk {
     TempVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
-DAXA_ENABLE_BUFFER_PTR(TempVoxelChunk)
+DAXA_DECL_BUFFER_PTR(TempVoxelChunk)
 
 struct VoxelParentChunk {
     u32 children[512];
     u32 is_leaf[16];
 };
-DAXA_ENABLE_BUFFER_PTR(VoxelParentChunk)
+DAXA_DECL_BUFFER_PTR(VoxelParentChunk)

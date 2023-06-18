@@ -7,12 +7,13 @@
 void particle_spawn(in out SimulatedVoxelParticle self, u32 index) {
     rand_seed(index);
 
-    self.duration_alive = 0.0 + rand() * 0.2;
+    self.duration_alive = 0.0 + rand() * 0;
     self.flags = 1;
 
     self.pos = f32vec3(rand() * 600 + 300, rand() * 400 + 500, 400.0) / 8;
-    // self.pos = deref(globals).player.cam.pos + deref(globals).player.forward * 1 + vec3(0, 0, -1.5) + deref(globals).player.lateral * 1.5;
-    self.vel = deref(globals).player.forward * 3 + rand_dir() * vec3(2); //  + deref(globals).player.vel
+    self.vel = deref(globals).player.forward * 3 + rand_dir() * 2;
+    // self.pos = deref(globals).player.cam.pos + deref(globals).player.forward * 1 + vec3(0, 0, -2.5) + deref(globals).player.lateral * 5.5;
+    // self.vel = deref(globals).player.forward * 3 + rand_dir() * 2 + deref(globals).player.vel;
 }
 
 void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput) gpu_input) {
@@ -21,6 +22,10 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
     float dt = deref(gpu_input).delta_time;
     self.duration_alive += dt;
 
+#if 0
+    self.vel += f32vec3(0.0, 0.0, -9.8) * dt;
+    self.pos += self.vel * dt;
+#else
     if (self.flags == 2) {
         self.vel += (f32vec3(0.0, 0.0, 1.0) + rand_dir() * 5.1) * dt;
     } else {
@@ -45,6 +50,7 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
     } else {
         self.pos += self.vel * dt;
     }
+#endif
     if (self.duration_alive > 15.0) {
         particle_spawn(self, gl_GlobalInvocationID.x);
     }

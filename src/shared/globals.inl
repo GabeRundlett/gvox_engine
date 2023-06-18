@@ -94,7 +94,7 @@ struct SimulatedVoxelParticle {
     u32 voxel_data;
     u32 flags;
 };
-DAXA_ENABLE_BUFFER_PTR(SimulatedVoxelParticle)
+DAXA_DECL_BUFFER_PTR(SimulatedVoxelParticle)
 
 struct GpuGlobals {
     Player player;
@@ -106,7 +106,7 @@ struct GpuGlobals {
     VoxelParticlesState voxel_particles_state;
     u32 padding[10];
 };
-DAXA_ENABLE_BUFFER_PTR(GpuGlobals)
+DAXA_DECL_BUFFER_PTR(GpuGlobals)
 
 struct GpuSettings {
     f32 fov;
@@ -114,4 +114,4 @@ struct GpuSettings {
 
     u32 log2_chunks_per_axis;
 };
-DAXA_ENABLE_BUFFER_PTR(GpuSettings)
+DAXA_DECL_BUFFER_PTR(GpuSettings)

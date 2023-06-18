@@ -2,13 +2,13 @@
 
 #include "../core.inl"
 
-DAXA_INL_TASK_USE_BEGIN(VoxelParticleRasterUses, DAXA_CBUFFER_SLOT0)
-DAXA_INL_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(render_image, daxa_RWImage2Df32, COLOR_ATTACHMENT)
-DAXA_INL_TASK_USE_IMAGE(depth_image, daxa_RWImage2Df32, DEPTH_ATTACHMENT)
-DAXA_INL_TASK_USE_END()
+DAXA_DECL_TASK_USES_BEGIN(VoxelParticleRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
+DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
+DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, DEPTH_ATTACHMENT)
+DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
@@ -69,7 +69,7 @@ struct VoxelParticleRasterTask : VoxelParticleRasterUses {
     VoxelParticleRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
-        cmd_list.set_constant_buffer(ti.uses.constant_buffer_set_info());
+        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.render_image.image());
         state->record_commands(cmd_list, uses.globals.buffer(), uses.render_image.image(), uses.depth_image.image(), {image_info.size.x, image_info.size.y});
     }

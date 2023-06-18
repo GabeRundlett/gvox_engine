@@ -413,7 +413,7 @@ VoxelApp::VoxelApp()
 
                 auto cmd_list = task_runtime.get_command_list();
                 cmd_list.pipeline_barrier({
-                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                    .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                 });
                 cmd_list.destroy_buffer_deferred(staging_buffer);
                 cmd_list.copy_buffer_to_image({
@@ -1022,7 +1022,7 @@ void VoxelApp::upload_model(daxa::TaskList &temp_task_list) {
                 cmd_list.destroy_buffer_deferred(prev_gvox_model_buffer);
             }
             cmd_list.pipeline_barrier({
-                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
             });
             auto staging_gvox_model_buffer = device.create_buffer({
                 .size = static_cast<u32>(gvox_model_data.size),

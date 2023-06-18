@@ -38,7 +38,7 @@ struct GpuInput {
     MouseInput mouse;
     u32 actions[GAME_ACTION_LAST + 1];
 };
-DAXA_ENABLE_BUFFER_PTR(GpuInput)
+DAXA_DECL_BUFFER_PTR(GpuInput)
 
 struct GpuOutput {
     u64 job_counters_packed;
@@ -47,4 +47,4 @@ struct GpuOutput {
     u32 total_jobs_ran;
     u32 _pad;
 };
-DAXA_ENABLE_BUFFER_PTR(GpuOutput)
+DAXA_DECL_BUFFER_PTR(GpuOutput)

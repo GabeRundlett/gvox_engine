@@ -33,13 +33,8 @@ void main() {
         pixel_i.y >= INPUT.frame_dim.y)
         return;
 
-    f32vec4 final_color = imageLoad(
-        render_col_image_id,
-        i32vec2(pixel_i));
+    f32vec4 final_color = imageLoad(daxa_image2D(render_col_image_id), i32vec2(pixel_i));
 
-    imageStore(
-        final_image_id,
-        i32vec2(pixel_i),
-        f32vec4(color_correct(final_color.rgb), 0));
+    imageStore(daxa_image2D(final_image_id), i32vec2(pixel_i), f32vec4(color_correct(final_color.rgb), 0));
 }
 #undef INPUT

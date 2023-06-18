@@ -2,12 +2,12 @@
 
 #include "../core.inl"
 
-DAXA_INL_TASK_USE_BEGIN(PostprocessingComputeUses, DAXA_CBUFFER_SLOT0)
-DAXA_INL_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(render_col_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_READ)
-DAXA_INL_TASK_USE_IMAGE(final_image_id, daxa_RWImage2Df32, COMPUTE_SHADER_WRITE)
-DAXA_INL_TASK_USE_END()
+DAXA_DECL_TASK_USES_BEGIN(PostprocessingComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_col_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(final_image_id, REGULAR_2D, COMPUTE_SHADER_WRITE)
+DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
@@ -49,7 +49,7 @@ struct PostprocessingComputeTask : PostprocessingComputeUses {
     PostprocessingComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
-        cmd_list.set_constant_buffer(ti.uses.constant_buffer_set_info());
+        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         state->record_commands(cmd_list);
     }
 };
