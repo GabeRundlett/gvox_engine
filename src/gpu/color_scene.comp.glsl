@@ -104,7 +104,7 @@ HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
 
     f32 dist2_a = dot(pos - cam_pos, pos - cam_pos);
     f32 dist2_b = dot(raster_color.xyz - cam_pos, raster_color.xyz - cam_pos);
-    if (is_primary && raster_color.a > 0.0 && abs(dist2_b) < abs(dist2_a)) {
+    if (is_primary && raster_color.a != 0.0 && abs(dist2_b) < abs(dist2_a)) {
         uint id = uint(raster_color.w - 1);
         pos = raster_color.xyz;
         SimulatedVoxelParticle self = deref(simulated_voxel_particles[id]);

@@ -9,7 +9,12 @@ void main() {
         return;
     }
     particle_update(self, gpu_input);
-    u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
     deref(simulated_voxel_particles[particle_index]) = self;
+
+#if USE_POINTS
+    u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 1);
+#else
+    u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
+#endif
     deref(rendered_voxel_particles[my_render_index]) = particle_index;
 }

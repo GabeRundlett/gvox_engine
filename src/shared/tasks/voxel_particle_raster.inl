@@ -3,6 +3,7 @@
 #include "../core.inl"
 
 DAXA_DECL_TASK_USES_BEGIN(VoxelParticleRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
 DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), SHADER_READ)
@@ -31,6 +32,9 @@ struct VoxelParticleRasterTaskState {
                 .depth_test_compare_op = daxa::CompareOp::GREATER,
             },
             .raster = {
+#if USE_POINTS
+                .polygon_mode = daxa::PolygonMode::POINT,
+#endif
                 .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
             },
             .name = "voxel_particle_sim",

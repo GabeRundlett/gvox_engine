@@ -1253,20 +1253,6 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         &voxel_particle_sim_task_state,
     });
 
-    // VoxelParticleRasterTask
-    result_task_list.add_task(VoxelParticleRasterTask{
-        {
-            .uses = {
-                .globals = task_globals_buffer.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
-                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
-                .render_image = task_render_raster_color_image.handle(),
-                .depth_image = task_render_raster_depth_image.handle(),
-            },
-        },
-        &voxel_particle_raster_task_state,
-    });
-
     // ChunkHierarchy
     result_task_list.add_task(ChunkHierarchyComputeTaskL0{
         {
@@ -1352,6 +1338,21 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
             },
         },
         &chunk_alloc_task_state,
+    });
+
+    // VoxelParticleRasterTask
+    result_task_list.add_task(VoxelParticleRasterTask{
+        {
+            .uses = {
+                .gpu_input = task_input_buffer.handle(),
+                .globals = task_globals_buffer.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
+                .render_image = task_render_raster_color_image.handle(),
+                .depth_image = task_render_raster_depth_image.handle(),
+            },
+        },
+        &voxel_particle_raster_task_state,
     });
 
     // TracePrimaryTask

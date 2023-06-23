@@ -44,3 +44,5 @@
 #include <memory>
 #include <daxa/utils/pipeline_manager.hpp>
 #endif
+
+#define USE_POINTS 0
