@@ -105,7 +105,7 @@ float trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) al
             break;
         }
         lod = sample_lod(allocator, voxel_chunks_ptr, chunk_n, current_pos);
-#if !defined(TRACE_DEPTH_PREPASS_COMPUTE)
+#if defined(TRACE_DEPTH_PREPASS_COMPUTE)
         if (lod < 2) {
 #else
         if (lod == 0) {
