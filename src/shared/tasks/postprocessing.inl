@@ -2,27 +2,39 @@
 
 #include "../core.inl"
 
-DAXA_DECL_TASK_USES_BEGIN(PostprocessingComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_DECL_TASK_USES_BEGIN(PostprocessingRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(render_col_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(final_image_id, REGULAR_2D, COMPUTE_SHADER_WRITE)
+DAXA_TASK_USE_IMAGE(render_col_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
+
+struct PostprocessingRasterPush {
+    daxa_SamplerId final_sampler;
+    u32vec2 final_size;
+};
 
 #if defined(__cplusplus)
 
-struct PostprocessingComputeTaskState {
+struct PostprocessingRasterTaskState {
     daxa::PipelineManager &pipeline_manager;
     AppUi &ui;
-    u32vec2 &render_size;
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    std::shared_ptr<daxa::RasterPipeline> pipeline;
+    daxa::SamplerId &sampler;
+    daxa::Format render_color_format;
+
+    auto get_color_format() -> daxa::Format {
+        return render_color_format;
+    }
 
     void compile_pipeline() {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
-                .compile_options = {.defines = {{"POSTPROCESSING_COMPUTE", "1"}}},
-            },
+        auto compile_result = pipeline_manager.add_raster_pipeline({
+            .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
+            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
+            .color_attachments = {{
+                .format = get_color_format(),
+            }},
+            .push_constant_size = sizeof(PostprocessingRasterPush),
             .name = "postprocessing",
         });
         if (compile_result.is_err()) {
@@ -32,25 +44,35 @@ struct PostprocessingComputeTaskState {
         pipeline = compile_result.value();
     }
 
-    PostprocessingComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} {}
+    PostprocessingRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, daxa::SamplerId &a_sampler, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, sampler{a_sampler}, render_color_format{a_render_color_format} {}
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, daxa::ImageId render_image, u32vec2 size) {
         if (!pipeline) {
             compile_pipeline();
             if (!pipeline)
                 return;
         }
+        cmd_list.begin_renderpass({
+            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+            .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
+        });
         cmd_list.set_pipeline(*pipeline);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        cmd_list.push_constant(PostprocessingRasterPush{
+            .final_sampler = sampler,
+            .final_size = size,
+        });
+        cmd_list.draw({.vertex_count = 3});
+        cmd_list.end_renderpass();
     }
 };
 
-struct PostprocessingComputeTask : PostprocessingComputeUses {
-    PostprocessingComputeTaskState *state;
+struct PostprocessingRasterTask : PostprocessingRasterUses {
+    PostprocessingRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto const &image_info = ti.get_device().info_image(uses.render_image.image());
+        state->record_commands(cmd_list, uses.render_image.image(), {image_info.size.x, image_info.size.y});
     }
 };
 

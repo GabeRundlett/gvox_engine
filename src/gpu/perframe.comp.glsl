@@ -105,6 +105,9 @@ void main() {
     deref(globals).voxel_particles_state.draw_params.instance_count = 1;
     deref(globals).voxel_particles_state.draw_params.first_vertex = 0;
     deref(globals).voxel_particles_state.draw_params.first_instance = 0;
+    deref(globals).voxel_particles_state.place_count = 0;
+    deref(globals).voxel_particles_state.place_bounds_min = u32vec3(1000000);
+    deref(globals).voxel_particles_state.place_bounds_max = u32vec3(0);
 
     if (INPUT.frame_index == 0) {
         for (u32 i = 0; i < MAX_SIMULATED_VOXEL_PARTICLES; ++i) {

@@ -85,6 +85,9 @@ struct BrushState {
 
 struct VoxelParticlesState {
     u32vec3 simulation_dispatch;
+    u32 place_count;
+    u32vec3 place_bounds_min;
+    u32vec3 place_bounds_max;
     IndirectDrawParams draw_params;
 };
 struct SimulatedVoxelParticle {

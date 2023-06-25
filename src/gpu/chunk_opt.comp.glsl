@@ -10,6 +10,16 @@ u32 sample_temp_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in
     return deref(temp_voxel_chunk_ptr).voxels[in_chunk_index].col_and_id >> 24;
 }
 
+// For now, I'm testing with using non-zero as the accel structure, instead of uniformity.
+u32 sample_base_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in u32vec3 in_chunk_i) {
+#define COMPUTE_UNIFORMITY 0
+#if COMPUTE_UNIFORMITY
+    return sample_temp_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
+#else
+    return 0;
+#endif
+}
+
 #if CHUNK_OPT_STAGE == 0
 
 shared u32 local_x2_copy[4][4];
@@ -26,7 +36,7 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
     x2_i += 4 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
     u32vec3 in_chunk_i = x2_i * 2;
     b32 at_least_one_occluding = false;
-    u32 base_id_x1 = sample_temp_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
+    u32 base_id_x1 = sample_base_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
     for (i32 x = 0; x < 2; ++x)
         for (i32 y = 0; y < 2; ++y)
             for (i32 z = 0; z < 2; ++z) {
@@ -57,7 +67,7 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         gl_LocalInvocationID.x & 0xF);
     x4_i += 2 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
     x2_i = x4_i * 2;
-    u32 base_id_x2 = sample_temp_voxel_id(temp_voxel_chunk_ptr, x2_i * 2);
+    u32 base_id_x2 = sample_base_voxel_id(temp_voxel_chunk_ptr, x2_i * 2);
     at_least_one_occluding = false;
     for (i32 x = 0; x < 2; ++x)
         for (i32 y = 0; y < 2; ++y)
@@ -121,7 +131,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         gl_LocalInvocationID.x & 0x7);
     u32vec3 x4_i = x8_i * 2;
 
-    u32 base_id_x4 = sample_temp_voxel_id(temp_voxel_chunk_ptr, x4_i * 4);
+    u32 base_id_x4 = sample_base_voxel_id(temp_voxel_chunk_ptr, x4_i * 4);
 
     b32 at_least_one_occluding = false;
     for (i32 x = 0; x < 2; ++x)
@@ -160,7 +170,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         (gl_LocalInvocationID.x >> 4) & 0x3,
         gl_LocalInvocationID.x & 0x3);
     x8_i = x16_i * 2;
-    u32 base_id_x8 = sample_temp_voxel_id(temp_voxel_chunk_ptr, x8_i * 8);
+    u32 base_id_x8 = sample_base_voxel_id(temp_voxel_chunk_ptr, x8_i * 8);
 
     at_least_one_occluding = false;
     for (i32 x = 0; x < 2; ++x)
@@ -199,7 +209,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
         (gl_LocalInvocationID.x >> 2) & 0x1,
         gl_LocalInvocationID.x & 0x1);
     x16_i = x32_i * 2;
-    u32 base_id_x16 = sample_temp_voxel_id(temp_voxel_chunk_ptr, x16_i * 16);
+    u32 base_id_x16 = sample_base_voxel_id(temp_voxel_chunk_ptr, x16_i * 16);
 
     at_least_one_occluding = false;
     for (i32 x = 0; x < 2; ++x)

@@ -20,6 +20,7 @@ static constexpr usize FRAMES_IN_FLIGHT = 1;
 
 struct RenderImages {
     u32vec2 size;
+    daxa::ImageId depth_prepass_image;
     std::array<daxa::ImageId, 2> pos_images;
     std::array<daxa::ImageId, 2> col_images;
     daxa::ImageId final_image;
@@ -81,6 +82,8 @@ struct GpuResources {
 
     daxa::BufferId simulated_voxel_particles_buffer;
     daxa::BufferId rendered_voxel_particles_buffer;
+    daxa::BufferId placed_voxel_particles_buffer;
+    daxa::SamplerId final_image_sampler;
 
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
@@ -140,6 +143,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
     daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
     daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
+    daxa::TaskBuffer task_placed_voxel_particles_buffer{{.name = "task_placed_voxel_particles_buffer"}};
 
     StartupComputeTaskState startup_task_state;
     PerframeComputeTaskState perframe_task_state;
@@ -149,7 +153,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkAllocComputeTaskState chunk_alloc_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
     ColorSceneComputeTaskState color_scene_task_state;
-    PostprocessingComputeTaskState postprocessing_task_state;
+    PostprocessingRasterTaskState postprocessing_task_state;
 
     ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
 

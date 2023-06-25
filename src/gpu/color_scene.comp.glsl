@@ -3,7 +3,7 @@
 #include <utils/trace.glsl>
 #include <utils/voxels.glsl>
 
-#define LIGHTING 1
+#define LIGHTING 0
 
 #if LIGHTING
 #define AMBIENT_OCCLUSION 0
@@ -110,13 +110,14 @@ HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
         SimulatedVoxelParticle self = deref(simulated_voxel_particles[id]);
         result.is_hit = true;
         if (self.flags == 2) {
-            result.diff_col = f32vec3(0.2);
-            result.emit_col = f32vec3(0.0);
+            // result.diff_col = f32vec3(0.2);
+            // result.emit_col = f32vec3(0.0);
         } else {
-            result.emit_col = f32vec3(0.8, 0.06, 0.01) * dot(self.vel, self.vel) * 0.1 * (0.5 + good_rand(floor(pos * 8) + self.vel * 3));
-            result.diff_col = f32vec3(0.01);
+            // result.emit_col = f32vec3(0.8, 0.06, 0.01) * dot(self.vel, self.vel) * 0.1 * (0.5 + good_rand(floor(pos * 8) + self.vel * 3));
+            // result.diff_col = f32vec3(0.01);
         }
-        // result.emit_col = f32vec3(0);
+        result.diff_col = f32vec3(0.9);
+        result.emit_col = f32vec3(0);
         // result.nrm = f32vec3(0, 0, 1);
         result.nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, pos);
     } else {

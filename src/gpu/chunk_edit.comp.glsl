@@ -15,7 +15,6 @@ u32vec3 voxel_i;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
-#if 1
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
     u32 i = 0;
@@ -192,7 +191,25 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
         id = 1;
     }
 }
-#endif
+
+void brushgen_particles(in out f32vec3 col, in out u32 id) {
+    for (u32 particle_i = 0; particle_i < deref(globals).voxel_particles_state.place_count; ++particle_i) {
+        u32 sim_index = deref(placed_voxel_particles[particle_i]);
+        SimulatedVoxelParticle self = deref(simulated_voxel_particles[sim_index]);
+        if (u32vec3(floor(self.pos * VOXEL_SCL)) == voxel_i) {
+            col = f32vec3(0.8, 0.8, 0.8);
+            id = 1;
+            return;
+        }
+    }
+
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
+    f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
+    u32 prev_id = voxel_data >> 0x18;
+
+    col = prev_col;
+    id = prev_id;
+}
 
 #define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
@@ -224,6 +241,9 @@ void main() {
     }
     if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
         brushgen_b(col, id);
+    }
+    if ((chunk_flags & CHUNK_FLAGS_PARTICLE_BRUSH) != 0) {
+        brushgen_particles(col, id);
     }
 
     TempVoxel result;

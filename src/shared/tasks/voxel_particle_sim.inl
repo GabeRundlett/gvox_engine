@@ -10,6 +10,7 @@ DAXA_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_RWBufferPtr(SimulatedVoxelParticle), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_RWBufferPtr(daxa_u32), COMPUTE_SHADER_READ_WRITE)
+DAXA_TASK_USE_BUFFER(placed_voxel_particles, daxa_RWBufferPtr(daxa_u32), COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)

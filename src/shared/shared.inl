@@ -27,7 +27,7 @@
 #if COLOR_SCENE_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/color_scene.inl>
 #endif
-#if POSTPROCESSING_COMPUTE || defined(__cplusplus)
+#if POSTPROCESSING_RASTER || defined(__cplusplus)
 #include <shared/tasks/postprocessing.inl>
 #endif
 

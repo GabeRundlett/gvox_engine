@@ -69,7 +69,7 @@ void main() {
     SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
 
     f32mat4x4 vp_mat = deref(globals).player.cam.proj_mat;
-    vec3 vert_pos = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL + (particle.pos * VOXEL_SCL) / VOXEL_SCL;
+    vec3 vert_pos = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL + floor(particle.pos * VOXEL_SCL) / VOXEL_SCL;
 
     pos = vert_pos;
     gl_Position = vp_mat * f32vec4(vert_pos, 1);

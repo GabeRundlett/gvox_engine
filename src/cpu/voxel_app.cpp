@@ -17,6 +17,13 @@ using namespace std::chrono_literals;
 #include <minizip/unzip.h>
 
 void RenderImages::create(daxa::Device &device) {
+    auto rounded_size = size / u32vec2{16, 16} * u32vec2{16, 16};
+    depth_prepass_image = device.create_image({
+        .format = daxa::Format::R32_SFLOAT,
+        .size = {size.x / 4, size.y / 4, 1},
+        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .name = "depth_prepass_image",
+    });
     pos_images[0] = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
         .size = {size.x, size.y, 1},
@@ -62,6 +69,7 @@ void RenderImages::create(daxa::Device &device) {
     });
 }
 void RenderImages::destroy(daxa::Device &device) const {
+    device.destroy_image(depth_prepass_image);
     device.destroy_image(pos_images[0]);
     device.destroy_image(pos_images[1]);
     device.destroy_image(col_images[0]);
@@ -204,6 +212,14 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(u32) * MAX_RENDERED_VOXEL_PARTICLES,
         .name = "rendered_voxel_particles_buffer",
     });
+    placed_voxel_particles_buffer = device.create_buffer({
+        .size = sizeof(u32) * MAX_SIMULATED_VOXEL_PARTICLES,
+        .name = "placed_voxel_particles_buffer",
+    });
+    final_image_sampler = device.create_sampler({
+        .magnification_filter = daxa::Filter::LINEAR,
+        .minification_filter = daxa::Filter::LINEAR,
+    });
 }
 void GpuResources::destroy(daxa::Device &device) const {
     render_images.destroy(device);
@@ -230,6 +246,8 @@ void GpuResources::destroy(daxa::Device &device) const {
     }
     device.destroy_buffer(simulated_voxel_particles_buffer);
     device.destroy_buffer(rendered_voxel_particles_buffer);
+    device.destroy_buffer(placed_voxel_particles_buffer);
+    device.destroy_sampler(final_image_sampler);
 }
 
 VoxelApp::VoxelApp()
@@ -287,7 +305,7 @@ VoxelApp::VoxelApp()
       chunk_alloc_task_state{main_pipeline_manager, ui},
       trace_primary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
       color_scene_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
-      postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
+      postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.final_image_sampler, swapchain.get_format()},
       chunk_hierarchy_task_state{main_pipeline_manager, ui},
       voxel_particle_sim_task_state{main_pipeline_manager, ui},
       voxel_particle_raster_task_state{main_pipeline_manager, ui},
@@ -543,6 +561,7 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.gvox_model_buffer);
     buffer_size(gpu_resources.simulated_voxel_particles_buffer);
     buffer_size(gpu_resources.rendered_voxel_particles_buffer);
+    buffer_size(gpu_resources.placed_voxel_particles_buffer);
 
     needs_vram_calc = false;
 }
@@ -1155,8 +1174,10 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
 
     result_task_list.use_persistent_buffer(task_simulated_voxel_particles_buffer);
     result_task_list.use_persistent_buffer(task_rendered_voxel_particles_buffer);
+    result_task_list.use_persistent_buffer(task_placed_voxel_particles_buffer);
     task_simulated_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.simulated_voxel_particles_buffer}});
     task_rendered_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.rendered_voxel_particles_buffer}});
+    task_placed_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.placed_voxel_particles_buffer}});
 
 #if USE_OLD_ALLOC
     result_task_list.use_persistent_buffer(task_gpu_heap_buffer);
@@ -1248,6 +1269,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
                 .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
                 .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
+                .placed_voxel_particles = task_placed_voxel_particles_buffer.handle(),
             },
         },
         &voxel_particle_sim_task_state,
@@ -1293,6 +1315,8 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
                 .voxel_chunks = task_voxel_chunks_buffer.handle(),
                 .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
+                .placed_voxel_particles = task_placed_voxel_particles_buffer.handle(),
             },
         },
         &chunk_edit_task_state,
@@ -1392,19 +1416,6 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         &color_scene_task_state,
     });
 
-    // PostprocessingTask
-    result_task_list.add_task(PostprocessingComputeTask{
-        {
-            .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .render_col_image_id = task_render_col_image.handle(),
-                .final_image_id = task_render_final_image.handle(),
-            },
-        },
-        &postprocessing_task_state,
-    });
-
     // GpuOutputDownloadTransferTask
     result_task_list.add_task({
         .uses = {
@@ -1428,27 +1439,18 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .name = "GpuOutputDownloadTransferTask",
     });
 
-    // Blit (render to swapchain)
-    result_task_list.add_task({
-        .uses = {
-            daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D>{task_render_final_image},
-            daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D>{task_swapchain_image},
+    // PostprocessingTask
+    result_task_list.add_task(PostprocessingRasterTask{
+        {
+            .uses = {
+                .settings = task_settings_buffer.handle(),
+                .gpu_input = task_input_buffer.handle(),
+                .render_col_image_id = task_render_col_image.handle(),
+                // .final_image_id = task_render_final_image.handle(),
+                .render_image = task_swapchain_image.handle(),
+            },
         },
-        .task = [this](daxa::TaskInterface task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            cmd_list.blit_image_to_image({
-                .src_image = task_render_final_image.get_state().images[0],
-                .src_image_layout = daxa::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                .dst_image = task_swapchain_image.get_state().images[0],
-                .dst_image_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
-                .src_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
-                .src_offsets = {{{0, 0, 0}, {static_cast<i32>(gpu_resources.render_images.size.x), static_cast<i32>(gpu_resources.render_images.size.y), 1}}},
-                .dst_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR},
-                .dst_offsets = {{{0, 0, 0}, {static_cast<i32>(window_size.x), static_cast<i32>(window_size.y), 1}}},
-                .filter = daxa::Filter::LINEAR,
-            });
-        },
-        .name = "Blit (render to swapchain)",
+        &postprocessing_task_state,
     });
 
     // ImGui draw

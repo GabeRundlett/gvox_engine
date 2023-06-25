@@ -131,6 +131,14 @@ void perform_work_item() {
         if (CHUNK_LEVEL > 0) {
             needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
         }
+    } else if ((work_item.brush_id & CHUNK_FLAGS_PARTICLE_BRUSH) != 0) {
+        f32vec3 chunk_min = f32vec3(sub_node_chunk_i) * CHUNK_SIZE;
+        f32vec3 chunk_max = f32vec3(sub_node_chunk_i) * CHUNK_SIZE + SUB_NODE_SIZE;
+        f32vec3 place_bounds_min = f32vec3(deref(globals).voxel_particles_state.place_bounds_min);
+        f32vec3 place_bounds_max = f32vec3(deref(globals).voxel_particles_state.place_bounds_max);
+        if (CHUNK_LEVEL > 0) {
+            needs_subdiv = needs_subdiv && rectangles_overlap(chunk_min, chunk_max, place_bounds_min, place_bounds_max);
+        }
     }
 
     if (needs_subdiv) {

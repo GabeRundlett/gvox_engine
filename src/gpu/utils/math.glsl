@@ -571,3 +571,10 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     // Calculate and return the final color.
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
 }
+
+bool rectangles_overlap(vec3 a_min, vec3 a_max, vec3 b_min, vec3 b_max) {
+    bool x_disjoint = (a_max.x < b_min.x) || (b_max.x < a_min.x);
+    bool y_disjoint = (a_max.y < b_min.y) || (b_max.y < a_min.y);
+    bool z_disjoint = (a_max.z < b_min.z) || (b_max.z < a_min.z);
+    return !x_disjoint && !y_disjoint && !z_disjoint;
+}
