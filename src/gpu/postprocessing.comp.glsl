@@ -56,10 +56,10 @@ void main() {
 layout(location = 0) out f32vec4 color;
 
 void main() {
-    f32vec2 uv = gl_FragCoord.xy / f32vec2(push.final_size);
     i32vec2 image_size = imageSize(daxa_image2D(render_col_image_id));
-
-    // f32vec3 final_color = imageLoad(daxa_image2D(render_col_image_id), i32vec2(uv * image_size)).rgb;
+    f32vec2 scl = f32vec2(deref(gpu_input).frame_dim) / f32vec2(image_size);
+    // Suspicious scale factor (I don't trust floating point math)
+    f32vec2 uv = gl_FragCoord.xy / f32vec2(push.final_size) * scl;
     f32vec3 final_color = texture(daxa_sampler2D(render_col_image_id, push.final_sampler), uv).rgb;
     color = f32vec4(color_correct(final_color), 1.0);
 }

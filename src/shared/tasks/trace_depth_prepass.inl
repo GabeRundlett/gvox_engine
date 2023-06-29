@@ -2,14 +2,14 @@
 
 #include "../core.inl"
 
-DAXA_DECL_TASK_USES_BEGIN(TracePrimaryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_DECL_TASK_USES_BEGIN(TraceDepthPrepassComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(render_pos_image_id, REGULAR_2D, COMPUTE_SHADER_WRITE)
+DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_WRITE)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
@@ -44,7 +44,8 @@ struct TraceDepthPrepassComputeTaskState {
                 return;
         }
         cmd_list.set_pipeline(*pipeline);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        assert((render_size.x % (8 * PREPASS_SCL)) == 0 && (render_size.y % (8 * PREPASS_SCL)) == 0);
+        cmd_list.dispatch(render_size.x / (8 * PREPASS_SCL), render_size.y / (8 * PREPASS_SCL));
     }
 };
 

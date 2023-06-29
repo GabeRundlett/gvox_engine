@@ -47,3 +47,6 @@
 #endif
 
 #define USE_POINTS 0
+#define PREPASS_SCL 2
+#define VOXEL_ACCEL_UNIFORMITY 1
+#define ENABLE_DEPTH_PREPASS 1

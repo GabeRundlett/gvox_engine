@@ -21,6 +21,9 @@
 #if CHUNK_ALLOC_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/chunk_alloc.inl>
 #endif
+#if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/trace_depth_prepass.inl>
+#endif
 #if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/trace_primary.inl>
 #endif

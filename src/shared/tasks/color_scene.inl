@@ -49,7 +49,8 @@ struct ColorSceneComputeTaskState {
                 return;
         }
         cmd_list.set_pipeline(*pipeline);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 

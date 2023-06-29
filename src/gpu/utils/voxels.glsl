@@ -188,7 +188,8 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     u32 chunk_flags = deref(voxel_chunk_ptr).flags;
     if ((chunk_flags & 1) == 0)
         return 7;
-#if !defined(TRACE_DEPTH_PREPASS_COMPUTE)
+
+#if !defined(TRACE_DEPTH_PREPASS_COMPUTE) || VOXEL_ACCEL_UNIFORMITY
     if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, false) & 0xff000000) != 0)
         return 0;
 #endif

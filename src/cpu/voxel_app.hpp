@@ -20,6 +20,7 @@ static constexpr usize FRAMES_IN_FLIGHT = 1;
 
 struct RenderImages {
     u32vec2 size;
+    u32vec2 rounded_size;
     daxa::ImageId depth_prepass_image;
     std::array<daxa::ImageId, 2> pos_images;
     std::array<daxa::ImageId, 2> col_images;
@@ -113,6 +114,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::BufferId prev_gvox_model_buffer{};
     u32 prev_page_count{};
 
+    daxa::TaskImage task_render_depth_prepass_image{{.name = "task_render_depth_prepass_image"}};
     daxa::TaskImage task_render_pos_image{{.name = "task_render_pos_image"}};
     daxa::TaskImage task_render_prev_pos_image{{.name = "task_render_prev_pos_image"}};
     daxa::TaskImage task_render_col_image{{.name = "task_render_col_image"}};
@@ -151,6 +153,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkOpt_x2x4_ComputeTaskState chunk_opt_x2x4_task_state;
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
     ChunkAllocComputeTaskState chunk_alloc_task_state;
+    TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
     ColorSceneComputeTaskState color_scene_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;

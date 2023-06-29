@@ -9,6 +9,9 @@ void player_startup(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
+
+    // Inside beach hut
+    // PLAYER.pos = f32vec3(173.78, 113.72, 12.09);
     PLAYER.rot.x = PI * -0.751;
     PLAYER.rot.z = PI * 1.25;
 }

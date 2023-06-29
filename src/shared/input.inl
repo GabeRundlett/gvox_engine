@@ -32,6 +32,7 @@ struct GpuInput {
     u32 frame_index;
     u32 fif_index;
     u32vec2 frame_dim;
+    u32vec2 rounded_frame_dim;
     f32 time;
     f32 delta_time;
     f32 resize_factor;

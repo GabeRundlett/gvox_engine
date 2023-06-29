@@ -34,9 +34,9 @@ f32vec4 get_prev_sample(i32vec2 prev_pixel_i, f32vec3 hit, i32vec2 frame_dim) {
 #define SKY_COL_B (f32vec3(0.11, 0.10, 0.54))
 
 // #define SUN_TIME (deref(gpu_input).time)
-#define SUN_TIME 1.8
-#define SUN_COL (f32vec3(1, 0.85, 0.5) * 20)
-#define SUN_DIR normalize(f32vec3(-0.5 * abs(sin(SUN_TIME)), -cos(SUN_TIME), abs(sin(SUN_TIME))))
+#define SUN_TIME 0.9
+#define SUN_COL (f32vec3(1, 0.90, 0.4) * 20)
+#define SUN_DIR normalize(f32vec3(1.2 * abs(sin(SUN_TIME)), -cos(SUN_TIME), abs(sin(SUN_TIME))))
 
 f32vec3 sample_sky_ambient(f32vec3 nrm) {
     f32 sun_val = dot(nrm, SUN_DIR) * 0.1 + 0.06;
@@ -205,8 +205,6 @@ void main() {
     f32 aspect = frame_dim.x * inv_frame_dim.y;
 
     pixel_i = gl_GlobalInvocationID.xy;
-    if (pixel_i.x >= frame_dim.x || pixel_i.y >= frame_dim.y)
-        return;
 
     f32vec3 col = f32vec3(0);
     f32 accepted_count = 1;
@@ -217,7 +215,8 @@ void main() {
     f32vec3 blue_noise = texelFetch(daxa_texture3D(blue_noise_cosine_vec3), ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xyz * 2 - 1;
     cam_pos = create_view_pos(deref(globals).player);
     f32vec3 cam_dir = create_view_dir(deref(globals).player, uv);
-    f32vec3 hit_pos = imageLoad(daxa_image2D(render_pos_image_id), i32vec2(pixel_i)).xyz;
+    f32vec4 render_pos = imageLoad(daxa_image2D(render_pos_image_id), i32vec2(pixel_i));
+    f32vec3 hit_pos = render_pos.xyz;
 
 #if 0
     f32vec3 ray_pos = cam_pos;
@@ -288,60 +287,6 @@ void main() {
     }
 #endif
 
-#elif 0
-    col = color_trace(hit_pos, cam_dir);
-
-    f32 hit_dist = length(cam_pos - hit_pos);
-    hit_dist = ceil(pow(hit_dist * 0.1, 1) / SETTINGS.fov * PI / 2);
-
-    f32vec2 prev_uv = prev_uv_from_pos(GLOBALS.player, aspect, SETTINGS.fov, hit_pos);
-    i32vec2 prev_pixel_i = i32vec2(round((prev_uv + 0.5) * frame_dim));
-
-    i32vec2 pfc, finalpfc;
-    f32 finaldist = MAX_SD;
-    f32vec3 final_pos = f32vec3(0);
-    const i32 SEARCH_RADIUS = 1;
-
-    f32vec3 blurred_color = f32vec3(0);
-    f32 blurred_samples = 0;
-    f32vec3 hit_nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, hit_pos);
-
-    // hit_dist = 0 + ceil(
-    //     pow((dot(hit_nrm, cam_dir) * 0.5 + 0.5) * 2, 10)
-    //     + pow(hit_dist * 0.1, 0.5) / SETTINGS.fov * PI / 2
-    //     );
-
-    for (i32 x = -SEARCH_RADIUS; x <= SEARCH_RADIUS; x++) {
-        for (i32 y = -SEARCH_RADIUS; y <= SEARCH_RADIUS; y++) {
-            pfc = prev_pixel_i + i32vec2(x, y);
-            f32vec4 prev_sample = get_prev_sample(pfc, hit_pos, i32vec2(INPUT.frame_dim));
-            f32 dist = prev_sample.w;
-            f32vec3 prev_pos = prev_sample.xyz;
-            if (dist < finaldist) {
-                finalpfc = pfc;
-                finaldist = dist;
-            }
-            f32vec3 prev_nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, prev_pos);
-            bool normals_equal = prev_nrm == hit_nrm || dot(hit_nrm, cam_dir) < 0.5;
-            bool positions_equal = floor(prev_pos * VOXEL_SCL / hit_dist) == floor(hit_pos * VOXEL_SCL / hit_dist);
-            bool is_close_enough = dist < 0.01 * hit_dist;
-            if (is_close_enough && positions_equal && normals_equal) {
-                f32vec4 prev_col = imageLoad(daxa_image2D(render_prev_col_image_id), pfc);
-                blurred_color += prev_col.rgb;
-                accepted_count = max(accepted_count, min(prev_col.a + 1, 100));
-                blurred_samples += 1.0;
-            }
-        }
-    }
-
-    bool accepted = blurred_samples > 0;
-
-    // finaldist = clamp(finaldist, 0.01, 1.0 / VOXEL_SCL) / (1.0 / VOXEL_SCL);
-    f32 alpha = mix(1.0, 1.0 / (accepted_count + 1), f32(accepted));
-    col = col * alpha + (blurred_color / max(blurred_samples, 1)) * (1.0 - alpha);
-    // col = blurred_color / blurred_samples;
-    // col = hit_nrm;
-#endif
 
 #if 0
     // Naive frame blending:
@@ -424,6 +369,7 @@ void main() {
     }
 #endif
 
+    // imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(hsv2rgb(vec3(0.6 + render_pos.w * 0.01, 1.0, min(1.0, render_pos.w * 0.05))), accepted_count));
     imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(col, accepted_count));
 }
 #undef CHUNKS

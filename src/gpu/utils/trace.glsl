@@ -51,7 +51,7 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
     ray_pos = ray_pos + ray_dir * t;
 }
 
-float trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps, float max_dist, bool extend_to_max_dist) {
+float trace_hierarchy_traversal_steps(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps, float max_dist, bool extend_to_max_dist, out u32 x1_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
     b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
@@ -99,7 +99,7 @@ float trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) al
     f32vec3 current_pos = ray_pos;
     f32vec3 t_next = t_start;
     f32 dist = max_dist;
-    for (u32 x1_steps = 0; x1_steps < max_steps; ++x1_steps) {
+    for (x1_steps = 0; x1_steps < max_steps; ++x1_steps) {
         current_pos = ray_pos + ray_dir * t_curr;
         if (!inside(current_pos + ray_dir * 0.001, b) || t_curr > max_dist) {
             break;
@@ -127,6 +127,11 @@ float trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) al
     }
 
     return t_curr;
+}
+
+float trace_hierarchy_traversal(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps, float max_dist, bool extend_to_max_dist) {
+    u32 x1_steps;
+    return trace_hierarchy_traversal_steps(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, max_steps, max_dist, extend_to_max_dist, x1_steps);
 }
 
 void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
@@ -162,9 +167,11 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     ray_pos += ray_dir * MAX_SD;
 }
 
-void trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
+u32 trace(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir) {
     // trace_sphere_trace(ray_pos, ray_dir);
-    trace_hierarchy_traversal(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512, MAX_SD, true);
+    u32 x1_steps = 0;
+    trace_hierarchy_traversal_steps(allocator, voxel_chunks_ptr, chunk_n, ray_pos, ray_dir, 512, MAX_SD, true, x1_steps);
+    return x1_steps;
 }
 
 f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {

@@ -12,8 +12,7 @@ u32 sample_temp_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in
 
 // For now, I'm testing with using non-zero as the accel structure, instead of uniformity.
 u32 sample_base_voxel_id(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in u32vec3 in_chunk_i) {
-#define COMPUTE_UNIFORMITY 0
-#if COMPUTE_UNIFORMITY
+#if VOXEL_ACCEL_UNIFORMITY
     return sample_temp_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
 #else
     return 0;
