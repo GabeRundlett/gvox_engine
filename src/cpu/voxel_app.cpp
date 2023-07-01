@@ -319,7 +319,7 @@ VoxelApp::VoxelApp()
       voxel_particle_sim_task_state{main_pipeline_manager, ui},
       voxel_particle_raster_task_state{main_pipeline_manager, ui},
       // clang-format on
-      main_task_list{[this]() {
+      main_task_graph{[this]() {
           gpu_resources.create(device);
           gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
 #if USE_OLD_ALLOC
@@ -338,19 +338,19 @@ VoxelApp::VoxelApp()
           // u32 pages = (1 << 30) / VOXEL_MALLOC_PAGE_SIZE_BYTES;
 
           gpu_resources.voxel_malloc.create(device, pages);
-          return record_main_task_list();
+          return record_main_task_graph();
       }()} {
     gvox_ctx = gvox_create_context();
     start = Clock::now();
 
 #if 0
     {
-        daxa::TaskList temp_task_list = daxa::TaskList({
+        daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
-            .name = "temp_task_list",
+            .name = "temp_task_graph",
         });
-        temp_task_list.use_persistent_buffer(task_test_data_buffer);
-        temp_task_list.add_task({
+        temp_task_graph.use_persistent_buffer(task_test_data_buffer);
+        temp_task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_test_data_buffer},
             },
@@ -377,22 +377,22 @@ VoxelApp::VoxelApp()
             },
             .name = "upload_model",
         });
-        temp_task_list.submit({});
-        temp_task_list.complete({});
-        temp_task_list.execute({});
+        temp_task_graph.submit({});
+        temp_task_graph.complete({});
+        temp_task_graph.execute({});
     }
 #endif
 
     {
-        daxa::TaskList temp_task_list = daxa::TaskList({
+        daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
-            .name = "temp_task_list",
+            .name = "temp_task_graph",
         });
-        temp_task_list.use_persistent_image(task_blue_noise_vec1_image);
-        temp_task_list.use_persistent_image(task_blue_noise_vec2_image);
-        temp_task_list.use_persistent_image(task_blue_noise_unit_vec3_image);
-        temp_task_list.use_persistent_image(task_blue_noise_cosine_vec3_image);
-        temp_task_list.add_task({
+        temp_task_graph.use_persistent_image(task_blue_noise_vec1_image);
+        temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
+        temp_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
+        temp_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
+        temp_task_graph.add_task({
             .uses = {
                 daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec1_image},
                 daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec2_image},
@@ -471,9 +471,9 @@ VoxelApp::VoxelApp()
             },
             .name = "upload_blue_noise",
         });
-        temp_task_list.submit({});
-        temp_task_list.complete({});
-        temp_task_list.execute({});
+        temp_task_graph.submit({});
+        temp_task_graph.complete({});
+        temp_task_graph.execute({});
     }
 }
 VoxelApp::~VoxelApp() {
@@ -688,10 +688,8 @@ void VoxelApp::on_update() {
 
     {
         auto reload_result = main_pipeline_manager.reload_all();
-        if (reload_result.has_value()) {
-            if (reload_result.value().is_err()) {
-                ui.console.add_log(reload_result.value().to_string());
-            }
+        if (auto reload_err = std::get_if<daxa::PipelineReloadError>(&reload_result)) {
+            ui.console.add_log(reload_err->message);
         }
     }
 
@@ -771,7 +769,7 @@ void VoxelApp::on_update() {
     condition_values[static_cast<usize>(Conditions::UPLOAD_GVOX_MODEL)] = model_is_ready;
     condition_values[static_cast<usize>(Conditions::VOXEL_MALLOC_REALLOC)] = gpu_resources.voxel_malloc.next_page_count != 0;
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
-    main_task_list.execute({.permutation_condition_values = condition_values});
+    main_task_graph.execute({.permutation_condition_values = condition_values});
 
     gpu_input.resize_factor = 1.0f;
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
@@ -896,7 +894,7 @@ void VoxelApp::recreate_render_images() {
     needs_vram_calc = true;
 }
 void VoxelApp::recreate_voxel_chunks() {
-    // main_task_list.remove_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
+    // main_task_graph.remove_runtime_buffer(task_voxel_chunks_buffer, gpu_resources.voxel_chunks.buffer);
     gpu_resources.voxel_chunks.destroy(device);
     gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
     task_voxel_chunks_buffer.set_buffers({.buffers = {&gpu_resources.voxel_chunks.buffer, 1}});
@@ -904,8 +902,8 @@ void VoxelApp::recreate_voxel_chunks() {
     needs_vram_calc = true;
 }
 
-void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
-    temp_task_list.add_task({
+void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
+    temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_globals_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_temp_voxel_chunks_buffer},
@@ -966,7 +964,7 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
         },
         .name = "StartupTask (Globals Clear)",
     });
-    temp_task_list.add_task(StartupComputeTask{
+    temp_task_graph.add_task(StartupComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -977,7 +975,7 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
         &startup_task_state,
     });
 
-    temp_task_list.add_task({
+    temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_voxel_malloc_global_allocator_buffer},
         },
@@ -1012,8 +1010,8 @@ void VoxelApp::run_startup(daxa::TaskList &temp_task_list) {
         .name = "Initialize",
     });
 }
-void VoxelApp::upload_settings(daxa::TaskList &temp_task_list) {
-    temp_task_list.add_task({
+void VoxelApp::upload_settings(daxa::TaskGraph &temp_task_graph) {
+    temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::HOST_TRANSFER_WRITE>{task_settings_buffer},
         },
@@ -1041,8 +1039,8 @@ void VoxelApp::upload_settings(daxa::TaskList &temp_task_list) {
         .name = "StartupTask (Globals Clear)",
     });
 }
-void VoxelApp::upload_model(daxa::TaskList &temp_task_list) {
-    temp_task_list.add_task({
+void VoxelApp::upload_model(daxa::TaskGraph &temp_task_graph) {
+    temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_gvox_model_buffer},
         },
@@ -1077,8 +1075,8 @@ void VoxelApp::upload_model(daxa::TaskList &temp_task_list) {
         .name = "upload_model",
     });
 }
-void VoxelApp::voxel_malloc_realloc(daxa::TaskList &temp_task_list) {
-    temp_task_list.add_task({
+void VoxelApp::voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph) {
+    temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{task_voxel_malloc_old_pages_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_voxel_malloc_pages_buffer},
@@ -1138,35 +1136,35 @@ void VoxelApp::voxel_malloc_realloc(daxa::TaskList &temp_task_list) {
     });
 }
 
-auto VoxelApp::record_main_task_list() -> daxa::TaskList {
-    daxa::TaskList result_task_list = daxa::TaskList({
+auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
+    daxa::TaskGraph result_task_graph = daxa::TaskGraph({
         .device = device,
         .swapchain = swapchain,
         .permutation_condition_count = static_cast<usize>(Conditions::LAST),
-        .name = "main_task_list",
+        .name = "main_task_graph",
     });
 
-    result_task_list.use_persistent_image(task_blue_noise_vec1_image);
-    result_task_list.use_persistent_image(task_blue_noise_vec2_image);
-    result_task_list.use_persistent_image(task_blue_noise_unit_vec3_image);
-    result_task_list.use_persistent_image(task_blue_noise_cosine_vec3_image);
+    result_task_graph.use_persistent_image(task_blue_noise_vec1_image);
+    result_task_graph.use_persistent_image(task_blue_noise_vec2_image);
+    result_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
+    result_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
     task_blue_noise_vec1_image.set_images({.images = std::array{gpu_resources.blue_noise_vec1_image}});
     task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
     task_blue_noise_unit_vec3_image.set_images({.images = std::array{gpu_resources.blue_noise_unit_vec3_image}});
     task_blue_noise_cosine_vec3_image.set_images({.images = std::array{gpu_resources.blue_noise_cosine_vec3_image}});
 
-    result_task_list.use_persistent_buffer(task_settings_buffer);
-    result_task_list.use_persistent_buffer(task_input_buffer);
-    result_task_list.use_persistent_buffer(task_output_buffer);
-    result_task_list.use_persistent_buffer(task_staging_output_buffer);
-    result_task_list.use_persistent_buffer(task_globals_buffer);
-    result_task_list.use_persistent_buffer(task_test_data_buffer);
-    result_task_list.use_persistent_buffer(task_temp_voxel_chunks_buffer);
-    result_task_list.use_persistent_buffer(task_voxel_malloc_global_allocator_buffer);
-    result_task_list.use_persistent_buffer(task_voxel_chunks_buffer);
-    result_task_list.use_persistent_buffer(task_gvox_model_buffer);
-    result_task_list.use_persistent_buffer(task_voxel_malloc_pages_buffer);
-    result_task_list.use_persistent_buffer(task_voxel_malloc_old_pages_buffer);
+    result_task_graph.use_persistent_buffer(task_settings_buffer);
+    result_task_graph.use_persistent_buffer(task_input_buffer);
+    result_task_graph.use_persistent_buffer(task_output_buffer);
+    result_task_graph.use_persistent_buffer(task_staging_output_buffer);
+    result_task_graph.use_persistent_buffer(task_globals_buffer);
+    result_task_graph.use_persistent_buffer(task_test_data_buffer);
+    result_task_graph.use_persistent_buffer(task_temp_voxel_chunks_buffer);
+    result_task_graph.use_persistent_buffer(task_voxel_malloc_global_allocator_buffer);
+    result_task_graph.use_persistent_buffer(task_voxel_chunks_buffer);
+    result_task_graph.use_persistent_buffer(task_gvox_model_buffer);
+    result_task_graph.use_persistent_buffer(task_voxel_malloc_pages_buffer);
+    result_task_graph.use_persistent_buffer(task_voxel_malloc_old_pages_buffer);
 
     task_settings_buffer.set_buffers({.buffers = std::array{gpu_resources.settings_buffer}});
     task_input_buffer.set_buffers({.buffers = std::array{gpu_resources.input_buffer}});
@@ -1183,27 +1181,27 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     task_voxel_malloc_pages_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_malloc.pages_buffer, gpu_resources.voxel_malloc.available_pages_stack_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer}});
     task_voxel_malloc_old_pages_buffer.set_buffers({.buffers = std::array{gpu_resources.voxel_malloc.pages_buffer, gpu_resources.voxel_malloc.available_pages_stack_buffer, gpu_resources.voxel_malloc.released_pages_stack_buffer}});
 
-    result_task_list.use_persistent_buffer(task_simulated_voxel_particles_buffer);
-    result_task_list.use_persistent_buffer(task_rendered_voxel_particles_buffer);
-    result_task_list.use_persistent_buffer(task_placed_voxel_particles_buffer);
+    result_task_graph.use_persistent_buffer(task_simulated_voxel_particles_buffer);
+    result_task_graph.use_persistent_buffer(task_rendered_voxel_particles_buffer);
+    result_task_graph.use_persistent_buffer(task_placed_voxel_particles_buffer);
     task_simulated_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.simulated_voxel_particles_buffer}});
     task_rendered_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.rendered_voxel_particles_buffer}});
     task_placed_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.placed_voxel_particles_buffer}});
 
 #if USE_OLD_ALLOC
-    result_task_list.use_persistent_buffer(task_gpu_heap_buffer);
+    result_task_graph.use_persistent_buffer(task_gpu_heap_buffer);
     task_gpu_heap_buffer.set_buffers({.buffers = std::array{gpu_resources.gpu_heap.buffer}});
 #endif
 
-    result_task_list.use_persistent_image(task_swapchain_image);
-    result_task_list.use_persistent_image(task_render_depth_prepass_image);
-    result_task_list.use_persistent_image(task_render_pos_image);
-    result_task_list.use_persistent_image(task_render_col_image);
-    result_task_list.use_persistent_image(task_render_prev_pos_image);
-    result_task_list.use_persistent_image(task_render_prev_col_image);
-    result_task_list.use_persistent_image(task_render_final_image);
-    result_task_list.use_persistent_image(task_render_raster_color_image);
-    result_task_list.use_persistent_image(task_render_raster_depth_image);
+    result_task_graph.use_persistent_image(task_swapchain_image);
+    result_task_graph.use_persistent_image(task_render_depth_prepass_image);
+    result_task_graph.use_persistent_image(task_render_pos_image);
+    result_task_graph.use_persistent_image(task_render_col_image);
+    result_task_graph.use_persistent_image(task_render_prev_pos_image);
+    result_task_graph.use_persistent_image(task_render_prev_col_image);
+    result_task_graph.use_persistent_image(task_render_final_image);
+    result_task_graph.use_persistent_image(task_render_raster_color_image);
+    result_task_graph.use_persistent_image(task_render_raster_depth_image);
     task_swapchain_image.set_images({.images = std::array{swapchain_image}});
     task_render_depth_prepass_image.set_images({.images = std::array{gpu_resources.render_images.depth_prepass_image}});
     task_render_pos_image.set_images({.images = std::array{gpu_resources.render_images.pos_images[gpu_input.frame_index % 2]}});
@@ -1214,25 +1212,25 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     task_render_raster_color_image.set_images({.images = std::array{gpu_resources.render_images.raster_color_image}});
     task_render_raster_depth_image.set_images({.images = std::array{gpu_resources.render_images.raster_depth_image}});
 
-    result_task_list.conditional({
+    result_task_graph.conditional({
         .condition_index = static_cast<u32>(Conditions::STARTUP),
-        .when_true = [&, this]() { this->run_startup(result_task_list); },
+        .when_true = [&, this]() { this->run_startup(result_task_graph); },
     });
-    result_task_list.conditional({
+    result_task_graph.conditional({
         .condition_index = static_cast<u32>(Conditions::UPLOAD_SETTINGS),
-        .when_true = [&, this]() { this->upload_settings(result_task_list); },
+        .when_true = [&, this]() { this->upload_settings(result_task_graph); },
     });
-    result_task_list.conditional({
+    result_task_graph.conditional({
         .condition_index = static_cast<u32>(Conditions::UPLOAD_GVOX_MODEL),
-        .when_true = [&, this]() { this->upload_model(result_task_list); },
+        .when_true = [&, this]() { this->upload_model(result_task_graph); },
     });
-    result_task_list.conditional({
+    result_task_graph.conditional({
         .condition_index = static_cast<u32>(Conditions::VOXEL_MALLOC_REALLOC),
-        .when_true = [&, this]() { this->voxel_malloc_realloc(result_task_list); },
+        .when_true = [&, this]() { this->voxel_malloc_realloc(result_task_graph); },
     });
 
     // GpuInputUploadTransferTask
-    result_task_list.add_task({
+    result_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_input_buffer},
         },
@@ -1256,7 +1254,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // PerframeTask
-    result_task_list.add_task(PerframeComputeTask{
+    result_task_graph.add_task(PerframeComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1272,7 +1270,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // VoxelParticleSimComputeTask
-    result_task_list.add_task(VoxelParticleSimComputeTask{
+    result_task_graph.add_task(VoxelParticleSimComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1289,7 +1287,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkHierarchy
-    result_task_list.add_task(ChunkHierarchyComputeTaskL0{
+    result_task_graph.add_task(ChunkHierarchyComputeTaskL0{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1301,7 +1299,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         },
         &chunk_hierarchy_task_state,
     });
-    result_task_list.add_task(ChunkHierarchyComputeTaskL1{
+    result_task_graph.add_task(ChunkHierarchyComputeTaskL1{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1315,7 +1313,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkEdit
-    result_task_list.add_task(ChunkEditComputeTask{
+    result_task_graph.add_task(ChunkEditComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1336,7 +1334,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkOpt_x2x4
-    result_task_list.add_task(ChunkOpt_x2x4_ComputeTask{
+    result_task_graph.add_task(ChunkOpt_x2x4_ComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1350,7 +1348,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkOpt_x8up
-    result_task_list.add_task(ChunkOpt_x8up_ComputeTask{
+    result_task_graph.add_task(ChunkOpt_x8up_ComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1364,7 +1362,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ChunkAlloc
-    result_task_list.add_task(ChunkAllocComputeTask{
+    result_task_graph.add_task(ChunkAllocComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1378,7 +1376,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // VoxelParticleRasterTask
-    result_task_list.add_task(VoxelParticleRasterTask{
+    result_task_graph.add_task(VoxelParticleRasterTask{
         {
             .uses = {
                 .gpu_input = task_input_buffer.handle(),
@@ -1393,7 +1391,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // TraceDepthPrepassTask
-    result_task_list.add_task(TraceDepthPrepassComputeTask{
+    result_task_graph.add_task(TraceDepthPrepassComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1409,7 +1407,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // TracePrimaryTask
-    result_task_list.add_task(TracePrimaryComputeTask{
+    result_task_graph.add_task(TracePrimaryComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1426,7 +1424,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ColorSceneTask
-    result_task_list.add_task(ColorSceneComputeTask{
+    result_task_graph.add_task(ColorSceneComputeTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1447,7 +1445,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // GpuOutputDownloadTransferTask
-    result_task_list.add_task({
+    result_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{task_output_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::HOST_TRANSFER_WRITE>{task_staging_output_buffer},
@@ -1470,7 +1468,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // PostprocessingTask
-    result_task_list.add_task(PostprocessingRasterTask{
+    result_task_graph.add_task(PostprocessingRasterTask{
         {
             .uses = {
                 .settings = task_settings_buffer.handle(),
@@ -1484,7 +1482,7 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
     });
 
     // ImGui draw
-    result_task_list.add_task({
+    result_task_graph.add_task({
         .uses = {
             daxa::TaskImageUse<daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D>{task_swapchain_image},
         },
@@ -1495,9 +1493,9 @@ auto VoxelApp::record_main_task_list() -> daxa::TaskList {
         .name = "ImGui draw",
     });
 
-    result_task_list.submit({});
-    result_task_list.present({});
-    result_task_list.complete({});
+    result_task_graph.submit({});
+    result_task_graph.present({});
+    result_task_graph.complete({});
 
-    return result_task_list;
+    return result_task_graph;
 }

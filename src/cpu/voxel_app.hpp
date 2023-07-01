@@ -5,7 +5,7 @@
 
 #include <daxa/utils/pipeline_manager.hpp>
 #include <daxa/utils/imgui.hpp>
-#include <daxa/utils/task_list.hpp>
+#include <daxa/utils/task_graph.hpp>
 #include <daxa/utils/math_operators.hpp>
 using namespace daxa::math_operators;
 
@@ -170,7 +170,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
         VOXEL_MALLOC_REALLOC,
         LAST,
     };
-    daxa::TaskList main_task_list;
+    daxa::TaskGraph main_task_graph;
     std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
 
     GpuInput gpu_input{};
@@ -205,10 +205,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void recreate_render_images();
     void recreate_voxel_chunks();
 
-    void run_startup(daxa::TaskList &temp_task_list);
-    void upload_settings(daxa::TaskList &temp_task_list);
-    void upload_model(daxa::TaskList &temp_task_list);
-    void voxel_malloc_realloc(daxa::TaskList &temp_task_list);
+    void run_startup(daxa::TaskGraph &temp_task_graph);
+    void upload_settings(daxa::TaskGraph &temp_task_graph);
+    void upload_model(daxa::TaskGraph &temp_task_graph);
+    void voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph);
 
-    auto record_main_task_list() -> daxa::TaskList;
+    auto record_main_task_graph() -> daxa::TaskGraph;
 };

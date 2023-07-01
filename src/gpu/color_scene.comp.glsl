@@ -230,7 +230,6 @@ void main() {
     }
 #endif
 
-#if 1
     HitInfo hit_info = get_hit_info(hit_pos, cam_dir, true);
 
     f32vec3 light = f32vec3(0);

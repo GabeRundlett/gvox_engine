@@ -6,7 +6,7 @@
 #undef DAXA_ENABLE_SHADER_NO_NAMESPACE
 #undef DAXA_ENABLE_IMAGE_OVERLOADS_BASIC
 
-#include <daxa/utils/task_list.inl>
+#include <daxa/utils/task_graph.inl>
 
 #define CHUNK_SIZE 64
 
