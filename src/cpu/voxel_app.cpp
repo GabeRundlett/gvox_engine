@@ -27,7 +27,7 @@ constexpr auto round_frame_dim(u32vec2 size) {
 void RenderImages::create(daxa::Device &device) {
     rounded_size = round_frame_dim(size);
     depth_prepass_image = device.create_image({
-        .format = daxa::Format::R32_SFLOAT,
+        .format = daxa::Format::R32G32_SFLOAT,
         .size = {rounded_size.x / PREPASS_SCL, rounded_size.y / PREPASS_SCL, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .name = "depth_prepass_image",

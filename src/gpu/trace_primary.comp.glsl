@@ -32,21 +32,22 @@ void main() {
 
 #if !ENABLE_DEPTH_PREPASS
     f32 prepass_depth = 0.0;
+    f32 prepass_steps = 0.0;
 #else
-    f32 prepass_depth = MAX_SD;
-    f32 middle_depth = 0.0f;
+    f32 max_depth = MAX_SD;
+    f32 prepass_depth = max_depth;
+    f32 prepass_steps = 0.0;
+
     for (i32 yi = -1; yi <= 1; ++yi) {
         for (i32 xi = -1; xi <= 1; ++xi) {
             i32vec2 pt = i32vec2(pixel_i / PREPASS_SCL) + i32vec2(xi, yi);
             pt = clamp(pt, i32vec2(0), i32vec2(INPUT.rounded_frame_dim / PREPASS_SCL));
-            f32 loaded_depth = imageLoad(daxa_image2D(render_depth_prepass_image), pt).r - 1.0 / VOXEL_SCL;
-            f32 single_voxel_radius = 2.0 / VOXEL_SCL;
-            f32 max_depth = single_voxel_radius / tan(SETTINGS.fov / f32(INPUT.frame_dim.y) * PREPASS_SCL);
-            loaded_depth = min(loaded_depth, max_depth);
-            if (xi == 0 && yi == 0) {
-                middle_depth = loaded_depth;
-            }
+            f32vec2 prepass_data = imageLoad(daxa_image2D(render_depth_prepass_image), pt).xy;
+            f32 loaded_depth = prepass_data.x - 1.0 / VOXEL_SCL;
             prepass_depth = max(min(prepass_depth, loaded_depth), 0);
+            if (prepass_depth == loaded_depth || prepass_depth == max_depth) {
+                prepass_steps = prepass_data.y / 4.0;
+            }
         }
     }
 #endif
@@ -56,7 +57,7 @@ void main() {
 
     u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir);
 
-    imageStore(daxa_image2D(render_pos_image_id), i32vec2(pixel_i), f32vec4(ray_pos, step_n));
+    imageStore(daxa_image2D(render_pos_image_id), i32vec2(pixel_i), f32vec4(ray_pos, step_n + prepass_steps));
 }
 #undef INPUT
 #undef SETTINGS

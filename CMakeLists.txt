@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 include(cmake/warnings.cmake)
 include(cmake/static_analysis.cmake)
 
-project(my_app VERSION 0.1.13)
+project(my_app VERSION 0.1.14)
 add_executable(${PROJECT_NAME}
     "src/cpu/main.cpp"
     "src/cpu/deps.cpp"
