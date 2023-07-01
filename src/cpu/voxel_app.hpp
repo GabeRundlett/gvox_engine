@@ -19,8 +19,8 @@ using BDA = daxa::BufferDeviceAddress;
 static constexpr usize FRAMES_IN_FLIGHT = 1;
 
 struct RenderImages {
-    u32vec2 size;
-    u32vec2 rounded_size;
+    u32vec2 size{};
+    u32vec2 rounded_size{};
     daxa::ImageId depth_prepass_image;
     std::array<daxa::ImageId, 2> pos_images;
     std::array<daxa::ImageId, 2> col_images;
@@ -187,6 +187,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     bool model_is_loading = false;
 
     VoxelApp();
+    VoxelApp(VoxelApp const &) = delete;
+    VoxelApp(VoxelApp &&) = delete;
+    auto operator=(VoxelApp const &) -> VoxelApp & = delete;
+    auto operator=(VoxelApp &&) -> VoxelApp & = delete;
     ~VoxelApp();
 
     void run();

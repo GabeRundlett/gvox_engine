@@ -458,8 +458,8 @@ void AppUi::settings_ui() {
                 should_run_startup = true;
             }
             if (ImGui::Button("Open Model")) {
-                nfdchar_t *out_path = NULL;
-                nfdresult_t result = NFD_OpenDialog("gvox,vox,vxl,gvp,rle,oct,glp,brk", (data_directory / "models").string().c_str(), &out_path);
+                nfdchar_t *out_path = nullptr;
+                nfdresult_t const result = NFD_OpenDialog("gvox,vox,vxl,gvp,rle,oct,glp,brk", (data_directory / "models").string().c_str(), &out_path);
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
@@ -705,7 +705,7 @@ void AppUi::settings_controls_ui() {
 
 static ImGuiTableSortSpecs *current_gpu_resource_info_sort_specs = nullptr;
 
-static int compare_gpu_resource_infos(const void *lhs, const void *rhs) {
+static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int {
     auto const *a = static_cast<AppUi::GpuResourceInfo const *>(lhs);
     auto const *b = static_cast<AppUi::GpuResourceInfo const *>(rhs);
     for (int n = 0; n < current_gpu_resource_info_sort_specs->SpecsCount; n++) {
@@ -717,10 +717,12 @@ static int compare_gpu_resource_infos(const void *lhs, const void *rhs) {
         case 2: delta = static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size)); break;
         default: break;
         }
-        if (delta > 0)
+        if (delta > 0) {
             return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? +1 : -1;
-        if (delta < 0)
+        }
+        if (delta < 0) {
             return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? -1 : +1;
+        }
     }
     return static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size));
 }
@@ -799,7 +801,7 @@ void AppUi::update(f32 delta_time) {
         ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
         if (ImGui::TreeNode("Gpu Resources")) {
-            static ImGuiTableFlags flags =
+            static ImGuiTableFlags const flags =
                 ImGuiTableFlags_Resizable |
                 ImGuiTableFlags_Reorderable |
                 ImGuiTableFlags_Hideable |
@@ -822,8 +824,9 @@ void AppUi::update(f32 delta_time) {
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
                     if (sorts_specs->SpecsDirty) {
                         current_gpu_resource_info_sort_specs = sorts_specs;
-                        if (debug_gpu_resource_infos.size() > 1)
+                        if (debug_gpu_resource_infos.size() > 1) {
                             qsort(debug_gpu_resource_infos.data(), debug_gpu_resource_infos.size(), sizeof(debug_gpu_resource_infos[0]), compare_gpu_resource_infos);
+                        }
                         current_gpu_resource_info_sort_specs = nullptr;
                         sorts_specs->SpecsDirty = false;
                     }

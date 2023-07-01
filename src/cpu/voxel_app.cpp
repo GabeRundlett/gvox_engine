@@ -209,19 +209,19 @@ void GpuResources::create(daxa::Device &device) {
         .name = "temp_voxel_chunks_buffer",
     });
     gvox_model_buffer = device.create_buffer({
-        .size = offsetof(GpuGvoxModel, data),
+        .size = static_cast<u32>(offsetof(GpuGvoxModel, data)),
         .name = "gvox_model_buffer",
     });
     simulated_voxel_particles_buffer = device.create_buffer({
-        .size = sizeof(SimulatedVoxelParticle) * MAX_SIMULATED_VOXEL_PARTICLES,
+        .size = sizeof(SimulatedVoxelParticle) * std::max<u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
         .name = "simulated_voxel_particles_buffer",
     });
     rendered_voxel_particles_buffer = device.create_buffer({
-        .size = sizeof(u32) * MAX_RENDERED_VOXEL_PARTICLES,
+        .size = sizeof(u32) * std::max<u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
         .name = "rendered_voxel_particles_buffer",
     });
     placed_voxel_particles_buffer = device.create_buffer({
-        .size = sizeof(u32) * MAX_SIMULATED_VOXEL_PARTICLES,
+        .size = sizeof(u32) * std::max<u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
         .name = "placed_voxel_particles_buffer",
     });
     final_image_sampler = device.create_sampler({
@@ -259,7 +259,7 @@ void GpuResources::destroy(daxa::Device &device) const {
 }
 
 VoxelApp::VoxelApp()
-    : AppWindow(APPNAME, {1920, 1080}),
+    : AppWindow(APPNAME, {800, 600}),
       daxa_ctx{daxa::create_context({.enable_validation = false})},
       device{daxa_ctx.create_device({
           // .enable_buffer_device_address_capture_replay = false,
@@ -332,15 +332,16 @@ VoxelApp::VoxelApp()
           // pages = VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK * pages;
 
           // Min size
-          u32 pages = (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME;
+          u32 const pages = (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME;
 
           // 1GB
           // u32 pages = (1 << 30) / VOXEL_MALLOC_PAGE_SIZE_BYTES;
 
           gpu_resources.voxel_malloc.create(device, pages);
           return record_main_task_graph();
-      }()} {
-    gvox_ctx = gvox_create_context();
+      }()},
+      gvox_ctx(gvox_create_context()) {
+
     start = Clock::now();
 
 #if 0
@@ -405,11 +406,13 @@ VoxelApp::VoxelApp()
                     .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_buffer",
                 });
-                auto buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
+                auto *buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
                 auto *stbn_zip = unzOpen("assets/STBN.zip");
                 for (auto i = 0; i < 64; ++i) {
                     [[maybe_unused]] int err = 0;
-                    i32 size_x = 0, size_y = 0, channel_n = 0;
+                    i32 size_x = 0;
+                    i32 size_y = 0;
+                    i32 channel_n = 0;
                     auto load_image = [&](char const *path, u8 *buffer_out_ptr) {
                         err = unzLocateFile(stbn_zip, path, 1);
                         assert(err == UNZ_OK);
@@ -422,8 +425,8 @@ VoxelApp::VoxelApp()
                         assert(err == UNZ_OK);
                         err = unzReadCurrentFile(stbn_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
                         assert(err == file_data.size());
-                        auto temp_data = stbi_load_from_memory(file_data.data(), static_cast<int>(file_data.size()), &size_x, &size_y, &channel_n, 4);
-                        if (temp_data) {
+                        auto *temp_data = stbi_load_from_memory(file_data.data(), static_cast<int>(file_data.size()), &size_x, &size_y, &channel_n, 4);
+                        if (temp_data != nullptr) {
                             assert(size_x == 128 && size_y == 128);
                             std::copy(temp_data + 0, temp_data + 128 * 128 * 4, buffer_out_ptr);
                         }
@@ -445,25 +448,25 @@ VoxelApp::VoxelApp()
                 cmd_list.destroy_buffer_deferred(staging_buffer);
                 cmd_list.copy_buffer_to_image({
                     .buffer = staging_buffer,
-                    .buffer_offset = (128 * 128 * 4 * 64) * 0,
+                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 0,
                     .image = task_blue_noise_vec1_image.get_state().images[0],
                     .image_extent = {128, 128, 64},
                 });
                 cmd_list.copy_buffer_to_image({
                     .buffer = staging_buffer,
-                    .buffer_offset = (128 * 128 * 4 * 64) * 1,
+                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 1,
                     .image = task_blue_noise_vec2_image.get_state().images[0],
                     .image_extent = {128, 128, 64},
                 });
                 cmd_list.copy_buffer_to_image({
                     .buffer = staging_buffer,
-                    .buffer_offset = (128 * 128 * 4 * 64) * 2,
+                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 2,
                     .image = task_blue_noise_unit_vec3_image.get_state().images[0],
                     .image_extent = {128, 128, 64},
                 });
                 cmd_list.copy_buffer_to_image({
                     .buffer = staging_buffer,
-                    .buffer_offset = (128 * 128 * 4 * 64) * 3,
+                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 3,
                     .image = task_blue_noise_cosine_vec3_image.get_state().images[0],
                     .image_extent = {128, 128, 64},
                 });
@@ -523,8 +526,9 @@ void VoxelApp::calc_vram_usage() {
     };
 
     auto image_size = [this, &format_to_pixel_size, &result_size](daxa::ImageId image) {
-        if (image.is_empty())
+        if (image.is_empty()) {
             return;
+        }
         auto image_info = device.info_image(image);
         auto size = format_to_pixel_size(image_info.format) * image_info.size.x * image_info.size.y * image_info.size.z;
         ui.debug_gpu_resource_infos.push_back({
@@ -535,8 +539,9 @@ void VoxelApp::calc_vram_usage() {
         result_size += size;
     };
     auto buffer_size = [this, &result_size](daxa::BufferId buffer) {
-        if (buffer.is_empty())
+        if (buffer.is_empty()) {
             return;
+        }
         auto buffer_info = device.info_buffer(buffer);
         ui.debug_gpu_resource_infos.push_back({
             .type = "buffer",
@@ -602,15 +607,15 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     GvoxByteBufferOutputAdapterConfig o_config = {
         .out_size = &result.size,
         .out_byte_buffer_ptr = &result.ptr,
-        .allocate = NULL,
+        .allocate = nullptr,
     };
     void *i_config_ptr = nullptr;
     auto voxlap_config = GvoxVoxlapParseAdapterConfig{
         .size_x = 512,
         .size_y = 512,
         .size_z = 64,
-        .make_solid = true,
-        .is_ace_of_spades = true,
+        .make_solid = 1,
+        .is_ace_of_spades = 1,
     };
     char const *gvox_model_type = "gvox_palette";
     if (ui.gvox_model_path.has_extension()) {
@@ -641,7 +646,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
     GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
     GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);
-    GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
+    GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), nullptr);
 
     {
         // time_t start = clock();
@@ -658,10 +663,10 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
         GvoxResult res = gvox_get_result(gvox_ctx);
         // int error_count = 0;
         while (res != GVOX_RESULT_SUCCESS) {
-            size_t size;
-            gvox_get_result_message(gvox_ctx, NULL, &size);
+            size_t size = 0;
+            gvox_get_result_message(gvox_ctx, nullptr, &size);
             char *str = new char[size + 1];
-            gvox_get_result_message(gvox_ctx, str, NULL);
+            gvox_get_result_message(gvox_ctx, str, nullptr);
             str[size] = '\0';
             ui.console.add_log("ERROR loading model: {}", str);
             gvox_pop_result(gvox_ctx);
@@ -688,7 +693,7 @@ void VoxelApp::on_update() {
 
     {
         auto reload_result = main_pipeline_manager.reload_all();
-        if (auto reload_err = std::get_if<daxa::PipelineReloadError>(&reload_result)) {
+        if (auto *reload_err = std::get_if<daxa::PipelineReloadError>(&reload_result)) {
             ui.console.add_log(reload_err->message);
         }
     }
@@ -932,7 +937,7 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
             cmd_list.clear_buffer({
                 .buffer = task_voxel_chunks_buffer.get_state().buffers[0],
                 .offset = 0,
-                .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
+                .size = sizeof(VoxelLeafChunk) * chunk_n,
                 .clear_value = 0,
             });
 #if USE_OLD_ALLOC
@@ -952,13 +957,13 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
             cmd_list.clear_buffer({
                 .buffer = task_voxel_malloc_pages_buffer.get_state().buffers[1],
                 .offset = 0,
-                .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
+                .size = sizeof(VoxelMalloc_PageIndex) * gpu_resources.voxel_malloc.current_page_count,
                 .clear_value = 0,
             });
             cmd_list.clear_buffer({
                 .buffer = task_voxel_malloc_pages_buffer.get_state().buffers[2],
                 .offset = 0,
-                .size = static_cast<u32>(sizeof(VoxelMalloc_PageIndex)) * gpu_resources.voxel_malloc.current_page_count,
+                .size = sizeof(VoxelMalloc_PageIndex) * gpu_resources.voxel_malloc.current_page_count,
                 .clear_value = 0,
             });
         },
@@ -1060,7 +1065,7 @@ void VoxelApp::upload_model(daxa::TaskGraph &temp_task_graph) {
             cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
             char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer);
             std::copy(gvox_model_data.ptr, gvox_model_data.ptr + gvox_model_data.size, buffer_ptr);
-            if (gvox_model_data.ptr) {
+            if (gvox_model_data.ptr != nullptr) {
                 free(gvox_model_data.ptr);
             }
             cmd_list.copy_buffer_to_buffer({
@@ -1456,7 +1461,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
             auto staging_output_buffer = gpu_resources.staging_output_buffer;
             auto frame_index = gpu_input.frame_index + 1;
             auto *buffer_ptr = device.get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer);
-            u32 offset = frame_index % (FRAMES_IN_FLIGHT + 1);
+            u32 const offset = frame_index % (FRAMES_IN_FLIGHT + 1);
             gpu_output = (*buffer_ptr)[offset];
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = output_buffer,

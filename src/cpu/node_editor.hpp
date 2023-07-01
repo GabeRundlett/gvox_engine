@@ -123,7 +123,7 @@ struct NodeEditor {
     Pin *FindPin(imgui_node_editor::PinId id);
     bool IsPinLinked(imgui_node_editor::PinId id);
 
-    void BuildNode(Node *node);
+    static void BuildNode(Node *node);
     void BuildNodes();
 
     Node *SpawnInputActionNode();
