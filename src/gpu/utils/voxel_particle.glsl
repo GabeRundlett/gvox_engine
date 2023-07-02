@@ -43,7 +43,7 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
     float curr_speed = length(self.vel);
     float curr_dist_in_dt = curr_speed * dt;
     vec3 ray_pos = self.pos;
-    float dist = trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, self.vel / curr_speed, 512, curr_dist_in_dt, true);
+    float dist = trace_hierarchy_traversal(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, self.vel / curr_speed, 512, curr_dist_in_dt, 0.0, true);
     if (!(dist > curr_dist_in_dt)) {
         self.pos += self.vel / curr_speed * (dist - 0.001);
         vec3 nrm = scene_nrm(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos);

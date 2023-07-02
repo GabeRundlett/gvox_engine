@@ -23,7 +23,7 @@ void main() {
     f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir);
+    u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 32.0 / frame_dim.y * deref(globals).player.cam.tan_half_fov);
 
     f32 depth = length(ray_pos - cam_pos);
 

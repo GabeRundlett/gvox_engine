@@ -23,7 +23,7 @@ void main() {
         f32vec3 cam_pos = ray_pos;
         f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
-        trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir);
+        trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 0.0);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;

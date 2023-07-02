@@ -55,7 +55,7 @@ void main() {
     f32vec3 ray_pos = create_view_pos(deref(globals).player) + ray_dir * prepass_depth;
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir);
+    u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 0.0);
 
     imageStore(daxa_image2D(render_pos_image_id), i32vec2(pixel_i), f32vec4(ray_pos, step_n + prepass_steps));
 }

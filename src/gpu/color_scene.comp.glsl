@@ -102,6 +102,13 @@ HitInfo get_hit_info(in out f32vec3 pos, f32vec3 ray_dir, bool is_primary) {
     return result;
 }
 
+f32vec3 a_scene_nrm(f32vec3 pos) {
+    f32vec3 d = fract(pos * VOXEL_SCL) - .5;
+    f32vec3 ad = abs(d);
+    f32 m = max(max(ad.x, ad.y), ad.z);
+    return -(abs(sign(ad - m)) - 1.) * sign(d);
+}
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     f32vec2 frame_dim = deref(gpu_input).frame_dim;
@@ -126,7 +133,11 @@ void main() {
     col = hit_info.diff_col + hit_info.emit_col;
 
     // col = a_scene_nrm(hit_pos);
+    // col = fract(hit_pos * 0.125);
+    // if (length(uv) < 1.0 / 64) {
+    //     col *= 0.1;
+    // }
 
-    imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(hsv2rgb(vec3(0.6 + render_pos.w * 0.01, 1.0, min(1.0, render_pos.w * 0.05))), accepted_count));
+    // imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(hsv2rgb(vec3(0.6 + render_pos.w * 0.008, 1.0, min(1.0, render_pos.w * 0.01))), accepted_count));
     imageStore(daxa_image2D(render_col_image_id), i32vec2(pixel_i), f32vec4(col, accepted_count));
 }
