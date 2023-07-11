@@ -260,8 +260,8 @@ void GpuResources::destroy(daxa::Device &device) const {
 
 VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {800, 600}),
-      daxa_ctx{daxa::create_context({.enable_validation = false})},
-      device{daxa_ctx.create_device({
+      daxa_instance{daxa::create_instance({.enable_validation = false})},
+      device{daxa_instance.create_device({
           // .enable_buffer_device_address_capture_replay = false,
           .name = "device",
       })},
@@ -972,9 +972,9 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task(StartupComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .globals = task_globals_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &startup_task_state,
@@ -1262,13 +1262,13 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(PerframeComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .gpu_output = task_output_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .gpu_output = task_output_buffer,
+                .globals = task_globals_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &perframe_task_state,
@@ -1278,14 +1278,14 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(VoxelParticleSimComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
-                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
-                .placed_voxel_particles = task_placed_voxel_particles_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
+                .placed_voxel_particles = task_placed_voxel_particles_buffer,
             },
         },
         &voxel_particle_sim_task_state,
@@ -1295,11 +1295,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkHierarchyComputeTaskL0{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .gvox_model = task_gvox_model_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .gvox_model = task_gvox_model_buffer,
+                .globals = task_globals_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &chunk_hierarchy_task_state,
@@ -1307,11 +1307,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkHierarchyComputeTaskL1{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .gvox_model = task_gvox_model_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .gvox_model = task_gvox_model_buffer,
+                .globals = task_globals_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &chunk_hierarchy_task_state,
@@ -1321,18 +1321,18 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkEditComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .gvox_model = task_gvox_model_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .gvox_model = task_gvox_model_buffer,
 #if 0
-                .test_data_buffer = task_test_data_buffer.handle(),
+                .test_data_buffer = task_test_data_buffer,
 #endif
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
-                .placed_voxel_particles = task_placed_voxel_particles_buffer.handle(),
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .placed_voxel_particles = task_placed_voxel_particles_buffer,
             },
         },
         &chunk_edit_task_state,
@@ -1342,11 +1342,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkOpt_x2x4_ComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &chunk_opt_x2x4_task_state,
@@ -1356,11 +1356,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkOpt_x8up_ComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
         &chunk_opt_x8up_task_state,
@@ -1370,11 +1370,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ChunkAllocComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
+                .settings = task_settings_buffer,
+                .globals = task_globals_buffer,
+                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
             },
         },
         &chunk_alloc_task_state,
@@ -1384,12 +1384,12 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(VoxelParticleRasterTask{
         {
             .uses = {
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
-                .rendered_voxel_particles = task_rendered_voxel_particles_buffer.handle(),
-                .render_image = task_render_raster_color_image.handle(),
-                .depth_image = task_render_raster_depth_image.handle(),
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
+                .render_image = task_render_raster_color_image,
+                .depth_image = task_render_raster_depth_image,
             },
         },
         &voxel_particle_raster_task_state,
@@ -1399,13 +1399,13 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(TraceDepthPrepassComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .blue_noise_vec2 = task_blue_noise_vec2_image.handle(),
-                .render_depth_prepass_image = task_render_depth_prepass_image.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .blue_noise_vec2 = task_blue_noise_vec2_image,
+                .render_depth_prepass_image = task_render_depth_prepass_image,
             },
         },
         &trace_depth_prepass_task_state,
@@ -1415,14 +1415,14 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(TracePrimaryComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .blue_noise_vec2 = task_blue_noise_vec2_image.handle(),
-                .render_depth_prepass_image = task_render_depth_prepass_image.handle(),
-                .render_pos_image_id = task_render_pos_image.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .blue_noise_vec2 = task_blue_noise_vec2_image,
+                .render_depth_prepass_image = task_render_depth_prepass_image,
+                .render_pos_image_id = task_render_pos_image,
             },
         },
         &trace_primary_task_state,
@@ -1432,18 +1432,18 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(ColorSceneComputeTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .globals = task_globals_buffer.handle(),
-                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer.handle(),
-                .voxel_chunks = task_voxel_chunks_buffer.handle(),
-                .blue_noise_cosine_vec3 = task_blue_noise_cosine_vec3_image.handle(),
-                .render_pos_image_id = task_render_pos_image.handle(),
-                .render_prev_pos_image_id = task_render_prev_pos_image.handle(),
-                .render_col_image_id = task_render_col_image.handle(),
-                .render_prev_col_image_id = task_render_prev_col_image.handle(),
-                .raster_color_image = task_render_raster_color_image.handle(),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+                .blue_noise_cosine_vec3 = task_blue_noise_cosine_vec3_image,
+                .render_pos_image_id = task_render_pos_image,
+                .render_prev_pos_image_id = task_render_prev_pos_image,
+                .render_col_image_id = task_render_col_image,
+                .render_prev_col_image_id = task_render_prev_col_image,
+                .raster_color_image = task_render_raster_color_image,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
             },
         },
         &color_scene_task_state,
@@ -1476,11 +1476,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(PostprocessingRasterTask{
         {
             .uses = {
-                .settings = task_settings_buffer.handle(),
-                .gpu_input = task_input_buffer.handle(),
-                .render_col_image_id = task_render_col_image.handle(),
-                // .final_image_id = task_render_final_image.handle(),
-                .render_image = task_swapchain_image.handle(),
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .render_col_image_id = task_render_col_image,
+                // .final_image_id = task_render_final_image,
+                .render_image = task_swapchain_image,
             },
         },
         &postprocessing_task_state,

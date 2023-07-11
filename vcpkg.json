@@ -40,7 +40,7 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "../../rust/gvox-rs/gvox-sys/gvox/cmake/vcpkg-port",
+      "../gvox/cmake/vcpkg-port",
       "../Daxa/cmake/vcpkg-port",
       "../Daxa/cmake/vcpkg-overlay-ports/dxc",
       "../Daxa/cmake/vcpkg-overlay-ports/glfw3",

@@ -98,7 +98,7 @@ struct GvoxModelData {
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
 
-    daxa::Context daxa_ctx;
+    daxa::Instance daxa_instance;
     daxa::Device device;
 
     daxa::Swapchain swapchain;
