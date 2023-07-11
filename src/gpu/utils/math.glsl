@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utils/defs.glsl>
+
 // Definitions
 
 #define PI 3.14159265

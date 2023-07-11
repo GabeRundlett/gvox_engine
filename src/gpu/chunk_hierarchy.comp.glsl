@@ -115,8 +115,10 @@ void perform_work_item() {
         (sub_node_chunk_i.z < chunk_n.z);
 
     if ((work_item.brush_id & CHUNK_FLAGS_WORLD_BRUSH) != 0) {
+#if GEN_MODEL
         u32vec3 chunk_bi = sub_node_chunk_i + 0;
         needs_subdiv = needs_subdiv && (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6));
+#endif
     } else if ((work_item.brush_id & CHUNK_FLAGS_USER_BRUSH_A) != 0) {
         f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
         f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;

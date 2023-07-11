@@ -2,8 +2,6 @@
 
 #include <utils/trace.glsl>
 
-#define USE_BLUE_NOISE 1
-
 #define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -15,14 +13,16 @@ void main() {
     f32vec2 inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
     f32 aspect = frame_dim.x * inv_frame_dim.y;
 
-// #if USE_BLUE_NOISE
-//     f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xy - 0.5;
-//     pixel_p += blue_noise * 1.0;
-// #else
-//     rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
-//     f32vec2 uv_offset = f32vec2(rand(), rand()) - 0.5;
-//     pixel_p += uv_offset * 1.0;
-// #endif
+#if RANDOMIZE_PRIMARY_RAY_DIR
+#if USE_BLUE_NOISE
+    f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xy - 0.5;
+    pixel_p += blue_noise * 1.0;
+#else
+    rand_seed(pixel_i.x + pixel_i.y * INPUT.frame_dim.x + u32(INPUT.time * 719393));
+    f32vec2 uv_offset = f32vec2(rand(), rand()) - 0.5;
+    pixel_p += uv_offset * 1.0;
+#endif
+#endif
 
     f32vec2 uv = pixel_p * inv_frame_dim;
 

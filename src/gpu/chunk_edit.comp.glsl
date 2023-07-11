@@ -73,7 +73,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     id = 1;
     col = f32vec3(0.5, 0.1, 0.8);
 
-#elif 1
+#elif GEN_MODEL
 
     u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
@@ -84,7 +84,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     //     id = 2;
     // }
 
-#elif 0
+#elif 1
     voxel_pos += f32vec3(1700, 1600, 150);
 
     f32 val = terrain_noise(voxel_pos);

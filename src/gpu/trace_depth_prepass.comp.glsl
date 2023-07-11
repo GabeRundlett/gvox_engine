@@ -2,8 +2,6 @@
 
 #include <utils/trace.glsl>
 
-#define USE_BLUE_NOISE 1
-
 #define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;

@@ -33,13 +33,6 @@
 #define L1_CHUNK_SIZE (L2_CHUNK_SIZE * 8)
 #define L0_CHUNK_SIZE (L1_CHUNK_SIZE * 8)
 
-#define CHUNK_FLAGS_ACCEL_GENERATED (1 << 0)
-#define CHUNK_FLAGS_WORLD_BRUSH (1 << 1)
-#define CHUNK_FLAGS_USER_BRUSH_A (1 << 2)
-#define CHUNK_FLAGS_USER_BRUSH_B (1 << 3)
-#define CHUNK_FLAGS_PARTICLE_BRUSH (1 << 4)
-#define CHUNK_FLAGS_BRUSH_MASK (CHUNK_FLAGS_WORLD_BRUSH | CHUNK_FLAGS_USER_BRUSH_A | CHUNK_FLAGS_USER_BRUSH_B | CHUNK_FLAGS_PARTICLE_BRUSH)
-
 #if defined(__cplusplus)
 #include <memory>
 #include <daxa/utils/pipeline_manager.hpp>
@@ -47,5 +40,3 @@
 
 #define USE_POINTS 0
 #define PREPASS_SCL 2
-#define VOXEL_ACCEL_UNIFORMITY 1
-#define ENABLE_DEPTH_PREPASS 1
