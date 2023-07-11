@@ -6,6 +6,7 @@
 
 #define PI 3.14159265
 #define MAX_SD 10000.0
+#define MAX_STEPS 512
 
 // Objects
 
@@ -66,7 +67,7 @@ f32vec3 hsv2rgb(f32vec3 c) {
     f32vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
     return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
 }
-f32vec4 uint_to_float4(u32 u) {
+f32vec4 uint_rgba8_to_float4(u32 u) {
     f32vec4 result;
     result.r = f32((u >> 0x00) & 0xff) / 255.0;
     result.g = f32((u >> 0x08) & 0xff) / 255.0;
@@ -89,7 +90,7 @@ f32vec4 uint_to_float4(u32 u) {
 
     return result;
 }
-u32 float4_to_uint(f32vec4 f) {
+u32 float4_to_uint_rgba8(f32vec4 f) {
     f = clamp(f, f32vec4(0), f32vec4(1));
 
     // f32vec3 yuv = f32vec3(
@@ -112,6 +113,78 @@ u32 float4_to_uint(f32vec4 f) {
     result |= u32(clamp(f.a, 0, 1) * 255) << 0x18;
     return result;
 }
+
+#define URGB9E5_CONCENTRATION 4.0
+#define URGB9E5_MIN_EXPONENT -8.0
+f32 urgb9e5_scale_exp_inv(f32 x) { return (exp((x + URGB9E5_MIN_EXPONENT) / URGB9E5_CONCENTRATION)); }
+f32vec3 uint_urgb9e5_to_float3(u32 u) {
+    f32vec3 result;
+    result.r = f32((u >> 0x00) & 0x1ff);
+    result.g = f32((u >> 0x09) & 0x1ff);
+    result.b = f32((u >> 0x12) & 0x1ff);
+    f32 scale = urgb9e5_scale_exp_inv((u >> 0x1b) & 0x1f) / 511.0;
+    return result * scale;
+}
+f32 urgb9e5_scale_exp(f32 x) { return URGB9E5_CONCENTRATION * log(x) - URGB9E5_MIN_EXPONENT; }
+u32 float3_to_uint_urgb9e5(f32vec3 f) {
+    f32 scale = max(max(f.x, 0.0), max(f.y, f.z));
+    f32 exponent = ceil(clamp(urgb9e5_scale_exp(scale), 0, 31));
+    f32 fac = 511.0 / urgb9e5_scale_exp_inv(exponent);
+    u32 result = 0;
+    result |= u32(clamp(f.r * fac, 0.0, 511.0)) << 0x00;
+    result |= u32(clamp(f.g * fac, 0.0, 511.0)) << 0x09;
+    result |= u32(clamp(f.b * fac, 0.0, 511.0)) << 0x12;
+    result |= u32(exponent) << 0x1b;
+    return result;
+}
+
+// ----------------------------------------
+// The MIT License
+// Copyright 2017 Inigo Quilez
+vec2 msign(vec2 v) {
+    return vec2((v.x >= 0.0) ? 1.0 : -1.0,
+                (v.y >= 0.0) ? 1.0 : -1.0);
+}
+uint packSnorm2x8(vec2 v) {
+    uvec2 d = uvec2(round(127.5 + v * 127.5));
+    return d.x | (d.y << 8u);
+}
+vec2 unpackSnorm2x8(uint d) {
+    return vec2(uvec2(d, d >> 8) & 255) / 127.5 - 1.0;
+}
+uint octahedral_16(in vec3 nor) {
+    nor /= (abs(nor.x) + abs(nor.y) + abs(nor.z));
+    nor.xy = (nor.z >= 0.0) ? nor.xy : (1.0 - abs(nor.yx)) * msign(nor.xy);
+    return packSnorm2x8(nor.xy);
+}
+vec3 i_octahedral_16(uint data) {
+    vec2 v = unpackSnorm2x8(data);
+    vec3 nor = vec3(v, 1.0 - abs(v.x) - abs(v.y));
+    float t = max(-nor.z, 0.0);
+    nor.x += (nor.x > 0.0) ? -t : t;
+    nor.y += (nor.y > 0.0) ? -t : t;
+    return normalize(nor);
+}
+uint spheremap_16(in vec3 nor) {
+    vec2 v = nor.xy * inversesqrt(2.0 * nor.z + 2.0);
+    return packSnorm2x8(v);
+}
+vec3 i_spheremap_16(uint data) {
+    vec2 v = unpackSnorm2x8(data);
+    float f = dot(v, v);
+    return vec3(2.0 * v * sqrt(1.0 - f), 1.0 - 2.0 * f);
+}
+// ----------------------------------------
+
+f32vec3 u16_to_nrm(u32 x) {
+    return i_octahedral_16(x);
+    // return i_spheremap_16(x);
+}
+u32 nrm_to_u16(f32vec3 nrm) {
+    return octahedral_16(nrm);
+    // return spheremap_16(nrm);
+}
+
 u32 ceil_log2(u32 x) {
     return findMSB(x) + u32(bitCount(x) > 1);
 }
@@ -580,3 +653,21 @@ bool rectangles_overlap(vec3 a_min, vec3 a_max, vec3 b_min, vec3 b_max) {
     bool z_disjoint = (a_max.z < b_min.z) || (b_max.z < a_min.z);
     return !x_disjoint && !y_disjoint && !z_disjoint;
 }
+
+// ----------
+// Kajiya
+
+vec2 get_uv(ivec2 pix, vec4 texSize) {
+    return (vec2(pix) + 0.5) * texSize.zw;
+}
+vec2 get_uv(vec2 pix, vec4 texSize) {
+    return (pix + 0.5) * texSize.zw;
+}
+vec2 cs_to_uv(vec2 cs) {
+    return cs * vec2(0.5, -0.5) + vec2(0.5, 0.5);
+}
+vec2 uv_to_cs(vec2 uv) {
+    return (uv - 0.5.xx) * vec2(2, -2);
+}
+
+// ----------

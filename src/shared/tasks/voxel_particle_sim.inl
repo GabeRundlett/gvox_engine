@@ -38,7 +38,6 @@ struct VoxelParticleSimComputeTaskState {
     VoxelParticleSimComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {}
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-#if MAX_SIMULATED_VOXEL_PARTICLES > 0
         if (!pipeline) {
             compile_pipeline();
             if (!pipeline)
@@ -49,7 +48,6 @@ struct VoxelParticleSimComputeTaskState {
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),
         });
-#endif
     }
 };
 

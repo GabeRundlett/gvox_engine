@@ -22,6 +22,8 @@ void main() {
         u32vec3 my_voxel_i = u32vec3(self.pos * VOXEL_SCL);
         const u32vec3 max_pos = u32vec3(2048);
         if (my_voxel_i.x < max_pos.x && my_voxel_i.y < max_pos.y && my_voxel_i.z < max_pos.z) {
+            // Commented out, since placing particles in the voxel volume is not well optimized yet.
+
             // u32 my_place_index = atomicAdd(deref(globals).voxel_particles_state.place_count, 1);
             // if (my_place_index == 0) {
             //     ChunkWorkItem brush_work_item;

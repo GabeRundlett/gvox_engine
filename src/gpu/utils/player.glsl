@@ -33,6 +33,7 @@ void player_perframe(
     const f32 mouse_sens = 1.0;
 
     PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
+    // PLAYER.rot.y = fract(INPUT.time * 0.5) * 2.0 * PI;
     PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * SETTINGS.sensitivity * 0.001;
 
     const float MAX_ROT_EPS = 0.01;
@@ -107,11 +108,11 @@ void player_perframe(
     vec3 u = cross(s, f);
 
     mat4 proj_mat = mat4(0.0);
-    proj_mat[0][0] =  1.0 / PLAYER.cam.tan_half_fov / aspect;
+    proj_mat[0][0] = +1.0 / PLAYER.cam.tan_half_fov / aspect;
     proj_mat[1][1] = -1.0 / PLAYER.cam.tan_half_fov;
-    proj_mat[2][2] =  0.0;
+    proj_mat[2][2] = +0.0;
     proj_mat[2][3] = -1.0;
-    proj_mat[3][2] =  near;
+    proj_mat[3][2] = near;
 
     mat4 view_mat = mat4(0.0);
     view_mat[0][0] = s.x;

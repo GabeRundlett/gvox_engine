@@ -16,7 +16,6 @@ void AppSettings::save(std::filesystem::path const &filepath) {
 
     json["show_debug_info"] = show_debug_info;
     json["show_console"] = show_console;
-    json["show_node_editor"] = show_node_editor;
     json["show_help"] = show_help;
     json["autosave"] = autosave;
     json["battery_saving_mode"] = battery_saving_mode;
@@ -54,7 +53,6 @@ void AppSettings::load(std::filesystem::path const &filepath) {
 
     grab_value("show_debug_info", show_debug_info);
     grab_value("show_console", show_console);
-    grab_value("show_node_editor", show_node_editor);
     grab_value("show_help", show_help);
     grab_value("autosave", autosave);
     grab_value("battery_saving_mode", battery_saving_mode);
@@ -84,7 +82,6 @@ void AppSettings::clear() {
 
     show_debug_info = false;
     show_console = false;
-    show_node_editor = false;
     show_help = false;
     autosave = true;
     battery_saving_mode = false;

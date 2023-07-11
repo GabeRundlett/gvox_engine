@@ -9,9 +9,22 @@ struct IndirectDrawParams {
     u32 first_instance;
 };
 
+struct CameraLensMatrices {
+    f32mat4x4 view_to_clip;
+    f32mat4x4 clip_to_view;
+};
+struct CameraBodyMatrices {
+    f32mat4x4 world_to_view;
+    f32mat4x4 view_to_world;
+};
+
 struct Camera {
     f32mat4x4 proj_mat;
     f32mat3x3 rot_mat, prev_rot_mat;
+
+    CameraLensMatrices lens_mats;
+    CameraBodyMatrices body_mats;
+
     f32vec3 pos, prev_pos;
     f32 tan_half_fov;
     f32 prev_tan_half_fov;

@@ -23,7 +23,7 @@ void main() {
         f32vec3 cam_pos = ray_pos;
         f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
-        trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 0.0);
+        trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;
@@ -44,8 +44,7 @@ void main() {
             }
             BRUSH_STATE.is_editing = 1;
         } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
-            if (BRUSH_STATE.is_editing == 0)
-            {
+            if (BRUSH_STATE.is_editing == 0) {
                 BRUSH_STATE.initial_frame = INPUT.frame_index;
             }
             // if (((INPUT.frame_index - BRUSH_STATE.initial_frame) & 15) == 0)
@@ -72,11 +71,6 @@ void main() {
         (deref(voxel_malloc_global_allocator).page_count -
          deref(voxel_malloc_global_allocator).available_pages_stack_size) *
         VOXEL_MALLOC_PAGE_SIZE_U32S;
-
-    // Debug - reset the allocator
-    // deref(voxel_malloc_global_allocator).page_count = 0;
-    // deref(voxel_malloc_global_allocator).available_pages_stack_size = 0;
-    // deref(voxel_malloc_global_allocator).released_pages_stack_size = 0;
 #endif
 
     THREAD_POOL.queue_index = 1 - THREAD_POOL.queue_index;
@@ -100,7 +94,7 @@ void main() {
         gpu_input,
         voxel_malloc_global_allocator);
 
-    deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES/64, 1, 1);
+    deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;
     deref(globals).voxel_particles_state.draw_params.instance_count = 1;
     deref(globals).voxel_particles_state.draw_params.first_vertex = 0;

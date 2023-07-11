@@ -98,13 +98,13 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
 #undef MODEL
 
 #define READ_FROM_HEAP 1
-u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i, bool is_drawing) {
+u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
     u32vec3 palette_region_i = inchunk_voxel_i / PALETTE_REGION_SIZE;
     u32vec3 palette_voxel_i = inchunk_voxel_i - palette_region_i * PALETTE_REGION_SIZE;
     u32 palette_region_index = palette_region_i.x + palette_region_i.y * PALETTES_PER_CHUNK_AXIS + palette_region_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
     u32 palette_voxel_index = palette_voxel_i.x + palette_voxel_i.y * PALETTE_REGION_SIZE + palette_voxel_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
-    if (palette_header.variant_n == 1) {
+    if (palette_header.variant_n < 2) {
         return palette_header.blob_ptr;
     }
 #if READ_FROM_HEAP
@@ -130,18 +130,13 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
         my_palette_index |= (deref(blob_u32s[palette_header.variant_n + data_index + 1]) << shift) & mask;
     }
     u32 voxel_data = deref(blob_u32s[my_palette_index]);
-    if (is_drawing) {
-        return voxel_data;
-        // return ((palette_header.blob_ptr / 512) & 0x00ffffff) | (voxel_data & 0xff000000);
-    } else {
-        return voxel_data;
-    }
+    return voxel_data;
 #else
     return 0x01ff00ff;
 #endif
 }
 
-u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i, bool is_drawing) {
+u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
@@ -149,7 +144,7 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
         return 0u;
     }
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
-    return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, is_drawing);
+    return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
 }
 
 #define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                                  \
@@ -171,7 +166,7 @@ SAMPLE_LOD_PRESENCE_IMPL(64)
 
 #define sample_lod_presence(N) sample_lod_presence_##N
 
-u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i) {
+u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i, out u32 voxel_data) {
     u32 lod_index_x2 = uniformity_lod_index(2)(inchunk_voxel_i / 2);
     u32 lod_mask_x2 = uniformity_lod_mask(inchunk_voxel_i / 2);
     u32 lod_index_x4 = uniformity_lod_index(4)(inchunk_voxel_i / 4);
@@ -190,7 +185,8 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
         return 7;
 
 #if !defined(TRACE_DEPTH_PREPASS_COMPUTE) || VOXEL_ACCEL_UNIFORMITY
-    if ((sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i, false) & 0xff000000) != 0)
+    voxel_data = sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    if ((voxel_data & 0xff000000) != 0)
         return 0;
 #endif
     if (voxel_uniformity_lod_nonuniform(2)(voxel_chunk_ptr, lod_index_x2, lod_mask_x2))
@@ -209,12 +205,12 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     return 7;
 }
 
-u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 voxel_p) {
+u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 voxel_p, out u32 voxel_data) {
     // u32vec3 voxel_i = u32vec3(clamp(voxel_p * VOXEL_SCL, f32vec3(0, 0, 0), (f32vec3(chunk_n) * CHUNK_SIZE - 1) / VOXEL_SCL));
     u32vec3 voxel_i = u32vec3(voxel_p * VOXEL_SCL);
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
-    return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE);
+    return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }
 
 void zero_work_item_children(in out ChunkWorkItem work_item) {

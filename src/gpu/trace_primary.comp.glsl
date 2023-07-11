@@ -2,6 +2,30 @@
 
 #include <utils/trace.glsl>
 
+#define SKY_COL (f32vec3(0.02, 0.05, 0.90) * 4)
+#define SKY_COL_B (f32vec3(0.11, 0.10, 0.54))
+
+// #define SUN_TIME (deref(gpu_input).time)
+#define SUN_TIME 0.9
+#define SUN_COL (f32vec3(1, 0.90, 0.4) * 20)
+#define SUN_DIR normalize(f32vec3(1.2 * abs(sin(SUN_TIME)), -cos(SUN_TIME), abs(sin(SUN_TIME))))
+
+f32vec3 sample_sky_ambient(f32vec3 nrm) {
+    f32 sun_val = dot(nrm, SUN_DIR) * 0.1 + 0.06;
+    sun_val = pow(sun_val, 2) * 0.2;
+    f32 sky_val = clamp(dot(nrm, f32vec3(0, 0, -1)) * 0.2 + 0.5, 0, 1);
+    return mix(SKY_COL + sun_val * SUN_COL, SKY_COL_B, pow(sky_val, 2));
+}
+
+f32vec3 sample_sky(f32vec3 nrm) {
+    f32vec3 light = sample_sky_ambient(nrm);
+    f32 sun_val = dot(nrm, SUN_DIR) * 0.5 + 0.5;
+    sun_val = sun_val * 200 - 199;
+    sun_val = pow(clamp(sun_val * 1.1, 0, 1), 200);
+    light += sun_val * SUN_COL;
+    return light;
+}
+
 #define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -55,9 +79,26 @@ void main() {
     f32vec3 ray_pos = create_view_pos(deref(globals).player) + ray_dir * prepass_depth;
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    u32 step_n = trace(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_pos, ray_dir, 0.0);
+    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
+    u32 step_n = trace_result.step_n;
 
-    imageStore(daxa_image2D(render_pos_image_id), i32vec2(pixel_i), f32vec4(ray_pos, step_n + prepass_steps));
+    u32vec4 output_value = u32vec4(0);
+    // output_value.x = step_n + u32(prepass_steps);
+
+    f32 depth = trace_result.dist + prepass_depth;
+
+    if (depth >= MAX_SD) {
+        f32vec3 sky_col = sample_sky(ray_dir);
+        output_value.w = float3_to_uint_urgb9e5(sky_col / 1.0);
+        output_value.y |= nrm_to_u16(f32vec3(0));
+        depth = 0;
+    } else {
+        output_value.x = trace_result.voxel_data;
+        output_value.y |= nrm_to_u16(trace_result.nrm);
+    }
+
+    imageStore(daxa_uimage2D(g_buffer_image_id), i32vec2(pixel_i), output_value);
+    imageStore(daxa_image2D(depth_image_id), i32vec2(pixel_i), f32vec4(depth, 0, 0, 0));
 }
 #undef INPUT
 #undef SETTINGS

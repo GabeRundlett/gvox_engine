@@ -79,7 +79,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     // id = packed_col_data >> 0x18;
     // u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 2);
-    col = uint_to_float4(packed_col_data).rgb;
+    col = uint_rgba8_to_float4(packed_col_data).rgb;
     // if (id != 0) {
     //     id = 2;
     // }
@@ -128,29 +128,12 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         id = 1;
         col = f32vec3(0.1);
     }
-#else
-    if (voxel_i.x > 511 || voxel_i.y > 511 || voxel_i.z > 511) {
-        return;
-    }
-    u32 voxel_index = voxel_i.x + voxel_i.y * 512 + voxel_i.z * 512 * 512;
-    f32vec3 vec = deref(test_data_buffer[voxel_index]);
-    if (fract(length(vec) * 5) > 0.5) {
-        id = 1;
-        col.rgb = hsv2rgb(f32vec3(length(vec), 1, 1));
-    }
-    // const f32 scl = f32(1u << (2 + 3));
-    // f32 val = 0;
-    // val += length(voxel_pos - scl) - scl * 1.1;
-    // if (val < 0) {
-    //     id = 1;
-    //     col = f32vec3(0.1);
-    // }
 #endif
 }
 
 void brushgen_a(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
-    f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -163,8 +146,8 @@ void brushgen_a(in out f32vec3 col, in out u32 id) {
 }
 
 void brushgen_b(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
-    f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -203,8 +186,8 @@ void brushgen_particles(in out f32vec3 col, in out u32 id) {
         }
     }
 
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i, false);
-    f32vec3 prev_col = uint_to_float4(voxel_data).rgb;
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -242,12 +225,12 @@ void main() {
     if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
         brushgen_b(col, id);
     }
-    if ((chunk_flags & CHUNK_FLAGS_PARTICLE_BRUSH) != 0) {
-        brushgen_particles(col, id);
-    }
+    // if ((chunk_flags & CHUNK_FLAGS_PARTICLE_BRUSH) != 0) {
+    //     brushgen_particles(col, id);
+    // }
 
     TempVoxel result;
-    result.col_and_id = float4_to_uint(f32vec4(col, 0.0)) | (id << 0x18);
+    result.col_and_id = float4_to_uint_rgba8(f32vec4(col, 0.0)) | (id << 0x18);
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
 }
 #undef VOXEL_WORLD

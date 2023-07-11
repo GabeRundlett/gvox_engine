@@ -22,12 +22,17 @@ struct RenderImages {
     u32vec2 size{};
     u32vec2 rounded_size{};
     daxa::ImageId depth_prepass_image;
-    std::array<daxa::ImageId, 2> pos_images;
-    std::array<daxa::ImageId, 2> col_images;
-    daxa::ImageId final_image;
 
     daxa::ImageId raster_color_image;
     daxa::ImageId raster_depth_image;
+
+    daxa::ImageId g_buffer_image;
+
+    daxa::ImageId depth32_image;
+    daxa::ImageId half_depth32_image;
+    daxa::ImageId ssao_image;
+
+    daxa::ImageId indirect_diffuse_image;
 
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
@@ -72,7 +77,6 @@ struct GpuResources {
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
     daxa::BufferId globals_buffer;
-    // daxa::BufferId test_data_buffer;
     daxa::BufferId temp_voxel_chunks_buffer;
     VoxelChunks voxel_chunks;
     VoxelMalloc voxel_malloc;
@@ -115,13 +119,16 @@ struct VoxelApp : AppWindow<VoxelApp> {
     u32 prev_page_count{};
 
     daxa::TaskImage task_render_depth_prepass_image{{.name = "task_render_depth_prepass_image"}};
-    daxa::TaskImage task_render_pos_image{{.name = "task_render_pos_image"}};
-    daxa::TaskImage task_render_prev_pos_image{{.name = "task_render_prev_pos_image"}};
-    daxa::TaskImage task_render_col_image{{.name = "task_render_col_image"}};
-    daxa::TaskImage task_render_prev_col_image{{.name = "task_render_prev_col_image"}};
-    daxa::TaskImage task_render_final_image{{.name = "task_render_final_image"}};
     daxa::TaskImage task_render_raster_color_image{{.name = "task_render_raster_color_image"}};
     daxa::TaskImage task_render_raster_depth_image{{.name = "task_render_raster_depth_image"}};
+
+    daxa::TaskImage task_render_g_buffer_image{{.name = "task_render_g_buffer_image"}};
+
+    daxa::TaskImage task_render_depth32_image{{.name = "task_render_depth32_image"}};
+    daxa::TaskImage task_render_half_depth32_image{{.name = "task_render_half_depth32_image"}};
+    daxa::TaskImage task_render_ssao_image{{.name = "task_render_ssao_image"}};
+
+    daxa::TaskImage task_render_indirect_diffuse_image{{.name = "task_render_indirect_diffuse_image"}};
 
     daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -133,7 +140,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
-    daxa::TaskBuffer task_test_data_buffer{{.name = "task_test_data_buffer"}};
     daxa::TaskBuffer task_temp_voxel_chunks_buffer{{.name = "task_temp_voxel_chunks_buffer"}};
     daxa::TaskBuffer task_voxel_malloc_global_allocator_buffer{{.name = "task_voxel_malloc_global_allocator_buffer"}};
     daxa::TaskBuffer task_voxel_malloc_pages_buffer{{.name = "task_voxel_malloc_pages_buffer"}};
@@ -155,7 +161,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkAllocComputeTaskState chunk_alloc_task_state;
     TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
-    ColorSceneComputeTaskState color_scene_task_state;
+    SsaoComputeTaskState ssao_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
 
     ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
@@ -185,6 +191,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     std::future<GvoxModelData> gvox_model_data_future;
     GvoxModelData gvox_model_data;
     bool model_is_loading = false;
+    bool model_is_ready = false;
 
     VoxelApp();
     VoxelApp(VoxelApp const &) = delete;
@@ -206,6 +213,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_resize(u32 sx, u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
+    void set_task_render_images();
     void recreate_render_images();
     void recreate_voxel_chunks();
 

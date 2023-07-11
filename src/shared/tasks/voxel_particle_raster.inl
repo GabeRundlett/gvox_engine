@@ -59,14 +59,12 @@ struct VoxelParticleRasterTaskState {
             .depth_attachment = {{.image_view = depth_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
-#if MAX_RENDERED_VOXEL_PARTICLES > 0
         cmd_list.set_pipeline(*pipeline);
         cmd_list.draw_indirect({
             .draw_command_buffer = globals_buffer_id,
             .draw_command_buffer_read_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),
             .is_indexed = false,
         });
-#endif
         cmd_list.end_renderpass();
     }
 };

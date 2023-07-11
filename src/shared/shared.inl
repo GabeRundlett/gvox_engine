@@ -27,8 +27,8 @@
 #if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/trace_primary.inl>
 #endif
-#if COLOR_SCENE_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/color_scene.inl>
+#if SSAO_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/ssao.inl>
 #endif
 #if POSTPROCESSING_RASTER || defined(__cplusplus)
 #include <shared/tasks/postprocessing.inl>

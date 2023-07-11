@@ -337,7 +337,6 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
     : glfw_window_ptr{glfw_window_ptr},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"} {
     ImGui::CreateContext();
-    node_editor.init();
     auto &style = ImGui::GetStyle();
     auto &io = ImGui::GetIO();
     mono_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 14.0f * 2.0f);
@@ -438,7 +437,6 @@ AppUi::~AppUi() {
         settings.save(data_directory / "user_settings.json");
     }
     ImGui_ImplGlfw_Shutdown();
-    node_editor.deinit();
     ImGui::DestroyContext();
 }
 
@@ -521,8 +519,6 @@ void AppUi::settings_ui() {
             }
             if (ImGui::Checkbox("Show Help Menu", &settings.show_help)) {
                 needs_saving = true;
-            }
-            if (ImGui::Checkbox("Show Node Editor", &settings.show_node_editor)) {
             }
             ImGui::EndTabItem();
         }
@@ -765,9 +761,6 @@ void AppUi::update(f32 delta_time) {
         if (show_settings) {
             settings_ui();
         }
-        if (settings.show_node_editor) {
-            node_editor.update();
-        }
     }
 
     if (settings.show_debug_info) {
@@ -891,10 +884,5 @@ void AppUi::toggle_help() {
 
 void AppUi::toggle_console() {
     settings.show_console = !settings.show_console;
-    needs_saving = true;
-}
-
-void AppUi::toggle_node_editor() {
-    settings.show_node_editor = !settings.show_node_editor;
     needs_saving = true;
 }

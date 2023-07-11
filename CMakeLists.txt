@@ -10,7 +10,6 @@ add_executable(${PROJECT_NAME}
     "src/cpu/voxel_app.cpp"
     "src/cpu/app_ui.cpp"
     "src/cpu/app_settings.cpp"
-    "src/cpu/node_editor.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})

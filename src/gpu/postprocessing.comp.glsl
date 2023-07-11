@@ -1,4 +1,5 @@
 #include <shared/shared.inl>
+#include <utils/math.glsl>
 
 #define FILMIC
 
@@ -35,7 +36,8 @@ void main() {
         pixel_i.y >= deref(gpu_input).frame_dim.y)
         return;
 
-    f32vec4 final_color = imageLoad(daxa_image2D(render_col_image_id), i32vec2(pixel_i));
+    // broken
+    f32vec4 final_color = imageLoad(daxa_image2D(g_buffer_image_id), i32vec2(pixel_i));
 
     imageStore(daxa_image2D(final_image_id), i32vec2(pixel_i), f32vec4(color_correct(final_color.rgb), 0));
 }
@@ -56,11 +58,26 @@ void main() {
 layout(location = 0) out f32vec4 color;
 
 void main() {
-    i32vec2 image_size = imageSize(daxa_image2D(render_col_image_id));
+    i32vec2 image_size = imageSize(daxa_uimage2D(g_buffer_image_id));
     f32vec2 scl = f32vec2(deref(gpu_input).frame_dim) / f32vec2(image_size);
     // Suspicious scale factor (I don't trust floating point math)
-    f32vec2 uv = gl_FragCoord.xy / f32vec2(push.final_size) * scl;
-    f32vec3 final_color = texture(daxa_sampler2D(render_col_image_id, push.final_sampler), uv).rgb;
+    f32vec2 uv = gl_FragCoord.xy * scl;
+
+    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv));
+
+    f32 ssao_value = imageLoad(daxa_image2D(ssao_image_id), i32vec2(uv * 0.5)).r;
+
+    f32vec3 albedo_col = uint_rgba8_to_float4(g_buffer_value.x).rgb;
+    f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
+    f32vec3 emit_col = uint_urgb9e5_to_float3(g_buffer_value.w);
+
+    ssao_value = dot(nrm, normalize(vec3(1, 2, 3))) * 0.25 + 0.75;
+
+    // f32 cost = g_buffer_value.x;
+    // f32vec3 final_color = hsv2rgb(vec3(0.6 + cost * 0.008, 1.0, min(1.0, cost * 0.01)));
+
+    f32vec3 final_color = albedo_col * vec3(ssao_value);
+
     color = f32vec4(color_correct(final_color), 1.0);
 }
 
