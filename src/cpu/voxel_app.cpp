@@ -353,6 +353,8 @@ VoxelApp::VoxelApp()
 
     start = Clock::now();
 
+    constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
+    if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE)
     {
         ui.gvox_model_path = "C:/Users/gabe/AppData/Roaming/GabeVoxelGame/models/building.vox";
         gvox_model_data = load_gvox_data();
@@ -771,7 +773,7 @@ void VoxelApp::on_mouse_move(f32 x, f32 y) {
     f32vec2 const center = {static_cast<f32>(window_size.x / 2), static_cast<f32>(window_size.y / 2)};
     gpu_input.mouse.pos = f32vec2{x, y};
     auto offset = gpu_input.mouse.pos - center;
-    gpu_input.mouse.pos = gpu_input.mouse.pos *f32vec2{static_cast<f32>(gpu_resources.render_images.size.x), static_cast<f32>(gpu_resources.render_images.size.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
+    gpu_input.mouse.pos = gpu_input.mouse.pos * f32vec2{static_cast<f32>(gpu_resources.render_images.size.x), static_cast<f32>(gpu_resources.render_images.size.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
     if (!ui.paused) {
         gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
         set_mouse_pos(center.x, center.y);
@@ -1066,14 +1068,14 @@ void VoxelApp::voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph) {
                 .src_offset = 0,
                 .dst_buffer = task_voxel_malloc_pages_buffer.get_state().buffers[1],
                 .dst_offset = 0,
-                .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * sizeof(VoxelMalloc_PageIndex),
+                .size = sizeof(VoxelMalloc_PageIndex) * prev_page_count,
             });
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = task_voxel_malloc_old_pages_buffer.get_state().buffers[2],
                 .src_offset = 0,
                 .dst_buffer = task_voxel_malloc_pages_buffer.get_state().buffers[2],
                 .dst_offset = 0,
-                .size = VOXEL_MALLOC_PAGE_SIZE_BYTES * sizeof(VoxelMalloc_PageIndex),
+                .size = sizeof(VoxelMalloc_PageIndex) * prev_page_count,
             });
 
             cmd_list.destroy_buffer_deferred(task_voxel_malloc_old_pages_buffer.get_state().buffers[0]);
