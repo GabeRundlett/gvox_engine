@@ -669,6 +669,7 @@ void VoxelApp::on_update() {
     prev_time = now;
     gpu_input.frame_dim = gpu_resources.render_images.size;
     gpu_input.rounded_frame_dim = gpu_resources.render_images.rounded_size;
+    gpu_input.render_res_scl = ui.settings.render_res_scl;
 
     {
         auto reload_result = main_pipeline_manager.reload_all();

@@ -35,6 +35,7 @@ struct GpuInput {
     u32vec2 rounded_frame_dim;
     f32 time;
     f32 delta_time;
+    f32 render_res_scl;
     f32 resize_factor;
     MouseInput mouse;
     u32 actions[GAME_ACTION_LAST + 1];

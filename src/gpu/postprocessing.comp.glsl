@@ -59,7 +59,7 @@ layout(location = 0) out f32vec4 color;
 
 void main() {
     i32vec2 image_size = imageSize(daxa_uimage2D(g_buffer_image_id));
-    f32vec2 scl = f32vec2(deref(gpu_input).frame_dim) / f32vec2(image_size);
+    f32vec2 scl = f32vec2(deref(gpu_input).render_res_scl);
     // Suspicious scale factor (I don't trust floating point math)
     f32vec2 uv = gl_FragCoord.xy * scl;
 
