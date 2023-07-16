@@ -29,59 +29,59 @@ void RenderImages::create(daxa::Device &device) {
     depth_prepass_image = device.create_image({
         .format = daxa::Format::R32_SFLOAT,
         .size = {rounded_size.x / PREPASS_SCL, rounded_size.y / PREPASS_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .name = "depth_prepass_image",
     });
 
     raster_color_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
         .size = {size.x, size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "raster_color_image",
     });
     raster_depth_image = device.create_image({
         .format = daxa::Format::D32_SFLOAT,
         .size = {size.x, size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "raster_depth_image",
     });
 
     g_buffer_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_UINT,
         .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "g_buffer_image",
     });
 
     depth32_image = device.create_image({
         .format = daxa::Format::R32_SFLOAT,
         .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .name = "depth32_image",
     });
     scaled_depth32_image = device.create_image({
         .format = daxa::Format::R32_SFLOAT,
         .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_DST,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
         .name = "scaled_depth32_image",
     });
     ssao_image = device.create_image({
         .format = daxa::Format::R16_SFLOAT,
         .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY | daxa::ImageUsageFlagBits::TRANSFER_DST,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
         .name = "ssao_image",
     });
 
     indirect_diffuse_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
         .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "indirect_diffuse_image",
     });
     reconstructed_shading_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_SFLOAT,
         .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "reconstructed_shading_image",
     });
 }
@@ -179,28 +179,28 @@ void GpuResources::create(daxa::Device &device) {
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {128, 128, 64},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "blue_noise_vec1_image",
     });
     blue_noise_vec2_image = device.create_image({
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {128, 128, 64},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "blue_noise_vec2_image",
     });
     blue_noise_unit_vec3_image = device.create_image({
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {128, 128, 64},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "blue_noise_unit_vec3_image",
     });
     blue_noise_cosine_vec3_image = device.create_image({
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {128, 128, 64},
-        .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "blue_noise_cosine_vec3_image",
     });
     settings_buffer = device.create_buffer({

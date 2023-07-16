@@ -4,9 +4,9 @@
 
 DAXA_DECL_TASK_USES_BEGIN(UpscaleReconstructComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_WRITE)
+DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
@@ -43,9 +43,8 @@ struct UpscaleReconstructComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 

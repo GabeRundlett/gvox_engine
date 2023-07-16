@@ -5,10 +5,10 @@
 DAXA_DECL_TASK_USES_BEGIN(PostprocessingRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(reconstructed_shading_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
+DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
+DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
+DAXA_TASK_USE_IMAGE(reconstructed_shading_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
 
@@ -33,7 +33,7 @@ struct PostprocessingRasterTaskState {
     void compile_pipeline() {
         auto compile_result = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
-            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
+            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.write_out_preprocessed_code = "test.glsl", .defines = {{"POSTPROCESSING_RASTER", "1"}}}},
             .color_attachments = {{
                 .format = get_color_format(),
             }},

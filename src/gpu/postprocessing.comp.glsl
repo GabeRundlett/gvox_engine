@@ -62,27 +62,19 @@ layout(location = 0) out f32vec4 color;
 
 void main() {
     f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl);
+    f32vec2 uv = f32vec2(gl_FragCoord.xy);
+    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl));
+
 #if USE_SAMPLER
     i32vec2 g_buffer_size = i32vec2(deref(gpu_input).rounded_frame_dim);
     f32vec2 scl = 1.0 / f32vec2(g_buffer_size);
+    f32vec4 shaded_value = texture(daxa_sampler2D(reconstructed_shading_image_id, push.final_sampler), uv * scl);
 #else
-    f32vec2 scl = f32vec2(deref(gpu_input).render_res_scl);
-#endif
-
-    f32vec2 uv = f32vec2(gl_FragCoord.xy);
-
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl));
     f32vec4 shaded_value = imageLoad(daxa_image2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl));
-
-#if USE_SAMPLER
-    f32 ssao_value = texture(daxa_sampler2D(push.final_sampler, ssao_image_id), uv).r;
-    f32vec3 direct_value = texture(daxa_sampler2D(push.final_sampler, indirect_diffuse_image_id), uv).rgb;
-#else
-    // f32 ssao_value = imageLoad(daxa_image2D(ssao_image_id), i32vec2(uv * 1.0 / SHADING_SCL)).r;
-    // f32vec3 direct_value = imageLoad(daxa_image2D(indirect_diffuse_image_id), i32vec2(uv * 1.0 / SHADING_SCL)).rgb;
+#endif
     f32 ssao_value = shaded_value.w;
     f32vec3 direct_value = shaded_value.xyz;
-#endif
+
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     f32vec3 emit_col = uint_urgb9e5_to_float3(g_buffer_value.w);
 
