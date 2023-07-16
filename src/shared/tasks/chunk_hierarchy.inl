@@ -27,19 +27,25 @@ struct ChunkHierarchyComputeTaskState {
             .name = "chunk_hierarchy",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.to_string());
+            ui.console.add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            ui.console.add_log(compile_result.message());
+        }
     }
 
-    ChunkHierarchyComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {}
+    ChunkHierarchyComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {
+        compile_pipeline(pipeline_l0, "0");
+        compile_pipeline(pipeline_l1, "1");
+    }
+    auto pipeline_l0_is_valid() -> bool { return pipeline_l0 && pipeline_l0->is_valid(); }
+    auto pipeline_l1_is_valid() -> bool { return pipeline_l1 && pipeline_l1->is_valid(); }
 
     void record_commands_l0(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_l0) {
-            compile_pipeline(pipeline_l0, "0");
-            if (!pipeline_l0)
-                return;
+        if (!pipeline_l0_is_valid()) {
+            return;
         }
         cmd_list.set_pipeline(*pipeline_l0);
         cmd_list.dispatch_indirect({
@@ -48,10 +54,8 @@ struct ChunkHierarchyComputeTaskState {
         });
     }
     void record_commands_l1(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_l1) {
-            compile_pipeline(pipeline_l1, "1");
-            if (!pipeline_l1)
-                return;
+        if (!pipeline_l1_is_valid()) {
+            return;
         }
         cmd_list.set_pipeline(*pipeline_l1);
         cmd_list.dispatch_indirect({

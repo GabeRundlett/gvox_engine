@@ -33,13 +33,17 @@ struct ChunkOptComputeTaskState {
             .name = "chunk_op",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.to_string());
+            ui.console.add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            ui.console.add_log(compile_result.message());
+        }
     }
 
-    ChunkOptComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {}
+    ChunkOptComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
+    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     auto get_pass_indirect_offset() {
         if constexpr (PASS_INDEX == 0) {
@@ -50,10 +54,8 @@ struct ChunkOptComputeTaskState {
     }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline) {
-            compile_pipeline();
-            if (!pipeline)
-                return;
+        if (!pipeline_is_valid()) {
+            return;
         }
         cmd_list.set_pipeline(*pipeline);
         cmd_list.dispatch_indirect({

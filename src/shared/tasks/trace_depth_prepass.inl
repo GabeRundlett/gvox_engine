@@ -29,19 +29,21 @@ struct TraceDepthPrepassComputeTaskState {
             .name = "trace_depth_prepass",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.to_string());
+            ui.console.add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            ui.console.add_log(compile_result.message());
+        }
     }
 
-    TraceDepthPrepassComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} {}
+    TraceDepthPrepassComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
+    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {
-        if (!pipeline) {
-            compile_pipeline();
-            if (!pipeline)
-                return;
+        if (!pipeline_is_valid()) {
+            return;
         }
         cmd_list.set_pipeline(*pipeline);
         assert((render_size.x % (8 * PREPASS_SCL)) == 0 && (render_size.y % (8 * PREPASS_SCL)) == 0);

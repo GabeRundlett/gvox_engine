@@ -1,5 +1,6 @@
 #include <shared/shared.inl>
 #include <utils/math.glsl>
+#include <utils/sky.glsl>
 
 #define FILMIC
 
@@ -57,26 +58,36 @@ void main() {
 
 layout(location = 0) out f32vec4 color;
 
+#define USE_SAMPLER 0
+
 void main() {
-    i32vec2 image_size = imageSize(daxa_uimage2D(g_buffer_image_id));
+    f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl);
+#if USE_SAMPLER
+    i32vec2 g_buffer_size = i32vec2(deref(gpu_input).rounded_frame_dim);
+    f32vec2 scl = 1.0 / f32vec2(g_buffer_size);
+#else
     f32vec2 scl = f32vec2(deref(gpu_input).render_res_scl);
-    // Suspicious scale factor (I don't trust floating point math)
-    f32vec2 uv = gl_FragCoord.xy * scl;
+#endif
 
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv));
+    f32vec2 uv = f32vec2(gl_FragCoord.xy);
 
-    f32 ssao_value = imageLoad(daxa_image2D(ssao_image_id), i32vec2(uv * 0.5)).r;
+    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl));
+    f32vec4 shaded_value = imageLoad(daxa_image2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl));
 
-    f32vec3 albedo_col = uint_rgba8_to_float4(g_buffer_value.x).rgb;
+#if USE_SAMPLER
+    f32 ssao_value = texture(daxa_sampler2D(push.final_sampler, ssao_image_id), uv).r;
+    f32vec3 direct_value = texture(daxa_sampler2D(push.final_sampler, indirect_diffuse_image_id), uv).rgb;
+#else
+    // f32 ssao_value = imageLoad(daxa_image2D(ssao_image_id), i32vec2(uv * 1.0 / SHADING_SCL)).r;
+    // f32vec3 direct_value = imageLoad(daxa_image2D(indirect_diffuse_image_id), i32vec2(uv * 1.0 / SHADING_SCL)).rgb;
+    f32 ssao_value = shaded_value.w;
+    f32vec3 direct_value = shaded_value.xyz;
+#endif
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     f32vec3 emit_col = uint_urgb9e5_to_float3(g_buffer_value.w);
 
-    ssao_value = dot(nrm, normalize(vec3(1, 2, 3))) * 0.25 + 0.75;
-
-    // f32 cost = g_buffer_value.x;
-    // f32vec3 final_color = hsv2rgb(vec3(0.6 + cost * 0.008, 1.0, min(1.0, cost * 0.01)));
-
-    f32vec3 final_color = albedo_col * vec3(ssao_value);
+    f32vec3 albedo_col = uint_rgba8_to_float4(g_buffer_value.x).rgb;
+    f32vec3 final_color = emit_col + albedo_col * (direct_value * max(0.0, dot(nrm, SUN_DIR)) + f32vec3(ssao_value) * sample_sky_ambient(nrm));
 
     color = f32vec4(color_correct(final_color), 1.0);
 }

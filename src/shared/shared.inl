@@ -27,8 +27,17 @@
 #if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/trace_primary.inl>
 #endif
+#if DOWNSCALE_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/downscale.inl>
+#endif
 #if SSAO_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/ssao.inl>
+#endif
+#if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/trace_secondary.inl>
+#endif
+#if UPSCALE_RECONSTRUCT_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/upscale_reconstruct.inl>
 #endif
 #if POSTPROCESSING_RASTER || defined(__cplusplus)
 #include <shared/tasks/postprocessing.inl>

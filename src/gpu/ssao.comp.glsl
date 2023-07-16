@@ -1,6 +1,7 @@
 #include <shared/shared.inl>
 
-#include <utils/math.glsl>
+#include <utils/trace.glsl>
+#include <utils/downscale.glsl>
 
 struct ViewRayContext {
     vec4 ray_dir_cs;
@@ -157,43 +158,25 @@ float process_sample(uint i, float intsgn, float n_angle, inout f32vec3 prev_sam
     return theta_cos_max;
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    u32vec2 px = gl_GlobalInvocationID.xy;
+u32vec2 px;
+f32vec3 nrm;
+f32vec2 uv;
+f32 depth;
+f32 aspect;
 
-    f32vec2 pixel_p = f32vec2(px) + 0.5;
-    frame_dim = deref(gpu_input).frame_dim / 2;
-    inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
-    f32 aspect = frame_dim.x * inv_frame_dim.y;
-
-    f32vec2 uv = pixel_p * inv_frame_dim;
-    // uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
-
-    f32 depth = imageLoad(daxa_image2D(half_depth_image), i32vec2(px)).r;
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(px * 2));
-    f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
-
-    if (depth == 0.0 || dot(nrm, nrm) == 0.0) {
-        imageStore(daxa_image2D(ssao_image_id), i32vec2(px), f32vec4(0, 0, 0, 0));
-        return;
-    }
-
+float kajiya_calc_ao() {
     const f32 znear = 0.01;
-
     view_constants.sample_to_view = f32mat4x4(
         f32vec4(inv_frame_dim.x, 0.0, 0.0, 0.0),
         f32vec4(0.0, inv_frame_dim.y, 0.0, 0.0),
         f32vec4(0.0, 0.0, 0.0, 1.0 / znear),
         f32vec4(0.0, 0.0, -1.0, 0.0));
-
     view_constants.view_to_world = f32mat4x4(
         f32vec4(deref(globals).player.cam.rot_mat[0], 0.0),
         f32vec4(deref(globals).player.cam.rot_mat[1], 0.0),
         f32vec4(deref(globals).player.cam.rot_mat[2], 0.0),
         f32vec4(deref(globals).player.cam.pos, 0.0));
-
     // kajiya -------------------
-
     float spatial_direction_noise = 1.0 / 16.0 * ((((px.x + px.y) & 3) << 2) + (px.x & 3));
     float temporal_direction_noise = temporal_rotations[deref(gpu_input).frame_index % 6] / 360.0;
     float spatial_offset_noise = (1.0 / 4.0) * ((px.y - px.x) & 3);
@@ -258,7 +241,7 @@ void main() {
 
             if (sample_px.x != prev_sample_coord0.x || sample_px.y != prev_sample_coord0.y) {
                 prev_sample_coord0 = sample_px;
-                sample_cs.z = imageLoad(daxa_image2D(half_depth_image), i32vec2(sample_px)).r;
+                sample_cs.z = imageLoad(daxa_image2D(depth_image), i32vec2(sample_px)).r;
                 theta_cos_max1 = process_sample(i, 1, n_angle, prev_sample0_vs, sample_cs, center_vs, nrm_viewspace, v_vs, kernel_radius_ws, theta_cos_max1, color_accum);
             }
         }
@@ -271,7 +254,7 @@ void main() {
 
             if (sample_px.x != prev_sample_coord1.x || sample_px.y != prev_sample_coord1.y) {
                 prev_sample_coord1 = sample_px;
-                sample_cs.z = imageLoad(daxa_image2D(half_depth_image), i32vec2(sample_px)).r;
+                sample_cs.z = imageLoad(daxa_image2D(depth_image), i32vec2(sample_px)).r;
                 theta_cos_max2 = process_sample(i, -1, n_angle, prev_sample1_vs, sample_cs, center_vs, nrm_viewspace, v_vs, kernel_radius_ws, theta_cos_max2, color_accum);
             }
         }
@@ -287,7 +270,64 @@ void main() {
     float ao = max(0.0, inv_ao);
     ao *= slice_contrib_weight;
 
+    return ao;
     // -------------------------
+}
+
+float my_ssao() {
+    rand_seed(u32(((gl_GlobalInvocationID.x * 123 ^ gl_GlobalInvocationID.y * 567) + deref(gpu_input).frame_index)));
+    f32vec3 nrm_viewspace = normalize(nrm * deref(globals).player.cam.rot_mat);
+
+    f32 ao = 0.0;
+    const u32 SAMPLE_N = 6;
+    const f32 bias = 0.1;
+    const f32 radius = 4.0;
+
+    vec3 view_pos = create_view_pos(deref(globals).player);
+    vec3 view_dir = create_view_dir(deref(globals).player, (uv * 2.0 - 1.0) * vec2(aspect, 1.0));
+    vec3 frag_pos = view_dir * depth + view_pos;
+
+    for (u32 i = 0; i < SAMPLE_N; ++i) {
+        f32 rng = rand();
+        f32vec3 ao_sample = rand_hemi_dir(nrm_viewspace) * mix(0.1, 1.0, rng * rng) * radius;
+        // f32vec4 sample_tex_coord = deref(globals).player.cam.proj_mat * f32vec4(ao_sample + frag_pos, 1.0);
+        // sample_tex_coord.xyz = (sample_tex_coord.xyz * 0.5 / sample_tex_coord.w) * vec3(1.0) + 0.5;
+        f32vec2 sample_tex_coord = f32vec2(uv) + ao_sample.xy * 0.01;
+        f32 sample_depth = imageLoad(daxa_image2D(depth_image), i32vec2(sample_tex_coord.xy * frame_dim / SHADING_SCL)).r;
+        ao += (depth + ao_sample.z >= sample_depth + bias ? 1.0 : 0.0);
+    }
+
+    return 1.0 - ao / SAMPLE_N;
+}
+
+float calc_ao() {
+    return my_ssao();
+    // return kajiya_calc_ao();
+}
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    px = gl_GlobalInvocationID.xy;
+
+    u32vec2 offset = get_downscale_offset(gpu_input);
+
+    f32vec2 pixel_p = f32vec2(px * SHADING_SCL + offset) + 0.5;
+    frame_dim = deref(gpu_input).frame_dim;
+    inv_frame_dim = f32vec2(1.0, 1.0) / frame_dim;
+    aspect = frame_dim.x * inv_frame_dim.y;
+
+    uv = pixel_p * inv_frame_dim;
+
+    depth = imageLoad(daxa_image2D(depth_image), i32vec2(px)).r;
+    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(px * SHADING_SCL + offset));
+    nrm = u16_to_nrm(g_buffer_value.y);
+
+    if (depth == MAX_SD || dot(nrm, nrm) == 0.0) {
+        imageStore(daxa_image2D(ssao_image_id), i32vec2(px), f32vec4(1, 0, 0, 0));
+        return;
+    }
+
+    float ao = calc_ao();
 
     imageStore(daxa_image2D(ssao_image_id), i32vec2(px), f32vec4(ao, 0, 0, 0));
 }

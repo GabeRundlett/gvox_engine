@@ -94,7 +94,11 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
     u32 lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, ray_pos, result.voxel_data);
     if (lod == 0) {
         if (info.extend_to_max_dist) {
+#if TRACE_SECONDARY_COMPUTE
+            result.dist = 0.0;
+#else
             result.dist = info.max_dist;
+#endif
         } else {
             result.dist = 0.0;
         }
@@ -128,10 +132,11 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
         }
         lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, current_pos, result.voxel_data);
 #if defined(TRACE_DEPTH_PREPASS_COMPUTE)
-        if (lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7)) {
+        bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7);
 #else
-        if (lod == 0) {
+        bool hit_surface = lod == 0;
 #endif
+        if (hit_surface) {
             result.nrm = sign(info.ray_dir) * (sign(t_next - min(min(t_next.x, t_next.y), t_next.z).xxx) - 1);
             result.dist = t_curr;
             break;

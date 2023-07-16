@@ -40,19 +40,21 @@ struct VoxelParticleRasterTaskState {
             .name = "voxel_particle_sim",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.to_string());
+            ui.console.add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            ui.console.add_log(compile_result.message());
+        }
     }
 
-    VoxelParticleRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {}
+    VoxelParticleRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
+    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image, u32vec2 size) {
-        if (!pipeline) {
-            compile_pipeline();
-            if (!pipeline)
-                return;
+        if (!pipeline_is_valid()) {
+            return;
         }
         cmd_list.begin_renderpass({
             .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},

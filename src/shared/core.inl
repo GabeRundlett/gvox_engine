@@ -21,9 +21,12 @@
 #define PALETTES_PER_CHUNK (PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS)
 
 #define MAX_CHUNK_UPDATES_PER_FRAME 64
+#define MAX_QUEUED_BRUSH_INPUTS 128
 
-#define MAX_CHUNK_WORK_ITEMS_L0 ((1 << (3)) + 0)
-#define MAX_CHUNK_WORK_ITEMS_L1 ((1 << (3 + 9)) + 0)
+// doing x << 9 is the same as doing x * 512. Written this way for clarity only.
+// We multiply by 512 because that's how many times the brush can subdivide
+#define MAX_CHUNK_WORK_ITEMS_L0 (MAX_QUEUED_BRUSH_INPUTS << 0)
+#define MAX_CHUNK_WORK_ITEMS_L1 (MAX_QUEUED_BRUSH_INPUTS << 9)
 #define MAX_CHUNK_WORK_ITEMS_L2 MAX_CHUNK_UPDATES_PER_FRAME
 
 #define MAX_SIMULATED_VOXEL_PARTICLES 0 // (1 << 14)
@@ -40,3 +43,4 @@
 
 #define USE_POINTS 0
 #define PREPASS_SCL 2
+#define SHADING_SCL 2

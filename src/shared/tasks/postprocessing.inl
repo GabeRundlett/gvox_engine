@@ -7,6 +7,8 @@ DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), FRAGMENT_SHADER_READ
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_IMAGE(reconstructed_shading_image_id, REGULAR_2D, FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
 
@@ -39,19 +41,21 @@ struct PostprocessingRasterTaskState {
             .name = "postprocessing",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.to_string());
+            ui.console.add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            ui.console.add_log(compile_result.message());
+        }
     }
 
-    PostprocessingRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, daxa::SamplerId &a_sampler, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, sampler{a_sampler}, render_color_format{a_render_color_format} {}
+    PostprocessingRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, daxa::SamplerId &a_sampler, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, sampler{a_sampler}, render_color_format{a_render_color_format} { compile_pipeline(); }
+    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::ImageId render_image, u32vec2 size) {
-        if (!pipeline) {
-            compile_pipeline();
-            if (!pipeline)
-                return;
+        if (!pipeline_is_valid()) {
+            return;
         }
         cmd_list.begin_renderpass({
             .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},

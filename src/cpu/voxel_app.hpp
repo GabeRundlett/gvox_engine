@@ -29,10 +29,11 @@ struct RenderImages {
     daxa::ImageId g_buffer_image;
 
     daxa::ImageId depth32_image;
-    daxa::ImageId half_depth32_image;
+    daxa::ImageId scaled_depth32_image;
     daxa::ImageId ssao_image;
 
     daxa::ImageId indirect_diffuse_image;
+    daxa::ImageId reconstructed_shading_image;
 
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
@@ -125,10 +126,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_g_buffer_image{{.name = "task_render_g_buffer_image"}};
 
     daxa::TaskImage task_render_depth32_image{{.name = "task_render_depth32_image"}};
-    daxa::TaskImage task_render_half_depth32_image{{.name = "task_render_half_depth32_image"}};
+    daxa::TaskImage task_render_scaled_depth32_image{{.name = "task_render_scaled_depth32_image"}};
     daxa::TaskImage task_render_ssao_image{{.name = "task_render_ssao_image"}};
 
     daxa::TaskImage task_render_indirect_diffuse_image{{.name = "task_render_indirect_diffuse_image"}};
+    daxa::TaskImage task_render_reconstructed_shading_image{{.name = "task_render_reconstructed_shading_image"}};
 
     daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -161,7 +163,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkAllocComputeTaskState chunk_alloc_task_state;
     TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
+    DownscaleComputeTaskState downscale_task_state;
     SsaoComputeTaskState ssao_task_state;
+    TraceSecondaryComputeTaskState trace_secondary_task_state;
+    UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
 
     ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
