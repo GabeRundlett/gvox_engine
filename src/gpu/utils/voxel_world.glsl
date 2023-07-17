@@ -44,11 +44,17 @@ void voxel_world_perframe(
 #undef INPUT
 #undef SETTINGS
 
+// Add a root work item to the L0 ChunkWorkItems queue of the ChunkThreadPoolState
 #define A_THREAD_POOL deref(globals).chunk_thread_pool_state
 bool queue_root_work_item(daxa_RWBufferPtr(GpuGlobals) globals_ptr, in ChunkWorkItem new_work_item) {
+    // Get the insertion index ( = number of uncompleted work items left)
+    // Also increment the number of uncompleted work items
     u32 queue_offset = atomicAdd(A_THREAD_POOL.work_items_l0_uncompleted, 1);
+    // Clamp the uncompleted item count to the maximum L0 work items authorized
     atomicMin(A_THREAD_POOL.work_items_l0_uncompleted, MAX_CHUNK_WORK_ITEMS_L0);
+    // Check if the insertion index is valid
     if (queue_offset < MAX_CHUNK_WORK_ITEMS_L0) {
+        // Insert the work item in the correct queue at the correct offset
         A_THREAD_POOL.chunk_work_items_l0[1 - A_THREAD_POOL.queue_index][queue_offset] = new_work_item;
         return true;
     } else {

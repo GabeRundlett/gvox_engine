@@ -47,6 +47,7 @@ b32 VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel_
 #define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_lod_nonuniform_##N
 #define voxel_rw_uniformity_lod_nonuniform(N) rw_VoxelUniformityChunk_lod_nonuniform_##N
 
+// 3D Leaf Chunk index => u32 index in buffer
 u32 calc_chunk_index(u32vec3 chunk_i, u32vec3 chunk_n) {
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
@@ -213,6 +214,7 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }
 
+// Set the state of all 512 (16x32) children to uncompleted
 void zero_work_item_children(in out ChunkWorkItem work_item) {
     for (u32 i = 0; i < 16; ++i) {
         work_item.children_finished[i] = 0;
