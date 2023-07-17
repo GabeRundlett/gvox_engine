@@ -281,6 +281,21 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_sampler(final_image_sampler);
 }
 
+// Code flow
+// VoxelApp::VoxelApp()
+// GpuResources::create()
+// VoxelApp::record_main_task_graph()
+// VoxelApp::run()
+// VoxelApp::on_update()
+
+// [App initialization]
+// Creates daxa instance, device, swapchain, pipeline manager
+// Creates ui and imgui_renderer
+// Creates task states
+// Creates GPU Resources: GpuResources::create()
+// Creates main task graph: VoxelApp::record_main_task_graph() 
+// Creates GVOX Context (gvox_ctx)
+// Creates temp task graph
 VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {800, 600}),
       daxa_instance{daxa::create_instance({.enable_validation = false})},
@@ -487,6 +502,9 @@ VoxelApp::~VoxelApp() {
     gpu_resources.destroy(device);
 }
 
+// [Main loop]
+// handle resize event
+// VoxelApp::on_update()
 void VoxelApp::run() {
     while (true) {
         glfwPollEvents();
@@ -686,6 +704,14 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     return result;
 }
 
+// [Update engine state]
+// Reload pipeline manager
+// Update UI
+// Update swapchain
+// Recreate voxel chunks (conditional)
+// Handle GVOX model upload
+// Voxel malloc management
+// Execute main task graph
 void VoxelApp::on_update() {
     auto now = Clock::now();
     gpu_input.time = std::chrono::duration<f32>(now - start).count();
@@ -901,6 +927,19 @@ void VoxelApp::recreate_voxel_chunks() {
     needs_vram_calc = true;
 }
 
+// [Engine initializations tasks]
+//
+// Startup Task (Globals Clear):
+// Clear task_globals_buffer
+// Clear task_temp_voxel_chunks_buffer
+// Clear task_voxel_chunks_buffer
+// Clear task_voxel_malloc_pages_buffer (x3)
+// 
+// GPU Task:
+// startup.comp.glsl (Run on 1 thread)
+//
+// Initialize Task:
+// init VoxelMalloc_GlobalAllocator buffer
 void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
@@ -1009,6 +1048,9 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
         .name = "Initialize",
     });
 }
+
+// [Task: Upload settings to GPU]
+// Init task_settings_buffer
 void VoxelApp::upload_settings(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
@@ -1038,6 +1080,7 @@ void VoxelApp::upload_settings(daxa::TaskGraph &temp_task_graph) {
         .name = "StartupTask (Globals Clear)",
     });
 }
+
 void VoxelApp::upload_model(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
@@ -1074,6 +1117,7 @@ void VoxelApp::upload_model(daxa::TaskGraph &temp_task_graph) {
         .name = "upload_model",
     });
 }
+
 void VoxelApp::voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
@@ -1135,6 +1179,44 @@ void VoxelApp::voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph) {
     });
 }
 
+// [Record the command list sent to the GPU each frame]
+
+// List of tasks:
+
+// (Conditional tasks)
+// Startup (startup.comp.glsl), run on 1 thread
+// Upload settings, Upload model, Voxel malloc realloc
+
+// GpuInputUploadTransferTask
+// -> copy buffer from gpu_input to task_input_buffer
+
+// PerframeTask (perframe.comp.glsl), run on 1 thread
+// -> player_perframe() : update player
+// -> voxel_world_perframe() : init voxel world
+// -> update brush
+// -> update voxel_malloc_global_allocator
+// -> update thread pool
+// -> update particles
+
+// VoxelParticleSimComputeTask
+// -> Simulate the particles
+
+// ChunkHierarchy (chunk_hierarchy.comp.glsl) (x2)
+// -> Creates hierarchical structure / chunk work items to be generated and processed by Chunk Edit
+
+// ChunkEdit (chunk_edit.comp.glsl)
+// -> Actually build the chunks depending on the chunk work items (containing brush infos)
+
+// ChunkOpt_x2x4                 [Optim]
+// ChunkOpt_x8up                 [Optim]
+// ChunkAlloc                    [Optim]
+// VoxelParticleRasterTask       [Particles]
+// TraceDepthPrepassTask         [Optim]
+// TracePrimaryTask              [Render]
+// ColorSceneTask                [Render]
+// GpuOutputDownloadTransferTask [I/O]
+// PostprocessingTask            [Render]
+// ImGui draw                    [GUI Render]
 auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     daxa::TaskGraph result_task_graph = daxa::TaskGraph({
         .device = device,

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 include(cmake/warnings.cmake)
 include(cmake/static_analysis.cmake)
 
-project(my_app VERSION 0.1.14)
+project(gvox_engine VERSION 0.1.14)
 add_executable(${PROJECT_NAME}
     "src/cpu/main.cpp"
     "src/cpu/deps.cpp"
@@ -67,7 +67,7 @@ if(PACKAGE_VOXEL_GAME)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
     install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
     # install(FILES "${CMAKE_SOURCE_DIR}/zlib1.dll" DESTINATION bin)
-    install(FILES $<TARGET_RUNTIME_DLLS:my_app> DESTINATION bin)
+    install(FILES $<TARGET_RUNTIME_DLLS:gvox_engine> DESTINATION bin)
     foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
         install(FILES $<TARGET_FILE:gvox::gvox_format_${FORMAT_NAME}> DESTINATION bin)
     endforeach()

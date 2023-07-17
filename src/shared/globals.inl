@@ -46,42 +46,49 @@ struct BrushInput {
 
 struct VoxelChunkUpdateInfo {
     u32vec3 i;
-    u32 flags;
+    u32 flags; // brush flags
     BrushInput brush_input;
 };
 
 struct VoxelWorld {
     VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
-    u32 chunk_update_n;
+    u32 chunk_update_n; // Number of chunks to update
 };
 
 struct ChunkWorkItem {
     u32vec3 i;
-    u32 brush_id;
-    BrushInput brush_input;
+    u32 brush_id;              // Brush ID
+    BrushInput brush_input;    // Brush input parameters
 
-    u32 children_finished[16];
+    u32 children_finished[16]; // bitmask of completed children work items (16x32 = 512 children)
 };
 
+// Manages L0 and L1 ChunkWorkItems
+// Values are reset between frames in perframe.comp.glsl in the following way:
+// total_jobs_ran = l0_uncompleted + l1_uncompleted
+// l0_queued = l0_uncompleted
+// l1_queued = l1_uncompleted
+// l0_completed = l0_uncompleted = l1_completed = l1_uncompleted = 0
+
 struct ChunkThreadPoolState {
-    u32 total_jobs_ran;
-    u32 queue_index;
+    u32 total_jobs_ran;            // total work items to run for the current frame
+    u32 queue_index;               // Current queue (0: default, 1: destination for repacking unfinished work items)
 
-    u32 work_items_l0_queued;
-    u32 work_items_l0_dispatch_y;
-    u32 work_items_l0_dispatch_z;
+    u32 work_items_l0_queued;      // Number of L0 work items in queue (also L0 dispatch x)
+    u32 work_items_l0_dispatch_y;  // 1
+    u32 work_items_l0_dispatch_z;  // 1
 
-    u32 work_items_l1_queued;
-    u32 work_items_l1_dispatch_y;
-    u32 work_items_l1_dispatch_z;
+    u32 work_items_l1_queued;      // Number of L1 work items in queue (also L1 dispatch x)
+    u32 work_items_l1_dispatch_y;  // 1
+    u32 work_items_l1_dispatch_z;  // 1
 
-    u32 work_items_l0_completed;
-    u32 work_items_l0_uncompleted;
-    ChunkWorkItem chunk_work_items_l0[2][MAX_CHUNK_WORK_ITEMS_L0];
+    u32 work_items_l0_completed;   // Number of L0 work items completed for the current frame
+    u32 work_items_l0_uncompleted; // Number of L0 work items left to do (one frame)
+    ChunkWorkItem chunk_work_items_l0[2][MAX_CHUNK_WORK_ITEMS_L0]; // L0 work items list
 
-    u32 work_items_l1_completed;
-    u32 work_items_l1_uncompleted;
-    ChunkWorkItem chunk_work_items_l1[2][MAX_CHUNK_WORK_ITEMS_L1];
+    u32 work_items_l1_completed;   // Number of L1 work items completed (one frame)
+    u32 work_items_l1_uncompleted; // Number of L1 work items left to do (one frame)
+    ChunkWorkItem chunk_work_items_l1[2][MAX_CHUNK_WORK_ITEMS_L1]; // L1 work items list
 };
 
 struct GpuIndirectDispatch {
