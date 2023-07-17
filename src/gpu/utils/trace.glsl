@@ -74,7 +74,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
 
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(info.chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
+    b.bound_max = f32vec3(info.chunk_n) * CHUNK_WORLDSPACE_SIZE;
 
     intersect(ray_pos, info.ray_dir, f32vec3(1) / info.ray_dir, b);
     ray_pos += info.ray_dir * 0.01 / VOXEL_SCL;
@@ -160,7 +160,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
 void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(chunk_n) * (CHUNK_SIZE / VOXEL_SCL);
+    b.bound_max = f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
 
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
     ray_pos += ray_dir * 0.001 / VOXEL_SCL;

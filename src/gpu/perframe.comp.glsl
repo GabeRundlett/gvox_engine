@@ -30,13 +30,15 @@ void main() {
         }
 
         deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos;
+        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + f32vec3(deref(globals).player.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
 
         if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
-            // if (BRUSH_STATE.is_editing == 0)
             {
                 ChunkWorkItem brush_work_item;
-                brush_work_item.i = u32vec3(0);
+                // TODO: Issue a work item with a correct root coordinate. I think that we should turn this
+                // coordinate space from being in root node space, to actually be in root CHILD node space.
+                // This would make it so that we can issue work items with more granularity.
+                brush_work_item.i = i32vec3(0, 0, 0);
                 brush_work_item.brush_id = CHUNK_FLAGS_USER_BRUSH_A;
                 brush_work_item.brush_input = deref(globals).brush_input;
                 zero_work_item_children(brush_work_item);
@@ -47,10 +49,9 @@ void main() {
             if (BRUSH_STATE.is_editing == 0) {
                 BRUSH_STATE.initial_frame = INPUT.frame_index;
             }
-            // if (((INPUT.frame_index - BRUSH_STATE.initial_frame) & 15) == 0)
             {
                 ChunkWorkItem brush_work_item;
-                brush_work_item.i = u32vec3(0);
+                brush_work_item.i = i32vec3(0, 0, 0);
                 brush_work_item.brush_id = CHUNK_FLAGS_USER_BRUSH_B;
                 brush_work_item.brush_input = deref(globals).brush_input;
                 zero_work_item_children(brush_work_item);

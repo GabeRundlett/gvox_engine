@@ -6,12 +6,12 @@
 
 u32vec3 chunk_n;
 u32 temp_chunk_index;
-u32vec3 chunk_i;
+i32vec3 chunk_i;
 u32 chunk_index;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
 u32vec3 inchunk_voxel_i;
-u32vec3 voxel_i;
+i32vec3 voxel_i;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
@@ -62,19 +62,17 @@ f32vec3 terrain_nrm(f32vec3 pos) {
 }
 
 void brushgen_world(in out f32vec3 col, in out u32 id) {
-#if 0
+#if 0 // Mandelbulb world
     f32vec3 mandelbulb_color;
-    if (mandelbulb((voxel_pos / (CHUNK_SIZE / VOXEL_SCL * 4) * 2 - 1) * 1, mandelbulb_color)) {
+    if (mandelbulb((voxel_pos / (CHUNK_WORLDSPACE_SIZE * 4) * 2 - 1) * 1, mandelbulb_color)) {
         col = f32vec3(0.02);
         id = 1;
     }
-#elif 0
-
+#elif 0 // Solid world
     id = 1;
     col = f32vec3(0.5, 0.1, 0.8);
 
-#elif GEN_MODEL
-
+#elif GEN_MODEL // Model world
     u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     // id = packed_col_data >> 0x18;
@@ -84,7 +82,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     //     id = 2;
     // }
 
-#elif 1
+#elif 1 // Terrain world
     voxel_pos += f32vec3(1700, 1600, 150);
 
     f32 val = terrain_noise(voxel_pos);
@@ -122,8 +120,13 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             col = f32vec3(0.08, 0.08, 0.07);
         }
     }
-#elif 0
-    u32vec3 voxel_i = u32vec3(voxel_pos / (CHUNK_SIZE / VOXEL_SCL));
+#elif 1 // Ball world (each ball is centered on a chunk center)
+    if (length(fract(voxel_pos / CHUNK_WORLDSPACE_SIZE) - 0.5) < 0.15) {
+        id = 1;
+        col = f32vec3(0.1);
+    }
+#elif 0 // Checker board world
+    u32vec3 voxel_i = u32vec3(voxel_pos / CHUNK_WORLDSPACE_SIZE);
     if ((voxel_i.x + voxel_i.y + voxel_i.z) % 2 == 1) {
         id = 1;
         col = f32vec3(0.1);
@@ -154,7 +157,7 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
     id = prev_id;
 
     // f32vec3 mandelbulb_color;
-    // if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_SIZE / VOXEL_SCL * 8 / 2) / (CHUNK_SIZE / VOXEL_SCL * 8) * 2 - 1) * 1, mandelbulb_color)) {
+    // if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_WORLDSPACE_SIZE * 8 / 2) / (CHUNK_WORLDSPACE_SIZE * 8) * 2 - 1) * 1, mandelbulb_color)) {
     //     col = floor(mandelbulb_color * 10) / 10;
     //     id = 1;
     // }
@@ -202,11 +205,11 @@ void main() {
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
-    chunk_index = calc_chunk_index(chunk_i, chunk_n);
+    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     voxel_chunk_ptr = voxel_chunks + chunk_index;
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
-    voxel_i = chunk_i * CHUNK_SIZE + inchunk_voxel_i;
+    voxel_i = chunk_i * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
     voxel_pos = f32vec3(voxel_i) / VOXEL_SCL;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);

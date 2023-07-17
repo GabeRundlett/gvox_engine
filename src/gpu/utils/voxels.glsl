@@ -47,7 +47,14 @@ b32 VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel_
 
 // 3D Leaf Chunk index => u32 index in buffer
 u32 calc_chunk_index(u32vec3 chunk_i, u32vec3 chunk_n) {
+    // Modulate the chunk index to be wrapped around relative to the chunk offset provided.
     chunk_i = u32vec3((i32vec3(chunk_i) + deref(globals).player.chunk_offset) % i32vec3(chunk_n));
+    u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+    return chunk_index;
+}
+
+u32 calc_chunk_index_from_worldspace(i32vec3 chunk_i, u32vec3 chunk_n) {
+    chunk_i = chunk_i % i32vec3(chunk_n) + i32vec3(chunk_i.x < 0, chunk_i.y < 0, chunk_i.z < 0) * i32vec3(chunk_n);
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
 }

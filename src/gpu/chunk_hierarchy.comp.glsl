@@ -27,7 +27,7 @@
 
 shared u32 children_finished;
 shared ChunkWorkItem work_item;
-u32vec3 node_i;
+i32vec3 node_i;
 u32 work_item_index;
 u32 child_u32_index;
 u32 child_bit_offset;
@@ -88,7 +88,7 @@ void complete_work_item() {
 #define VOXEL_WORLD deref(globals).voxel_world
 #define INDIRECT deref(globals).indirect_dispatch
 #define CHUNKS(i) deref(voxel_chunks[i])
-bool elect_chunk_for_update(u32vec3 chunk_i, u32 chunk_index, u32 brush_flags, in out BrushInput brush_input) {
+bool elect_chunk_for_update(i32vec3 chunk_i, u32 chunk_index, u32 brush_flags, in out BrushInput brush_input) {
     // Increment the number of chunks to update
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
@@ -122,29 +122,38 @@ void perform_work_item() {
     // (const) number of chunks in each axis (1 << x = 2^x)
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     // Child work item index
-    u32vec3 sub_node_i = node_i * 8 + gl_LocalInvocationID.xyz;
+    i32vec3 sub_node_i = node_i * 8 + i32vec3(gl_LocalInvocationID.xyz);
     // Child index in leaf chunk space (0,0,0)->(31,31,31)
-    u32vec3 sub_node_chunk_i = sub_node_i * SUB_NODE_SIZE / CHUNK_SIZE;
-    
+    i32vec3 sub_node_chunk_i = sub_node_i * SUB_NODE_SIZE / CHUNK_SIZE;
 
     // Is the current child work item completed ?
     bool thread_completed = false;
 
-    // Check if sub-node update is necessary
+    // Check if sub-node update is necessary.
     bool needs_subdiv =
-        (sub_node_chunk_i.x < chunk_n.x) &&
-        (sub_node_chunk_i.y < chunk_n.y) &&
-        (sub_node_chunk_i.z < chunk_n.z);
+        (sub_node_chunk_i.x < i32(chunk_n.x)) &&
+        (sub_node_chunk_i.y < i32(chunk_n.y)) &&
+        (sub_node_chunk_i.z < i32(chunk_n.z));
+    // Note: MUST CAST `chunk_n` TO A SIGNED INTEGER BEFORE COMPARISON!
+    // without casting, it implicitly casts the left side to uint instead... This is absurd.
+    //
+    // Also, this comparison is completely broken. This comparison was originally to make sure
+    // chunk in question was only subdivided if the chunk's position was within the "loaded"
+    // region. Previously, the only chunk indices this needed to discard were chunks with
+    // indices greater than the world size. Now that the world wraps around, the chunk_i can
+    // be negative, and in general, this condition should check if the chunk_i is actually
+    // inside the loaded region. When it's outside the loaded region, extra logic should
+    // be implemented to store these queued work items, potentially on disk.
 
     // Switch depending on the brush ID to decide when to subdivide
     if ((work_item.brush_id & CHUNK_FLAGS_WORLD_BRUSH) != 0) {
 #if GEN_MODEL
-        u32vec3 chunk_bi = sub_node_chunk_i + 0;
+        i32vec3 chunk_bi = sub_node_chunk_i + 0;
         needs_subdiv = needs_subdiv && (chunk_bi.x <= (MODEL.extent_x >> 6) && chunk_bi.y <= (MODEL.extent_y >> 6) && chunk_bi.z <= (MODEL.extent_z >> 6));
 #endif
         // Only subdivide in an L2 work item if the child chunk has not already been generated
         if (CHUNK_LEVEL == 1) {
-            u32 chunk_index = calc_chunk_index(sub_node_i, chunk_n);
+            u32 chunk_index = calc_chunk_index_from_worldspace(sub_node_i, chunk_n);
             if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) != 0)
                 needs_subdiv = false;
         }
@@ -152,14 +161,14 @@ void perform_work_item() {
         // if (length(deref(globals).player.pos.xy/8.0 - f32vec2(sub_node_chunk_i.xy)) > 12.0) 
         //     needs_subdiv = false;
     } else if ((work_item.brush_id & CHUNK_FLAGS_USER_BRUSH_A) != 0) {
-        f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+        f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_WORLDSPACE_SIZE;
         f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;
         f32vec3 dist3 = abs(delta);
         if (CHUNK_LEVEL > 0) {
             needs_subdiv = needs_subdiv && (max(dist3.x, max(dist3.y, dist3.z)) < (31.0 + CHUNK_SIZE / 2) / VOXEL_SCL);
         }
     } else if ((work_item.brush_id & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
-        f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_SIZE / VOXEL_SCL;
+        f32vec3 chunk_pos = (f32vec3(sub_node_chunk_i) + 0.5) * CHUNK_WORLDSPACE_SIZE;
         f32vec3 delta = chunk_pos - deref(globals).brush_input.pos;
         f32vec3 dist3 = abs(delta);
         if (CHUNK_LEVEL > 0) {
@@ -187,9 +196,12 @@ void perform_work_item() {
         thread_completed = queue_sub_work_item(new_work_item);
     // Create a L2 work item
 #elif CHUNK_LEVEL == 1
-        u32vec3 chunk_i = sub_node_i;
-        // Convert the chunk 3d index to an u32 index
-        u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
+        i32vec3 chunk_i = sub_node_i;
+        // We must check that the chunk_i is within the loaded range. We can't elect chunks
+        // that are outside the loaded range. If the chunk is outside the range, then we should
+        // put these chunk updates into some fat stale queue or something.
+        // if (chunk_i.x)
+        u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
         thread_completed = elect_chunk_for_update(chunk_i, chunk_index, work_item.brush_id, work_item.brush_input);
 #endif
     } else {

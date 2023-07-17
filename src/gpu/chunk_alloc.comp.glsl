@@ -44,8 +44,8 @@ layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, l
 void main() {
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
-    u32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
-    u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
+    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     u32 inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
     u32 palette_region_voxel_index =

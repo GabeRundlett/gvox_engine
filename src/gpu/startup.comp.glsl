@@ -8,7 +8,7 @@ void main() {
 
     // start world-gen by issuing a chunk update!
     ChunkWorkItem terrain_work_item;
-    terrain_work_item.i = u32vec3(0);
+    terrain_work_item.i = i32vec3(0);
     terrain_work_item.brush_id = CHUNK_FLAGS_WORLD_BRUSH;
     zero_work_item_children(terrain_work_item);
     queue_root_work_item(globals, terrain_work_item);

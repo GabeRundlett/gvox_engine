@@ -46,7 +46,7 @@ struct BrushInput {
 };
 
 struct VoxelChunkUpdateInfo {
-    u32vec3 i;
+    i32vec3 i;
     u32 flags; // brush flags
     BrushInput brush_input;
 };
@@ -57,7 +57,7 @@ struct VoxelWorld {
 };
 
 struct ChunkWorkItem {
-    u32vec3 i;
+    i32vec3 i;
     u32 brush_id;              // Brush ID
     BrushInput brush_input;    // Brush input parameters
 
