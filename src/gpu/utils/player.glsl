@@ -94,10 +94,17 @@ void player_perframe(
     PLAYER.vel = move_vec * applied_speed;
     PLAYER.pos += PLAYER.vel * INPUT.delta_time;
 
+#if ENABLE_CHUNK_WRAPPING
     const u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     const f32vec3 HALF_CHUNK_N = f32vec3(chunk_n) * 0.5;
     PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos / CHUNK_WORLDSPACE_SIZE - HALF_CHUNK_N + 0.5));
     PLAYER.pos = mod(PLAYER.pos - 0.5 * CHUNK_WORLDSPACE_SIZE, CHUNK_WORLDSPACE_SIZE) + CHUNK_WORLDSPACE_SIZE * (HALF_CHUNK_N - 0.5);
+#else
+    // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
+    PLAYER.pos += f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+    PLAYER.chunk_offset = i32vec3(0);
+#endif
+
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 0);
 
     float aspect = float(INPUT.frame_dim.x) / float(INPUT.frame_dim.y);
