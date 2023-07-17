@@ -62,7 +62,7 @@ void main() {
         }
     }
 
-    deref(gpu_output[INPUT.fif_index]).player_pos = deref(globals).player.pos;
+    deref(gpu_output[INPUT.fif_index]).player_pos = deref(globals).player.pos + f32vec3(deref(globals).player.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
 
 #if USE_OLD_ALLOC
     deref(gpu_output[INPUT.fif_index]).heap_size = deref(voxel_malloc_global_allocator).offset;

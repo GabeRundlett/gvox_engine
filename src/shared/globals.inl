@@ -36,6 +36,7 @@ struct Player {
     f32vec3 pos, vel;
     f32vec3 rot;
     f32vec3 forward, lateral;
+    i32vec3 chunk_offset;
     f32 max_speed;
 };
 

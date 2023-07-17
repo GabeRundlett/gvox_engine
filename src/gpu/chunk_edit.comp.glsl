@@ -202,7 +202,7 @@ void main() {
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
-    chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+    chunk_index = calc_chunk_index(chunk_i, chunk_n);
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     voxel_chunk_ptr = voxel_chunks + chunk_index;
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);

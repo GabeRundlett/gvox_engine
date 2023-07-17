@@ -5,8 +5,6 @@
 #include <utils/math.glsl>
 #include <utils/voxel_malloc.glsl>
 
-#define VOXEL_SCL 8
-
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \
     u32 uniformity_lod_index_##N(u32vec3 index_within_lod) {          \
         return index_within_lod.x + index_within_lod.y * u32(64 / N); \
@@ -49,6 +47,7 @@ b32 VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel_
 
 // 3D Leaf Chunk index => u32 index in buffer
 u32 calc_chunk_index(u32vec3 chunk_i, u32vec3 chunk_n) {
+    chunk_i = u32vec3((i32vec3(chunk_i) + deref(globals).player.chunk_offset) % i32vec3(chunk_n));
     u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
 }
@@ -140,7 +139,7 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
 u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) {
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
-    u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+    u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     if (chunk_i.x >= chunk_n.x || chunk_i.y >= chunk_n.y || chunk_i.z >= chunk_n.z) {
         return 0u;
     }
@@ -152,7 +151,7 @@ u32 sample_voxel_chunk(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, 
     b32 sample_lod_presence_##N(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
         u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                      \
         u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                    \
-        u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;                     \
+        u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);                                                        \
         daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                              \
         u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                                \
         u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                     \
@@ -210,7 +209,7 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_Buf
     // u32vec3 voxel_i = u32vec3(clamp(voxel_p * VOXEL_SCL, f32vec3(0, 0, 0), (f32vec3(chunk_n) * CHUNK_SIZE - 1) / VOXEL_SCL));
     u32vec3 voxel_i = u32vec3(voxel_p * VOXEL_SCL);
     u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
-    u32 chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
+    u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }
 
