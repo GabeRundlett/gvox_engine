@@ -31,10 +31,12 @@ float calc_ao() {
         // sample_tex_coord.xyz = (sample_tex_coord.xyz * 0.5 / sample_tex_coord.w) * vec3(1.0) + 0.5;
         f32vec2 sample_tex_coord = f32vec2(uv) + ao_sample.xy * 0.01;
         f32 sample_depth = texelFetch(daxa_texture2D(depth_image), i32vec2(sample_tex_coord.xy * frame_dim / SHADING_SCL), 0).r;
-        ao += (depth + ao_sample.z >= sample_depth + bias ? 1.0 : 0.0);
+        // NOTE: Probably want to set this to 0.0 whe doing GI. This just looks nicer for now.
+        f32 dist_fac = smoothstep(0.0, 1.0, (depth - sample_depth) * 0.1 / radius);
+        ao += (depth + ao_sample.z >= sample_depth + bias ? dist_fac : 1.0);
     }
 
-    return 1.0 - ao / SAMPLE_N;
+    return ao / SAMPLE_N;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
