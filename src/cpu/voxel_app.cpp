@@ -78,12 +78,14 @@ void RenderImages::create(daxa::Device &device) {
         .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "indirect_diffuse_image",
     });
-    reconstructed_shading_image = device.create_image({
-        .format = daxa::Format::R32G32B32A32_SFLOAT,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
-        .name = "reconstructed_shading_image",
-    });
+    for (auto &reconstructed_shading_image : reconstructed_shading_images) {
+        reconstructed_shading_image = device.create_image({
+            .format = daxa::Format::R32G32B32A32_SFLOAT,
+            .size = {rounded_size.x, rounded_size.y, 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+            .name = "reconstructed_shading_image",
+        });
+    }
 }
 void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(depth_prepass_image);
@@ -94,7 +96,9 @@ void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(scaled_depth32_image);
     device.destroy_image(ssao_image);
     device.destroy_image(indirect_diffuse_image);
-    device.destroy_image(reconstructed_shading_image);
+    for (auto &reconstructed_shading_image : reconstructed_shading_images) {
+        device.destroy_image(reconstructed_shading_image);
+    }
 }
 
 void VoxelApp::set_task_render_images() {
@@ -110,7 +114,8 @@ void VoxelApp::set_task_render_images() {
     task_render_ssao_image.set_images({.images = std::array{gpu_resources.render_images.ssao_image}});
 
     task_render_indirect_diffuse_image.set_images({.images = std::array{gpu_resources.render_images.indirect_diffuse_image}});
-    task_render_reconstructed_shading_image.set_images({.images = std::array{gpu_resources.render_images.reconstructed_shading_image}});
+    task_render_reconstructed_shading_image.set_images({.images = std::array{gpu_resources.render_images.reconstructed_shading_images[gpu_input.frame_index % 2]}});
+    task_render_prev_reconstructed_shading_image.set_images({.images = std::array{gpu_resources.render_images.reconstructed_shading_images[1 - (gpu_input.frame_index % 2)]}});
 }
 
 void VoxelChunks::create(daxa::Device &device, u32 log2_chunks_per_axis) {
@@ -555,7 +560,8 @@ void VoxelApp::calc_vram_usage() {
     image_size(gpu_resources.render_images.scaled_depth32_image);
     image_size(gpu_resources.render_images.ssao_image);
     image_size(gpu_resources.render_images.indirect_diffuse_image);
-    image_size(gpu_resources.render_images.reconstructed_shading_image);
+    image_size(gpu_resources.render_images.reconstructed_shading_images[0]);
+    image_size(gpu_resources.render_images.reconstructed_shading_images[1]);
 
     buffer_size(gpu_resources.settings_buffer);
     buffer_size(gpu_resources.input_buffer);
@@ -786,6 +792,7 @@ void VoxelApp::on_update() {
 
     // task_render_pos_image.swap_images(task_render_prev_pos_image);
     // task_render_col_image.swap_images(task_render_prev_col_image);
+    task_render_reconstructed_shading_image.swap_images(task_render_prev_reconstructed_shading_image);
     ++gpu_input.frame_index;
 }
 void VoxelApp::on_mouse_move(f32 x, f32 y) {
@@ -1191,6 +1198,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.use_persistent_image(task_render_ssao_image);
     result_task_graph.use_persistent_image(task_render_indirect_diffuse_image);
     result_task_graph.use_persistent_image(task_render_reconstructed_shading_image);
+    result_task_graph.use_persistent_image(task_render_prev_reconstructed_shading_image);
     task_swapchain_image.set_images({.images = std::array{swapchain_image}});
     set_task_render_images();
 
@@ -1473,9 +1481,13 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.add_task(UpscaleReconstructComputeTask{
         {
             .uses = {
+                .settings = task_settings_buffer,
                 .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .depth_image_id = task_render_depth32_image,
                 .ssao_image_id = task_render_ssao_image,
                 .indirect_diffuse_image_id = task_render_indirect_diffuse_image,
+                .src_image_id = task_render_prev_reconstructed_shading_image,
                 .dst_image_id = task_render_reconstructed_shading_image,
             },
         },

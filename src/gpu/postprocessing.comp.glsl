@@ -63,14 +63,14 @@ layout(location = 0) out f32vec4 color;
 void main() {
     f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl);
     f32vec2 uv = f32vec2(gl_FragCoord.xy);
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl));
+    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl), 0);
 
 #if USE_SAMPLER
     i32vec2 g_buffer_size = i32vec2(deref(gpu_input).rounded_frame_dim);
     f32vec2 scl = 1.0 / f32vec2(g_buffer_size);
     f32vec4 shaded_value = texture(daxa_sampler2D(reconstructed_shading_image_id, push.final_sampler), uv * scl);
 #else
-    f32vec4 shaded_value = imageLoad(daxa_image2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl));
+    f32vec4 shaded_value = texelFetch(daxa_texture2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl), 0);
 #endif
     f32 ssao_value = shaded_value.w;
     f32vec3 direct_value = shaded_value.xyz;

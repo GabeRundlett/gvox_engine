@@ -21,8 +21,8 @@ void main() {
 
     f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(pixel_i, INPUT.frame_index) & ivec3(127, 127, 63), 0).xy - 0.5;
 
-    f32 depth = imageLoad(daxa_image2D(depth_image), i32vec2(pixel_i)).r;
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(pixel_i * SHADING_SCL + offset));
+    f32 depth = texelFetch(daxa_texture2D(depth_image), i32vec2(pixel_i), 0).r;
+    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(pixel_i * SHADING_SCL + offset), 0);
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
     if (depth == MAX_SD || dot(nrm, nrm) == 0.0) {

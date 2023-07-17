@@ -42,7 +42,7 @@ void main() {
         for (i32 xi = -1; xi <= 1; ++xi) {
             i32vec2 pt = i32vec2(pixel_i / PREPASS_SCL) + i32vec2(xi, yi);
             pt = clamp(pt, i32vec2(0), i32vec2(INPUT.rounded_frame_dim / PREPASS_SCL));
-            f32vec2 prepass_data = imageLoad(daxa_image2D(render_depth_prepass_image), pt).xy;
+            f32vec2 prepass_data = texelFetch(daxa_texture2D(render_depth_prepass_image), pt, 0).xy;
             f32 loaded_depth = prepass_data.x - 1.0 / VOXEL_SCL;
             prepass_depth = max(min(prepass_depth, loaded_depth), 0);
             if (prepass_depth == loaded_depth || prepass_depth == max_depth) {

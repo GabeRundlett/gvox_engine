@@ -74,7 +74,7 @@ f32vec3 fetch_lighting(f32vec2 uv) {
 }
 
 f32vec3 fetch_normal_vs(f32vec2 uv) {
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(uv * imageSize(daxa_uimage2D(g_buffer_image_id))));
+    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(uv * imageSize(daxa_uimage2D(g_buffer_image_id))), 0);
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     return normalize(nrm * deref(globals).player.cam.rot_mat);
 }
@@ -241,7 +241,7 @@ float kajiya_calc_ao() {
 
             if (sample_px.x != prev_sample_coord0.x || sample_px.y != prev_sample_coord0.y) {
                 prev_sample_coord0 = sample_px;
-                sample_cs.z = imageLoad(daxa_image2D(depth_image), i32vec2(sample_px)).r;
+                sample_cs.z = texelFetch(daxa_texture2D(depth_image), i32vec2(sample_px), 0).r;
                 theta_cos_max1 = process_sample(i, 1, n_angle, prev_sample0_vs, sample_cs, center_vs, nrm_viewspace, v_vs, kernel_radius_ws, theta_cos_max1, color_accum);
             }
         }
@@ -254,7 +254,7 @@ float kajiya_calc_ao() {
 
             if (sample_px.x != prev_sample_coord1.x || sample_px.y != prev_sample_coord1.y) {
                 prev_sample_coord1 = sample_px;
-                sample_cs.z = imageLoad(daxa_image2D(depth_image), i32vec2(sample_px)).r;
+                sample_cs.z = texelFetch(daxa_texture2D(depth_image), i32vec2(sample_px), 0).r;
                 theta_cos_max2 = process_sample(i, -1, n_angle, prev_sample1_vs, sample_cs, center_vs, nrm_viewspace, v_vs, kernel_radius_ws, theta_cos_max2, color_accum);
             }
         }
@@ -279,9 +279,9 @@ float my_ssao() {
     f32vec3 nrm_viewspace = normalize(nrm * deref(globals).player.cam.rot_mat);
 
     f32 ao = 0.0;
-    const u32 SAMPLE_N = 6;
-    const f32 bias = 0.1;
-    const f32 radius = 4.0;
+    const u32 SAMPLE_N = 16;
+    const f32 bias = 0.01;
+    const f32 radius = 3.0;
 
     vec3 view_pos = create_view_pos(deref(globals).player);
     vec3 view_dir = create_view_dir(deref(globals).player, (uv * 2.0 - 1.0) * vec2(aspect, 1.0));
@@ -293,7 +293,7 @@ float my_ssao() {
         // f32vec4 sample_tex_coord = deref(globals).player.cam.proj_mat * f32vec4(ao_sample + frag_pos, 1.0);
         // sample_tex_coord.xyz = (sample_tex_coord.xyz * 0.5 / sample_tex_coord.w) * vec3(1.0) + 0.5;
         f32vec2 sample_tex_coord = f32vec2(uv) + ao_sample.xy * 0.01;
-        f32 sample_depth = imageLoad(daxa_image2D(depth_image), i32vec2(sample_tex_coord.xy * frame_dim / SHADING_SCL)).r;
+        f32 sample_depth = texelFetch(daxa_texture2D(depth_image), i32vec2(sample_tex_coord.xy * frame_dim / SHADING_SCL), 0).r;
         ao += (depth + ao_sample.z >= sample_depth + bias ? 1.0 : 0.0);
     }
 
@@ -318,8 +318,8 @@ void main() {
 
     uv = pixel_p * inv_frame_dim;
 
-    depth = imageLoad(daxa_image2D(depth_image), i32vec2(px)).r;
-    u32vec4 g_buffer_value = imageLoad(daxa_uimage2D(g_buffer_image_id), i32vec2(px * SHADING_SCL + offset));
+    depth = texelFetch(daxa_texture2D(depth_image), i32vec2(px), 0).r;
+    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(px * SHADING_SCL + offset), 0);
     nrm = u16_to_nrm(g_buffer_value.y);
 
     if (depth == MAX_SD || dot(nrm, nrm) == 0.0) {
