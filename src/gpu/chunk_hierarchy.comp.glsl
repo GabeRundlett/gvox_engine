@@ -88,7 +88,7 @@ void complete_work_item() {
 #define VOXEL_WORLD deref(globals).voxel_world
 #define INDIRECT deref(globals).indirect_dispatch
 #define CHUNKS(i) deref(voxel_chunks[i])
-bool elect_chunk_for_update(i32vec3 chunk_i, u32 chunk_index, u32 brush_flags, in out BrushInput brush_input) {
+bool elect_chunk_for_update(i32vec3 chunk_i, i32vec3 chunk_offset, u32 chunk_index, u32 brush_flags, in out BrushInput brush_input) {
     // Increment the number of chunks to update
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
@@ -102,6 +102,7 @@ bool elect_chunk_for_update(i32vec3 chunk_i, u32 chunk_index, u32 brush_flags, i
         // Set the chunk update infos
         VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
         VOXEL_WORLD.chunk_update_infos[prev_update_n].brush_input = brush_input;
+        VOXEL_WORLD.chunk_update_infos[prev_update_n].chunk_offset = chunk_offset;
         if ((prev_flags & CHUNK_FLAGS_BRUSH_MASK) == 0) {
             VOXEL_WORLD.chunk_update_infos[prev_update_n].flags = 1;
         } else {
@@ -192,6 +193,7 @@ void perform_work_item() {
         new_work_item.i = sub_node_i;
         new_work_item.brush_id = work_item.brush_id;
         new_work_item.brush_input = work_item.brush_input;
+        new_work_item.chunk_offset = work_item.chunk_offset;
         zero_work_item_children(new_work_item);
         thread_completed = queue_sub_work_item(new_work_item);
     // Create a L2 work item
@@ -202,7 +204,7 @@ void perform_work_item() {
         // put these chunk updates into some fat stale queue or something.
         // if (chunk_i.x)
         u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
-        thread_completed = elect_chunk_for_update(chunk_i, chunk_index, work_item.brush_id, work_item.brush_input);
+        thread_completed = elect_chunk_for_update(chunk_i, work_item.chunk_offset, chunk_index, work_item.brush_id, work_item.brush_input);
 #endif
     } else {
         // If there is no need for subdivision, no child work item is created

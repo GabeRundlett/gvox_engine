@@ -201,16 +201,32 @@ void brushgen_particles(in out f32vec3 col, in out u32 id) {
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
+    // (const) number of chunks in each axis
     chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    // Index in chunk_update_infos buffer
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
+    // Chunk 3D index in leaf chunk space (0^3 - 31^3)
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+    // Player chunk offset
+    i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
+    // Brush informations
     brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
+    // Chunk u32 index in voxel_chunks buffer
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
+    // Pointer to the previous chunk
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    // Pointer to the new chunk
     voxel_chunk_ptr = voxel_chunks + chunk_index;
+    // Voxel offset in chunk
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
+    // Voxel 3D position (in voxel buffer)
     voxel_i = chunk_i * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
-    voxel_pos = f32vec3(voxel_i) / VOXEL_SCL;
+
+    // Leaf chunk position in world space
+    i32vec3 world_chunk = chunk_offset + imod3(chunk_i - imod3(chunk_offset-32, 32), 32);
+
+    // "True" voxel position in world space (in meters)
+    voxel_pos = f32vec3(world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i)) / VOXEL_SCL;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 

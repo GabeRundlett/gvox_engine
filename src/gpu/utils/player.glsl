@@ -8,7 +8,7 @@
 void player_startup(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(10.01, 10.02, 80.03);
-
+    PLAYER.chunk_offset = i32vec3(14,14,5);  // TODO: Why is it necessary?
     // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
 

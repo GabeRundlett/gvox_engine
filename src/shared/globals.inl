@@ -33,10 +33,12 @@ struct Camera {
 
 struct Player {
     Camera cam;
-    f32vec3 pos, vel;
+    f32vec3 pos; // Player (mod 8) position centered around 128 [124-132] (in meters)
+    f32vec3 vel;
     f32vec3 rot;
     f32vec3 forward, lateral;
     i32vec3 chunk_offset;
+    i32vec3 prev_chunk_offset;
     f32 max_speed;
 };
 
@@ -47,6 +49,7 @@ struct BrushInput {
 
 struct VoxelChunkUpdateInfo {
     i32vec3 i;
+    i32vec3 chunk_offset;
     u32 flags; // brush flags
     BrushInput brush_input;
 };
@@ -58,6 +61,7 @@ struct VoxelWorld {
 
 struct ChunkWorkItem {
     i32vec3 i;
+    i32vec3 chunk_offset;
     u32 brush_id;              // Brush ID
     BrushInput brush_input;    // Brush input parameters
 

@@ -45,8 +45,9 @@ DAXA_DECL_BUFFER_PTR(GpuInput)
 struct GpuOutput {
     u64 job_counters_packed;
     f32vec3 player_pos;
+    f32vec3 chunk_offset;
     u32 heap_size;
     u32 total_jobs_ran;
-    u32 _pad;
+    //u32 _pad;
 };
 DAXA_DECL_BUFFER_PTR(GpuOutput)

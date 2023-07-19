@@ -812,6 +812,7 @@ void VoxelApp::on_update() {
 
     ui.debug_gpu_heap_usage = gpu_output.heap_size;
     ui.debug_player_pos = gpu_output.player_pos;
+    ui.debug_chunk_offset = gpu_output.chunk_offset;
     ui.debug_page_count = gpu_resources.voxel_malloc.current_page_count;
     ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
     ui.debug_total_jobs_ran = gpu_output.total_jobs_ran;
@@ -1008,6 +1009,7 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
                 .settings = task_settings_buffer,
                 .globals = task_globals_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
+                .gpu_input = task_input_buffer,
             },
         },
         &startup_task_state,
