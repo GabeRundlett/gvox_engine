@@ -222,11 +222,15 @@ void main() {
     // Voxel 3D position (in voxel buffer)
     voxel_i = chunk_i * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
 
+    // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
+    i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset-32, 32), 32);
     // Leaf chunk position in world space
-    i32vec3 world_chunk = chunk_offset + imod3(chunk_i - imod3(chunk_offset-32, 32), 32);
+    i32vec3 world_chunk = chunk_offset + wrapped_chunk_i;
 
-    // "True" voxel position in world space (in meters)
-    voxel_pos = f32vec3(world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i)) / VOXEL_SCL;
+    // Voxel position in world space (voxels)
+    i32vec3 world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
+    // Voxel position in world space (meters)
+    voxel_pos = f32vec3(world_voxel) / VOXEL_SCL;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
