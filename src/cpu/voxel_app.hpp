@@ -54,21 +54,6 @@ struct VoxelChunks {
     void destroy(daxa::Device &device) const;
 };
 
-struct VoxelMalloc {
-    AllocatorBufferState<VoxelMallocPageAllocator> buffer_state;
-
-    // daxa::BufferId global_allocator_buffer;
-    // daxa::BufferId pages_buffer;
-    // daxa::BufferId available_pages_stack_buffer;
-    // daxa::BufferId released_pages_stack_buffer;
-
-    // u32 current_page_count = 0;
-    // u32 next_page_count = 0;
-
-    void create(daxa::Device &device, u32 page_count);
-    void destroy(daxa::Device &device) const;
-};
-
 struct GpuResources {
     RenderImages render_images;
     daxa::ImageId value_noise_image;
@@ -83,7 +68,7 @@ struct GpuResources {
     daxa::BufferId globals_buffer;
     daxa::BufferId temp_voxel_chunks_buffer;
     VoxelChunks voxel_chunks;
-    VoxelMalloc voxel_malloc;
+    AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
     daxa::BufferId gvox_model_buffer;
 
     daxa::BufferId simulated_voxel_particles_buffer;
