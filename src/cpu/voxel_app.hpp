@@ -69,15 +69,6 @@ struct VoxelMalloc {
     void destroy(daxa::Device &device) const;
 };
 
-#if USE_OLD_ALLOC
-struct GpuHeap {
-    daxa::BufferId buffer;
-
-    void create(daxa::Device &device, u32 size);
-    void destroy(daxa::Device &device) const;
-};
-#endif
-
 struct GpuResources {
     RenderImages render_images;
     daxa::ImageId value_noise_image;
@@ -93,9 +84,6 @@ struct GpuResources {
     daxa::BufferId temp_voxel_chunks_buffer;
     VoxelChunks voxel_chunks;
     VoxelMalloc voxel_malloc;
-#if USE_OLD_ALLOC
-    GpuHeap gpu_heap;
-#endif
     daxa::BufferId gvox_model_buffer;
 
     daxa::BufferId simulated_voxel_particles_buffer;
@@ -158,9 +146,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
     daxa::TaskBuffer task_temp_voxel_chunks_buffer{{.name = "task_temp_voxel_chunks_buffer"}};
     daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
-#if USE_OLD_ALLOC
-    daxa::TaskBuffer task_gpu_heap_buffer{{.name = "task_gpu_heap_buffer"}};
-#endif
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
     daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
     daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};

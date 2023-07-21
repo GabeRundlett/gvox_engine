@@ -69,18 +69,4 @@ struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
     VoxelMalloc_PageInfo page_allocation_infos[VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK];
 };
 
-#define USE_OLD_ALLOC 0
-
-#if USE_OLD_ALLOC
-
-struct VoxelMallocPageAllocator {
-    u32 offset;
-    daxa_RWBufferPtr(daxa_u32) heap;
-};
-DAXA_DECL_BUFFER_PTR(VoxelMallocPageAllocator)
-
-#else
-
 DECL_SIMPLE_ALLOCATOR(VoxelMallocPageAllocator, daxa_u32, VOXEL_MALLOC_PAGE_SIZE_U32S, VoxelMalloc_PageIndex)
-
-#endif

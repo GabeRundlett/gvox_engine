@@ -9,9 +9,6 @@
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_size;
-#if USE_OLD_ALLOC
-shared VoxelMalloc_Pointer blob_ptr;
-#endif
 
 void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
     if (palette_region_voxel_index == 0) {
@@ -69,31 +66,13 @@ void main() {
     u32 prev_variant_n = deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n;
     VoxelMalloc_Pointer prev_blob_ptr = deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr;
 
-#if USE_OLD_ALLOC
-    if (palette_region_voxel_index == 0) {
-        if (prev_variant_n > 1) {
-            VoxelMalloc_free(voxel_malloc_page_allocator, voxel_chunk_ptr, prev_blob_ptr);
-        }
-    }
-
-    barrier();
-    memoryBarrierShared();
-#endif
-
     u32 bits_per_variant = ceil_log2(palette_size);
 
     u32 compressed_size = 0;
-#if USE_OLD_ALLOC
-#else
     VoxelMalloc_Pointer blob_ptr = my_voxel;
-#endif
 
     if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
         compressed_size = PALETTE_REGION_TOTAL_SIZE;
-#if USE_OLD_ALLOC
-        if (palette_region_voxel_index == 0) {
-            blob_ptr = VoxelMalloc_malloc(voxel_malloc_page_allocator, voxel_chunk_ptr, compressed_size);
-#else
         if (prev_variant_n > 1) {
             blob_ptr = prev_blob_ptr;
             VoxelMalloc_realloc(voxel_malloc_page_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
@@ -101,7 +80,6 @@ void main() {
             blob_ptr = VoxelMalloc_malloc(voxel_malloc_page_allocator, voxel_chunk_ptr, compressed_size);
         }
         if (palette_region_voxel_index == 0) {
-#endif
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
         }
@@ -109,10 +87,6 @@ void main() {
         compression_result[palette_region_voxel_index] = my_voxel;
     } else if (palette_size > 1) {
         compressed_size = palette_size + (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 31) / 32;
-#if USE_OLD_ALLOC
-        if (palette_region_voxel_index == 0) {
-            blob_ptr = VoxelMalloc_malloc(voxel_malloc_page_allocator, voxel_chunk_ptr, compressed_size);
-#else
         if (prev_variant_n > 1) {
             blob_ptr = prev_blob_ptr;
             VoxelMalloc_realloc(voxel_malloc_page_allocator, voxel_chunk_ptr, blob_ptr, compressed_size);
@@ -120,7 +94,6 @@ void main() {
             blob_ptr = VoxelMalloc_malloc(voxel_malloc_page_allocator, voxel_chunk_ptr, compressed_size);
         }
         if (palette_region_voxel_index == 0) {
-#endif
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n = palette_size;
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
         }

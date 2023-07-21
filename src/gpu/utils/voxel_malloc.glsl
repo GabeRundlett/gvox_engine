@@ -59,11 +59,6 @@ shared u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
 shared i32 VoxelMalloc_malloc_elected_thread[3];
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
 VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 size) {
-#if USE_OLD_ALLOC
-    u32 result_address = atomicAdd(deref(allocator).offset, size + 1);
-    deref(deref(allocator).heap[result_address]) = size + 1;
-    return result_address + 1;
-#else
     u32 local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
     u32 local_allocation_bitmask_no_offset = (1 << local_allocation_bit_n) - 1;
     i32 group_local_thread_index = i32(gl_LocalInvocationIndex);
@@ -189,23 +184,12 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
 
     VoxelMalloc_Pointer blob_ptr = VoxelMalloc_Pointer_pack(VoxelMalloc_malloc_global_page_index, VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit);
     return blob_ptr;
-#endif
 }
 #undef PAGE_ALLOC_INFOS
 
 // Can enter with any workgroup and warp configuration.
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
 void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
-#if USE_OLD_ALLOC
-    // Doesn't matter for now...
-
-    // if (address != 0) {
-    //     i32 size = i32(deref(deref(allocator).heap[address - 1]));
-    //     atomicAdd(deref(allocator.state).offset, -size);
-    // }
-#else
-    // return;
-
     const u32 global_page_index = VoxelMalloc_Pointer_extract_global_page_index(address);
     u32 local_page_alloc_offset = VoxelMalloc_Pointer_extract_local_page_alloc_offset(address);
 
@@ -250,46 +234,29 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa
     if (deallocate_page) {
         VoxelMallocPageAllocator_free(allocator, global_page_index);
     }
-#endif
 }
 #undef PAGE_ALLOC_INFOS
 
 void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
-#if USE_OLD_ALLOC
-    result = deref(allocator).heap + address;
-#else
     daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
     result = page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
-#endif
 }
 
 void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
-#if USE_OLD_ALLOC
-    result = deref(allocator).heap + address;
-#else
     daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
     result = page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
-#endif
 }
 
 #define INPUT deref(input_ptr)
 void voxel_malloc_perframe(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator) {
-#if USE_OLD_ALLOC
-    if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
-        deref(allocator).offset = 0;
-    }
-#else
     VoxelMallocPageAllocator_perframe(allocator);
-#endif
 }
 #undef INPUT
 
 // Must enter with 512 thread work group with all threads active.
 void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
-#if USE_OLD_ALLOC
-#else
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
     daxa_RWBufferPtr(daxa_u32) temp_ptr;
     voxel_malloc_address_to_base_u32_ptr(allocator, prev_address, temp_ptr);
@@ -304,5 +271,4 @@ void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, d
     // Is this necessary?
     barrier();
     prev_address = VoxelMalloc_malloc(allocator, voxel_chunk_ptr, size);
-#endif
 }

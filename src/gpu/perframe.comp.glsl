@@ -121,11 +121,7 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 
-#if USE_OLD_ALLOC
-    deref(gpu_output[INPUT.fif_index]).heap_size = deref(voxel_malloc_page_allocator).offset;
-#else
     deref(gpu_output[INPUT.fif_index]).heap_size = VoxelMallocPageAllocator_get_consumed_element_count(voxel_malloc_page_allocator) * VOXEL_MALLOC_PAGE_SIZE_U32S;
-#endif
 
     THREAD_POOL.queue_index = 1 - THREAD_POOL.queue_index;
 
