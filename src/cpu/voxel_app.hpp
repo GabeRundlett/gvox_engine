@@ -69,6 +69,7 @@ struct GpuHeap {
 
 struct GpuResources {
     RenderImages render_images;
+    daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec1_image;
     daxa::ImageId blue_noise_vec2_image;
     daxa::ImageId blue_noise_unit_vec3_image;
@@ -90,6 +91,7 @@ struct GpuResources {
     daxa::BufferId rendered_voxel_particles_buffer;
     daxa::BufferId placed_voxel_particles_buffer;
     daxa::SamplerId final_image_sampler;
+    daxa::SamplerId value_noise_sampler;
 
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
@@ -133,6 +135,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_prev_reconstructed_shading_image{{.name = "task_render_prev_reconstructed_shading_image"}};
     daxa::TaskImage task_render_reconstructed_shading_image{{.name = "task_render_reconstructed_shading_image"}};
 
+    daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
     daxa::TaskImage task_blue_noise_unit_vec3_image{{.name = "task_blue_noise_unit_vec3_image"}};

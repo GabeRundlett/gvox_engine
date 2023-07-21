@@ -3,6 +3,8 @@
 #include <thread>
 #include <numbers>
 #include <fstream>
+#include <random>
+#include <unordered_map>
 
 #include <gvox/adapters/input/byte_buffer.h>
 #include <gvox/adapters/output/byte_buffer.h>
@@ -180,6 +182,14 @@ void GpuHeap::destroy(daxa::Device &device) const {
 
 void GpuResources::create(daxa::Device &device) {
     render_images.create(device);
+    value_noise_image = device.create_image({
+        .dimensions = 2,
+        .format = daxa::Format::R8_UNORM,
+        .size = {256, 256, 1},
+        .array_layer_count = 256,
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+        .name = "value_noise_image",
+    });
     blue_noise_vec1_image = device.create_image({
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
@@ -254,9 +264,18 @@ void GpuResources::create(daxa::Device &device) {
         .minification_filter = daxa::Filter::LINEAR,
         .max_lod = 0.0f,
     });
+    value_noise_sampler = device.create_sampler({
+        .magnification_filter = daxa::Filter::LINEAR,
+        .minification_filter = daxa::Filter::LINEAR,
+        .address_mode_u = daxa::SamplerAddressMode::REPEAT,
+        .address_mode_v = daxa::SamplerAddressMode::REPEAT,
+        .address_mode_w = daxa::SamplerAddressMode::REPEAT,
+        .max_lod = 0.0f,
+    });
 }
 void GpuResources::destroy(daxa::Device &device) const {
     render_images.destroy(device);
+    device.destroy_image(value_noise_image);
     device.destroy_image(blue_noise_vec1_image);
     device.destroy_image(blue_noise_vec2_image);
     device.destroy_image(blue_noise_unit_vec3_image);
@@ -279,6 +298,7 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(rendered_voxel_particles_buffer);
     device.destroy_buffer(placed_voxel_particles_buffer);
     device.destroy_sampler(final_image_sampler);
+    device.destroy_sampler(value_noise_sampler);
 }
 
 // Code flow
@@ -293,7 +313,7 @@ void GpuResources::destroy(daxa::Device &device) const {
 // Creates ui and imgui_renderer
 // Creates task states
 // Creates GPU Resources: GpuResources::create()
-// Creates main task graph: VoxelApp::record_main_task_graph() 
+// Creates main task graph: VoxelApp::record_main_task_graph()
 // Creates GVOX Context (gvox_ctx)
 // Creates temp task graph
 VoxelApp::VoxelApp()
@@ -405,10 +425,49 @@ VoxelApp::VoxelApp()
             .device = device,
             .name = "temp_task_graph",
         });
+        temp_task_graph.use_persistent_image(task_value_noise_image);
         temp_task_graph.use_persistent_image(task_blue_noise_vec1_image);
         temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
         temp_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
         temp_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
+        temp_task_graph.add_task({
+            .uses = {
+                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_value_noise_image.view().view({.layer_count = 256})},
+            },
+            .task = [this](daxa::TaskInterface task_runtime) {
+                auto staging_buffer = device.create_buffer({
+                    .size = static_cast<u32>(256 * 256 * 256 * 1),
+                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "staging_buffer",
+                });
+                auto *buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
+                auto seed_string = std::string{"gvox"};
+                std::mt19937_64 rng(std::hash<std::string>{}(seed_string));
+                std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
+                for (u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
+                    buffer_ptr[i] = dist(rng) & 0xff;
+                }
+                auto cmd_list = task_runtime.get_command_list();
+                cmd_list.pipeline_barrier({
+                    .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
+                });
+                cmd_list.destroy_buffer_deferred(staging_buffer);
+                for (u32 i = 0; i < 256; ++i) {
+                    cmd_list.copy_buffer_to_image({
+                        .buffer = staging_buffer,
+                        .buffer_offset = 256 * 256 * i,
+                        .image = task_value_noise_image.get_state().images[0],
+                        .image_slice{
+                            .base_array_layer = i,
+                            .layer_count = 1,
+                        },
+                        .image_extent = {256, 256, 1},
+                    });
+                }
+                needs_vram_calc = true;
+            },
+            .name = "upload_value_noise",
+        });
         temp_task_graph.add_task({
             .uses = {
                 daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec1_image},
@@ -935,7 +994,7 @@ void VoxelApp::recreate_voxel_chunks() {
 // Clear task_temp_voxel_chunks_buffer
 // Clear task_voxel_chunks_buffer
 // Clear task_voxel_malloc_pages_buffer (x3)
-// 
+//
 // GPU Task:
 // startup.comp.glsl (Run on 1 thread)
 //
@@ -1009,7 +1068,6 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
                 .settings = task_settings_buffer,
                 .globals = task_globals_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
-                .gpu_input = task_input_buffer,
             },
         },
         &startup_task_state,
@@ -1227,10 +1285,12 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .name = "main_task_graph",
     });
 
+    result_task_graph.use_persistent_image(task_value_noise_image);
     result_task_graph.use_persistent_image(task_blue_noise_vec1_image);
     result_task_graph.use_persistent_image(task_blue_noise_vec2_image);
     result_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
     result_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
+    task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
     task_blue_noise_vec1_image.set_images({.images = std::array{gpu_resources.blue_noise_vec1_image}});
     task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
     task_blue_noise_unit_vec3_image.set_images({.images = std::array{gpu_resources.blue_noise_unit_vec3_image}});
@@ -1401,9 +1461,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .voxel_malloc_global_allocator = task_voxel_malloc_global_allocator_buffer,
                 .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                 .placed_voxel_particles = task_placed_voxel_particles_buffer,
+                .value_noise_texture = task_value_noise_image.view().view({.layer_count = 256}),
             },
         },
         &chunk_edit_task_state,
+        &gpu_resources.value_noise_sampler,
     });
 
     // ChunkOpt_x2x4

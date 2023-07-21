@@ -3,8 +3,7 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    player_startup(globals);
-    player_perframe(settings, gpu_input, globals); // TODO: Why is it necessary?
+    player_startup(settings, globals);
     voxel_world_startup(globals, voxel_chunks);
 
     deref(globals).chunk_thread_pool_state.work_items_l0_dispatch_y = 1;

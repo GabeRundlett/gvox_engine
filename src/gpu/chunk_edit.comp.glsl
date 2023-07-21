@@ -15,6 +15,8 @@ i32vec3 voxel_i;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
+DAXA_DECL_PUSH_CONSTANT(ChunkEditRasterPush, push)
+
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
     u32 i = 0;
@@ -40,29 +42,22 @@ b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     return i == MAX_ITER;
 }
 
-f32 terrain_noise(f32vec3 p) {
+f32vec4 terrain_noise(f32vec3 p) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.2,
-        /* .scale       = */ 0.002,
+        /* .scale       = */ 0.005,
         /* .lacunarity  = */ 4.5,
         /* .octaves     = */ 6);
-    f32 val = fractal_noise(p, noise_conf);
-    val += p.z * 0.003 - 1;
+    f32vec4 val = fractal_noise(value_noise_texture, push.value_noise_sampler, p, noise_conf);
+    val.x += p.z * 0.003 - 1.0;
+    val.yzw = normalize(val.yzw + vec3(0, 0, 0.003));
+    // val.x += -0.24;
     return val;
 }
 
-f32vec3 terrain_nrm(f32vec3 pos) {
-    f32vec3 n = f32vec3(0.0);
-    for (u32 i = 0; i < 4; ++i) {
-        f32vec3 e = 0.5773 * (2.0 * f32vec3((((i + 3) >> 1) & 1), ((i >> 1) & 1), (i & 1)) - 1.0);
-        n += e * terrain_noise(pos + 1.0 / VOXEL_SCL * e);
-    }
-    return normalize(n);
-}
-
 void brushgen_world(in out f32vec3 col, in out u32 id) {
-#if 0 // Mandelbulb world
+#if 0   // Mandelbulb world
     f32vec3 mandelbulb_color;
     if (mandelbulb((voxel_pos / (CHUNK_WORLDSPACE_SIZE * 4) * 2 - 1) * 1, mandelbulb_color)) {
         col = f32vec3(0.02);
@@ -83,10 +78,11 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     // }
 
 #elif 1 // Terrain world
-    voxel_pos += f32vec3(1700, 1600, 150);
+    voxel_pos += f32vec3(0, 0, 200);
 
-    f32 val = terrain_noise(voxel_pos);
-    f32vec3 nrm = terrain_nrm(voxel_pos);
+    f32vec4 val4 = terrain_noise(voxel_pos);
+    f32 val = val4.x;
+    f32vec3 nrm = normalize(val4.yzw); // terrain_nrm(voxel_pos);
     f32 upwards = dot(nrm, f32vec3(0, 0, 1));
 
     if (val < 0) {
@@ -119,6 +115,13 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         } else {
             col = f32vec3(0.08, 0.08, 0.07);
         }
+    }
+#elif 1
+    voxel_pos += f32vec3(0, 0, 150);
+    if (voxel_i.x == 0 || voxel_i.y == 0 || voxel_i.z == 0) {
+        f32 val = terrain_noise(voxel_pos);
+        id = 1;
+        col = f32vec3(val);
     }
 #elif 1 // Ball world (each ball is centered on a chunk center)
     if (length(fract(voxel_pos / CHUNK_WORLDSPACE_SIZE) - 0.5) < 0.15) {
@@ -223,7 +226,7 @@ void main() {
     voxel_i = chunk_i * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
 
     // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
-    i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset-32, 32), 32);
+    i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset - i32vec3(chunk_n), i32vec3(chunk_n)), i32vec3(chunk_n));
     // Leaf chunk position in world space
     i32vec3 world_chunk = chunk_offset + wrapped_chunk_i;
 

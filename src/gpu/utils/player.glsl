@@ -5,10 +5,27 @@
 #include <utils/math.glsl>
 
 #define PLAYER deref(globals_ptr).player
+void player_fix_chunk_offset(
+    daxa_BufferPtr(GpuSettings) settings_ptr,
+    daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
+#if ENABLE_CHUNK_WRAPPING
+    const u32vec3 chunk_n = u32vec3(1u << deref(settings).log2_chunks_per_axis);
+    const f32vec3 HALF_CHUNK_N = f32vec3(chunk_n) * 0.5;
+    PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos / CHUNK_WORLDSPACE_SIZE - HALF_CHUNK_N + 0.5));
+    PLAYER.pos = mod(PLAYER.pos - 0.5 * CHUNK_WORLDSPACE_SIZE, CHUNK_WORLDSPACE_SIZE) + CHUNK_WORLDSPACE_SIZE * (HALF_CHUNK_N - 0.5);
+#else
+    // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
+    PLAYER.pos += f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+    PLAYER.chunk_offset = i32vec3(0);
+#endif
+}
+#undef PLAYER
+
+#define PLAYER deref(globals_ptr).player
 void player_startup(
+    daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(10.01, 10.02, 80.03);
-    PLAYER.chunk_offset = i32vec3(14,14,5);  // TODO: Why is it necessary?
     // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
 
@@ -20,6 +37,8 @@ void player_startup(
 
     // PLAYER.rot.x = PI * -0.751;
     // PLAYER.rot.z = PI * 1.25;
+
+    player_fix_chunk_offset(settings_ptr, globals_ptr);
 }
 #undef PLAYER
 
@@ -94,16 +113,7 @@ void player_perframe(
     PLAYER.vel = move_vec * applied_speed;
     PLAYER.pos += PLAYER.vel * INPUT.delta_time;
 
-#if ENABLE_CHUNK_WRAPPING
-    const u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
-    const f32vec3 HALF_CHUNK_N = f32vec3(chunk_n) * 0.5;
-    PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos / CHUNK_WORLDSPACE_SIZE - HALF_CHUNK_N + 0.5));
-    PLAYER.pos = mod(PLAYER.pos - 0.5 * CHUNK_WORLDSPACE_SIZE, CHUNK_WORLDSPACE_SIZE) + CHUNK_WORLDSPACE_SIZE * (HALF_CHUNK_N - 0.5);
-#else
-    // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
-    PLAYER.pos += f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
-    PLAYER.chunk_offset = i32vec3(0);
-#endif
+    player_fix_chunk_offset(settings_ptr, globals_ptr);
 
     PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 0);
 

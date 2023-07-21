@@ -12,7 +12,12 @@ DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_RWBufferPtr(TempVoxelChunk), COMPUT
 DAXA_TASK_USE_BUFFER(voxel_malloc_global_allocator, daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(placed_voxel_particles, daxa_BufferPtr(daxa_u32), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(value_noise_texture, REGULAR_2D_ARRAY, COMPUTE_SHADER_SAMPLED)
 DAXA_DECL_TASK_USES_END()
+
+struct ChunkEditRasterPush {
+    daxa_SamplerId value_noise_sampler;
+};
 
 #if defined(__cplusplus)
 
@@ -27,6 +32,7 @@ struct ChunkEditComputeTaskState {
                 .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_EDIT_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(ChunkEditRasterPush),
             .name = "chunk_edit",
         });
         if (compile_result.is_err()) {
@@ -42,11 +48,14 @@ struct ChunkEditComputeTaskState {
     ChunkEditComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
+    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa_SamplerId value_noise_sampler) {
         if (!pipeline_is_valid()) {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
+        cmd_list.push_constant(ChunkEditRasterPush{
+            .value_noise_sampler = value_noise_sampler,
+        });
         cmd_list.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
@@ -56,10 +65,11 @@ struct ChunkEditComputeTaskState {
 
 struct ChunkEditComputeTask : ChunkEditComputeUses {
     ChunkEditComputeTaskState *state;
+    daxa_SamplerId *value_noise_sampler;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, uses.globals.buffer());
+        state->record_commands(cmd_list, uses.globals.buffer(), *value_noise_sampler);
     }
 };
 

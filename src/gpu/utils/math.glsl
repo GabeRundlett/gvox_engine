@@ -674,8 +674,11 @@ vec2 uv_to_cs(vec2 uv) {
 
 // https://www.shadertoy.com/view/cdSBRG
 i32 imod(i32 x, i32 m) {
-    return x >= 0 ? x%m : m - 1 - (-x-1)%m;
+    return x >= 0 ? x % m : m - 1 - (-x - 1) % m;
 }
 i32vec3 imod3(i32vec3 p, i32 m) {
     return i32vec3(imod(p.x, m), imod(p.y, m), imod(p.z, m));
+}
+i32vec3 imod3(i32vec3 p, i32vec3 m) {
+    return i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
