@@ -39,8 +39,15 @@
 #if defined(__cplusplus)
 #include <memory>
 #include <daxa/utils/pipeline_manager.hpp>
+#define CPU_ONLY(x) x
+#define GPU_ONLY(x)
+#else
+#define CPU_ONLY(x)
+#define GPU_ONLY(x) x
 #endif
 
 #define USE_POINTS 0
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
+
+CPU_ONLY(static constexpr usize FRAMES_IN_FLIGHT = 1;)

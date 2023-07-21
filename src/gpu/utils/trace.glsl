@@ -52,7 +52,7 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 }
 
 struct VoxelTraceInfo {
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator;
+    daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator;
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr;
     u32vec3 chunk_n;
     f32vec3 ray_dir;
@@ -190,7 +190,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     ray_pos += ray_dir * MAX_SD;
 }
 
-f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
+f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
 #if 0
     const i32 RANGE = 1;
     f32vec3 result = f32vec3(0);

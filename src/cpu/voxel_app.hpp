@@ -16,8 +16,6 @@ using namespace daxa::math_operators;
 
 using BDA = daxa::BufferDeviceAddress;
 
-static constexpr usize FRAMES_IN_FLIGHT = 1;
-
 struct RenderImages {
     u32vec2 size{};
     u32vec2 rounded_size{};
@@ -42,17 +40,30 @@ struct RenderImages {
 struct VoxelChunks {
     daxa::BufferId buffer;
 
+    daxa::BufferId leaves_buffer;
+    daxa::BufferId available_leaves_stack_buffer;
+    daxa::BufferId released_leaves_stack_buffer;
+    u32 current_leaf_count = 0;
+
+    daxa::BufferId parents_buffer;
+    daxa::BufferId available_parents_stack_buffer;
+    daxa::BufferId released_parents_stack_buffer;
+    u32 current_parent_count = 0;
+
     void create(daxa::Device &device, u32 log2_chunks_per_axis);
     void destroy(daxa::Device &device) const;
 };
 
 struct VoxelMalloc {
-    daxa::BufferId global_allocator_buffer;
-    daxa::BufferId pages_buffer;
-    daxa::BufferId available_pages_stack_buffer;
-    daxa::BufferId released_pages_stack_buffer;
-    u32 current_page_count = 0;
-    u32 next_page_count = 0;
+    AllocatorBufferState<VoxelMallocPageAllocator> buffer_state;
+
+    // daxa::BufferId global_allocator_buffer;
+    // daxa::BufferId pages_buffer;
+    // daxa::BufferId available_pages_stack_buffer;
+    // daxa::BufferId released_pages_stack_buffer;
+
+    // u32 current_page_count = 0;
+    // u32 next_page_count = 0;
 
     void create(daxa::Device &device, u32 page_count);
     void destroy(daxa::Device &device) const;
@@ -119,7 +130,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
-    u32 prev_page_count{};
 
     daxa::TaskImage task_render_depth_prepass_image{{.name = "task_render_depth_prepass_image"}};
     daxa::TaskImage task_render_raster_color_image{{.name = "task_render_raster_color_image"}};
@@ -147,9 +157,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
     daxa::TaskBuffer task_temp_voxel_chunks_buffer{{.name = "task_temp_voxel_chunks_buffer"}};
-    daxa::TaskBuffer task_voxel_malloc_global_allocator_buffer{{.name = "task_voxel_malloc_global_allocator_buffer"}};
-    daxa::TaskBuffer task_voxel_malloc_pages_buffer{{.name = "task_voxel_malloc_pages_buffer"}};
-    daxa::TaskBuffer task_voxel_malloc_old_pages_buffer{{.name = "task_voxel_malloc_old_pages_buffer"}};
     daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
 #if USE_OLD_ALLOC
     daxa::TaskBuffer task_gpu_heap_buffer{{.name = "task_gpu_heap_buffer"}};

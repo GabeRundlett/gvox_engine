@@ -138,7 +138,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
 }
 
 void brushgen_a(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
@@ -152,7 +152,7 @@ void brushgen_a(in out f32vec3 col, in out u32 id) {
 }
 
 void brushgen_b(in out f32vec3 col, in out u32 id) {
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
@@ -192,7 +192,7 @@ void brushgen_particles(in out f32vec3 col, in out u32 id) {
         }
     }
 
-    u32 voxel_data = sample_voxel_chunk(voxel_malloc_global_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 

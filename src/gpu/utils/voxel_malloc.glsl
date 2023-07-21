@@ -4,6 +4,10 @@
 
 #include <shared/shared.inl>
 
+#define UserAllocatorType VoxelMallocPageAllocator
+#define UserIndexType VoxelMalloc_PageIndex
+#include <utils/allocator.glsl>
+
 // See 'VoxelMalloc_PageInfo' in shared/voxel_malloc.inl
 u32 VoxelMalloc_PageInfo_extract_local_consumption_bitmask(VoxelMalloc_PageInfo page_info_bits) {
 #if VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD == 32
@@ -54,7 +58,7 @@ shared u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
 // at a time as this would cause race conditions.
 shared i32 VoxelMalloc_malloc_elected_thread[3];
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
-VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 size) {
+VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 size) {
 #if USE_OLD_ALLOC
     u32 result_address = atomicAdd(deref(allocator).offset, size + 1);
     deref(deref(allocator).heap[result_address]) = size + 1;
@@ -142,16 +146,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
     if (!VoxelMalloc_malloc_allocation_success) {
         // First allocate the new page and calculate the metadata for it.
         if (group_local_thread_index == 0) {
-            // Try to get a page from the available stack.
-            i32 global_page_stack_index = atomicAdd(deref(allocator).available_pages_stack_size, -1) - 1;
-            // If we get an index of smaller then zero, the size was 0. This means the stack was empty.
-            // In that case we need to create new pages as the available stack is empty.
-            if (global_page_stack_index < 0) {
-                // Create new page.
-                VoxelMalloc_malloc_global_page_index = atomicAdd(deref(allocator).page_count, 1);
-            } else {
-                VoxelMalloc_malloc_global_page_index = i32(deref(deref(allocator).available_pages_stack[global_page_stack_index]));
-            }
+            VoxelMalloc_malloc_global_page_index = VoxelMallocPageAllocator_malloc(allocator);
             VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit = 0;
         }
         // Then find a page meta data array element that is empty.
@@ -200,7 +195,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAlloca
 
 // Can enter with any workgroup and warp configuration.
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
-void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
+void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
 #if USE_OLD_ALLOC
     // Doesn't matter for now...
 
@@ -253,14 +248,13 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, d
     }
 
     if (deallocate_page) {
-        const u32 free_stack_index = atomicAdd(deref(allocator).released_pages_stack_size, 1);
-        deref(deref(allocator).released_pages_stack[free_stack_index]) = global_page_index;
+        VoxelMallocPageAllocator_free(allocator, global_page_index);
     }
 #endif
 }
 #undef PAGE_ALLOC_INFOS
 
-void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
+void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
 #if USE_OLD_ALLOC
     result = deref(allocator).heap + address;
 #else
@@ -269,7 +263,7 @@ void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAll
 #endif
 }
 
-void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
+void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
 #if USE_OLD_ALLOC
     result = deref(allocator).heap + address;
 #else
@@ -281,30 +275,19 @@ void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocato
 #define INPUT deref(input_ptr)
 void voxel_malloc_perframe(
     daxa_BufferPtr(GpuInput) input_ptr,
-    daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator) {
+    daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator) {
 #if USE_OLD_ALLOC
     if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
         deref(allocator).offset = 0;
     }
 #else
-    // if (INPUT.actions[GAME_ACTION_INTERACT0] != 0) {
-    //     deref(allocator).page_count = 0;
-    //     deref(allocator).available_pages_stack_size = 0;
-    //     deref(allocator).released_pages_stack_size = 0;
-    // }
-
-    deref(allocator).available_pages_stack_size = max(deref(allocator).available_pages_stack_size, 0);
-    while (deref(allocator).released_pages_stack_size > 0) {
-        --deref(allocator).released_pages_stack_size;
-        deref(deref(allocator).available_pages_stack[deref(allocator).available_pages_stack_size]) = deref(deref(allocator).released_pages_stack[deref(allocator).released_pages_stack_size]);
-        ++deref(allocator).available_pages_stack_size;
-    }
+    VoxelMallocPageAllocator_perframe(allocator);
 #endif
 }
 #undef INPUT
 
 // Must enter with 512 thread work group with all threads active.
-void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMalloc_GlobalAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
+void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
 #if USE_OLD_ALLOC
 #else
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;

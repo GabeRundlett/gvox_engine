@@ -78,7 +78,7 @@ void main() {
         f32vec3 cam_pos = ray_pos;
         f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
-        trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
+        trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;
@@ -122,12 +122,9 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 
 #if USE_OLD_ALLOC
-    deref(gpu_output[INPUT.fif_index]).heap_size = deref(voxel_malloc_global_allocator).offset;
+    deref(gpu_output[INPUT.fif_index]).heap_size = deref(voxel_malloc_page_allocator).offset;
 #else
-    deref(gpu_output[INPUT.fif_index]).heap_size =
-        (deref(voxel_malloc_global_allocator).page_count -
-         deref(voxel_malloc_global_allocator).available_pages_stack_size) *
-        VOXEL_MALLOC_PAGE_SIZE_U32S;
+    deref(gpu_output[INPUT.fif_index]).heap_size = VoxelMallocPageAllocator_get_consumed_element_count(voxel_malloc_page_allocator) * VOXEL_MALLOC_PAGE_SIZE_U32S;
 #endif
 
     THREAD_POOL.queue_index = 1 - THREAD_POOL.queue_index;
@@ -149,7 +146,7 @@ void main() {
 
     voxel_malloc_perframe(
         gpu_input,
-        voxel_malloc_global_allocator);
+        voxel_malloc_page_allocator);
 
     deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;

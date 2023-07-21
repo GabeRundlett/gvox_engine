@@ -35,7 +35,7 @@ void main() {
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
     f32vec3 ray_pos = cam_pos + cam_dir * (depth - 0.01 / VOXEL_SCL) + nrm * 0.01 / VOXEL_SCL;
     f32vec3 ray_dir = SUN_DIR;
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
 
     f32vec3 col = SUN_COL * f32(trace_result.dist == MAX_SD);
 

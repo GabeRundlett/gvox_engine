@@ -56,7 +56,7 @@ void main() {
     f32vec3 ray_pos = cam_pos + ray_dir * prepass_depth;
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_global_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
 
     u32vec4 output_value = u32vec4(0);

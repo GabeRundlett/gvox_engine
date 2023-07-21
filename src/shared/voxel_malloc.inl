@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/allocator.inl>
 
 // One u32 per voxel, and an extra u32
 #define VOXEL_MALLOC_MAX_ALLOCATION_SIZE_U32S 513
@@ -51,7 +52,6 @@
 #define VoxelMalloc_Pointer daxa_u32
 
 #define VoxelMalloc_PageIndex daxa_u32
-DAXA_DECL_BUFFER_PTR(VoxelMalloc_PageIndex)
 
 // bits (needs to be packed as we use atomics to sync access)
 // N = VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD
@@ -73,22 +73,14 @@ struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
 
 #if USE_OLD_ALLOC
 
-struct VoxelMalloc_GlobalAllocator {
+struct VoxelMallocPageAllocator {
     u32 offset;
     daxa_RWBufferPtr(daxa_u32) heap;
 };
-DAXA_DECL_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
+DAXA_DECL_BUFFER_PTR(VoxelMallocPageAllocator)
 
 #else
 
-struct VoxelMalloc_GlobalAllocator {
-    daxa_RWBufferPtr(daxa_u32) heap;
-    daxa_RWBufferPtr(VoxelMalloc_PageIndex) available_pages_stack;
-    daxa_RWBufferPtr(VoxelMalloc_PageIndex) released_pages_stack;
-    i32 page_count;
-    i32 available_pages_stack_size;
-    i32 released_pages_stack_size;
-};
-DAXA_DECL_BUFFER_PTR(VoxelMalloc_GlobalAllocator)
+DECL_SIMPLE_ALLOCATOR(VoxelMallocPageAllocator, daxa_u32, VOXEL_MALLOC_PAGE_SIZE_U32S, VoxelMalloc_PageIndex)
 
 #endif

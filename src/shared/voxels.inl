@@ -51,7 +51,11 @@ struct TempVoxelChunk {
 DAXA_DECL_BUFFER_PTR(TempVoxelChunk)
 
 struct VoxelParentChunk {
+    u32 is_uniform;
     u32 children[512];
     u32 is_leaf[16];
 };
 DAXA_DECL_BUFFER_PTR(VoxelParentChunk)
+
+DECL_SIMPLE_ALLOCATOR(VoxelLeafChunkAllocator, VoxelLeafChunk, 1, u32)
+DECL_SIMPLE_ALLOCATOR(VoxelParentChunkAllocator, VoxelParentChunk, 1, u32)
