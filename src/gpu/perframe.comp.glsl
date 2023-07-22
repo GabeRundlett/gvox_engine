@@ -36,7 +36,7 @@ void main() {
     player_perframe(settings, gpu_input, globals);
     voxel_world_perframe(settings, gpu_input, globals);
 
-    if (ENABLE_HIERARCHICAL_QUEUE) {
+    if (ENABLE_HIERARCHICAL_QUEUE != 0) {
         // Check if the player moved at least 1 chunk in any direction
         if (PLAYER.chunk_offset != PLAYER.prev_chunk_offset) {
             // Issue a new terrain generation

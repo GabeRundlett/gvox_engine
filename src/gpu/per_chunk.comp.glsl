@@ -15,7 +15,7 @@ u32 chunk_index;
 #define CHUNKS(i) deref(voxel_chunks[i])
 #define INDIRECT deref(globals).indirect_dispatch
 
-bool try_elect(in out ChunkWorkItem work_item) {
+void try_elect(in out ChunkWorkItem work_item) {
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
     // Check if the work item can be added
