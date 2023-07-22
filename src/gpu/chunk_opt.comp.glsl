@@ -99,14 +99,14 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    u32 flags = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].flags;
-    if ((flags & 1) == 0)
+    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
+    if (chunk_i == INVALID_CHUNK_I) {
         return;
+    }
     u32vec3 chunk_n;
     chunk_n.x = 1u << SETTINGS.log2_chunks_per_axis;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
@@ -241,14 +241,14 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    u32 flags = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].flags;
-    if ((flags & 1) == 0)
+    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
+    if (chunk_i == INVALID_CHUNK_I) {
         return;
+    }
     u32vec3 chunk_n;
     chunk_n.x = 1u << SETTINGS.log2_chunks_per_axis;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;

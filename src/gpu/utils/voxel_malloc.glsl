@@ -247,14 +247,6 @@ void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) 
     result = page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
 }
 
-#define INPUT deref(input_ptr)
-void voxel_malloc_perframe(
-    daxa_BufferPtr(GpuInput) input_ptr,
-    daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator) {
-    VoxelMallocPageAllocator_perframe(allocator);
-}
-#undef INPUT
-
 // Must enter with 512 thread work group with all threads active.
 void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;

@@ -245,6 +245,8 @@ void GpuResources::destroy(daxa::Device &device) const {
     if (!gvox_model_buffer.is_empty()) {
         device.destroy_buffer(gvox_model_buffer);
     }
+    voxel_leaf_chunk_malloc.destroy(device);
+    voxel_parent_chunk_malloc.destroy(device);
     device.destroy_buffer(simulated_voxel_particles_buffer);
     device.destroy_buffer(rendered_voxel_particles_buffer);
     device.destroy_buffer(placed_voxel_particles_buffer);
@@ -328,26 +330,20 @@ VoxelApp::VoxelApp()
       trace_secondary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       upscale_reconstruct_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.final_image_sampler, swapchain.get_format()},
+#if ENABLE_HIERARCHICAL_QUEUE
       chunk_hierarchy_task_state{main_pipeline_manager, ui},
+#else
+      per_chunk_task_state{main_pipeline_manager, ui},
+#endif
       voxel_particle_sim_task_state{main_pipeline_manager, ui},
       voxel_particle_raster_task_state{main_pipeline_manager, ui},
       // clang-format on
       main_task_graph{[this]() {
           gpu_resources.create(device);
           gpu_resources.voxel_chunks.create(device, ui.settings.log2_chunks_per_axis);
-
-          // Full size
-          // u32 pages = 1 << ui.settings.log2_chunks_per_axis;
-          // pages = pages * pages * pages;
-          // pages = VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK * pages;
-
-          // Min size
-          u32 const pages = (FRAMES_IN_FLIGHT + 1) * VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME;
-
-          // 1GB
-          // u32 pages = (1 << 30) / VOXEL_MALLOC_PAGE_SIZE_BYTES;
-
-          gpu_resources.voxel_malloc.create(device, pages);
+          gpu_resources.voxel_malloc.create(device);
+          gpu_resources.voxel_leaf_chunk_malloc.create(device);
+          gpu_resources.voxel_parent_chunk_malloc.create(device);
           return record_main_task_graph();
       }()},
       gvox_ctx(gvox_create_context()) {
@@ -595,6 +591,8 @@ void VoxelApp::calc_vram_usage() {
     buffer_size(gpu_resources.voxel_chunks.buffer);
 
     gpu_resources.voxel_malloc.for_each_buffer(buffer_size);
+    gpu_resources.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
+    gpu_resources.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
 
     buffer_size(gpu_resources.gvox_model_buffer);
     buffer_size(gpu_resources.simulated_voxel_particles_buffer);
@@ -766,15 +764,17 @@ void VoxelApp::on_update() {
         calc_vram_usage();
     }
 
-    gpu_resources.voxel_malloc.check_for_realloc(
-        device,
-        static_cast<size_t>(gpu_output.heap_size) * sizeof(u32),
-        VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME);
+    gpu_resources.voxel_malloc.check_for_realloc(device, gpu_output.voxel_malloc_output.current_element_count);
+    gpu_resources.voxel_leaf_chunk_malloc.check_for_realloc(device, gpu_output.voxel_leaf_chunk_output.current_element_count);
+    gpu_resources.voxel_parent_chunk_malloc.check_for_realloc(device, gpu_output.voxel_parent_chunk_output.current_element_count);
 
     condition_values[static_cast<usize>(Conditions::STARTUP)] = ui.should_run_startup || model_is_ready;
     condition_values[static_cast<usize>(Conditions::UPLOAD_SETTINGS)] = ui.should_upload_settings;
     condition_values[static_cast<usize>(Conditions::UPLOAD_GVOX_MODEL)] = model_is_ready;
-    condition_values[static_cast<usize>(Conditions::VOXEL_MALLOC_REALLOC)] = gpu_resources.voxel_malloc.needs_realloc();
+    condition_values[static_cast<usize>(Conditions::DYNAMIC_BUFFERS_REALLOC)] =
+        gpu_resources.voxel_malloc.needs_realloc() ||
+        gpu_resources.voxel_leaf_chunk_malloc.needs_realloc() ||
+        gpu_resources.voxel_parent_chunk_malloc.needs_realloc();
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
     main_task_graph.execute({.permutation_condition_values = condition_values});
     model_is_ready = false;
@@ -783,7 +783,7 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
-    ui.debug_gpu_heap_usage = gpu_output.heap_size;
+    ui.debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
     ui.debug_player_pos = gpu_output.player_pos;
     ui.debug_chunk_offset = gpu_output.chunk_offset;
     ui.debug_page_count = gpu_resources.voxel_malloc.current_element_count;
@@ -921,6 +921,8 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_temp_voxel_chunks_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_voxel_chunks_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_malloc.task_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_leaf_chunk_malloc.task_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_parent_chunk_malloc.task_element_buffer},
         },
         .task = [this](daxa::TaskInterface task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
@@ -945,6 +947,8 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
                 .clear_value = 0,
             });
             gpu_resources.voxel_malloc.clear_buffers(cmd_list);
+            gpu_resources.voxel_leaf_chunk_malloc.clear_buffers(cmd_list);
+            gpu_resources.voxel_parent_chunk_malloc.clear_buffers(cmd_list);
         },
         .name = "StartupTask (Globals Clear)",
     });
@@ -962,10 +966,14 @@ void VoxelApp::run_startup(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_malloc.task_allocator_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_leaf_chunk_malloc.task_allocator_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_parent_chunk_malloc.task_allocator_buffer},
         },
         .task = [this](daxa::TaskInterface task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
             gpu_resources.voxel_malloc.init(device, cmd_list);
+            gpu_resources.voxel_leaf_chunk_malloc.init(device, cmd_list);
+            gpu_resources.voxel_parent_chunk_malloc.init(device, cmd_list);
         },
         .name = "Initialize",
     });
@@ -1040,16 +1048,30 @@ void VoxelApp::upload_model(daxa::TaskGraph &temp_task_graph) {
     });
 }
 
-void VoxelApp::voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph) {
+void VoxelApp::dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph) {
     temp_task_graph.add_task({
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{gpu_resources.voxel_malloc.task_old_element_buffer},
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_malloc.task_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{gpu_resources.voxel_leaf_chunk_malloc.task_old_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_leaf_chunk_malloc.task_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{gpu_resources.voxel_parent_chunk_malloc.task_old_element_buffer},
+            daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_resources.voxel_parent_chunk_malloc.task_element_buffer},
         },
         .task = [&](daxa::TaskInterface task_runtime) {
             auto cmd_list = task_runtime.get_command_list();
-            gpu_resources.voxel_malloc.realloc(device, cmd_list);
-            needs_vram_calc = true;
+            if (gpu_resources.voxel_malloc.needs_realloc()) {
+                gpu_resources.voxel_malloc.realloc(device, cmd_list);
+                needs_vram_calc = true;
+            }
+            if (gpu_resources.voxel_leaf_chunk_malloc.needs_realloc()) {
+                gpu_resources.voxel_leaf_chunk_malloc.realloc(device, cmd_list);
+                needs_vram_calc = true;
+            }
+            if (gpu_resources.voxel_parent_chunk_malloc.needs_realloc()) {
+                gpu_resources.voxel_parent_chunk_malloc.realloc(device, cmd_list);
+                needs_vram_calc = true;
+            }
         },
         .name = "Transfer Task",
     });
@@ -1121,6 +1143,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.use_persistent_buffer(task_voxel_chunks_buffer);
     result_task_graph.use_persistent_buffer(task_gvox_model_buffer);
     gpu_resources.voxel_malloc.for_each_task_buffer([&result_task_graph](auto &task_buffer) { result_task_graph.use_persistent_buffer(task_buffer); });
+    gpu_resources.voxel_leaf_chunk_malloc.for_each_task_buffer([&result_task_graph](auto &task_buffer) { result_task_graph.use_persistent_buffer(task_buffer); });
+    gpu_resources.voxel_parent_chunk_malloc.for_each_task_buffer([&result_task_graph](auto &task_buffer) { result_task_graph.use_persistent_buffer(task_buffer); });
 
     task_settings_buffer.set_buffers({.buffers = std::array{gpu_resources.settings_buffer}});
     task_input_buffer.set_buffers({.buffers = std::array{gpu_resources.input_buffer}});
@@ -1165,8 +1189,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .when_true = [&, this]() { this->upload_model(result_task_graph); },
     });
     result_task_graph.conditional({
-        .condition_index = static_cast<u32>(Conditions::VOXEL_MALLOC_REALLOC),
-        .when_true = [&, this]() { this->voxel_malloc_realloc(result_task_graph); },
+        .condition_index = static_cast<u32>(Conditions::DYNAMIC_BUFFERS_REALLOC),
+        .when_true = [&, this]() { this->dynamic_buffers_realloc(result_task_graph); },
     });
 
     // GpuInputUploadTransferTask
@@ -1203,6 +1227,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .globals = task_globals_buffer,
                 .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                 .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
+                .voxel_leaf_chunk_allocator = gpu_resources.voxel_leaf_chunk_malloc.task_allocator_buffer,
+                .voxel_parent_chunk_allocator = gpu_resources.voxel_parent_chunk_malloc.task_allocator_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
             },
         },
@@ -1228,6 +1254,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     });
 #endif
 
+#if ENABLE_HIERARCHICAL_QUEUE
     // ChunkHierarchy
     result_task_graph.add_task(ChunkHierarchyComputeTaskL0{
         {
@@ -1253,6 +1280,20 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         },
         &chunk_hierarchy_task_state,
     });
+#else
+    result_task_graph.add_task(PerChunkComputeTask{
+        {
+            .uses = {
+                .settings = task_settings_buffer,
+                .gpu_input = task_input_buffer,
+                .gvox_model = task_gvox_model_buffer,
+                .globals = task_globals_buffer,
+                .voxel_chunks = task_voxel_chunks_buffer,
+            },
+        },
+        &per_chunk_task_state,
+    });
+#endif
 
     // ChunkEdit
     result_task_graph.add_task(ChunkEditComputeTask{

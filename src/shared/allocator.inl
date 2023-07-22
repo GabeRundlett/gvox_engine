@@ -5,25 +5,29 @@
 // The "simple" allocator declared here (as well as implemented both here and further
 // for the GLSL side in allocator.glsl) is just a simple free-list linear allocator.
 
-#define DECL_SIMPLE_ALLOCATOR(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_) \
-    struct AllocatorType_ {                                                                 \
-        daxa_RWBufferPtr(ElementType_) heap;                                                \
-        daxa_RWBufferPtr(IndexType_) available_element_stack;                               \
-        daxa_RWBufferPtr(IndexType_) released_element_stack;                                \
-        i32 element_count;                                                                  \
-        i32 available_element_stack_size;                                                   \
-        i32 released_element_stack_size;                                                    \
-    };                                                                                      \
-    DAXA_DECL_BUFFER_PTR(AllocatorType_)                                                    \
-    CPU_ONLY(DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_))
+#define DECL_SIMPLE_ALLOCATOR(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_) \
+    struct AllocatorType_ {                                                                                    \
+        daxa_RWBufferPtr(ElementType_) heap;                                                                   \
+        daxa_RWBufferPtr(IndexType_) available_element_stack;                                                  \
+        daxa_RWBufferPtr(IndexType_) released_element_stack;                                                   \
+        i32 element_count;                                                                                     \
+        i32 available_element_stack_size;                                                                      \
+        i32 released_element_stack_size;                                                                       \
+    };                                                                                                         \
+    struct AllocatorType_##GpuOutput {                                                                         \
+        u32 current_element_count;                                                                             \
+    };                                                                                                         \
+    DAXA_DECL_BUFFER_PTR(AllocatorType_)                                                                       \
+    CPU_ONLY(DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_))
 
-#define DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_)                               \
+#define DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_)            \
     template <>                                                                                                                     \
     struct AllocatorConstants<AllocatorType_> {                                                                                     \
         using AllocatorType = AllocatorType_;                                                                                       \
         using ElementType = ElementType_;                                                                                           \
         using IndexType = IndexType_;                                                                                               \
         static constexpr usize ELEMENT_MULTIPLIER = ElementMultiplier_;                                                             \
+        static constexpr u32 MAX_ELEMENT_ALLOCATIONS_PER_FRAME = MaxAllocPerFrame_;                                                 \
         static constexpr char const *const task_allocator_buffer_name = "task_" #AllocatorType_ "_allocator_buffer";                \
         static constexpr char const *const task_element_buffer_name = "task_" #AllocatorType_ "_element_buffer";                    \
         static constexpr char const *const task_old_element_buffer_name = "task" #AllocatorType_ "_old_element_buffer";             \
@@ -40,6 +44,7 @@ struct AllocatorConstants {
     using ElementType = u32;
     using IndexType = u32;
     static constexpr usize ELEMENT_MULTIPLIER = 1;
+    static constexpr u32 MAX_ELEMENT_ALLOCATIONS_PER_FRAME = 1;
     static constexpr char const *const task_allocator_buffer_name = "task_allocator_buffer";
     static constexpr char const *const task_element_buffer_name = "task_element_buffer";
     static constexpr char const *const task_old_element_buffer_name = "task_old_element_buffer";
@@ -61,7 +66,9 @@ struct AllocatorBufferState {
     u32 current_element_count = 0;
     u32 next_element_count = 0;
     u32 prev_element_count = 0;
-    void create(daxa::Device &device, u32 element_count) {
+    void create(daxa::Device &device) {
+        constexpr auto MAX_ELEMENT_ALLOCATIONS_PER_FRAME = AllocatorConstants<T>::MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
+        u32 element_count = (FRAMES_IN_FLIGHT + 1) * MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
         current_element_count = element_count;
         allocator_buffer = device.create_buffer({
             .size = sizeof(AllocatorConstants<T>::AllocatorType),
@@ -204,19 +211,21 @@ struct AllocatorBufferState {
         functor(task_element_buffer);
         functor(task_old_element_buffer);
     }
-    void check_for_realloc(daxa::Device &device, usize current_known_size, usize MAX_ELEMENT_ALLOCATIONS_PER_FRAME) {
+    void check_for_realloc(daxa::Device &device, usize current_known_element_count) {
+        constexpr auto MAX_ELEMENT_ALLOCATIONS_PER_FRAME = AllocatorConstants<T>::MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
         auto const ELEM_SIZE_BYTES = static_cast<u32>(sizeof(AllocatorConstants<T>::ElementType)) * AllocatorConstants<T>::ELEMENT_MULTIPLIER;
-        auto const max_size_after_cpu_catch_up =
-            current_known_size +
-            MAX_ELEMENT_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1) * ELEM_SIZE_BYTES;
-        auto const current_size = static_cast<size_t>(current_element_count) * ELEM_SIZE_BYTES;
+        auto const max_count_after_cpu_catch_up = static_cast<u32>(current_known_element_count + MAX_ELEMENT_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1));
+        auto const max_size_after_cpu_catch_up = static_cast<usize>(max_count_after_cpu_catch_up) * ELEM_SIZE_BYTES;
+        auto const current_size = static_cast<usize>(current_element_count) * ELEM_SIZE_BYTES;
         next_element_count = 0;
         if (max_size_after_cpu_catch_up > current_size) {
-            next_element_count =
-                current_element_count + static_cast<u32>(MAX_ELEMENT_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1));
+            next_element_count = current_element_count + static_cast<u32>(MAX_ELEMENT_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1));
             assert(next_element_count > current_element_count);
             prev_element_count = current_element_count;
-            current_element_count = next_element_count * 2;
+
+            // Calculate new buffer size
+            current_element_count = std::max(next_element_count * 3 / 2, max_count_after_cpu_catch_up);
+
             auto new_element_buffer = device.create_buffer({
                 .size = ELEM_SIZE_BYTES * current_element_count,
                 .name = AllocatorConstants<T>::element_buffer_name,

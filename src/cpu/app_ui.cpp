@@ -787,7 +787,7 @@ void AppUi::update(f32 delta_time) {
         ImGui::Text("GPU: %s", debug_gpu_name);
         ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-        ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) * sizeof(u32) / 1'000'000);
+        ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
         ImGui::Text("Chunk offs: %.2f, %.2f, %.2f", static_cast<double>(debug_chunk_offset.x), static_cast<double>(debug_chunk_offset.y), static_cast<double>(debug_chunk_offset.z));
         ImGui::Text("job_queue_bottom: %u", debug_job_counters.available_threads_queue_bottom);

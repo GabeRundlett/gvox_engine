@@ -103,10 +103,8 @@ bool elect_chunk_for_update(i32vec3 chunk_i, i32vec3 chunk_offset, u32 chunk_ind
         VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
         VOXEL_WORLD.chunk_update_infos[prev_update_n].brush_input = brush_input;
         VOXEL_WORLD.chunk_update_infos[prev_update_n].chunk_offset = chunk_offset;
-        if ((prev_flags & CHUNK_FLAGS_BRUSH_MASK) == 0) {
-            VOXEL_WORLD.chunk_update_infos[prev_update_n].flags = 1;
-        } else {
-            VOXEL_WORLD.chunk_update_infos[prev_update_n].flags = 0;
+        if ((prev_flags & CHUNK_FLAGS_BRUSH_MASK) != 0) {
+            VOXEL_WORLD.chunk_update_infos[prev_update_n].i = INVALID_CHUNK_I;
         }
         return true;
     }

@@ -70,6 +70,8 @@ struct GpuResources {
     VoxelChunks voxel_chunks;
     AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
     daxa::BufferId gvox_model_buffer;
+    AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
+    AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
 
     daxa::BufferId simulated_voxel_particles_buffer;
     daxa::BufferId rendered_voxel_particles_buffer;
@@ -150,7 +152,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
 
+#if ENABLE_HIERARCHICAL_QUEUE
     ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
+#else
+    PerChunkComputeTaskState per_chunk_task_state;
+#endif
 
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
@@ -159,7 +165,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
         STARTUP,
         UPLOAD_SETTINGS,
         UPLOAD_GVOX_MODEL,
-        VOXEL_MALLOC_REALLOC,
+        DYNAMIC_BUFFERS_REALLOC,
         LAST,
     };
     daxa::TaskGraph main_task_graph;
@@ -206,7 +212,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void run_startup(daxa::TaskGraph &temp_task_graph);
     void upload_settings(daxa::TaskGraph &temp_task_graph);
     void upload_model(daxa::TaskGraph &temp_task_graph);
-    void voxel_malloc_realloc(daxa::TaskGraph &temp_task_graph);
+    void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph);
 
     auto record_main_task_graph() -> daxa::TaskGraph;
 };

@@ -4,6 +4,14 @@
 #include <utils/voxel_particle.glsl>
 #include <utils/trace.glsl>
 
+#define UserAllocatorType VoxelLeafChunkAllocator
+#define UserIndexType u32
+#include <utils/allocator.glsl>
+
+#define UserAllocatorType VoxelParentChunkAllocator
+#define UserIndexType u32
+#include <utils/allocator.glsl>
+
 // Queue a L0 terrain generation item
 void queue_terrain_generation_work_item(i32vec3 chunk_offset) {
     ChunkWorkItem terrain_work_item;
@@ -22,10 +30,13 @@ void queue_terrain_generation_work_item(i32vec3 chunk_offset) {
 #define CHUNKS(i) deref(voxel_chunks[i])
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
+    // Update previous chunk offset
+    PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
+
     player_perframe(settings, gpu_input, globals);
     voxel_world_perframe(settings, gpu_input, globals);
 
-    if (length(PLAYER.vel) == 0 && THREAD_POOL.work_items_l0_uncompleted + THREAD_POOL.work_items_l1_uncompleted == 0) {
+    if (ENABLE_HIERARCHICAL_QUEUE) {
         // Check if the player moved at least 1 chunk in any direction
         if (PLAYER.chunk_offset != PLAYER.prev_chunk_offset) {
             // Issue a new terrain generation
@@ -121,7 +132,16 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 
-    deref(gpu_output[INPUT.fif_index]).heap_size = VoxelMallocPageAllocator_get_consumed_element_count(voxel_malloc_page_allocator) * VOXEL_MALLOC_PAGE_SIZE_U32S;
+    VoxelMallocPageAllocator_perframe(voxel_malloc_page_allocator);
+    VoxelLeafChunkAllocator_perframe(voxel_leaf_chunk_allocator);
+    VoxelParentChunkAllocator_perframe(voxel_parent_chunk_allocator);
+
+    deref(gpu_output[INPUT.fif_index]).voxel_malloc_output.current_element_count =
+        VoxelMallocPageAllocator_get_consumed_element_count(voxel_malloc_page_allocator);
+    deref(gpu_output[INPUT.fif_index]).voxel_leaf_chunk_output.current_element_count =
+        VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
+    deref(gpu_output[INPUT.fif_index]).voxel_parent_chunk_output.current_element_count =
+        VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
 
     THREAD_POOL.queue_index = 1 - THREAD_POOL.queue_index;
 
@@ -139,10 +159,6 @@ void main() {
     THREAD_POOL.work_items_l1_completed   = 0;
     THREAD_POOL.work_items_l1_uncompleted = 0;
     // clang-format on
-
-    voxel_malloc_perframe(
-        gpu_input,
-        voxel_malloc_page_allocator);
 
     deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;

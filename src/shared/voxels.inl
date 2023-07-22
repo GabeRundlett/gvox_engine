@@ -57,5 +57,5 @@ struct VoxelParentChunk {
 };
 DAXA_DECL_BUFFER_PTR(VoxelParentChunk)
 
-DECL_SIMPLE_ALLOCATOR(VoxelLeafChunkAllocator, VoxelLeafChunk, 1, u32)
-DECL_SIMPLE_ALLOCATOR(VoxelParentChunkAllocator, VoxelParentChunk, 1, u32)
+DECL_SIMPLE_ALLOCATOR(VoxelLeafChunkAllocator, VoxelLeafChunk, 1, u32, (MAX_CHUNK_WORK_ITEMS_L2))
+DECL_SIMPLE_ALLOCATOR(VoxelParentChunkAllocator, VoxelParentChunk, 1, u32, (MAX_CHUNK_WORK_ITEMS_L0 + MAX_CHUNK_WORK_ITEMS_L1))

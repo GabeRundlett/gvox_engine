@@ -2,7 +2,7 @@
 
 #include <shared/core.inl>
 
-#define SKY_COL (f32vec3(0.06, 0.09, 0.90) * 4)
+#define SKY_COL (f32vec3(0.07, 0.09, 0.90) * 4)
 #define SKY_COL_B (f32vec3(0.11, 0.10, 0.54))
 
 // #define SUN_TIME (deref(gpu_input).time)

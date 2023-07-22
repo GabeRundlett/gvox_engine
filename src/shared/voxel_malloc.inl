@@ -69,4 +69,4 @@ struct VoxelMalloc_ChunkLocalPageSubAllocatorState {
     VoxelMalloc_PageInfo page_allocation_infos[VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK];
 };
 
-DECL_SIMPLE_ALLOCATOR(VoxelMallocPageAllocator, daxa_u32, VOXEL_MALLOC_PAGE_SIZE_U32S, VoxelMalloc_PageIndex)
+DECL_SIMPLE_ALLOCATOR(VoxelMallocPageAllocator, daxa_u32, VOXEL_MALLOC_PAGE_SIZE_U32S, VoxelMalloc_PageIndex, (VOXEL_MALLOC_MAX_PAGE_ALLOCATIONS_PER_FRAME))

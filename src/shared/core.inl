@@ -49,5 +49,6 @@
 #define USE_POINTS 0
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
+#define ENABLE_HIERARCHICAL_QUEUE 0
 
 CPU_ONLY(static constexpr usize FRAMES_IN_FLIGHT = 1;)

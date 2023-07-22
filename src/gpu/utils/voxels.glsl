@@ -190,7 +190,7 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buffer
     u32 lod_mask_x64 = uniformity_lod_mask(inchunk_voxel_i / 64);
 
     u32 chunk_flags = deref(voxel_chunk_ptr).flags;
-    if ((chunk_flags & 1) == 0)
+    if ((chunk_flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0)
         return 7;
 
 #if !defined(TRACE_DEPTH_PREPASS_COMPUTE) || VOXEL_ACCEL_UNIFORMITY

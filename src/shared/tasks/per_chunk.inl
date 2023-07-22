@@ -2,21 +2,17 @@
 
 #include "../core.inl"
 
-DAXA_DECL_TASK_USES_BEGIN(PerframeComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_DECL_TASK_USES_BEGIN(PerChunkComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(gpu_output, daxa_RWBufferPtr(GpuOutput), COMPUTE_SHADER_READ_WRITE)
+DAXA_TASK_USE_BUFFER(gvox_model, daxa_BufferPtr(GpuGvoxModel), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_RWBufferPtr(SimulatedVoxelParticle), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_leaf_chunk_allocator, daxa_RWBufferPtr(VoxelLeafChunkAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_parent_chunk_allocator, daxa_RWBufferPtr(VoxelParentChunkAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
-struct PerframeComputeTaskState {
+struct PerChunkComputeTaskState {
     daxa::PipelineManager &pipeline_manager;
     AppUi &ui;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
@@ -24,10 +20,10 @@ struct PerframeComputeTaskState {
     void compile_pipeline() {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"perframe.comp.glsl"},
-                .compile_options = {.defines = {{"PERFRAME_COMPUTE", "1"}}},
+                .source = daxa::ShaderFile{"per_chunk.comp.glsl"},
+                .compile_options = {.defines = {{"PER_CHUNK_COMPUTE", "1"}}},
             },
-            .name = "perframe",
+            .name = "per_chunk",
         });
         if (compile_result.is_err()) {
             ui.console.add_log(compile_result.message());
@@ -39,7 +35,7 @@ struct PerframeComputeTaskState {
         }
     }
 
-    PerframeComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
+    PerChunkComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {
@@ -47,12 +43,13 @@ struct PerframeComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        cmd_list.dispatch(1, 1, 1);
+        auto const dispatch_size = 1 << (ui.settings.log2_chunks_per_axis - 3);
+        cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size);
     }
 };
 
-struct PerframeComputeTask : PerframeComputeUses {
-    PerframeComputeTaskState *state;
+struct PerChunkComputeTask : PerChunkComputeUses {
+    PerChunkComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <shared/voxels.inl>
 
 // clang-format off
 #define GAME_ACTION_MOVE_FORWARD       0
@@ -46,8 +46,11 @@ struct GpuOutput {
     u64 job_counters_packed;
     f32vec3 player_pos;
     f32vec3 chunk_offset;
-    u32 heap_size;
     u32 total_jobs_ran;
-    //u32 _pad;
+    // u32 _pad;
+
+    VoxelMallocPageAllocatorGpuOutput voxel_malloc_output;
+    VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
+    VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
 };
 DAXA_DECL_BUFFER_PTR(GpuOutput)

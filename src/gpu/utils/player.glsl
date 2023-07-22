@@ -33,7 +33,7 @@ void player_startup(
     // PLAYER.pos = f32vec3(173.78, 113.72, 12.09);
 
     PLAYER.rot.x = PI * -0.651;
-    PLAYER.rot.z = PI * 0.25;
+    // PLAYER.rot.z = PI * 0.25;
 
     // PLAYER.rot.x = PI * -0.751;
     // PLAYER.rot.z = PI * 1.25;
@@ -90,7 +90,7 @@ void player_perframe(
 
     const f32 accel_rate = 30.0;
     const f32 speed = 2.5;
-    const f32 sprint_speed = 20.5;
+    const f32 sprint_speed = 25.5;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
         move_vec += PLAYER.forward;

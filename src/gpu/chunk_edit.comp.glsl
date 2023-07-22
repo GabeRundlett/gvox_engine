@@ -210,6 +210,15 @@ void main() {
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     // Chunk 3D index in leaf chunk space (0^3 - 31^3)
     chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+
+    // Here we check whether the chunk update that we're handling is an update
+    // for a chunk that has already been submitted. This is a bit inefficient,
+    // since we'd hopefully like to queue a separate work item into the queue
+    // instead, but this is tricky.
+    if (chunk_i == INVALID_CHUNK_I) {
+        return;
+    }
+
     // Player chunk offset
     i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
     // Brush informations

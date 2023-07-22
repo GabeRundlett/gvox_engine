@@ -43,8 +43,14 @@
 #include <shared/tasks/postprocessing.inl>
 #endif
 
+#if ENABLE_HIERARCHICAL_QUEUE
 #if CHUNK_HIERARCHY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/chunk_hierarchy.inl>
+#endif
+#else
+#if PER_CHUNK_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/per_chunk.inl>
+#endif
 #endif
 
 #if VOXEL_PARTICLE_SIM_COMPUTE || defined(__cplusplus)
