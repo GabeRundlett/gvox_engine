@@ -15,7 +15,7 @@ i32vec3 voxel_i;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
-DAXA_DECL_PUSH_CONSTANT(ChunkEditRasterPush, push)
+DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
 
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
