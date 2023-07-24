@@ -16,13 +16,13 @@ void main() {
     f32vec2 uv = pixel_p * inv_frame_dim;
 
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
-    f32vec3 cam_pos = create_view_pos(deref(globals).player);
+    f32vec3 cam_pos = create_view_pos(globals);
     f32vec3 ray_pos = cam_pos;
-    f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
+    f32vec3 ray_dir = create_view_dir(globals, uv);
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
 #if ENABLE_DEPTH_PREPASS
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 32.0 / frame_dim.y * deref(globals).player.cam.tan_half_fov, true), ray_pos);
+    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 32.0 / frame_dim.y * deref(globals).player.cam.tan_half_fov, true), ray_pos);
     u32 step_n = trace_result.step_n;
 #else
     u32 step_n = 0;

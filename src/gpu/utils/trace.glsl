@@ -5,18 +5,18 @@
 #include <utils/math.glsl>
 #include <utils/voxels.glsl>
 
-f32vec3 create_view_pos(in Player player) {
-    return player.cam.pos;
+f32vec3 create_view_pos(daxa_RWBufferPtr(GpuGlobals) globals) {
+    return deref(globals).player.cam.pos;
 }
 
-f32vec3 create_view_dir(in Player player, f32vec2 uv) {
-    f32vec3 nrm = normalize(f32vec3(uv.x * player.cam.tan_half_fov, uv.y * player.cam.tan_half_fov, 1));
-    nrm = player.cam.rot_mat * nrm;
+f32vec3 create_view_dir(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv) {
+    f32vec3 nrm = normalize(f32vec3(uv.x * deref(globals).player.cam.tan_half_fov, uv.y * deref(globals).player.cam.tan_half_fov, 1));
+    nrm = deref(globals).player.cam.rot_mat * nrm;
     return nrm;
 }
 
 f32 sdmap(f32vec3 p) {
-    f32 value = MAX_SD;
+    f32 value = MAX_DIST;
     // value = sd_union(value, +sd_plane_x(p - f32vec3(-6.4, 0.0, 0.0)));
     // value = sd_union(value, -sd_plane_x(p - f32vec3(+6.4, 0.0, 0.0)));
     // value = sd_union(value, +sd_plane_y(p - f32vec3(0.0, -6.4, 0.0)));
@@ -38,8 +38,8 @@ f32vec3 sdmap_nrm(f32vec3 pos) {
 
 void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
     f32 t = 0.0;
-    f32 final_dist = MAX_SD;
-    for (u32 i = 0; i < 512 && t < MAX_SD; ++i) {
+    f32 final_dist = MAX_DIST;
+    for (u32 i = 0; i < 512 && t < MAX_DIST; ++i) {
         f32vec3 p = ray_pos + ray_dir * t;
         f32 d = sdmap(p);
         if (abs(d) < (0.0001 * t)) {
@@ -165,7 +165,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
     ray_pos += ray_dir * 0.001 / VOXEL_SCL;
     if (!inside(ray_pos, b)) {
-        ray_pos = ray_pos + ray_dir * MAX_SD;
+        ray_pos = ray_pos + ray_dir * MAX_DIST;
         return;
     }
 
@@ -173,7 +173,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     for (u32 i = 0; i < max_steps; ++i) {                                                              \
         ray_pos += ray_dir * N / 8;                                                                    \
         if (!inside(f32vec3(ray_pos), b)) {                                                            \
-            ray_pos += ray_dir * MAX_SD;                                                               \
+            ray_pos += ray_dir * MAX_DIST;                                                             \
             return;                                                                                    \
         }                                                                                              \
         b32 present = sample_lod_presence(N)(voxel_chunks_ptr, chunk_n, u32vec3(ray_pos * VOXEL_SCL)); \
@@ -187,7 +187,7 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     STEP(16)
     STEP(32)
     STEP(64)
-    ray_pos += ray_dir * MAX_SD;
+    ray_pos += ray_dir * MAX_DIST;
 }
 
 f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {

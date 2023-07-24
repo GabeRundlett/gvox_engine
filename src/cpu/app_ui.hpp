@@ -5,6 +5,7 @@ struct ImFont;
 
 #include "app_settings.hpp"
 #include <imgui.h>
+#include <imgui_stdlib.h>
 #include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
@@ -90,6 +91,7 @@ struct AppUi {
     bool should_run_startup = true;
     bool should_recreate_voxel_buffers = true;
     bool autosave_override = false;
+    bool should_upload_seed_data = true;
 
     bool should_upload_settings = true;
 

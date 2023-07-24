@@ -209,6 +209,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void recreate_render_images();
     void recreate_voxel_chunks();
 
+    void update_seeded_value_noise();
     void run_startup(daxa::TaskGraph &temp_task_graph);
     void upload_settings(daxa::TaskGraph &temp_task_graph);
     void upload_model(daxa::TaskGraph &temp_task_graph);

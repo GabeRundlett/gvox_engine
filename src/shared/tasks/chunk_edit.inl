@@ -15,7 +15,7 @@ DAXA_TASK_USE_BUFFER(placed_voxel_particles, daxa_BufferPtr(daxa_u32), COMPUTE_S
 DAXA_TASK_USE_IMAGE(value_noise_texture, REGULAR_2D_ARRAY, COMPUTE_SHADER_SAMPLED)
 DAXA_DECL_TASK_USES_END()
 
-struct ChunkEditRasterPush {
+struct ChunkEditComputePush {
     daxa_SamplerId value_noise_sampler;
 };
 
@@ -32,7 +32,7 @@ struct ChunkEditComputeTaskState {
                 .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_EDIT_COMPUTE", "1"}}},
             },
-            .push_constant_size = sizeof(ChunkEditRasterPush),
+            .push_constant_size = sizeof(ChunkEditComputePush),
             .name = "chunk_edit",
         });
         if (compile_result.is_err()) {
@@ -53,7 +53,7 @@ struct ChunkEditComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        cmd_list.push_constant(ChunkEditRasterPush{
+        cmd_list.push_constant(ChunkEditComputePush{
             .value_noise_sampler = value_noise_sampler,
         });
         cmd_list.dispatch_indirect({

@@ -13,6 +13,7 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["render_res_scl"] = render_res_scl;
     // json["log2_chunks_per_axis"] = log2_chunks_per_axis;
     // json["gpu_heap_size"] = gpu_heap_size;
+    json["world_seed_str"] = world_seed_str;
 
     json["show_debug_info"] = show_debug_info;
     json["show_console"] = show_console;
@@ -50,6 +51,7 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("render_res_scl", render_res_scl);
     // grab_value("log2_chunks_per_axis", log2_chunks_per_axis);
     // grab_value("gpu_heap_size", gpu_heap_size);
+    grab_value("world_seed_str", world_seed_str);
 
     grab_value("show_debug_info", show_debug_info);
     grab_value("show_console", show_console);
@@ -79,6 +81,7 @@ void AppSettings::clear() {
     render_res_scl = 1.0f;
     log2_chunks_per_axis = 5;
     gpu_heap_size = 1u << 30;
+    world_seed_str = "gvox";
 
     show_debug_info = false;
     show_console = false;

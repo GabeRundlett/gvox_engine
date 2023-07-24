@@ -16,12 +16,12 @@ float calc_ao() {
     f32vec3 nrm_viewspace = normalize(nrm * deref(globals).player.cam.rot_mat);
 
     f32 ao = 0.0;
-    const u32 SAMPLE_N = 8;
+    const u32 SAMPLE_N = 4;
     const f32 bias = 0.01;
-    const f32 radius = 3.0;
+    const f32 radius = 10.0;
 
-    vec3 view_pos = create_view_pos(deref(globals).player);
-    vec3 view_dir = create_view_dir(deref(globals).player, (uv * 2.0 - 1.0) * vec2(aspect, 1.0));
+    vec3 view_pos = create_view_pos(globals);
+    vec3 view_dir = create_view_dir(globals, (uv * 2.0 - 1.0) * vec2(aspect, 1.0));
     vec3 frag_pos = view_dir * depth + view_pos;
 
     for (u32 i = 0; i < SAMPLE_N; ++i) {
@@ -56,7 +56,7 @@ void main() {
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(px * SHADING_SCL + offset), 0);
     nrm = u16_to_nrm(g_buffer_value.y);
 
-    if (depth == MAX_SD || dot(nrm, nrm) == 0.0) {
+    if (depth == MAX_DIST || dot(nrm, nrm) == 0.0) {
         imageStore(daxa_image2D(ssao_image_id), i32vec2(px), f32vec4(1, 0, 0, 0));
         return;
     }

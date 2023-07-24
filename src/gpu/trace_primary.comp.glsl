@@ -28,13 +28,13 @@ void main() {
     f32vec2 uv = pixel_p * inv_frame_dim;
     uv = (uv - 0.5) * f32vec2(aspect, 1.0) * 2.0;
 
-    f32vec3 ray_dir = create_view_dir(deref(globals).player, uv);
+    f32vec3 ray_dir = create_view_dir(globals, uv);
 
 #if !ENABLE_DEPTH_PREPASS
     f32 prepass_depth = 0.0;
     f32 prepass_steps = 0.0;
 #else
-    f32 max_depth = MAX_SD;
+    f32 max_depth = MAX_DIST;
     f32 prepass_depth = max_depth;
     f32 prepass_steps = 0.0;
 
@@ -52,11 +52,11 @@ void main() {
     }
 #endif
 
-    f32vec3 cam_pos = create_view_pos(deref(globals).player);
+    f32vec3 cam_pos = create_view_pos(globals);
     f32vec3 ray_pos = cam_pos + ray_dir * prepass_depth;
     u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
 
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_SD, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
 
     u32vec4 output_value = u32vec4(0);
@@ -64,11 +64,11 @@ void main() {
 
     f32 depth = length(cam_pos - ray_pos); // trace_result.dist + prepass_depth;
 
-    if (trace_result.dist == MAX_SD) {
+    if (trace_result.dist == MAX_DIST) {
         f32vec3 sky_col = sample_sky(ray_dir);
         output_value.w = float3_to_uint_urgb9e5(sky_col / 1.0);
         output_value.y |= nrm_to_u16(f32vec3(0));
-        depth = MAX_SD;
+        depth = MAX_DIST;
     } else {
         output_value.x = trace_result.voxel_data;
         output_value.y |= nrm_to_u16(trace_result.nrm);

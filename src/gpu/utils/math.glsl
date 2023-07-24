@@ -5,8 +5,10 @@
 // Definitions
 
 #define PI 3.14159265
-#define MAX_SD 10000.0
 #define MAX_STEPS 512
+
+const float MAX_DIST = 1.0e9;
+const float SQRT_2 = 1.41421356237;
 
 // Objects
 
@@ -24,6 +26,20 @@ struct CapsulePoints {
 
 // Common Functions
 
+f32 nonzero_sign(f32 x) {
+    if (x < 0.0)
+        return -1.0;
+    return 1.0;
+}
+f32vec2 nonzero_sign(f32vec2 x) {
+    return f32vec2(nonzero_sign(x.x), nonzero_sign(x.y));
+}
+f32vec3 nonzero_sign(f32vec3 x) {
+    return f32vec3(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z));
+}
+f32vec4 nonzero_sign(f32vec4 x) {
+    return f32vec4(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z), nonzero_sign(x.w));
+}
 f32 deg2rad(f32 d) {
     return d * PI / 180.0;
 }
@@ -75,35 +91,10 @@ f32vec4 uint_rgba8_to_float4(u32 u) {
     result.a = f32((u >> 0x18) & 0xff) / 255.0;
 
     result = pow(result, f32vec4(2.2));
-
-    // result = result * f32vec4(16, 32, 8, 32);
-    // result.gba = pow(result.gba, f32vec3(2.2));
-    // result.g = 1 - result.g;
-    // result.rgb = hsv2rgb(result.rgb);
-
-    // f32 c = result.r - ( 16.0 / 256.0);
-    // f32 d = result.g - (128.0 / 256.0);
-    // f32 e = result.b - (128.0 / 256.0);
-    // result.r = (298.0 / 256.0) * c + (409.0 / 256.0) * e + (128.0 / 256.0);
-    // result.g = (298.0 / 256.0) * c + (100.0 / 256.0) * d + (208.0 / 256.0) * e + 128.0 / 256.0;
-    // result.b = (298.0 / 256.0) * c + (516.0 / 256.0) * d + (128.0 / 256.0);
-
     return result;
 }
 u32 float4_to_uint_rgba8(f32vec4 f) {
     f = clamp(f, f32vec4(0), f32vec4(1));
-
-    // f32vec3 yuv = f32vec3(
-    //     dot(f32vec3(0.299, 0.587, 0.114), f.rgb),
-    //     dot(f32vec3(-0.174, -0.289, 0.436), f.rgb),
-    //     dot(f32vec3(0.615, -0.515, -0.100), f.rgb));
-    // f.rgb = yuv;
-
-    // f.rgb = rgb2hsv(f.rgb);
-    // f.g = 1 - f.g;
-    // f.gba = pow(f.gba, f32vec3(1.0 / 2.2));
-    // f = f / f32vec4(16, 32, 8, 32);
-
     f = pow(f, f32vec4(1.0 / 2.2));
 
     u32 result = 0;
@@ -236,7 +227,7 @@ void intersect(in out f32vec3 ray_pos, f32vec3 ray_dir, f32vec3 inv_dir, Boundin
     tmax = min(tmax, max(tz1, tz2));
 
     // f32 dist = max(min(tmax, tmin), 0);
-    f32 dist = MAX_SD;
+    f32 dist = MAX_DIST;
     if (tmax >= tmin) {
         if (tmin > 0) {
             dist = tmin;
@@ -254,9 +245,21 @@ f32 sd_shapes_ndot(in f32vec2 a, in f32vec2 b) { return a.x * b.x - a.y * b.y; }
 
 // Operators
 
+// These are safe for min/max operations!
+f32 sd_set(f32 a, f32 b) {
+    return b;
+}
+f32vec4 sd_set(f32vec4 a, f32vec4 b) {
+    return b;
+}
+f32 sd_add(f32 a, f32 b) {
+    return (a + b);
+}
 f32 sd_union(in f32 a, in f32 b) {
     return min(a, b);
 }
+
+// These are either unsafe or unknown for min/max operations
 f32 sd_smooth_union(in f32 a, in f32 b, in f32 k) {
     f32 h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
     return mix(a, b, h) - k * h * (1.0 - h);
@@ -273,8 +276,35 @@ f32 sd_difference(in f32 a, in f32 b) {
 f32 sd_smooth_difference(in f32 a, in f32 b, in f32 k) {
     return sd_smooth_intersection(a, -b, k);
 }
+f32 sd_mul(f32 a, f32 b) {
+    return (a * b);
+}
 
 // Shapes
+
+// assumed sphere is at (0, 0, 0)
+float sd_sphere_nearest(vec3 p, float r) {
+    return length(p) - r;
+}
+float sd_sphere_furthest(vec3 p, float r) {
+    return length(p) + r * 2.0;
+}
+
+// assumed box is centered at (0, 0, 0)
+float sd_box_nearest(vec3 p, vec3 b) {
+    vec3 d = abs(p) - b;
+    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
+float sd_box_furthest(vec3 p, vec3 b) {
+    return length(b * nonzero_sign(p) + p);
+}
+
+// assumed sphere is at (0, 0, 0)
+vec2 minmax_sd_sphere_in_region(vec3 region_center, vec3 region_size, float r) {
+    float min_d = sd_box_nearest(-region_center, region_size);
+    float max_d = sd_box_furthest(-region_center, region_size);
+    return vec2(min_d, max_d) - r;
+}
 
 f32 sd_plane_x(in f32vec3 p) {
     return p.x;
@@ -528,10 +558,14 @@ f32vec3 rand_lambertian_nrm(f32vec3 nrm) {
     return normalize(nrm + rand_dir());
 }
 
-f32vec2 rand_circle_pt() {
-    f32 theta = 2.0 * PI * rand();
-    f32 mag = sqrt(rand());
+f32vec2 rand_circle_pt(f32vec2 random_input) {
+    f32 theta = 2.0 * PI * random_input.x;
+    f32 mag = sqrt(random_input.y);
     return f32vec2(cos(theta), sin(theta)) * mag;
+}
+
+f32vec2 rand_circle_pt() {
+    return rand_circle_pt(f32vec2(rand(), rand()));
 }
 
 f32mat3x3 tbn_from_normal(f32vec3 nrm) {

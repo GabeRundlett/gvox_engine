@@ -369,49 +369,10 @@ VoxelApp::VoxelApp()
             .device = device,
             .name = "temp_task_graph",
         });
-        temp_task_graph.use_persistent_image(task_value_noise_image);
         temp_task_graph.use_persistent_image(task_blue_noise_vec1_image);
         temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
         temp_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
         temp_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
-        temp_task_graph.add_task({
-            .uses = {
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_value_noise_image.view().view({.layer_count = 256})},
-            },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto staging_buffer = device.create_buffer({
-                    .size = static_cast<u32>(256 * 256 * 256 * 1),
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                    .name = "staging_buffer",
-                });
-                auto *buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
-                auto seed_string = std::string{"gvox"};
-                std::mt19937_64 rng(std::hash<std::string>{}(seed_string));
-                std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
-                for (u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
-                    buffer_ptr[i] = dist(rng) & 0xff;
-                }
-                auto cmd_list = task_runtime.get_command_list();
-                cmd_list.pipeline_barrier({
-                    .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
-                });
-                cmd_list.destroy_buffer_deferred(staging_buffer);
-                for (u32 i = 0; i < 256; ++i) {
-                    cmd_list.copy_buffer_to_image({
-                        .buffer = staging_buffer,
-                        .buffer_offset = 256 * 256 * i,
-                        .image = task_value_noise_image.get_state().images[0],
-                        .image_slice{
-                            .base_array_layer = i,
-                            .layer_count = 1,
-                        },
-                        .image_extent = {256, 256, 1},
-                    });
-                }
-                needs_vram_calc = true;
-            },
-            .name = "upload_value_noise",
-        });
         temp_task_graph.add_task({
             .uses = {
                 daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec1_image},
@@ -450,14 +411,14 @@ VoxelApp::VoxelApp()
                             std::copy(temp_data + 0, temp_data + 128 * 128 * 4, buffer_out_ptr);
                         }
                     };
-                    auto vec1_name = std::string{"STBN/stbn_vec1_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    // auto vec1_name = std::string{"STBN/stbn_vec1_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
                     auto vec2_name = std::string{"STBN/stbn_vec2_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
-                    auto vec3_name = std::string{"STBN/stbn_unitvec3_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
-                    auto cosine_vec3_name = std::string{"STBN/stbn_unitvec3_cosine_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
-                    load_image(vec1_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
+                    // auto vec3_name = std::string{"STBN/stbn_unitvec3_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    // auto cosine_vec3_name = std::string{"STBN/stbn_unitvec3_cosine_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
+                    // load_image(vec1_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
                     load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 1);
-                    load_image(vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 2);
-                    load_image(cosine_vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 3);
+                    // load_image(vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 2);
+                    // load_image(cosine_vec3_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 3);
                 }
 
                 auto cmd_list = task_runtime.get_command_list();
@@ -465,30 +426,30 @@ VoxelApp::VoxelApp()
                     .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                 });
                 cmd_list.destroy_buffer_deferred(staging_buffer);
-                cmd_list.copy_buffer_to_image({
-                    .buffer = staging_buffer,
-                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 0,
-                    .image = task_blue_noise_vec1_image.get_state().images[0],
-                    .image_extent = {128, 128, 64},
-                });
+                // cmd_list.copy_buffer_to_image({
+                //     .buffer = staging_buffer,
+                //     .buffer_offset = (usize{128} * 128 * 4 * 64) * 0,
+                //     .image = task_blue_noise_vec1_image.get_state().images[0],
+                //     .image_extent = {128, 128, 64},
+                // });
                 cmd_list.copy_buffer_to_image({
                     .buffer = staging_buffer,
                     .buffer_offset = (usize{128} * 128 * 4 * 64) * 1,
                     .image = task_blue_noise_vec2_image.get_state().images[0],
                     .image_extent = {128, 128, 64},
                 });
-                cmd_list.copy_buffer_to_image({
-                    .buffer = staging_buffer,
-                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 2,
-                    .image = task_blue_noise_unit_vec3_image.get_state().images[0],
-                    .image_extent = {128, 128, 64},
-                });
-                cmd_list.copy_buffer_to_image({
-                    .buffer = staging_buffer,
-                    .buffer_offset = (usize{128} * 128 * 4 * 64) * 3,
-                    .image = task_blue_noise_cosine_vec3_image.get_state().images[0],
-                    .image_extent = {128, 128, 64},
-                });
+                // cmd_list.copy_buffer_to_image({
+                //     .buffer = staging_buffer,
+                //     .buffer_offset = (usize{128} * 128 * 4 * 64) * 2,
+                //     .image = task_blue_noise_unit_vec3_image.get_state().images[0],
+                //     .image_extent = {128, 128, 64},
+                // });
+                // cmd_list.copy_buffer_to_image({
+                //     .buffer = staging_buffer,
+                //     .buffer_offset = (usize{128} * 128 * 4 * 64) * 3,
+                //     .image = task_blue_noise_cosine_vec3_image.get_state().images[0],
+                //     .image_extent = {128, 128, 64},
+                // });
                 needs_vram_calc = true;
             },
             .name = "upload_blue_noise",
@@ -741,6 +702,10 @@ void VoxelApp::on_update() {
         recreate_voxel_chunks();
     }
 
+    if (ui.should_upload_seed_data) {
+        update_seeded_value_noise();
+    }
+
     if (ui.should_upload_gvox_model) {
         if (!model_is_loading) {
             gvox_model_data_future = std::async(std::launch::async, &VoxelApp::load_gvox_data, this);
@@ -899,6 +864,55 @@ void VoxelApp::recreate_voxel_chunks() {
     task_voxel_chunks_buffer.set_buffers({.buffers = {&gpu_resources.voxel_chunks.buffer, 1}});
     ui.should_recreate_voxel_buffers = false;
     needs_vram_calc = true;
+}
+
+void VoxelApp::update_seeded_value_noise() {
+    daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
+        .device = device,
+        .name = "temp_task_graph",
+    });
+    temp_task_graph.use_persistent_image(task_value_noise_image);
+    temp_task_graph.add_task({
+        .uses = {
+            daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_value_noise_image.view().view({.layer_count = 256})},
+        },
+        .task = [this](daxa::TaskInterface task_runtime) {
+            auto staging_buffer = device.create_buffer({
+                .size = static_cast<u32>(256 * 256 * 256 * 1),
+                .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                .name = "staging_buffer",
+            });
+            auto *buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
+            std::mt19937_64 rng(std::hash<std::string>{}(ui.settings.world_seed_str));
+            std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
+            for (u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
+                buffer_ptr[i] = dist(rng) & 0xff;
+            }
+            auto cmd_list = task_runtime.get_command_list();
+            cmd_list.pipeline_barrier({
+                .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
+            });
+            cmd_list.destroy_buffer_deferred(staging_buffer);
+            for (u32 i = 0; i < 256; ++i) {
+                cmd_list.copy_buffer_to_image({
+                    .buffer = staging_buffer,
+                    .buffer_offset = 256 * 256 * i,
+                    .image = task_value_noise_image.get_state().images[0],
+                    .image_slice{
+                        .base_array_layer = i,
+                        .layer_count = 1,
+                    },
+                    .image_extent = {256, 256, 1},
+                });
+            }
+            needs_vram_calc = true;
+        },
+        .name = "upload_value_noise",
+    });
+    temp_task_graph.submit({});
+    temp_task_graph.complete({});
+    temp_task_graph.execute({});
+    ui.should_upload_seed_data = false;
 }
 
 // [Engine initializations tasks]
@@ -1289,9 +1303,11 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .gvox_model = task_gvox_model_buffer,
                 .globals = task_globals_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
+                .value_noise_texture = task_value_noise_image.view().view({.layer_count = 256}),
             },
         },
         &per_chunk_task_state,
+        &gpu_resources.value_noise_sampler,
     });
 #endif
 

@@ -17,6 +17,7 @@ struct AppSettings {
     f32 render_res_scl;
     u32 log2_chunks_per_axis;
     u32 gpu_heap_size;
+    std::string world_seed_str;
 
     bool show_debug_info;
     bool show_console;

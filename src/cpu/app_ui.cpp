@@ -452,6 +452,9 @@ void AppUi::settings_ui() {
     ImGui::Begin("Settings");
     if (ImGui::BeginTabBar("##settings_tabs")) {
         if (ImGui::BeginTabItem("Game")) {
+            if (ImGui::InputText("World Seed", &settings.world_seed_str)) {
+                should_upload_seed_data = true;
+            }
             if (ImGui::Button("Re-run Startup")) {
                 should_run_startup = true;
             }
