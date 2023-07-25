@@ -45,12 +45,12 @@ DAXA_DECL_BUFFER_PTR(GpuInput)
 struct GpuOutput {
     u64 job_counters_packed;
     f32vec3 player_pos;
+    f32vec3 player_rot;
     f32vec3 chunk_offset;
     u32 total_jobs_ran;
-    // u32 _pad;
 
     VoxelMallocPageAllocatorGpuOutput voxel_malloc_output;
     VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
     VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
 };
-DAXA_DECL_BUFFER_PTR(GpuOutput)
+DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)

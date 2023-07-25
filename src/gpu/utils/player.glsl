@@ -32,11 +32,11 @@ void player_startup(
     // Inside beach hut
     // PLAYER.pos = f32vec3(173.78, 113.72, 12.09);
 
-    PLAYER.rot.x = PI * -0.651;
-    // PLAYER.rot.z = PI * 0.25;
+    PLAYER.pitch = PI * 0.349;
+    // PLAYER.yaw = PI * 0.25;
 
-    // PLAYER.rot.x = PI * -0.751;
-    // PLAYER.rot.z = PI * 1.25;
+    // PLAYER.pitch = PI * 0.249;
+    // PLAYER.yaw = PI * 1.25;
 
     player_fix_chunk_offset(settings_ptr, globals_ptr);
 }
@@ -51,38 +51,17 @@ void player_perframe(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     const f32 mouse_sens = 1.0;
 
-    PLAYER.rot.z += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
-    // PLAYER.rot.y = fract(INPUT.time * 0.5) * 2.0 * PI;
-    PLAYER.rot.x -= INPUT.mouse.pos_delta.y * mouse_sens * SETTINGS.sensitivity * 0.001;
+    if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
+        PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
+    } else {
+        PLAYER.yaw += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
+        PLAYER.pitch -= INPUT.mouse.pos_delta.y * mouse_sens * SETTINGS.sensitivity * 0.001;
+    }
 
     const float MAX_ROT_EPS = 0.01;
-    PLAYER.rot.x = clamp(PLAYER.rot.x, MAX_ROT_EPS - PI, -MAX_ROT_EPS);
-    float sin_rot_x = sin(PLAYER.rot.x), cos_rot_x = cos(PLAYER.rot.x);
-    // float sin_rot_y = sin(PLAYER.rot.y), cos_rot_y = cos(PLAYER.rot.y);
-    float sin_rot_z = sin(PLAYER.rot.z), cos_rot_z = cos(PLAYER.rot.z);
-
-    // clang-format off
-    PLAYER.cam.prev_rot_mat = PLAYER.cam.rot_mat;
-    PLAYER.cam.prev_pos = PLAYER.cam.pos;
-    PLAYER.cam.rot_mat =
-        f32mat3x3(
-            cos_rot_z, -sin_rot_z, 0,
-            sin_rot_z,  cos_rot_z, 0,
-            0,          0,         1
-        ) *
-        // f32mat3x3(
-        //     cos_rot_y,  0, sin_rot_y,
-        //     0,          1, 0,
-        //     -sin_rot_y, 0, cos_rot_y
-        // ) *
-        f32mat3x3(
-            1,          0,          0,
-            0,  cos_rot_x,  sin_rot_x,
-            0, -sin_rot_x,  cos_rot_x
-        );
-    // clang-format on
-    PLAYER.cam.prev_tan_half_fov = PLAYER.cam.tan_half_fov;
-    PLAYER.cam.tan_half_fov = tan(SETTINGS.fov * 0.5);
+    PLAYER.pitch = clamp(PLAYER.pitch, MAX_ROT_EPS, PI - MAX_ROT_EPS);
+    float sin_rot_x = sin(PLAYER.pitch), cos_rot_x = cos(PLAYER.pitch);
+    float sin_rot_z = sin(PLAYER.yaw), cos_rot_z = cos(PLAYER.yaw);
 
     f32vec3 move_vec = f32vec3(0, 0, 0);
     PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
@@ -115,42 +94,40 @@ void player_perframe(
 
     player_fix_chunk_offset(settings_ptr, globals_ptr);
 
-    PLAYER.cam.pos = PLAYER.pos + f32vec3(0, 0, 0);
-
+    float tan_half_fov = tan(SETTINGS.fov * 0.5);
     float aspect = float(INPUT.frame_dim.x) / float(INPUT.frame_dim.y);
     float near = 0.01;
 
-    vec3 eye = PLAYER.cam.pos;
-    vec3 center = PLAYER.cam.pos + PLAYER.cam.rot_mat * vec3(0, 0, 1);
-    vec3 up = vec3(0, 0, 1);
+    PLAYER.cam.prev_view_to_prev_clip = PLAYER.cam.view_to_clip;
+    PLAYER.cam.prev_clip_to_prev_view = PLAYER.cam.clip_to_view;
+    PLAYER.cam.prev_world_to_prev_view = PLAYER.cam.world_to_view;
+    PLAYER.cam.prev_view_to_prev_world = PLAYER.cam.view_to_world;
 
-    vec3 f = normalize(center - eye);
-    vec3 s = normalize(cross(f, up));
-    vec3 u = cross(s, f);
+    PLAYER.cam.view_to_clip = f32mat4x4(0.0);
+    PLAYER.cam.view_to_clip[0][0] = +1.0 / tan_half_fov / aspect;
+    PLAYER.cam.view_to_clip[1][1] = +1.0 / tan_half_fov;
+    PLAYER.cam.view_to_clip[2][2] = +0.0;
+    PLAYER.cam.view_to_clip[2][3] = -1.0;
+    PLAYER.cam.view_to_clip[3][2] = near;
 
-    mat4 proj_mat = mat4(0.0);
-    proj_mat[0][0] = +1.0 / PLAYER.cam.tan_half_fov / aspect;
-    proj_mat[1][1] = -1.0 / PLAYER.cam.tan_half_fov;
-    proj_mat[2][2] = +0.0;
-    proj_mat[2][3] = -1.0;
-    proj_mat[3][2] = near;
+    PLAYER.cam.clip_to_view = f32mat4x4(0.0);
+    PLAYER.cam.clip_to_view[0][0] = tan_half_fov * aspect;
+    PLAYER.cam.clip_to_view[1][1] = tan_half_fov;
+    PLAYER.cam.clip_to_view[2][2] = +0.0;
+    PLAYER.cam.clip_to_view[2][3] = +1.0 / near;
+    PLAYER.cam.clip_to_view[3][2] = -1.0;
 
-    mat4 view_mat = mat4(0.0);
-    view_mat[0][0] = s.x;
-    view_mat[1][0] = s.y;
-    view_mat[2][0] = s.z;
-    view_mat[0][1] = u.x;
-    view_mat[1][1] = u.y;
-    view_mat[2][1] = u.z;
-    view_mat[0][2] = -f.x;
-    view_mat[1][2] = -f.y;
-    view_mat[2][2] = -f.z;
-    view_mat[3][0] = -dot(s, eye);
-    view_mat[3][1] = -dot(u, eye);
-    view_mat[3][2] = dot(f, eye);
-    view_mat[3][3] = 1.0;
+    PLAYER.cam.view_to_sample = PLAYER.cam.view_to_clip;
+    PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view;
 
-    PLAYER.cam.proj_mat = proj_mat * view_mat;
+    PLAYER.cam.view_to_world = translation_matrix(PLAYER.pos) * rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
+    PLAYER.cam.world_to_view = rotation_matrix(-PLAYER.yaw, -PLAYER.pitch, -PLAYER.roll) * translation_matrix(-PLAYER.pos);
+
+    PLAYER.cam.clip_to_prev_clip =
+        PLAYER.cam.prev_view_to_prev_clip *
+        PLAYER.cam.prev_world_to_prev_view *
+        PLAYER.cam.view_to_world *
+        PLAYER.cam.clip_to_view;
 }
 #undef PLAYER
 #undef INPUT

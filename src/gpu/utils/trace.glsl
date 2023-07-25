@@ -5,16 +5,6 @@
 #include <utils/math.glsl>
 #include <utils/voxels.glsl>
 
-f32vec3 create_view_pos(daxa_RWBufferPtr(GpuGlobals) globals) {
-    return deref(globals).player.cam.pos;
-}
-
-f32vec3 create_view_dir(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv) {
-    f32vec3 nrm = normalize(f32vec3(uv.x * deref(globals).player.cam.tan_half_fov, uv.y * deref(globals).player.cam.tan_half_fov, 1));
-    nrm = deref(globals).player.cam.rot_mat * nrm;
-    return nrm;
-}
-
 f32 sdmap(f32vec3 p) {
     f32 value = MAX_DIST;
     // value = sd_union(value, +sd_plane_x(p - f32vec3(-6.4, 0.0, 0.0)));

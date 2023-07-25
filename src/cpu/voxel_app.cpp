@@ -750,6 +750,7 @@ void VoxelApp::on_update() {
 
     ui.debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
     ui.debug_player_pos = gpu_output.player_pos;
+    ui.debug_player_rot = gpu_output.player_rot;
     ui.debug_chunk_offset = gpu_output.chunk_offset;
     ui.debug_page_count = gpu_resources.voxel_malloc.current_element_count;
     ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
@@ -1257,7 +1258,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .settings = task_settings_buffer,
                 .gpu_input = task_input_buffer,
                 .globals = task_globals_buffer,
-                .voxel_malloc_page_allocator = task_voxel_malloc_page_allocator_buffer,
+                .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
                 .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                 .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
@@ -1533,6 +1534,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .settings = task_settings_buffer,
                 .gpu_input = task_input_buffer,
                 .g_buffer_image_id = task_render_g_buffer_image,
+                .particles_image_id = task_render_raster_color_image,
                 .ssao_image_id = task_render_ssao_image,
                 .indirect_diffuse_image_id = task_render_indirect_diffuse_image,
                 .reconstructed_shading_image_id = task_render_reconstructed_shading_image,

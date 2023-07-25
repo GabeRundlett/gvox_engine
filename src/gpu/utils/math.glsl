@@ -83,7 +83,7 @@ f32vec3 hsv2rgb(f32vec3 c) {
     f32vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
     return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
 }
-f32vec4 uint_rgba8_to_float4(u32 u) {
+f32vec4 uint_rgba8_to_f32vec4(u32 u) {
     f32vec4 result;
     result.r = f32((u >> 0x00) & 0xff) / 255.0;
     result.g = f32((u >> 0x08) & 0xff) / 255.0;
@@ -93,7 +93,7 @@ f32vec4 uint_rgba8_to_float4(u32 u) {
     result = pow(result, f32vec4(2.2));
     return result;
 }
-u32 float4_to_uint_rgba8(f32vec4 f) {
+u32 f32vec4_to_uint_rgba8(f32vec4 f) {
     f = clamp(f, f32vec4(0), f32vec4(1));
     f = pow(f, f32vec4(1.0 / 2.2));
 
@@ -108,7 +108,7 @@ u32 float4_to_uint_rgba8(f32vec4 f) {
 #define URGB9E5_CONCENTRATION 4.0
 #define URGB9E5_MIN_EXPONENT -8.0
 f32 urgb9e5_scale_exp_inv(f32 x) { return (exp((x + URGB9E5_MIN_EXPONENT) / URGB9E5_CONCENTRATION)); }
-f32vec3 uint_urgb9e5_to_float3(u32 u) {
+f32vec3 uint_urgb9e5_to_f32vec3(u32 u) {
     f32vec3 result;
     result.r = f32((u >> 0x00) & 0x1ff);
     result.g = f32((u >> 0x09) & 0x1ff);
@@ -117,7 +117,7 @@ f32vec3 uint_urgb9e5_to_float3(u32 u) {
     return result * scale;
 }
 f32 urgb9e5_scale_exp(f32 x) { return URGB9E5_CONCENTRATION * log(x) - URGB9E5_MIN_EXPONENT; }
-u32 float3_to_uint_urgb9e5(f32vec3 f) {
+u32 f32vec3_to_uint_urgb9e5(f32vec3 f) {
     f32 scale = max(max(f.x, 0.0), max(f.y, f.z));
     f32 exponent = ceil(clamp(urgb9e5_scale_exp(scale), 0, 31));
     f32 fac = 511.0 / urgb9e5_scale_exp_inv(exponent);
@@ -688,24 +688,6 @@ bool rectangles_overlap(vec3 a_min, vec3 a_max, vec3 b_min, vec3 b_max) {
     return !x_disjoint && !y_disjoint && !z_disjoint;
 }
 
-// ----------
-// Kajiya
-
-vec2 get_uv(ivec2 pix, vec4 texSize) {
-    return (vec2(pix) + 0.5) * texSize.zw;
-}
-vec2 get_uv(vec2 pix, vec4 texSize) {
-    return (pix + 0.5) * texSize.zw;
-}
-vec2 cs_to_uv(vec2 cs) {
-    return cs * vec2(0.5, -0.5) + vec2(0.5, 0.5);
-}
-vec2 uv_to_cs(vec2 uv) {
-    return (uv - 0.5.xx) * vec2(2, -2);
-}
-
-// ----------
-
 // https://www.shadertoy.com/view/cdSBRG
 i32 imod(i32 x, i32 m) {
     return x >= 0 ? x % m : m - 1 - (-x - 1) % m;
@@ -715,4 +697,87 @@ i32vec3 imod3(i32vec3 p, i32 m) {
 }
 i32vec3 imod3(i32vec3 p, i32vec3 m) {
     return i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
+}
+
+f32mat4x4 rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
+    float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
+    float sin_rot_y = sin(roll), cos_rot_y = cos(roll);
+    float sin_rot_z = sin(yaw), cos_rot_z = cos(yaw);
+    return f32mat4x4(
+               cos_rot_z, -sin_rot_z, 0, 0,
+               sin_rot_z, cos_rot_z, 0, 0,
+               0, 0, 1, 0,
+               0, 0, 0, 1) *
+           f32mat4x4(
+               1, 0, 0, 0,
+               0, cos_rot_x, sin_rot_x, 0,
+               0, -sin_rot_x, cos_rot_x, 0,
+               0, 0, 0, 1) *
+           f32mat4x4(
+               cos_rot_y, -sin_rot_y, 0, 0,
+               sin_rot_y, cos_rot_y, 0, 0,
+               0, 0, 1, 0,
+               0, 0, 0, 1);
+}
+f32mat4x4 translation_matrix(f32vec3 pos) {
+    return f32mat4x4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        pos, 1);
+}
+
+f32vec2 get_uv(i32vec2 pix, f32vec4 texSize) { return (f32vec2(pix) + 0.5) * texSize.zw; }
+f32vec2 get_uv(f32vec2 pix, f32vec4 texSize) { return (pix + 0.5) * texSize.zw; }
+f32vec2 cs_to_uv(f32vec2 cs) { return cs * f32vec2(0.5, -0.5) + f32vec2(0.5, 0.5); }
+f32vec2 uv_to_cs(f32vec2 uv) { return (uv - 0.5) * f32vec2(2, -2); }
+
+struct ViewRayContext {
+    f32vec4 ray_dir_cs;
+    f32vec4 ray_dir_vs_h;
+    f32vec4 ray_dir_ws_h;
+    f32vec4 ray_origin_cs;
+    f32vec4 ray_origin_vs_h;
+    f32vec4 ray_origin_ws_h;
+    f32vec4 ray_hit_cs;
+    f32vec4 ray_hit_vs_h;
+    f32vec4 ray_hit_ws_h;
+};
+
+f32vec3 ray_dir_vs(in ViewRayContext vrc) { return normalize(vrc.ray_dir_vs_h.xyz); }
+f32vec3 ray_dir_ws(in ViewRayContext vrc) { return normalize(vrc.ray_dir_ws_h.xyz); }
+f32vec3 ray_origin_vs(in ViewRayContext vrc) { return vrc.ray_origin_vs_h.xyz / vrc.ray_origin_vs_h.w; }
+f32vec3 ray_origin_ws(in ViewRayContext vrc) { return vrc.ray_origin_ws_h.xyz / vrc.ray_origin_ws_h.w; }
+f32vec3 ray_hit_vs(in ViewRayContext vrc) { return vrc.ray_hit_vs_h.xyz / vrc.ray_hit_vs_h.w; }
+f32vec3 ray_hit_ws(in ViewRayContext vrc) { return vrc.ray_hit_ws_h.xyz / vrc.ray_hit_ws_h.w; }
+f32vec3 biased_secondary_ray_origin_ws(in ViewRayContext vrc) {
+    return ray_hit_ws(vrc) - ray_dir_ws(vrc) * (length(ray_hit_vs(vrc)) + length(ray_hit_ws(vrc))) * 1e-4;
+}
+f32vec3 biased_secondary_ray_origin_ws_with_normal(in ViewRayContext vrc, f32vec3 normal) {
+    f32vec3 ws_abs = abs(ray_hit_ws(vrc));
+    float max_comp = max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, -ray_hit_vs(vrc).z));
+    return ray_hit_ws(vrc) + (normal - ray_dir_ws(vrc)) * max(1e-4, max_comp * 1e-6);
+}
+ViewRayContext vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv) {
+    ViewRayContext res;
+    res.ray_dir_cs = f32vec4(uv_to_cs(uv), 0.0, 1.0);
+    res.ray_dir_vs_h = deref(globals).player.cam.sample_to_view * res.ray_dir_cs;
+    res.ray_dir_ws_h = deref(globals).player.cam.view_to_world * res.ray_dir_vs_h;
+    res.ray_origin_cs = f32vec4(uv_to_cs(uv), 1.0, 1.0);
+    res.ray_origin_vs_h = deref(globals).player.cam.sample_to_view * res.ray_origin_cs;
+    res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
+    return res;
+}
+ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv, float depth) {
+    ViewRayContext res;
+    res.ray_dir_cs = f32vec4(uv_to_cs(uv), 0.0, 1.0);
+    res.ray_dir_vs_h = deref(globals).player.cam.sample_to_view * res.ray_dir_cs;
+    res.ray_dir_ws_h = deref(globals).player.cam.view_to_world * res.ray_dir_vs_h;
+    res.ray_origin_cs = f32vec4(uv_to_cs(uv), 1.0, 1.0);
+    res.ray_origin_vs_h = deref(globals).player.cam.sample_to_view * res.ray_origin_cs;
+    res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
+    res.ray_hit_cs = f32vec4(uv_to_cs(uv), depth, 1.0);
+    res.ray_hit_vs_h = deref(globals).player.cam.sample_to_view * res.ray_hit_cs;
+    res.ray_hit_ws_h = deref(globals).player.cam.view_to_world * res.ray_hit_vs_h;
+    return res;
 }

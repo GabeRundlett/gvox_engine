@@ -201,7 +201,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
     // id = packed_col_data >> 0x18;
     // u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 2);
-    col = uint_rgba8_to_float4(packed_col_data).rgb;
+    col = uint_rgba8_to_f32vec4(packed_col_data).rgb;
     // if (id != 0) {
     //     id = 2;
     // }
@@ -339,7 +339,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
 
 void brushgen_a(in out f32vec3 col, in out u32 id) {
     u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
+    f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -353,7 +353,7 @@ void brushgen_a(in out f32vec3 col, in out u32 id) {
 
 void brushgen_b(in out f32vec3 col, in out u32 id) {
     u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
+    f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -393,7 +393,7 @@ void brushgen_particles(in out f32vec3 col, in out u32 id) {
     }
 
     u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    f32vec3 prev_col = uint_rgba8_to_float4(voxel_data).rgb;
+    f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
     u32 prev_id = voxel_data >> 0x18;
 
     col = prev_col;
@@ -465,7 +465,7 @@ void main() {
     // }
 
     TempVoxel result;
-    result.col_and_id = float4_to_uint_rgba8(f32vec4(col, 0.0)) | (id << 0x18);
+    result.col_and_id = f32vec4_to_uint_rgba8(f32vec4(col, 0.0)) | (id << 0x18);
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
 }
 #undef VOXEL_WORLD

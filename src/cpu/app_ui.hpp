@@ -65,6 +65,7 @@ struct AppUi {
     u32 debug_page_count{};
     u32 debug_gpu_heap_usage{};
     f32vec3 debug_player_pos{};
+    f32vec3 debug_player_rot{};
     f32vec3 debug_chunk_offset{};
     ChunkHierarchyJobCounters debug_job_counters{};
     u32 debug_total_jobs_ran{};

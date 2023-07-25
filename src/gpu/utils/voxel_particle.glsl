@@ -16,9 +16,9 @@ void particle_spawn(in out SimulatedVoxelParticle self, u32 index) {
     self.duration_alive = 0.0 + rand() * 0;
     self.flags = PARTICLE_ALIVE_FLAG;
 
-    self.pos = f32vec3(good_rand(deref(gpu_input).time + 137.41) * 100 + 300, good_rand(deref(gpu_input).time + 41.137) * 100 + 500, 400.0) / 8;
+    self.pos = f32vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
     self.vel = deref(globals).player.forward * 0 + vec3(0, 0, -10);
-    // self.pos = deref(globals).player.cam.pos + deref(globals).player.forward * 1 + vec3(0, 0, -2.5) + deref(globals).player.lateral * 3.5;
+    // self.pos = deref(globals).player.pos + deref(globals).player.forward * 1 + vec3(0, 0, -2.5) + deref(globals).player.lateral * 3.5;
     // self.vel = deref(globals).player.forward * 3 + rand_dir() * 2 + deref(globals).player.vel;
 }
 

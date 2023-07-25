@@ -13,7 +13,7 @@ void main() {
     u32 simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
     SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
 
-    f32mat4x4 vp_mat = deref(globals).player.cam.proj_mat;
+    f32mat4x4 vp_mat = deref(globals).player.cam.world_to_view * deref(globals).player.cam.view_to_clip;
     pos = floor(particle.pos * VOXEL_SCL) / VOXEL_SCL;
     gl_Position = vp_mat * f32vec4(pos, 1);
     gl_PointSize = deref(gpu_input).frame_dim.y / gl_Position.w * 0.1;
@@ -68,11 +68,13 @@ void main() {
     u32 simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
     SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
 
-    f32mat4x4 vp_mat = deref(globals).player.cam.proj_mat;
     vec3 vert_pos = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL + floor(particle.pos * VOXEL_SCL) / VOXEL_SCL;
 
     pos = vert_pos;
-    gl_Position = vp_mat * f32vec4(vert_pos, 1);
+    vec4 vs_pos = deref(globals).player.cam.world_to_view * f32vec4(vert_pos, 1);
+    vec4 cs_pos = deref(globals).player.cam.view_to_clip * vs_pos;
+
+    gl_Position = cs_pos;
 
     id = simulated_particle_index;
 #endif

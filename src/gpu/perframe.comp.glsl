@@ -83,11 +83,11 @@ void main() {
     {
         f32vec2 frame_dim = INPUT.frame_dim;
         f32vec2 inv_frame_dim = f32vec2(1.0) / frame_dim;
-        f32 aspect = frame_dim.x * inv_frame_dim.y;
-        f32vec2 uv = (deref(gpu_input).mouse.pos * inv_frame_dim - 0.5) * f32vec2(2 * aspect, 2);
-        f32vec3 ray_pos = create_view_pos(globals);
-        f32vec3 cam_pos = ray_pos;
-        f32vec3 ray_dir = create_view_dir(globals, uv);
+        f32vec2 uv = get_uv(deref(gpu_input).mouse.pos, f32vec4(frame_dim, inv_frame_dim));
+        ViewRayContext vrc = vrc_from_uv(globals, uv);
+        f32vec3 ray_dir = ray_dir_ws(vrc);
+        f32vec3 cam_pos = ray_origin_ws(vrc);
+        f32vec3 ray_pos = cam_pos;
         u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
         trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
@@ -130,6 +130,7 @@ void main() {
     }
 
     deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+    deref(gpu_output[INPUT.fif_index]).player_rot = f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 
     VoxelMallocPageAllocator_perframe(voxel_malloc_page_allocator);
