@@ -312,6 +312,7 @@ VoxelApp::VoxelApp()
                       "src",
                       "gpu",
                       "src/gpu",
+                      "src/gpu/renderer",
                   },
                   .language = daxa::ShaderLanguage::GLSL,
                   .enable_debug_info = true,
@@ -368,11 +369,7 @@ VoxelApp::VoxelApp()
       trace_secondary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       upscale_reconstruct_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       postprocessing_task_state{main_pipeline_manager, ui, gpu_resources.final_image_sampler, swapchain.get_format()},
-#if ENABLE_HIERARCHICAL_QUEUE
-      chunk_hierarchy_task_state{main_pipeline_manager, ui},
-#else
       per_chunk_task_state{main_pipeline_manager, ui},
-#endif
       voxel_particle_sim_task_state{main_pipeline_manager, ui},
       voxel_particle_raster_task_state{main_pipeline_manager, ui},
       // clang-format on
@@ -1311,33 +1308,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     });
 #endif
 
-#if ENABLE_HIERARCHICAL_QUEUE
-    // ChunkHierarchy
-    result_task_graph.add_task(ChunkHierarchyComputeTaskL0{
-        {
-            .uses = {
-                .settings = task_settings_buffer,
-                .gpu_input = task_input_buffer,
-                .gvox_model = task_gvox_model_buffer,
-                .globals = task_globals_buffer,
-                .voxel_chunks = task_voxel_chunks_buffer,
-            },
-        },
-        &chunk_hierarchy_task_state,
-    });
-    result_task_graph.add_task(ChunkHierarchyComputeTaskL1{
-        {
-            .uses = {
-                .settings = task_settings_buffer,
-                .gpu_input = task_input_buffer,
-                .gvox_model = task_gvox_model_buffer,
-                .globals = task_globals_buffer,
-                .voxel_chunks = task_voxel_chunks_buffer,
-            },
-        },
-        &chunk_hierarchy_task_state,
-    });
-#else
     result_task_graph.add_task(PerChunkComputeTask{
         {
             .uses = {
@@ -1352,7 +1322,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         &per_chunk_task_state,
         &gpu_resources.value_noise_sampler,
     });
-#endif
 
     // ChunkEdit
     result_task_graph.add_task(ChunkEditComputeTask{

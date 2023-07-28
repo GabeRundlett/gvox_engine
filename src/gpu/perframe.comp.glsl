@@ -36,50 +36,6 @@ void main() {
     player_perframe(settings, gpu_input, globals);
     voxel_world_perframe(settings, gpu_input, globals);
 
-    if (ENABLE_HIERARCHICAL_QUEUE != 0) {
-        // Check if the player moved at least 1 chunk in any direction
-        if (PLAYER.chunk_offset != PLAYER.prev_chunk_offset) {
-            // Issue a new terrain generation
-            queue_terrain_generation_work_item(PLAYER.chunk_offset);
-
-            i32vec3 chunk_n = i32vec3(1 << SETTINGS.log2_chunks_per_axis);
-
-            // Clamped difference between the last and current chunk offset
-            i32vec3 diff = clamp(i32vec3(PLAYER.chunk_offset - PLAYER.prev_chunk_offset), -chunk_n, chunk_n);
-
-            // If there was a movement along the x-axis, reset the correct chunks
-            if (abs(diff.x) > 0) {
-                u32 x_start = diff.x < 0 ? 0 : chunk_n.x - diff.x;
-                u32 x_end = diff.x < 0 ? -diff.x : chunk_n.x;
-                for (u32 x = x_start; x < x_end; x++)
-                    for (u32 y = 0; y < chunk_n.y; y++)
-                        for (u32 z = 0; z < chunk_n.z; z++)
-                            CHUNKS(calc_chunk_index(u32vec3(x, y, z), chunk_n)).flags &= ~CHUNK_FLAGS_ACCEL_GENERATED;
-            }
-            // Same for y-axis
-            if (abs(diff.y) > 0) {
-                u32 y_start = diff.y < 0 ? 0 : chunk_n.y - diff.y;
-                u32 y_end = diff.y < 0 ? -diff.y : chunk_n.y;
-                for (u32 x = 0; x < chunk_n.x; x++)
-                    for (u32 y = y_start; y < y_end; y++)
-                        for (u32 z = 0; z < chunk_n.z; z++)
-                            CHUNKS(calc_chunk_index(u32vec3(x, y, z), chunk_n)).flags &= ~CHUNK_FLAGS_ACCEL_GENERATED;
-            }
-            // Same for z-axis
-            if (abs(diff.z) > 0) {
-                u32 z_start = diff.z < 0 ? 0 : chunk_n.z - diff.z;
-                u32 z_end = diff.z < 0 ? -diff.z : chunk_n.z;
-                for (u32 x = 0; x < chunk_n.x; x++)
-                    for (u32 y = 0; y < chunk_n.y; y++)
-                        for (u32 z = z_start; z < z_end; z++)
-                            CHUNKS(calc_chunk_index(u32vec3(x, y, z), chunk_n)).flags &= ~CHUNK_FLAGS_ACCEL_GENERATED;
-            }
-
-            // Update previous chunk offset
-            PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
-        }
-    }
-
     {
         f32vec2 frame_dim = INPUT.frame_dim;
         f32vec2 inv_frame_dim = f32vec2(1.0) / frame_dim;

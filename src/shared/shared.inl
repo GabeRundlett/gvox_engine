@@ -21,41 +21,34 @@
 #if CHUNK_ALLOC_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/chunk_alloc.inl>
 #endif
-#if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/trace_depth_prepass.inl>
-#endif
-#if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/trace_primary.inl>
-#endif
-#if DOWNSCALE_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/downscale.inl>
-#endif
-#if SSAO_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/ssao.inl>
-#endif
-#if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/trace_secondary.inl>
-#endif
-#if UPSCALE_RECONSTRUCT_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/upscale_reconstruct.inl>
-#endif
-#if POSTPROCESSING_RASTER || defined(__cplusplus)
-#include <shared/tasks/postprocessing.inl>
-#endif
-
-#if ENABLE_HIERARCHICAL_QUEUE
-#if CHUNK_HIERARCHY_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/chunk_hierarchy.inl>
-#endif
-#else
 #if PER_CHUNK_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/per_chunk.inl>
 #endif
-#endif
-
 #if VOXEL_PARTICLE_SIM_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/voxel_particle_sim.inl>
 #endif
+
+#if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/trace_depth_prepass.inl>
+#endif
+#if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/trace_primary.inl>
+#endif
+#if DOWNSCALE_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/downscale.inl>
+#endif
+#if SSAO_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/ssao.inl>
+#endif
+#if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/trace_secondary.inl>
+#endif
+#if UPSCALE_RECONSTRUCT_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/upscale_reconstruct.inl>
+#endif
+#if POSTPROCESSING_RASTER || defined(__cplusplus)
+#include <shared/tasks/renderer/postprocessing.inl>
+#endif
 #if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
-#include <shared/tasks/voxel_particle_raster.inl>
+#include <shared/tasks/renderer/voxel_particle_raster.inl>
 #endif

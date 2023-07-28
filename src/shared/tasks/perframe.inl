@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core.inl"
+#include <shared/core.inl>
 
 DAXA_DECL_TASK_USES_BEGIN(PerframeComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)

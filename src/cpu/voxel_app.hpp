@@ -156,13 +156,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     TraceSecondaryComputeTaskState trace_secondary_task_state;
     UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
-
-#if ENABLE_HIERARCHICAL_QUEUE
-    ChunkHierarchyComputeTaskState chunk_hierarchy_task_state;
-#else
     PerChunkComputeTaskState per_chunk_task_state;
-#endif
-
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
