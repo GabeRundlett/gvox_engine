@@ -48,9 +48,10 @@ struct TraceSecondaryComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        constexpr auto SCL_X = 8 * SHADING_SCL;
+        constexpr auto SCL_Y = 8 * SHADING_SCL;
+        assert((render_size.x % SCL_X) == 0 && (render_size.y % SCL_Y) == 0);
+        cmd_list.dispatch(render_size.x / SCL_X, render_size.y / SCL_Y);
     }
 };
 

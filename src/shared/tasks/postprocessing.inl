@@ -33,8 +33,8 @@ struct PostprocessingRasterTaskState {
 
     void compile_pipeline() {
         auto compile_result = pipeline_manager.add_raster_pipeline({
-            .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
-            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.write_out_preprocessed_code = "test.glsl", .defines = {{"POSTPROCESSING_RASTER", "1"}}}},
+            .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
+            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
             .color_attachments = {{
                 .format = get_color_format(),
             }},

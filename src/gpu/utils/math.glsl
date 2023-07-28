@@ -105,6 +105,19 @@ u32 f32vec4_to_uint_rgba8(f32vec4 f) {
     return result;
 }
 
+// [Drobot2014a] Low Level Optimizations for GCN
+float fast_sqrt(float x) {
+    return uintBitsToFloat(0x1fbd1df5 + (floatBitsToUint(x) >> 1u));
+}
+
+// [Eberly2014] GPGPU Programming for Games and Science
+float fast_acos(float inX) {
+    float x = abs(inX);
+    float res = -0.156583f * x + PI * 0.5;
+    res *= fast_sqrt(1.0f - x);
+    return (inX >= 0) ? res : (PI - res);
+}
+
 #define URGB9E5_CONCENTRATION 4.0
 #define URGB9E5_MIN_EXPONENT -8.0
 f32 urgb9e5_scale_exp_inv(f32 x) { return (exp((x + URGB9E5_MIN_EXPONENT) / URGB9E5_CONCENTRATION)); }
@@ -154,7 +167,7 @@ vec3 i_octahedral_16(uint data) {
     float t = max(-nor.z, 0.0);
     nor.x += (nor.x > 0.0) ? -t : t;
     nor.y += (nor.y > 0.0) ? -t : t;
-    return normalize(nor);
+    return nor;
 }
 uint spheremap_16(in vec3 nor) {
     vec2 v = nor.xy * inversesqrt(2.0 * nor.z + 2.0);
@@ -168,6 +181,10 @@ vec3 i_spheremap_16(uint data) {
 // ----------------------------------------
 
 f32vec3 u16_to_nrm(u32 x) {
+    return normalize(i_octahedral_16(x));
+    // return i_spheremap_16(x);
+}
+f32vec3 u16_to_nrm_unnormalized(u32 x) {
     return i_octahedral_16(x);
     // return i_spheremap_16(x);
 }
@@ -716,6 +733,26 @@ f32mat4x4 rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
            f32mat4x4(
                cos_rot_y, -sin_rot_y, 0, 0,
                sin_rot_y, cos_rot_y, 0, 0,
+               0, 0, 1, 0,
+               0, 0, 0, 1);
+}
+f32mat4x4 inv_rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
+    float sin_rot_x = sin(-pitch), cos_rot_x = cos(-pitch);
+    float sin_rot_y = sin(-roll), cos_rot_y = cos(-roll);
+    float sin_rot_z = sin(-yaw), cos_rot_z = cos(-yaw);
+    return f32mat4x4(
+               cos_rot_y, -sin_rot_y, 0, 0,
+               sin_rot_y, cos_rot_y, 0, 0,
+               0, 0, 1, 0,
+               0, 0, 0, 1) *
+           f32mat4x4(
+               1, 0, 0, 0,
+               0, cos_rot_x, sin_rot_x, 0,
+               0, -sin_rot_x, cos_rot_x, 0,
+               0, 0, 0, 1) *
+           f32mat4x4(
+               cos_rot_z, -sin_rot_z, 0, 0,
+               sin_rot_z, cos_rot_z, 0, 0,
                0, 0, 1, 0,
                0, 0, 0, 1);
 }

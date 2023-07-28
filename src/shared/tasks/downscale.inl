@@ -4,6 +4,7 @@
 
 DAXA_DECL_TASK_USES_BEGIN(DownscaleComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
 DAXA_DECL_TASK_USES_END()
@@ -15,12 +16,13 @@ struct DownscaleComputeTaskState {
     AppUi &ui;
     u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
+    std::vector<daxa::ShaderDefine> defines;
 
     void compile_pipeline() {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"downscale.comp.glsl"},
-                .compile_options = {.defines = {{"DOWNSCALE_COMPUTE", "1"}}},
+                .compile_options = {.defines = defines},
             },
             .name = "downscale",
         });
@@ -34,7 +36,13 @@ struct DownscaleComputeTaskState {
         }
     }
 
-    DownscaleComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
+    DownscaleComputeTaskState(
+        daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size,
+        std::vector<daxa::ShaderDefine> &&extra_defines)
+        : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size}, defines{extra_defines} {
+        this->defines.push_back({"DOWNSCALE_COMPUTE", "1"});
+        compile_pipeline();
+    }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {

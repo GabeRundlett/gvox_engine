@@ -121,7 +121,7 @@ void player_perframe(
     PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view;
 
     PLAYER.cam.view_to_world = translation_matrix(PLAYER.pos) * rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
-    PLAYER.cam.world_to_view = rotation_matrix(-PLAYER.yaw, -PLAYER.pitch, -PLAYER.roll) * translation_matrix(-PLAYER.pos);
+    PLAYER.cam.world_to_view = inv_rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll) * translation_matrix(-PLAYER.pos);
 
     PLAYER.cam.clip_to_prev_clip =
         PLAYER.cam.prev_view_to_prev_clip *

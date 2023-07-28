@@ -29,33 +29,6 @@ f32vec3 color_correct(f32vec3 x) {
     return x;
 }
 
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    u32vec2 pixel_i = gl_GlobalInvocationID.xy;
-    if (pixel_i.x >= deref(gpu_input).frame_dim.x ||
-        pixel_i.y >= deref(gpu_input).frame_dim.y)
-        return;
-
-    // broken
-    f32vec4 final_color = imageLoad(daxa_image2D(g_buffer_image_id), i32vec2(pixel_i));
-
-    imageStore(daxa_image2D(final_image_id), i32vec2(pixel_i), f32vec4(color_correct(final_color.rgb), 0));
-}
-#endif
-
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
-
-void main() {
-    switch (gl_VertexIndex) {
-    case 0: gl_Position = vec4(-1, -1, 0, 1); break;
-    case 1: gl_Position = vec4(-1, +4, 0, 1); break;
-    case 2: gl_Position = vec4(+4, -1, 0, 1); break;
-    }
-}
-
-#elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
-
 layout(location = 0) out f32vec4 color;
 
 #define USE_SAMPLER 0
@@ -78,5 +51,3 @@ void main() {
 
     color = f32vec4(color_correct(final_color), 1.0);
 }
-
-#endif

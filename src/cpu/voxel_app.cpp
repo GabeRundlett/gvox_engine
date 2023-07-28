@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 #include <minizip/unzip.h>
 
 constexpr auto round_frame_dim(u32vec2 size) {
-    constexpr auto over_estimation = u32vec2{32, 32};
+    constexpr auto over_estimation = u32vec2{48, 32};
     auto result = (size + u32vec2{over_estimation.x - 1u, over_estimation.y - 1u}) / over_estimation * over_estimation;
     // not necessary, since it rounds up!
     // result = {std::max(result.x, over_estimation.x), std::max(result.y, over_estimation.y)};
@@ -51,14 +51,14 @@ void RenderImages::create(daxa::Device &device) {
     g_buffer_image = device.create_image({
         .format = daxa::Format::R32G32B32A32_UINT,
         .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "g_buffer_image",
     });
 
     depth32_image = device.create_image({
         .format = daxa::Format::R32_SFLOAT,
         .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
         .name = "depth32_image",
     });
     scaled_depth32_image = device.create_image({
@@ -67,6 +67,20 @@ void RenderImages::create(daxa::Device &device) {
         .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
         .name = "scaled_depth32_image",
     });
+
+    vs_normal_image = device.create_image({
+        .format = daxa::Format::A2R10G10B10_UNORM_PACK32,
+        .size = {rounded_size.x, rounded_size.y, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+        .name = "vs_normal_image",
+    });
+    scaled_vs_normal_image = device.create_image({
+        .format = daxa::Format::R8G8B8A8_SNORM,
+        .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
+        .name = "scaled_vs_normal_image",
+    });
+
     ssao_image = device.create_image({
         .format = daxa::Format::R16_SFLOAT,
         .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
@@ -75,14 +89,14 @@ void RenderImages::create(daxa::Device &device) {
     });
 
     indirect_diffuse_image = device.create_image({
-        .format = daxa::Format::R32G32B32A32_SFLOAT,
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "indirect_diffuse_image",
     });
     for (auto &reconstructed_shading_image : reconstructed_shading_images) {
         reconstructed_shading_image = device.create_image({
-            .format = daxa::Format::R32G32B32A32_SFLOAT,
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {rounded_size.x, rounded_size.y, 1},
             .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
             .name = "reconstructed_shading_image",
@@ -96,6 +110,8 @@ void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(g_buffer_image);
     device.destroy_image(depth32_image);
     device.destroy_image(scaled_depth32_image);
+    device.destroy_image(vs_normal_image);
+    device.destroy_image(scaled_vs_normal_image);
     device.destroy_image(ssao_image);
     device.destroy_image(indirect_diffuse_image);
     for (auto &reconstructed_shading_image : reconstructed_shading_images) {
@@ -113,6 +129,8 @@ void VoxelApp::set_task_render_images() {
 
     task_render_depth32_image.set_images({.images = std::array{gpu_resources.render_images.depth32_image}});
     task_render_scaled_depth32_image.set_images({.images = std::array{gpu_resources.render_images.scaled_depth32_image}});
+    task_render_vs_normal_image.set_images({.images = std::array{gpu_resources.render_images.vs_normal_image}});
+    task_render_scaled_vs_normal_image.set_images({.images = std::array{gpu_resources.render_images.scaled_vs_normal_image}});
     task_render_ssao_image.set_images({.images = std::array{gpu_resources.render_images.ssao_image}});
 
     task_render_indirect_diffuse_image.set_images({.images = std::array{gpu_resources.render_images.indirect_diffuse_image}});
@@ -284,22 +302,37 @@ VoxelApp::VoxelApp()
           .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
           .name = "swapchain",
       })},
-      main_pipeline_manager{daxa::PipelineManager({
-          .device = device,
-          .shader_compile_options = {
-              .root_paths = {
-                  DAXA_SHADER_INCLUDE_DIR,
-                  "assets",
-                  "src",
-                  "gpu",
-                  "src/gpu",
+      main_pipeline_manager{[this]() {
+          auto result = daxa::PipelineManager({
+              .device = device,
+              .shader_compile_options = {
+                  .root_paths = {
+                      DAXA_SHADER_INCLUDE_DIR,
+                      "assets",
+                      "src",
+                      "gpu",
+                      "src/gpu",
+                  },
+                  .language = daxa::ShaderLanguage::GLSL,
+                  .enable_debug_info = true,
               },
-              .language = daxa::ShaderLanguage::GLSL,
-              .enable_debug_info = true,
-          },
-          .register_null_pipelines_when_first_compile_fails = true,
-          .name = "pipeline_manager",
-      })},
+              .register_null_pipelines_when_first_compile_fails = true,
+              .name = "pipeline_manager",
+          });
+          result.add_virtual_file({
+              .name = "FULL_SCREEN_TRIANGLE_VERTEX_SHADER",
+              .contents = R"glsl(
+                void main() {
+                    switch (gl_VertexIndex) {
+                    case 0: gl_Position = vec4(-1, -1, 0, 1); break;
+                    case 1: gl_Position = vec4(-1, +4, 0, 1); break;
+                    case 2: gl_Position = vec4(+4, -1, 0, 1); break;
+                    }
+                }
+                )glsl",
+          });
+          return result;
+      }()},
       ui{[this]() {
           auto result = AppUi(AppWindow::glfw_window_ptr);
           auto const &device_props = device.properties();
@@ -324,8 +357,13 @@ VoxelApp::VoxelApp()
       chunk_opt_x8up_task_state{main_pipeline_manager, ui},
       chunk_alloc_task_state{main_pipeline_manager, ui},
       trace_depth_prepass_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
+#if USE_COMPUTE_PRIMARY_TRACE
       trace_primary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
-      downscale_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
+#else
+      trace_primary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.size},
+#endif
+      downscale_depth_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size, {{"DOWNSCALE_DEPTH", "1"}}},
+      downscale_normal_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size, {{"DOWNSCALE_NRM", "1"}}},
       ssao_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       trace_secondary_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
       upscale_reconstruct_task_state{main_pipeline_manager, ui, gpu_resources.render_images.rounded_size},
@@ -540,6 +578,8 @@ void VoxelApp::calc_vram_usage() {
     image_size(gpu_resources.render_images.g_buffer_image);
     image_size(gpu_resources.render_images.depth32_image);
     image_size(gpu_resources.render_images.scaled_depth32_image);
+    image_size(gpu_resources.render_images.vs_normal_image);
+    image_size(gpu_resources.render_images.scaled_vs_normal_image);
     image_size(gpu_resources.render_images.ssao_image);
     image_size(gpu_resources.render_images.indirect_diffuse_image);
     image_size(gpu_resources.render_images.reconstructed_shading_images[0]);
@@ -1184,6 +1224,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.use_persistent_image(task_render_g_buffer_image);
     result_task_graph.use_persistent_image(task_render_depth32_image);
     result_task_graph.use_persistent_image(task_render_scaled_depth32_image);
+    result_task_graph.use_persistent_image(task_render_vs_normal_image);
+    result_task_graph.use_persistent_image(task_render_scaled_vs_normal_image);
     result_task_graph.use_persistent_image(task_render_ssao_image);
     result_task_graph.use_persistent_image(task_render_indirect_diffuse_image);
     result_task_graph.use_persistent_image(task_render_reconstructed_shading_image);
@@ -1419,6 +1461,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .blue_noise_vec2 = task_blue_noise_vec2_image,
                 .render_depth_prepass_image = task_render_depth_prepass_image,
                 .g_buffer_image_id = task_render_g_buffer_image,
+                .vs_normal_image_id = task_render_vs_normal_image,
                 .depth_image_id = task_render_depth32_image,
             },
         },
@@ -1449,11 +1492,24 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         {
             .uses = {
                 .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
                 .src_image_id = task_render_depth32_image,
                 .dst_image_id = task_render_scaled_depth32_image,
             },
         },
-        &downscale_task_state,
+        &downscale_depth_task_state,
+    });
+
+    result_task_graph.add_task(DownscaleComputeTask{
+        {
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .src_image_id = task_render_g_buffer_image,
+                .dst_image_id = task_render_scaled_vs_normal_image,
+            },
+        },
+        &downscale_normal_task_state,
     });
 
     result_task_graph.add_task(SsaoComputeTask{
@@ -1463,7 +1519,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .gpu_input = task_input_buffer,
                 .globals = task_globals_buffer,
                 .blue_noise_vec2 = task_blue_noise_vec2_image,
-                .g_buffer_image_id = task_render_g_buffer_image,
+                .vs_normal_image = task_render_scaled_vs_normal_image,
                 .depth_image = task_render_scaled_depth32_image,
                 .ssao_image_id = task_render_ssao_image,
             },

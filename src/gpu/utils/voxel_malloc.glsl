@@ -45,6 +45,17 @@ VoxelMalloc_Pointer VoxelMalloc_Pointer_pack(u32 global_page_index, u32 local_pa
     return (local_page_alloc_offset << 0) | (global_page_index << 5);
 }
 
+void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
+    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
+    result = page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+}
+
+void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
+    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
+    result = page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
+}
+
+#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
 // Must enter with 512 thread work group with all threads active.
 shared i32 VoxelMalloc_malloc_elected_fallback_thread;
 shared i32 VoxelMalloc_malloc_elected_fallback_page_local_consumption_bitmask;
@@ -237,16 +248,6 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa
 }
 #undef PAGE_ALLOC_INFOS
 
-void voxel_malloc_address_to_base_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
-    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
-    result = page + VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
-}
-
-void voxel_malloc_address_to_u32_ptr(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, VoxelMalloc_Pointer address, out daxa_RWBufferPtr(daxa_u32) result) {
-    daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_Pointer_extract_global_page_index(address) * VOXEL_MALLOC_PAGE_SIZE_U32S];
-    result = page + (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1);
-}
-
 // Must enter with 512 thread work group with all threads active.
 void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
     u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
@@ -264,3 +265,4 @@ void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, d
     barrier();
     prev_address = VoxelMalloc_malloc(allocator, voxel_chunk_ptr, size);
 }
+#endif
