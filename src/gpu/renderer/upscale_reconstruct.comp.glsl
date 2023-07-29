@@ -19,7 +19,7 @@ void main() {
 
     if (deref(gpu_input).resize_factor != 0.0) {
         f32vec4 reproj_val = texelFetch(daxa_texture2D(reprojection_image_id), output_i, 0);
-        f32vec4 prev_val = get_prev_val(output_i + i32vec2(reproj_val.xy * 1.0 * deref(gpu_input).frame_dim));
+        f32vec4 prev_val = get_prev_val(output_i + i32vec2(reproj_val.xy * 0.0 * deref(gpu_input).frame_dim));
         f32 validity = reproj_val.z;
         if (offset == tile) {
             f32 ssao_value = 0.0; // texelFetch(daxa_texture2D(ssao_image_id), i32vec2(in_tile_i), 0).r;

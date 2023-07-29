@@ -64,11 +64,7 @@ struct VoxelChunks {
 struct GpuResources {
     RenderImages render_images;
     daxa::ImageId value_noise_image;
-    daxa::ImageId blue_noise_vec1_image;
     daxa::ImageId blue_noise_vec2_image;
-    daxa::ImageId blue_noise_unit_vec3_image;
-    daxa::ImageId blue_noise_cosine_vec3_image;
-    daxa::BufferId settings_buffer;
     daxa::BufferId input_buffer;
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
@@ -141,7 +137,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_blue_noise_unit_vec3_image{{.name = "task_blue_noise_unit_vec3_image"}};
     daxa::TaskImage task_blue_noise_cosine_vec3_image{{.name = "task_blue_noise_cosine_vec3_image"}};
 
-    daxa::TaskBuffer task_settings_buffer{{.name = "task_settings_buffer"}};
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
@@ -177,7 +172,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     enum class Conditions {
         STARTUP,
-        UPLOAD_SETTINGS,
         UPLOAD_GVOX_MODEL,
         DYNAMIC_BUFFERS_REALLOC,
         LAST,
@@ -185,6 +179,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskGraph main_task_graph;
     std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
 
+    std::array<f32vec2, 128> halton_offsets{};
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
     Clock::time_point start;
@@ -225,7 +220,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void update_seeded_value_noise();
     void run_startup(daxa::TaskGraph &temp_task_graph);
-    void upload_settings(daxa::TaskGraph &temp_task_graph);
     void upload_model(daxa::TaskGraph &temp_task_graph);
     void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph);
 

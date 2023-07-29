@@ -114,12 +114,11 @@ bool elect_chunk_for_update(i32vec3 chunk_i, i32vec3 chunk_offset, u32 chunk_ind
 #undef INDIRECT
 #undef VOXEL_WORLD
 
-#define SETTINGS deref(settings)
 #define MODEL deref(gvox_model)
 #define CHUNKS(i) deref(voxel_chunks[i])
 void perform_work_item() {
     // (const) number of chunks in each axis (1 << x = 2^x)
-    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     // Child work item index
     i32vec3 sub_node_i = node_i * 8 + i32vec3(gl_LocalInvocationID.xyz);
     // Child index in leaf chunk space (0,0,0)->(31,31,31)
@@ -217,7 +216,6 @@ void perform_work_item() {
 }
 #undef CHUNKS
 #undef MODEL
-#undef SETTINGS
 
 // For each parent work item L0 or L1, this shader is executed
 // in 512 threads (1 work group) to generate up to 512 child work items L1 or L2

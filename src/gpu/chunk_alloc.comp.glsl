@@ -35,11 +35,10 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
     }
 }
 
-#define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
-    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     if (chunk_i == INVALID_CHUNK_I) {
@@ -136,4 +135,3 @@ void main() {
     }
 }
 #undef VOXEL_WORLD
-#undef SETTINGS

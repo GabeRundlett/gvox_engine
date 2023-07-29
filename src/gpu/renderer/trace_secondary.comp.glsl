@@ -4,7 +4,6 @@
 #include <utils/sky.glsl>
 #include <utils/downscale.glsl>
 
-#define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -18,7 +17,7 @@ void main() {
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy * SHADING_SCL + offset), 0);
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv, depth);
+    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
     f32vec3 cam_dir = ray_dir_ws(vrc);
     f32vec3 cam_pos = ray_origin_ws(vrc);
     f32vec3 ray_pos = ray_hit_ws(vrc);
@@ -30,7 +29,7 @@ void main() {
         return;
     }
 
-    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
 
     mat3 tbn = tbn_from_normal(SUN_DIR);
     f32vec3 ray_dir = tbn * normalize(vec3(rand_circle_pt(blue_noise * 0.5 + 0.5) * 0.03, 1));
@@ -43,4 +42,3 @@ void main() {
     imageStore(daxa_image2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(col, 0));
 }
 #undef INPUT
-#undef SETTINGS

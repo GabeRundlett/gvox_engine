@@ -6,10 +6,10 @@
 
 #define PLAYER deref(globals_ptr).player
 void player_fix_chunk_offset(
-    daxa_BufferPtr(GpuSettings) settings_ptr,
+    daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 #if ENABLE_CHUNK_WRAPPING
-    const u32vec3 chunk_n = u32vec3(1u << deref(settings).log2_chunks_per_axis);
+    const u32vec3 chunk_n = u32vec3(1u << deref(input_ptr).log2_chunks_per_axis);
     const f32vec3 HALF_CHUNK_N = f32vec3(chunk_n) * 0.5;
     PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos / CHUNK_WORLDSPACE_SIZE - HALF_CHUNK_N + 0.5));
     PLAYER.pos = mod(PLAYER.pos - 0.5 * CHUNK_WORLDSPACE_SIZE, CHUNK_WORLDSPACE_SIZE) + CHUNK_WORLDSPACE_SIZE * (HALF_CHUNK_N - 0.5);
@@ -23,7 +23,7 @@ void player_fix_chunk_offset(
 
 #define PLAYER deref(globals_ptr).player
 void player_startup(
-    daxa_BufferPtr(GpuSettings) settings_ptr,
+    daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(10.01, 10.02, 80.03);
     // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
@@ -38,24 +38,22 @@ void player_startup(
     // PLAYER.pitch = PI * 0.249;
     // PLAYER.yaw = PI * 1.25;
 
-    player_fix_chunk_offset(settings_ptr, globals_ptr);
+    player_fix_chunk_offset(input_ptr, globals_ptr);
 }
 #undef PLAYER
 
-#define SETTINGS deref(settings_ptr)
 #define INPUT deref(input_ptr)
 #define PLAYER deref(globals_ptr).player
 void player_perframe(
-    daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     const f32 mouse_sens = 1.0;
 
     if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
-        PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
+        PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001;
     } else {
-        PLAYER.yaw += INPUT.mouse.pos_delta.x * mouse_sens * SETTINGS.sensitivity * 0.001;
-        PLAYER.pitch -= INPUT.mouse.pos_delta.y * mouse_sens * SETTINGS.sensitivity * 0.001;
+        PLAYER.yaw += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001;
+        PLAYER.pitch -= INPUT.mouse.pos_delta.y * mouse_sens * INPUT.sensitivity * 0.001;
     }
 
     const float MAX_ROT_EPS = 0.01;
@@ -92,9 +90,9 @@ void player_perframe(
     PLAYER.vel = move_vec * applied_speed;
     PLAYER.pos += PLAYER.vel * INPUT.delta_time;
 
-    player_fix_chunk_offset(settings_ptr, globals_ptr);
+    player_fix_chunk_offset(input_ptr, globals_ptr);
 
-    float tan_half_fov = tan(SETTINGS.fov * 0.5);
+    float tan_half_fov = tan(INPUT.fov * 0.5);
     float aspect = float(INPUT.frame_dim.x) / float(INPUT.frame_dim.y);
     float near = 0.01;
 
@@ -119,8 +117,26 @@ void player_perframe(
     PLAYER.cam.clip_to_view[2][3] = +1.0 / near;
     PLAYER.cam.clip_to_view[3][2] = -1.0;
 
-    PLAYER.cam.view_to_sample = PLAYER.cam.view_to_clip;
-    PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view;
+    f32vec2 sample_offset = f32vec2(
+        INPUT.halton_jitter.x / float(INPUT.frame_dim.x),
+        INPUT.halton_jitter.y / float(INPUT.frame_dim.y));
+
+    f32vec4 output_tex_size = f32vec4(deref(input_ptr).frame_dim.xy, 0, 0);
+    output_tex_size.zw = 1.0 / output_tex_size.xy;
+
+    f32mat4x4 jitter_mat = f32mat4x4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        uv_to_ss(input_ptr, f32vec2(0.0), output_tex_size), 0, 1);
+    f32mat4x4 inv_jitter_mat = f32mat4x4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        ss_to_uv(input_ptr, f32vec2(0.0), output_tex_size), 0, 1);
+
+    PLAYER.cam.view_to_sample = jitter_mat * PLAYER.cam.view_to_clip;
+    PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view * inv_jitter_mat;
 
     PLAYER.cam.view_to_world = translation_matrix(PLAYER.pos) * rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     PLAYER.cam.world_to_view = inv_rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll) * translation_matrix(-PLAYER.pos);
@@ -133,4 +149,3 @@ void player_perframe(
 }
 #undef PLAYER
 #undef INPUT
-#undef SETTINGS

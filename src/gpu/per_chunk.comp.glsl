@@ -9,7 +9,6 @@ i32vec3 chunk_n;
 i32vec3 chunk_i;
 u32 chunk_index;
 
-#define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
 #define PLAYER deref(globals).player
 #define CHUNKS(i) deref(voxel_chunks[i])
@@ -35,7 +34,7 @@ void try_elect(in out ChunkWorkItem work_item) {
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     // (const) number of chunks in each axis
-    chunk_n = i32vec3(1 << SETTINGS.log2_chunks_per_axis);
+    chunk_n = i32vec3(1 << deref(gpu_input).log2_chunks_per_axis);
     chunk_i = i32vec3(gl_GlobalInvocationID.xyz);
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
 
@@ -78,4 +77,3 @@ void main() {
 #undef CHUNKS
 #undef PLAYER
 #undef VOXEL_WORLD
-#undef SETTINGS

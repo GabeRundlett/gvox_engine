@@ -764,10 +764,12 @@ f32mat4x4 translation_matrix(f32vec3 pos) {
         pos, 1);
 }
 
-f32vec2 get_uv(i32vec2 pix, f32vec4 texSize) { return (f32vec2(pix) + 0.5) * texSize.zw; }
-f32vec2 get_uv(f32vec2 pix, f32vec4 texSize) { return (pix + 0.5) * texSize.zw; }
+f32vec2 get_uv(i32vec2 pix, f32vec4 tex_size) { return (f32vec2(pix) + 0.5) * tex_size.zw; }
+f32vec2 get_uv(f32vec2 pix, f32vec4 tex_size) { return (pix + 0.5) * tex_size.zw; }
 f32vec2 cs_to_uv(f32vec2 cs) { return cs * f32vec2(0.5, -0.5) + f32vec2(0.5, 0.5); }
 f32vec2 uv_to_cs(f32vec2 uv) { return (uv - 0.5) * f32vec2(2, -2); }
+f32vec2 uv_to_ss(daxa_BufferPtr(GpuInput) gpu_input, f32vec2 uv, f32vec4 tex_size) { return uv - deref(gpu_input).halton_jitter.xy * tex_size.zw; }
+f32vec2 ss_to_uv(daxa_BufferPtr(GpuInput) gpu_input, f32vec2 ss, f32vec4 tex_size) { return ss + deref(gpu_input).halton_jitter.xy * tex_size.zw; }
 
 struct ViewRayContext {
     f32vec4 ray_dir_cs;

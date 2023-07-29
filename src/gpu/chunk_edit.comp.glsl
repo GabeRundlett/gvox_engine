@@ -401,12 +401,11 @@ void brushgen_particles(in out f32vec3 col, in out u32 id) {
     id = prev_id;
 }
 
-#define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     // (const) number of chunks in each axis
-    chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     // Index in chunk_update_infos buffer
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     // Chunk 3D index in leaf chunk space (0^3 - 31^3)
@@ -470,4 +469,3 @@ void main() {
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
 }
 #undef VOXEL_WORLD
-#undef SETTINGS

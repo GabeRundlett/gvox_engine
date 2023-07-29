@@ -95,7 +95,6 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 }
 #undef VOXEL_CHUNK
 
-#define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -104,7 +103,7 @@ void main() {
         return;
     }
     u32vec3 chunk_n;
-    chunk_n.x = 1u << SETTINGS.log2_chunks_per_axis;
+    chunk_n.x = 1u << deref(gpu_input).log2_chunks_per_axis;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
@@ -113,7 +112,6 @@ void main() {
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
 }
 #undef VOXEL_WORLD
-#undef SETTINGS
 
 #endif
 
@@ -237,7 +235,6 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 }
 #undef VOXEL_CHUNK
 
-#define SETTINGS deref(settings)
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -246,7 +243,7 @@ void main() {
         return;
     }
     u32vec3 chunk_n;
-    chunk_n.x = 1u << SETTINGS.log2_chunks_per_axis;
+    chunk_n.x = 1u << deref(gpu_input).log2_chunks_per_axis;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
@@ -260,6 +257,5 @@ void main() {
     }
 }
 #undef VOXEL_WORLD
-#undef SETTINGS
 
 #endif

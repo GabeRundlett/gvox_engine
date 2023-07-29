@@ -40,18 +40,6 @@
 #if DOWNSCALE_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/renderer/downscale.inl>
 #endif
-#if SSAO_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/ssao.inl>
-#endif
-#if SSAO_SPATIAL_FILTER_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/ssao/spatial_filter.inl>
-#endif
-#if SSAO_UPSAMPLE_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/ssao/upsample.inl>
-#endif
-#if SSAO_TEMPORAL_FILTER_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/ssao/temporal_filter.inl>
-#endif
 #if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/renderer/trace_secondary.inl>
 #endif
@@ -64,3 +52,5 @@
 #if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
 #include <shared/tasks/renderer/voxel_particle_raster.inl>
 #endif
+
+#include <shared/tasks/renderer/ssao.inl>

@@ -29,10 +29,14 @@ struct MouseInput {
 };
 
 struct GpuInput {
+    f32 fov;
+    f32 sensitivity;
+    u32 log2_chunks_per_axis;
     u32 frame_index;
     u32 fif_index;
     u32vec2 frame_dim;
     u32vec2 rounded_frame_dim;
+    f32vec2 halton_jitter;
     f32 time;
     f32 delta_time;
     f32 render_res_scl;

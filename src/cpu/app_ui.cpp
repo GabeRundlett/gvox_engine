@@ -488,7 +488,6 @@ void AppUi::settings_ui() {
                 needs_saving = true;
             }
             if (ImGui::SliderFloat("Camera FOV", &settings.camera_fov, 0.01f, 170.0f)) {
-                should_upload_settings = true;
                 needs_saving = true;
             }
             if (ImGui::SliderFloat("Resolution Scale", &settings.render_res_scl, 0.1f, 2.0f)) {
@@ -503,7 +502,6 @@ void AppUi::settings_ui() {
             //     if (new_log2_chunks_per_axis != settings.log2_chunks_per_axis) {
             //         settings.log2_chunks_per_axis = new_log2_chunks_per_axis;
             //         should_recreate_voxel_buffers = true;
-            //         should_upload_settings = true;
             //         needs_saving = true;
             //     }
             // }
@@ -559,7 +557,6 @@ void AppUi::settings_ui() {
     if (ImGui::Button("Reset")) {
         settings.reset_default();
         rescale_ui();
-        should_upload_settings = true;
         needs_saving = true;
     }
     ImGui::End();
@@ -576,7 +573,6 @@ void AppUi::settings_controls_ui() {
         ImGui::EndCombo();
     }
     if (ImGui::SliderFloat("Mouse Sensitivity", &settings.mouse_sensitivity, 0.1f, 10.0f)) {
-        should_upload_settings = true;
         needs_saving = true;
     }
     if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, -(32 * settings.ui_scl + 12)))) {

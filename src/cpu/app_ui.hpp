@@ -94,8 +94,6 @@ struct AppUi {
     bool autosave_override = false;
     bool should_upload_seed_data = true;
 
-    bool should_upload_settings = true;
-
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;
     GvoxRegionRange gvox_region_range{

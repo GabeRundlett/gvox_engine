@@ -37,8 +37,7 @@
 #define L0_CHUNK_SIZE (L1_CHUNK_SIZE * 8)
 
 #if defined(__cplusplus)
-#include <memory>
-#include <daxa/utils/pipeline_manager.hpp>
+#include <cpu/core.hpp>
 #define CPU_ONLY(x) x
 #define GPU_ONLY(x)
 #else
@@ -49,5 +48,3 @@
 #define USE_POINTS 0
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
-
-CPU_ONLY(static constexpr usize FRAMES_IN_FLIGHT = 1;)

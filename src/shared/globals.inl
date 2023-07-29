@@ -127,11 +127,3 @@ struct GpuGlobals {
     u32 padding[10];
 };
 DAXA_DECL_BUFFER_PTR(GpuGlobals)
-
-struct GpuSettings {
-    f32 fov;
-    f32 sensitivity;
-
-    u32 log2_chunks_per_axis;
-};
-DAXA_DECL_BUFFER_PTR(GpuSettings)

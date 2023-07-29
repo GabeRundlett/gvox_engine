@@ -31,8 +31,6 @@ f32vec3 color_correct(f32vec3 x) {
 
 layout(location = 0) out f32vec4 color;
 
-#define USE_SAMPLER 0
-
 void main() {
     f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl) * f32vec2(deref(gpu_input).frame_dim) / f32vec2(deref(gpu_input).rounded_frame_dim);
     f32vec2 uv = f32vec2(gl_FragCoord.xy);

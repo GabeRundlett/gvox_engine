@@ -39,7 +39,7 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
         self.vel += f32vec3(0.0, 0.0, -9.8) * dt;
     }
 
-    u32vec3 chunk_n = u32vec3(1u << deref(settings).log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     float curr_speed = length(self.vel);
     float curr_dist_in_dt = curr_speed * dt;
     vec3 ray_pos = self.pos;

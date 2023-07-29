@@ -22,7 +22,6 @@ void queue_terrain_generation_work_item(i32vec3 chunk_offset) {
     queue_root_work_item(globals, terrain_work_item);
 }
 
-#define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 #define BRUSH_STATE deref(globals).brush_state
 #define THREAD_POOL deref(globals).chunk_thread_pool_state
@@ -33,8 +32,8 @@ void main() {
     // Update previous chunk offset
     PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
 
-    player_perframe(settings, gpu_input, globals);
-    voxel_world_perframe(settings, gpu_input, globals);
+    player_perframe(gpu_input, globals);
+    voxel_world_perframe(gpu_input, globals);
 
     {
         f32vec2 frame_dim = INPUT.frame_dim;
@@ -44,7 +43,7 @@ void main() {
         f32vec3 ray_dir = ray_dir_ws(vrc);
         f32vec3 cam_pos = ray_origin_ws(vrc);
         f32vec3 ray_pos = cam_pos;
-        u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+        u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
         trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
@@ -137,4 +136,3 @@ void main() {
 #undef CHUNKS
 #undef PLAYER
 #undef INPUT
-#undef SETTINGS

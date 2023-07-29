@@ -18,13 +18,11 @@ void voxel_world_startup(
 #undef VOXEL_WORLD
 #undef PLAYER
 
-#define SETTINGS deref(settings_ptr)
 #define INPUT deref(input_ptr)
 #define PLAYER deref(globals_ptr).player
 #define VOXEL_WORLD deref(globals_ptr).voxel_world
 #define INDIRECT deref(globals_ptr).indirect_dispatch
 void voxel_world_perframe(
-    daxa_BufferPtr(GpuSettings) settings_ptr,
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 
@@ -42,7 +40,6 @@ void voxel_world_perframe(
 #undef VOXEL_WORLD
 #undef PLAYER
 #undef INPUT
-#undef SETTINGS
 
 // Add a root work item to the L0 ChunkWorkItems queue of the ChunkThreadPoolState
 #define A_THREAD_POOL deref(globals).chunk_thread_pool_state

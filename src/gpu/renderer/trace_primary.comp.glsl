@@ -4,7 +4,6 @@
 #include <utils/sky.glsl>
 
 #define PIXEL_I gl_GlobalInvocationID.xy
-#define SETTINGS deref(settings)
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -12,7 +11,7 @@ void main() {
     output_tex_size.zw = f32vec2(1.0, 1.0) / output_tex_size.xy;
     f32vec2 uv = get_uv(PIXEL_I, output_tex_size);
 
-    ViewRayContext vrc = vrc_from_uv(globals, uv);
+    ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
     f32vec3 ray_dir = ray_dir_ws(vrc);
     f32vec3 cam_pos = ray_origin_ws(vrc);
 
@@ -39,7 +38,7 @@ void main() {
 #endif
 
     f32vec3 ray_pos = cam_pos + ray_dir * prepass_depth;
-    u32vec3 chunk_n = u32vec3(1u << SETTINGS.log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
 
     VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
@@ -75,4 +74,3 @@ void main() {
     imageStore(daxa_image2D(depth_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(depth, 0, 0, 0));
 }
 #undef INPUT
-#undef SETTINGS
