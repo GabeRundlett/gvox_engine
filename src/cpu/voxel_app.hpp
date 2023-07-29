@@ -25,12 +25,17 @@ struct RenderImages {
     daxa::ImageId raster_depth_image;
 
     daxa::ImageId g_buffer_image;
+    daxa::ImageId velocity_image;
+    daxa::ImageId reprojection_image;
 
     daxa::ImageId depth32_image;
+    daxa::ImageId prev_depth32_image;
     daxa::ImageId scaled_depth32_image;
-    daxa::ImageId vs_normal_image;
+    daxa::ImageId vs_normal_image_id;
     daxa::ImageId scaled_vs_normal_image;
-    daxa::ImageId ssao_image;
+    std::array<daxa::ImageId, 2> scaled_ssao_images;
+    std::array<daxa::ImageId, 2> ssao_images;
+    daxa::ImageId temp_ssao_image;
 
     daxa::ImageId indirect_diffuse_image;
     std::array<daxa::ImageId, 2> reconstructed_shading_images;
@@ -113,12 +118,18 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_raster_depth_image{{.name = "task_render_raster_depth_image"}};
 
     daxa::TaskImage task_render_g_buffer_image{{.name = "task_render_g_buffer_image"}};
+    daxa::TaskImage task_render_velocity_image{{.name = "task_render_velocity_image"}};
+    daxa::TaskImage task_render_reprojection_image{{.name = "task_render_reprojection_image"}};
 
     daxa::TaskImage task_render_depth32_image{{.name = "task_render_depth32_image"}};
+    daxa::TaskImage task_render_prev_depth32_image{{.name = "task_render_prev_depth32_image"}};
     daxa::TaskImage task_render_scaled_depth32_image{{.name = "task_render_scaled_depth32_image"}};
     daxa::TaskImage task_render_vs_normal_image{{.name = "task_render_vs_normal_image"}};
     daxa::TaskImage task_render_scaled_vs_normal_image{{.name = "task_render_scaled_vs_normal_image"}};
+    std::array<daxa::TaskImage, 2> task_render_scaled_ssao_images{daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}, daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}};
     daxa::TaskImage task_render_ssao_image{{.name = "task_render_ssao_image"}};
+    daxa::TaskImage task_render_prev_ssao_image{{.name = "task_render_prev_ssao_image"}};
+    daxa::TaskImage task_render_temp_ssao_image{{.name = "task_render_temp_ssao_image"}};
 
     daxa::TaskImage task_render_indirect_diffuse_image{{.name = "task_render_indirect_diffuse_image"}};
     daxa::TaskImage task_render_prev_reconstructed_shading_image{{.name = "task_render_prev_reconstructed_shading_image"}};
@@ -148,11 +159,15 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkOpt_x2x4_ComputeTaskState chunk_opt_x2x4_task_state;
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
     ChunkAllocComputeTaskState chunk_alloc_task_state;
+    CalculateReprojectionMapComputeTaskState calculate_reprojection_map_task_state;
     TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
     DownscaleComputeTaskState downscale_depth_task_state;
     DownscaleComputeTaskState downscale_normal_task_state;
     SsaoComputeTaskState ssao_task_state;
+    SsaoSpatialFilterComputeTaskState ssao_spatial_filter_task_state;
+    SsaoUpscaleComputeTaskState ssao_upscale_task_state;
+    SsaoTemporalFilterComputeTaskState ssao_temporal_filter_task_state;
     TraceSecondaryComputeTaskState trace_secondary_task_state;
     UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;

@@ -34,19 +34,19 @@ layout(location = 0) out f32vec4 color;
 #define USE_SAMPLER 0
 
 void main() {
-    f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl);
+    f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl) * f32vec2(deref(gpu_input).frame_dim) / f32vec2(deref(gpu_input).rounded_frame_dim);
     f32vec2 uv = f32vec2(gl_FragCoord.xy);
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl), 0);
 
+    f32 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(uv * g_buffer_scl), 0).x;
     f32vec4 shaded_value = texelFetch(daxa_texture2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl), 0);
     f32vec4 particles_color = texelFetch(daxa_texture2D(particles_image_id), i32vec2(uv * g_buffer_scl), 0);
-    f32 ssao_value = shaded_value.w;
     f32vec3 direct_value = shaded_value.xyz;
 
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     f32vec3 emit_col = uint_urgb9e5_to_f32vec3(g_buffer_value.w);
 
-    f32vec3 albedo_col = uint_rgba8_to_f32vec4(g_buffer_value.x).rgb;
+    f32vec3 albedo_col = (uint_rgba8_to_f32vec4(g_buffer_value.x).rgb);
     f32vec3 final_color = particles_color.rgb + emit_col + albedo_col * (direct_value * max(0.0, dot(nrm, SUN_DIR)) + f32vec3(ssao_value) * sample_sky_ambient(nrm));
 
     color = f32vec4(color_correct(final_color), 1.0);

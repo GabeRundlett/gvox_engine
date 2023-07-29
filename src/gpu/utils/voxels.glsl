@@ -62,7 +62,7 @@ u32 calc_chunk_index_from_worldspace(i32vec3 chunk_i, u32vec3 chunk_n) {
 }
 
 #define MODEL deref(model_ptr)
-u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 voxel_i, u32 channel_index) {
+u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, i32vec3 voxel_i, u32 channel_index) {
     u32 packed_voxel_data;
     packed_voxel_data = 0;
     u32vec3 model_size = u32vec3(MODEL.extent_x, MODEL.extent_y, MODEL.extent_z);
@@ -72,13 +72,13 @@ u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, u32vec3 vo
     // i32vec3 voxel_i = i32vec3(sample_p * VOXEL_SCL) - i32vec3(MODEL.offset_x, MODEL.offset_y, MODEL.offset_z);
     // voxel_i -= i32vec3(sample_p.x < 0, sample_p.y < 0, sample_p.z < 0);
     if (
-        // voxel_i.x < 0 || voxel_i.y < 0 || voxel_i.z < 0 ||
+        voxel_i.x < 0 || voxel_i.y < 0 || voxel_i.z < 0 ||
         voxel_i.x >= model_size.x || voxel_i.y >= model_size.y || voxel_i.z >= model_size.z) {
         return packed_voxel_data;
     }
     u32 region_header_n = region_n.x * region_n.y * region_n.z;
-    u32vec3 region_i = voxel_i / PALETTE_REGION_SIZE;
-    u32vec3 in_region_i = voxel_i - region_i * PALETTE_REGION_SIZE;
+    u32vec3 region_i = u32vec3(voxel_i) / PALETTE_REGION_SIZE;
+    u32vec3 in_region_i = u32vec3(voxel_i) - region_i * PALETTE_REGION_SIZE;
     u32 region_index = region_i.x + region_i.y * region_n.x + region_i.z * region_n.x * region_n.y;
     u32 in_region_index = in_region_i.x + in_region_i.y * PALETTE_REGION_SIZE + in_region_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
     u32 channel_offset = (region_index * MODEL.channel_n + channel_index) * 2;

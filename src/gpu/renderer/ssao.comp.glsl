@@ -17,12 +17,12 @@ const float temporal_rotations[] = {60.0, 300.0, 180.0, 240.0, 120.0, 0.0};
 const float temporal_offsets[] = {0.0, 0.5, 0.25, 0.75};
 
 float fetch_depth(u32vec2 px) {
-    return texelFetch(daxa_texture2D(depth_image), i32vec2(px), 0).r;
+    return texelFetch(daxa_texture2D(depth_image_id), i32vec2(px), 0).r;
 }
 
 f32vec3 fetch_normal_vs(f32vec2 uv) {
     i32vec2 px = i32vec2(output_tex_size.xy * uv);
-    f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image), px, 0).xyz;
+    f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image_id), px, 0).xyz;
     return normal_vs;
 }
 
@@ -85,9 +85,9 @@ void main() {
     output_tex_size *= vec4(0.5, 0.5, 2.0, 2.0);
 
     f32 depth = fetch_depth(px);
-    f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image), i32vec2(px), 0).xyz;
+    f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image_id), i32vec2(px), 0).xyz;
 
-    if (depth == MAX_DIST || dot(normal_vs, normal_vs) == 0.0) {
+    if (depth == 0.0 || dot(normal_vs, normal_vs) == 0.0) {
         imageStore(daxa_image2D(ssao_image_id), i32vec2(px), f32vec4(1, 0, 0, 0));
         return;
     }
@@ -113,7 +113,6 @@ void main() {
     {
         const float ws_to_cs = 0.5 / -ray_hit_vs.z * deref(globals).player.cam.view_to_clip[1][1];
 
-        // Convert AO radius into world scale
         const float cs_kernel_radius_scaled = SSGI_KERNEL_RADIUS;
         kernel_radius_ws = cs_kernel_radius_scaled / ws_to_cs;
 

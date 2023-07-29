@@ -103,6 +103,8 @@ void player_perframe(
     PLAYER.cam.prev_world_to_prev_view = PLAYER.cam.world_to_view;
     PLAYER.cam.prev_view_to_prev_world = PLAYER.cam.view_to_world;
 
+    memoryBarrier();
+
     PLAYER.cam.view_to_clip = f32mat4x4(0.0);
     PLAYER.cam.view_to_clip[0][0] = +1.0 / tan_half_fov / aspect;
     PLAYER.cam.view_to_clip[1][1] = +1.0 / tan_half_fov;

@@ -12,6 +12,7 @@ daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
 u32vec3 inchunk_voxel_i;
 i32vec3 voxel_i;
+i32vec3 world_voxel;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
@@ -197,10 +198,10 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     col = f32vec3(0.5, 0.1, 0.8);
 
 #elif GEN_MODEL // Model world
-    u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
-    id = sample_gvox_palette_voxel(gvox_model, voxel_i, 0);
+    u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
+    id = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
     // id = packed_col_data >> 0x18;
-    // u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, voxel_i, 2);
+    // u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
     col = uint_rgba8_to_f32vec4(packed_col_data).rgb;
     // if (id != 0) {
     //     id = 2;
@@ -440,7 +441,7 @@ void main() {
     i32vec3 world_chunk = chunk_offset + wrapped_chunk_i;
 
     // Voxel position in world space (voxels)
-    i32vec3 world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
+    world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
     // Voxel position in world space (meters)
     voxel_pos = f32vec3(world_voxel) / VOXEL_SCL;
 

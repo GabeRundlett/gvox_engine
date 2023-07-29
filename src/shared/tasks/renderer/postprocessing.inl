@@ -59,7 +59,7 @@ struct PostprocessingRasterTaskState {
             return;
         }
         cmd_list.begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
         cmd_list.set_pipeline(*pipeline);

@@ -28,6 +28,9 @@
 #include <shared/tasks/voxel_particle_sim.inl>
 #endif
 
+#if CALCULATE_REPROJECTION_MAP_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/calculate_reprojection_map.inl>
+#endif
 #if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/renderer/trace_depth_prepass.inl>
 #endif
@@ -39,6 +42,15 @@
 #endif
 #if SSAO_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/renderer/ssao.inl>
+#endif
+#if SSAO_SPATIAL_FILTER_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/ssao/spatial_filter.inl>
+#endif
+#if SSAO_UPSAMPLE_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/ssao/upsample.inl>
+#endif
+#if SSAO_TEMPORAL_FILTER_COMPUTE || defined(__cplusplus)
+#include <shared/tasks/renderer/ssao/temporal_filter.inl>
 #endif
 #if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
 #include <shared/tasks/renderer/trace_secondary.inl>

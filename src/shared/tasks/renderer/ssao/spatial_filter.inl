@@ -2,18 +2,18 @@
 
 #include <shared/core.inl>
 
-DAXA_DECL_TASK_USES_BEGIN(SsaoComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
+DAXA_DECL_TASK_USES_BEGIN(SsaoSpatialFilterComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(settings, daxa_BufferPtr(GpuSettings), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
+DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
-struct SsaoComputeTaskState {
+struct SsaoSpatialFilterComputeTaskState {
     daxa::PipelineManager &pipeline_manager;
     AppUi &ui;
     u32vec2 &render_size;
@@ -22,10 +22,10 @@ struct SsaoComputeTaskState {
     void compile_pipeline() {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"ssao.comp.glsl"},
-                .compile_options = {.defines = {{"SSAO_COMPUTE", "1"}}},
+                .source = daxa::ShaderFile{"ssao/spatial_filter.comp.glsl"},
+                .compile_options = {.defines = {{"SSAO_SPATIAL_FILTER_COMPUTE", "1"}}},
             },
-            .name = "ssao",
+            .name = "spatial_filter",
         });
         if (compile_result.is_err()) {
             ui.console.add_log(compile_result.message());
@@ -37,7 +37,7 @@ struct SsaoComputeTaskState {
         }
     }
 
-    SsaoComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
+    SsaoSpatialFilterComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {
@@ -51,8 +51,8 @@ struct SsaoComputeTaskState {
     }
 };
 
-struct SsaoComputeTask : SsaoComputeUses {
-    SsaoComputeTaskState *state;
+struct SsaoSpatialFilterComputeTask : SsaoSpatialFilterComputeUses {
+    SsaoSpatialFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());

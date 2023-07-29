@@ -8,7 +8,7 @@ DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
 DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), SHADER_READ)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
-DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, DEPTH_ATTACHMENT)
+DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, DEPTH_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
@@ -52,13 +52,13 @@ struct VoxelParticleRasterTaskState {
     VoxelParticleRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image, u32vec2 size) {
+    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, u32vec2 size) {
         if (!pipeline_is_valid()) {
             return;
         }
         cmd_list.begin_renderpass({
             .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .depth_attachment = {{.image_view = depth_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
+            .depth_attachment = {{.image_view = depth_image_id.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
         cmd_list.set_pipeline(*pipeline);
@@ -77,7 +77,7 @@ struct VoxelParticleRasterTask : VoxelParticleRasterUses {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.render_image.image());
-        state->record_commands(cmd_list, uses.globals.buffer(), uses.render_image.image(), uses.depth_image.image(), {image_info.size.x, image_info.size.y});
+        state->record_commands(cmd_list, uses.globals.buffer(), uses.render_image.image(), uses.depth_image_id.image(), {image_info.size.x, image_info.size.y});
     }
 };
 

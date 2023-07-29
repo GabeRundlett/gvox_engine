@@ -44,28 +44,34 @@ void main() {
     VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
 
+    f32vec3 chunk_offset_delta = f32vec3(deref(globals).player.chunk_offset - deref(globals).player.prev_chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+
     u32vec4 output_value = u32vec4(0);
 
     // f32 depth = length(cam_pos - ray_pos);
     // transform depth to ndc space
     vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos, 1));
+    vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos + chunk_offset_delta, 1)); // when animated objects exist, this is where they'd put their velocity
     vec4 cs_pos = (deref(globals).player.cam.view_to_sample * vs_pos);
     f32 depth = cs_pos.z / cs_pos.w;
+    f32vec3 vs_nrm = f32vec3(0);
+    f32vec3 vs_velocity = f32vec3(0);
 
     if (trace_result.dist == MAX_DIST) {
         f32vec3 sky_col = sample_sky(ray_dir);
         output_value.w = f32vec3_to_uint_urgb9e5(sky_col / 1.0);
         output_value.y |= nrm_to_u16(f32vec3(0));
-        depth = MAX_DIST;
+        depth = 0.0;
     } else {
         output_value.x = trace_result.voxel_data;
         output_value.y |= nrm_to_u16(trace_result.nrm);
+        vs_nrm = (deref(globals).player.cam.world_to_view * f32vec4(trace_result.nrm, 0)).xyz;
+        vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
     }
 
-    f32vec3 vs_nrm = (deref(globals).player.cam.world_to_view * f32vec4(trace_result.nrm, 0)).xyz;
-
     imageStore(daxa_uimage2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy), output_value);
-    imageStore(daxa_image2D(vs_normal_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_nrm * 0.5 + 0.5, 0));
+    imageStore(daxa_image2D(vs_normal_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_nrm.zyx * 0.5 + 0.5, 0));
+    imageStore(daxa_image2D(velocity_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_velocity, 0));
     imageStore(daxa_image2D(depth_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(depth, 0, 0, 0));
 }
 #undef INPUT
