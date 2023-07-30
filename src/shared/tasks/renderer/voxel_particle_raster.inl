@@ -3,10 +3,10 @@
 #include <shared/core.inl>
 
 DAXA_DECL_TASK_USES_BEGIN(VoxelParticleRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), SHADER_READ)
-DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), SHADER_READ)
+DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), FRAGMENT_SHADER_READ)
+DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, DEPTH_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()

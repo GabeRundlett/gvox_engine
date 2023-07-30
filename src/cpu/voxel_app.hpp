@@ -170,15 +170,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
-    enum class Conditions {
-        STARTUP,
-        UPLOAD_GVOX_MODEL,
-        DYNAMIC_BUFFERS_REALLOC,
-        LAST,
-    };
-    daxa::TaskGraph main_task_graph;
-    std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
-
     std::array<f32vec2, 128> halton_offsets{};
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -193,6 +184,13 @@ struct VoxelApp : AppWindow<VoxelApp> {
     GvoxModelData gvox_model_data;
     bool model_is_loading = false;
     bool model_is_ready = false;
+
+    enum class Conditions {
+        // DYNAMIC_BUFFERS_REALLOC,
+        LAST,
+    };
+    std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
+    daxa::TaskGraph main_task_graph;
 
     VoxelApp();
     VoxelApp(VoxelApp const &) = delete;
