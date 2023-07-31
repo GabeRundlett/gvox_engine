@@ -57,54 +57,52 @@ struct DownscaleComputeTask : DownscaleComputeUses {
     }
 };
 
-// inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView gbuffer, u32vec2 render_size) -> daxa::TaskImageView {
-//     auto size = ctx.render_resolution;
+inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView depth) -> daxa::TaskImageView {
+    auto size = ctx.render_resolution;
 
-//     auto output_tex = ctx.task_graph.create_transient_image({
-//         .format = daxa::Format::R8G8B8A8_SNORM,
-//         .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
-//         .name = "downscaled_gbuffer_view_normal",
-//     });
+    auto output_tex = ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R32_SFLOAT,
+        .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
+        .name = "downscaled_depth",
+    });
 
-//     ctx.task_graph.add_task(DownscaleComputeTask{
-//         {
-//             .uses = {
-//                 .gpu_input = *ctx.task_input_buffer,
-//                 .globals = *ctx.task_globals_buffer,
-//                 .src_image_id = gbuffer,
-//                 .dst_image_id = output_tex,
-//             },
-//         },
-//         &task_state,
-//         render_size,
-//     });
+    ctx.task_graph.add_task(DownscaleComputeTask{
+        {
+            .uses = {
+                .gpu_input = ctx.task_input_buffer,
+                .globals = ctx.task_globals_buffer,
+                .src_image_id = depth,
+                .dst_image_id = output_tex,
+            },
+        },
+        &task_state,
+    });
 
-//     return output_tex;
-// }
+    return output_tex;
+}
 
-// inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskState2 &task_state, daxa::TaskImageView depth, u32vec2 render_size) -> daxa::TaskImageView {
-//     auto size = ctx.render_resolution;
+inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView gbuffer) -> daxa::TaskImageView {
+    auto size = ctx.render_resolution;
 
-//     auto output_tex = ctx.task_graph.create_transient_image({
-//         .format = daxa::Format::R32_SFLOAT,
-//         .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
-//         .name = "downscaled_depth",
-//     });
+    auto output_tex = ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R8G8B8A8_SNORM,
+        .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
+        .name = "downscaled_gbuffer_view_normal",
+    });
 
-//     ctx.task_graph.add_task(DownscaleComputeTask2{
-//         {
-//             .uses = {
-//                 .gpu_input = *ctx.task_input_buffer,
-//                 .globals = *ctx.task_globals_buffer,
-//                 .src_image_id = depth,
-//                 .dst_image_id = output_tex,
-//             },
-//         },
-//         &task_state,
-//         render_size,
-//     });
+    ctx.task_graph.add_task(DownscaleComputeTask{
+        {
+            .uses = {
+                .gpu_input = ctx.task_input_buffer,
+                .globals = ctx.task_globals_buffer,
+                .src_image_id = gbuffer,
+                .dst_image_id = output_tex,
+            },
+        },
+        &task_state,
+    });
 
-//     return output_tex;
-// }
+    return output_tex;
+}
 
 #endif

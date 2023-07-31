@@ -3,31 +3,13 @@
 #include "app_window.hpp"
 #include "app_ui.hpp"
 
-#include <daxa/utils/pipeline_manager.hpp>
-#include <daxa/utils/imgui.hpp>
-#include <daxa/utils/task_graph.hpp>
-#include <daxa/utils/math_operators.hpp>
-using namespace daxa::math_operators;
-
 #include <shared/shared.inl>
 
 #include <chrono>
 #include <future>
 
-using BDA = daxa::BufferDeviceAddress;
-
 struct VoxelChunks {
     daxa::BufferId buffer;
-
-    daxa::BufferId leaves_buffer;
-    daxa::BufferId available_leaves_stack_buffer;
-    daxa::BufferId released_leaves_stack_buffer;
-    u32 current_leaf_count = 0;
-
-    daxa::BufferId parents_buffer;
-    daxa::BufferId available_parents_stack_buffer;
-    daxa::BufferId released_parents_stack_buffer;
-    u32 current_parent_count = 0;
 
     void create(daxa::Device &device, u32 log2_chunks_per_axis);
     void destroy(daxa::Device &device) const;
@@ -78,6 +60,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImGuiRenderer imgui_renderer;
 
     GbufferDepth gbuffer_depth;
+    SsaoRenderer ssao_renderer;
     PingPongImage ssao_image_pp;
     PingPongImage shading_image_pp;
     GpuResources gpu_resources;
@@ -106,12 +89,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     CalculateReprojectionMapComputeTaskState calculate_reprojection_map_task_state;
     TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
-    DownscaleComputeTaskState downscale_depth_task_state;
-    DownscaleComputeTaskState downscale_normal_task_state;
-    SsaoComputeTaskState ssao_task_state;
-    SsaoSpatialFilterComputeTaskState ssao_spatial_filter_task_state;
-    SsaoUpscaleComputeTaskState ssao_upscale_task_state;
-    SsaoTemporalFilterComputeTaskState ssao_temporal_filter_task_state;
     TraceSecondaryComputeTaskState trace_secondary_task_state;
     UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
@@ -135,10 +112,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     bool model_is_ready = false;
 
     enum class Conditions {
-        // DYNAMIC_BUFFERS_REALLOC,
-        LAST,
+        COUNT,
     };
-    std::array<bool, static_cast<usize>(Conditions::LAST)> condition_values{};
+    std::array<bool, static_cast<usize>(Conditions::COUNT)> condition_values{};
     daxa::TaskGraph main_task_graph;
 
     VoxelApp();

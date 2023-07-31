@@ -222,9 +222,101 @@ struct SsaoTemporalFilterComputeTask : SsaoTemporalFilterComputeUses {
 };
 
 struct SsaoRenderer {
-    PingPongImage ssao_image;
+    PingPongImage ping_pong_ssao_image;
+    SsaoComputeTaskState ssao_task_state;
+    SsaoSpatialFilterComputeTaskState ssao_spatial_filter_task_state;
+    SsaoUpscaleComputeTaskState ssao_upscale_task_state;
+    SsaoTemporalFilterComputeTaskState ssao_temporal_filter_task_state;
 
-    void record(daxa::TaskGraph &task_graph) {
+    SsaoRenderer(daxa::PipelineManager &pipeline_manager, daxa::SamplerId &a_sampler)
+        : ssao_task_state{pipeline_manager},
+          ssao_spatial_filter_task_state{pipeline_manager},
+          ssao_upscale_task_state{pipeline_manager},
+          ssao_temporal_filter_task_state{pipeline_manager, a_sampler} {
+    }
+
+    void next_frame() {
+        ping_pong_ssao_image.task_resources.output_image.swap_images(ping_pong_ssao_image.task_resources.history_image);
+    }
+
+    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
+        auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
+        auto scaled_view_normal_image = gbuffer_depth.get_downscaled_view_normal(record_ctx);
+        ping_pong_ssao_image = PingPongImage{};
+        auto [ssao_image, prev_ssao_image] = ping_pong_ssao_image.get(
+            record_ctx.device,
+            {
+                .format = daxa::Format::R16_SFLOAT,
+                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+                .name = "ssao_image",
+            });
+        record_ctx.task_graph.use_persistent_image(ssao_image);
+        record_ctx.task_graph.use_persistent_image(prev_ssao_image);
+        auto ssao_image0 = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R16_SFLOAT,
+            .size = {record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL, 1},
+            .name = "ssao_image0",
+        });
+        auto ssao_image1 = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R16_SFLOAT,
+            .size = {record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL, 1},
+            .name = "ssao_image1",
+        });
+        auto ssao_image2 = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R16_SFLOAT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "ssao_image2",
+        });
+        record_ctx.task_graph.add_task(SsaoComputeTask{
+            {
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .globals = record_ctx.task_globals_buffer,
+                    .vs_normal_image_id = scaled_view_normal_image,
+                    .depth_image_id = scaled_depth_image,
+                    .ssao_image_id = ssao_image0,
+                },
+            },
+            &ssao_task_state,
+        });
+        record_ctx.task_graph.add_task(SsaoSpatialFilterComputeTask{
+            {
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .vs_normal_image_id = scaled_view_normal_image,
+                    .depth_image_id = scaled_depth_image,
+                    .src_image_id = ssao_image0,
+                    .dst_image_id = ssao_image1,
+                },
+            },
+            &ssao_spatial_filter_task_state,
+        });
+        record_ctx.task_graph.add_task(SsaoUpscaleComputeTask{
+            {
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .g_buffer_image_id = gbuffer_depth.gbuffer,
+                    .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
+                    .src_image_id = ssao_image1,
+                    .dst_image_id = ssao_image2,
+                },
+            },
+            &ssao_upscale_task_state,
+        });
+        record_ctx.task_graph.add_task(SsaoTemporalFilterComputeTask{
+            {
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .reprojection_image_id = reprojection_map,
+                    .history_image_id = prev_ssao_image,
+                    .src_image_id = ssao_image2,
+                    .dst_image_id = ssao_image,
+                },
+            },
+            &ssao_temporal_filter_task_state,
+        });
+        return daxa::TaskImageView{ssao_image};
     }
 };
 
