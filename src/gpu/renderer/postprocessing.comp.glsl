@@ -34,12 +34,12 @@ layout(location = 0) out f32vec4 color;
 void main() {
     f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl) * f32vec2(deref(gpu_input).frame_dim) / f32vec2(deref(gpu_input).rounded_frame_dim);
     f32vec2 uv = f32vec2(gl_FragCoord.xy);
-    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(uv * g_buffer_scl), 0);
+    u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(gl_FragCoord.xy), 0);
 
-    f32 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(uv * g_buffer_scl), 0).x;
-    f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), i32vec2(uv * g_buffer_scl), 0);
-    f32vec4 shaded_value = texelFetch(daxa_texture2D(reconstructed_shading_image_id), i32vec2(uv * g_buffer_scl), 0);
-    f32vec4 particles_color = texelFetch(daxa_texture2D(particles_image_id), i32vec2(uv * g_buffer_scl), 0);
+    f32 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_FragCoord.xy), 0).x;
+    // f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), i32vec2(uv * g_buffer_scl), 0);
+    f32vec4 shaded_value = texelFetch(daxa_texture2D(reconstructed_shading_image_id), i32vec2(gl_FragCoord.xy), 0);
+    // f32vec4 particles_color = texelFetch(daxa_texture2D(particles_image_id), i32vec2(uv * g_buffer_scl), 0);
     f32vec3 direct_value = shaded_value.xyz;
 
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);

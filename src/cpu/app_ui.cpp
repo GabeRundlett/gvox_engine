@@ -118,11 +118,15 @@ static void Strtrim(char *s) {
 }
 
 AppUi::Console::Console() {
+    s_instance = this;
     clear_log();
     memset(input_buffer, 0, sizeof(input_buffer));
 }
 
 AppUi::Console::~Console() {
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
     clear_log();
     for (auto &i : history) {
         free(i);
@@ -723,9 +727,10 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
     return static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size));
 }
 
-void AppUi::update(f32 delta_time) {
-    frametimes[frametime_rotation_index] = delta_time;
-    frametime_rotation_index = (frametime_rotation_index + 1) % frametimes.size();
+void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
+    full_frametimes[frametime_rotation_index] = delta_time;
+    cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
+    frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
 
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -770,20 +775,30 @@ void AppUi::update(f32 delta_time) {
         pos.x += viewport->WorkSize.x - debug_menu_size;
         ImGui::SetNextWindowPos(pos);
         ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
-        float average = 0.0f;
-        for (auto frametime : frametimes) {
-            average += frametime;
+        auto frametime_graph = [&](auto &frametimes) {
+            float average = 0.0f;
+            for (auto frametime : frametimes) {
+                average += frametime;
+            }
+            average /= static_cast<float>(frametimes.size());
+            auto fmt_str = std::string();
+            auto [min_frametime_iter, max_frametime_iter] = std::minmax_element(frametimes.begin(), frametimes.end());
+            auto min_frametime = *min_frametime_iter;
+            auto max_frametime = *max_frametime_iter;
+            auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
+            auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
+            fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
+            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
+            ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
+        };
+        if (ImGui::TreeNode("Full frame-time")) {
+            frametime_graph(full_frametimes);
+            ImGui::TreePop();
         }
-        average /= static_cast<float>(frametimes.size());
-        fmt_str.clear();
-        auto [min_frametime_iter, max_frametime_iter] = std::minmax_element(frametimes.begin(), frametimes.end());
-        auto min_frametime = *min_frametime_iter;
-        auto max_frametime = *max_frametime_iter;
-        auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
-        auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
-        fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
-        ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
-        ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
+        if (ImGui::TreeNode("CPU only frame-time")) {
+            frametime_graph(cpu_frametimes);
+            ImGui::TreePop();
+        }
         ImGui::Text("GPU: %s", debug_gpu_name);
         ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
@@ -795,7 +810,7 @@ void AppUi::update(f32 delta_time) {
         ImGui::Text("job_queue_top:    %u", debug_job_counters.available_threads_queue_top);
         ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
-        if (ImGui::TreeNode("Gpu Resources")) {
+        if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =
                 ImGuiTableFlags_Resizable |
                 ImGuiTableFlags_Reorderable |

@@ -23,16 +23,13 @@ void main() {
         f32 validity = reproj_val.z;
         if (offset == tile) {
             f32 ssao_value = 0.0; // texelFetch(daxa_texture2D(ssao_image_id), i32vec2(in_tile_i), 0).r;
-            f32vec3 direct_value = texelFetch(daxa_texture2D(indirect_diffuse_image_id), i32vec2(in_tile_i), 0).rgb;
+            f32vec3 direct_value = texelFetch(daxa_texture2D(scaled_shading_image), i32vec2(in_tile_i), 0).rgb;
             result = f32vec4(direct_value, ssao_value);
             // result = mix(prev_val, f32vec4(direct_value, ssao_value), 0.05);
         } else {
             result = prev_val;
         }
     }
-
-    // result.rgb = f32vec3(prev_uv, 0.0);
-    // result.rgb = fract(frag_pos);
 
     imageStore(daxa_image2D(dst_image_id), output_i, result);
 }

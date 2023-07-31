@@ -16,27 +16,6 @@ using namespace daxa::math_operators;
 
 using BDA = daxa::BufferDeviceAddress;
 
-struct RenderImages {
-    u32vec2 size{};
-    u32vec2 rounded_size{};
-    daxa::ImageId depth_prepass_image;
-
-    daxa::ImageId raster_color_image;
-    daxa::ImageId raster_depth_image;
-
-    daxa::ImageId reprojection_image;
-
-    std::array<daxa::ImageId, 2> scaled_ssao_images;
-    std::array<daxa::ImageId, 2> ssao_images;
-    daxa::ImageId temp_ssao_image;
-
-    daxa::ImageId indirect_diffuse_image;
-    std::array<daxa::ImageId, 2> reconstructed_shading_images;
-
-    void create(daxa::Device &device);
-    void destroy(daxa::Device &device) const;
-};
-
 struct VoxelChunks {
     daxa::BufferId buffer;
 
@@ -55,7 +34,6 @@ struct VoxelChunks {
 };
 
 struct GpuResources {
-    RenderImages render_images;
     daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec2_image;
     daxa::BufferId input_buffer;
@@ -100,23 +78,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImGuiRenderer imgui_renderer;
 
     GbufferDepth gbuffer_depth;
+    PingPongImage ssao_image_pp;
+    PingPongImage shading_image_pp;
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
-
-    daxa::TaskImage task_render_depth_prepass_image{{.name = "task_render_depth_prepass_image"}};
-    daxa::TaskImage task_render_raster_color_image{{.name = "task_render_raster_color_image"}};
-    daxa::TaskImage task_render_raster_depth_image{{.name = "task_render_raster_depth_image"}};
-
-    daxa::TaskImage task_render_reprojection_image{{.name = "task_render_reprojection_image"}};
-
-    std::array<daxa::TaskImage, 2> task_render_scaled_ssao_images{daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}, daxa::TaskImage{{.name = "task_render_scaled_ssao_image2"}}};
-    daxa::TaskImage task_render_ssao_image{{.name = "task_render_ssao_image"}};
-    daxa::TaskImage task_render_prev_ssao_image{{.name = "task_render_prev_ssao_image"}};
-    daxa::TaskImage task_render_temp_ssao_image{{.name = "task_render_temp_ssao_image"}};
-
-    daxa::TaskImage task_render_indirect_diffuse_image{{.name = "task_render_indirect_diffuse_image"}};
-    daxa::TaskImage task_render_prev_reconstructed_shading_image{{.name = "task_render_prev_reconstructed_shading_image"}};
-    daxa::TaskImage task_render_reconstructed_shading_image{{.name = "task_render_reconstructed_shading_image"}};
 
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -196,7 +161,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_resize(u32 sx, u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
-    void set_task_render_images();
     void recreate_render_images();
     void recreate_voxel_chunks();
 

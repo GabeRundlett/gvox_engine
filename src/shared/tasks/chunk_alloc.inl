@@ -13,11 +13,9 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct ChunkAllocComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    ChunkAllocComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"chunk_alloc.comp.glsl"},
@@ -26,16 +24,14 @@ struct ChunkAllocComputeTaskState {
             .name = "chunk_alloc",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    ChunkAllocComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {

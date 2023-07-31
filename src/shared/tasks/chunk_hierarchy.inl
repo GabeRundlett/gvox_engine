@@ -12,12 +12,10 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct ChunkHierarchyComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::ComputePipeline> pipeline_l0;
     std::shared_ptr<daxa::ComputePipeline> pipeline_l1;
 
-    void compile_pipeline(std::shared_ptr<daxa::ComputePipeline> &pipeline, char const *const depth_str) {
+    void compile_pipeline(daxa::PipelineManager &pipeline_manager, std::shared_ptr<daxa::ComputePipeline> &pipeline, char const *const depth_str) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"chunk_hierarchy.comp.glsl"},
@@ -26,18 +24,18 @@ struct ChunkHierarchyComputeTaskState {
             .name = "chunk_hierarchy",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
 
-    ChunkHierarchyComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} {
-        compile_pipeline(pipeline_l0, "0");
-        compile_pipeline(pipeline_l1, "1");
+    ChunkHierarchyComputeTaskState(daxa::PipelineManager &pipeline_manager, AppUi &a_ui) {
+        compile_pipeline(pipeline_manager, pipeline_l0, "0");
+        compile_pipeline(pipeline_manager, pipeline_l1, "1");
     }
     auto pipeline_l0_is_valid() -> bool { return pipeline_l0 && pipeline_l0->is_valid(); }
     auto pipeline_l1_is_valid() -> bool { return pipeline_l1 && pipeline_l1->is_valid(); }

@@ -21,11 +21,9 @@ struct ChunkEditComputePush {
 #if defined(__cplusplus)
 
 struct ChunkEditComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    ChunkEditComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"chunk_edit.comp.glsl"},
@@ -35,16 +33,14 @@ struct ChunkEditComputeTaskState {
             .name = "chunk_edit",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    ChunkEditComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa_SamplerId value_noise_sampler) {

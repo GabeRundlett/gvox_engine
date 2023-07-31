@@ -14,11 +14,9 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct VoxelParticleRasterTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::RasterPipeline> pipeline;
 
-    void compile_pipeline() {
+    VoxelParticleRasterTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
@@ -40,16 +38,14 @@ struct VoxelParticleRasterTaskState {
             .name = "voxel_particle_sim",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    VoxelParticleRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, u32vec2 size) {

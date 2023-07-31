@@ -49,12 +49,9 @@ struct SsaoTemporalFilterComputePush {
 #if defined(__cplusplus)
 
 struct SsaoComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
-    u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    SsaoComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -63,36 +60,30 @@ struct SsaoComputeTaskState {
             .name = "ssao",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    SsaoComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
         if (!pipeline_is_valid()) {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 
 struct SsaoSpatialFilterComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
-    u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    SsaoSpatialFilterComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -101,36 +92,30 @@ struct SsaoSpatialFilterComputeTaskState {
             .name = "spatial_filter",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    SsaoSpatialFilterComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
         if (!pipeline_is_valid()) {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 
 struct SsaoUpscaleComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
-    u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    SsaoUpscaleComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -139,37 +124,31 @@ struct SsaoUpscaleComputeTaskState {
             .name = "ssao_upscale",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    SsaoUpscaleComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
         if (!pipeline_is_valid()) {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 
 struct SsaoTemporalFilterComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     daxa::SamplerId &history_sampler;
-    u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    SsaoTemporalFilterComputeTaskState(daxa::PipelineManager &pipeline_manager, daxa::SamplerId &a_sampler) : history_sampler{a_sampler} {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -179,19 +158,17 @@ struct SsaoTemporalFilterComputeTaskState {
             .name = "ssao_temporal_filter",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
-        }
+            AppUi::Console::s_instance->add_log(compile_result.message());
+        };
     }
-
-    SsaoTemporalFilterComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, daxa::SamplerId &a_sampler, u32vec2 &a_render_size) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, history_sampler{a_sampler}, render_size{a_render_size} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
         if (!pipeline_is_valid()) {
             return;
         }
@@ -199,9 +176,8 @@ struct SsaoTemporalFilterComputeTaskState {
         cmd_list.push_constant(SsaoTemporalFilterComputePush{
             .history_sampler = history_sampler,
         });
-        constexpr auto SCL = 8;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 
@@ -210,7 +186,8 @@ struct SsaoComputeTask : SsaoComputeUses {
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto const &image_info = ti.get_device().info_image(uses.ssao_image_id.image());
+        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -219,7 +196,8 @@ struct SsaoSpatialFilterComputeTask : SsaoSpatialFilterComputeUses {
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
+        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -228,7 +206,8 @@ struct SsaoUpscaleComputeTask : SsaoUpscaleComputeUses {
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
+        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -237,7 +216,8 @@ struct SsaoTemporalFilterComputeTask : SsaoTemporalFilterComputeUses {
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
+        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
     }
 };
 

@@ -28,6 +28,7 @@ struct AppUi {
         ImGuiTextFilter filter;
         bool auto_scroll{true};
         bool scroll_to_bottom{false};
+        inline static Console *s_instance = nullptr;
 
         Console();
         ~Console();
@@ -48,17 +49,15 @@ struct AppUi {
     AppUi(GLFWwindow *glfw_window_ptr);
     ~AppUi();
 
-    inline static AppUi *s_instance = nullptr;
-
     AppSettings settings;
 
     GLFWwindow *glfw_window_ptr;
     ImFont *mono_font = nullptr;
     ImFont *menu_font = nullptr;
 
-    std::array<float, 200> frametimes = {};
+    std::array<float, 200> full_frametimes = {};
+    std::array<float, 200> cpu_frametimes = {};
     u64 frametime_rotation_index = 0;
-    std::string fmt_str;
 
     f32 debug_menu_size{};
     char const *debug_gpu_name{};
@@ -109,7 +108,7 @@ struct AppUi {
     std::filesystem::path data_directory;
 
     void rescale_ui();
-    void update(f32 delta_time);
+    void update(f32 delta_time, f32 cpu_delta_time);
 
     void toggle_pause();
     void toggle_debug();

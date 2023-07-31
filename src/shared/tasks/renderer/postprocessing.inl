@@ -7,7 +7,7 @@ DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
 DAXA_TASK_USE_IMAGE(particles_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
-DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
+// DAXA_TASK_USE_IMAGE(indirect_diffuse_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
 DAXA_TASK_USE_IMAGE(reconstructed_shading_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
@@ -20,8 +20,6 @@ struct PostprocessingRasterPush {
 #if defined(__cplusplus)
 
 struct PostprocessingRasterTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::RasterPipeline> pipeline;
     daxa::SamplerId &sampler;
     daxa::Format render_color_format;
@@ -30,7 +28,7 @@ struct PostprocessingRasterTaskState {
         return render_color_format;
     }
 
-    void compile_pipeline() {
+    PostprocessingRasterTaskState(daxa::PipelineManager &pipeline_manager, daxa::SamplerId &a_sampler, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT) : sampler{a_sampler}, render_color_format{a_render_color_format} {
         auto compile_result = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
@@ -41,16 +39,14 @@ struct PostprocessingRasterTaskState {
             .name = "postprocessing",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    PostprocessingRasterTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, daxa::SamplerId &a_sampler, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT) : pipeline_manager{a_pipeline_manager}, ui{a_ui}, sampler{a_sampler}, render_color_format{a_render_color_format} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::ImageId render_image, u32vec2 size) {

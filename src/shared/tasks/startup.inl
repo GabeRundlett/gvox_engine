@@ -11,11 +11,9 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct StartupComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    void compile_pipeline() {
+    StartupComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"startup.comp.glsl"},
@@ -24,16 +22,14 @@ struct StartupComputeTaskState {
             .name = "startup",
         });
         if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
-
-    StartupComputeTaskState(daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui) : pipeline_manager{a_pipeline_manager}, ui{a_ui} { compile_pipeline(); }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {
@@ -42,7 +38,6 @@ struct StartupComputeTaskState {
         }
         cmd_list.set_pipeline(*pipeline);
         cmd_list.dispatch(1, 1, 1);
-        ui.should_run_startup = false;
     }
 };
 

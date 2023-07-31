@@ -12,64 +12,12 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct DownscaleComputeTaskState {
-    daxa::PipelineManager &pipeline_manager;
-    AppUi &ui;
-    u32vec2 &render_size;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
-    std::vector<daxa::ShaderDefine> defines;
 
     void compile_pipeline() {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"downscale.comp.glsl"},
-                .compile_options = {.defines = defines},
-            },
-            .name = "downscale",
-        });
-        if (compile_result.is_err()) {
-            ui.console.add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            ui.console.add_log(compile_result.message());
-        }
     }
 
-    DownscaleComputeTaskState(
-        daxa::PipelineManager &a_pipeline_manager, AppUi &a_ui, u32vec2 &a_render_size,
-        std::vector<daxa::ShaderDefine> &&extra_defines)
-        : pipeline_manager{a_pipeline_manager}, ui{a_ui}, render_size{a_render_size}, defines{extra_defines} {
-        this->defines.push_back({"DOWNSCALE_COMPUTE", "1"});
-        compile_pipeline();
-    }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
-
-    void record_commands(daxa::CommandList &cmd_list) {
-        if (!pipeline_is_valid()) {
-            return;
-        }
-        cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
-    }
-};
-
-struct DownscaleComputeTask : DownscaleComputeUses {
-    DownscaleComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
-    }
-};
-
-struct DownscaleComputeTaskState2 {
-    std::shared_ptr<daxa::ComputePipeline> pipeline{};
-
-    DownscaleComputeTaskState2() = default;
-    DownscaleComputeTaskState2(daxa::PipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
+    DownscaleComputeTaskState(daxa::PipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
         extra_defines.push_back({"DOWNSCALE_COMPUTE", "1"});
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -79,12 +27,12 @@ struct DownscaleComputeTaskState2 {
             .name = "downscale",
         });
         if (compile_result.is_err()) {
-            AppUi::s_instance->console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
             return;
         }
         pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            AppUi::s_instance->console.add_log(compile_result.message());
+            AppUi::Console::s_instance->add_log(compile_result.message());
         }
     }
     auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
@@ -94,19 +42,18 @@ struct DownscaleComputeTaskState2 {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        constexpr auto SCL = 8 * SHADING_SCL;
-        assert((render_size.x % SCL) == 0 && (render_size.y % SCL) == 0);
-        cmd_list.dispatch(render_size.x / SCL, render_size.y / SCL);
+        assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        cmd_list.dispatch(render_size.x / 8, render_size.y / 8);
     }
 };
 
-struct DownscaleComputeTask2 : DownscaleComputeUses {
-    DownscaleComputeTaskState2 *state;
-    u32vec2 render_size;
+struct DownscaleComputeTask : DownscaleComputeUses {
+    DownscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto cmd_list = ti.get_command_list();
         cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, render_size);
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
+        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -135,29 +82,29 @@ struct DownscaleComputeTask2 : DownscaleComputeUses {
 //     return output_tex;
 // }
 
-inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskState2 &task_state, daxa::TaskImageView depth, u32vec2 render_size) -> daxa::TaskImageView {
-    auto size = ctx.render_resolution;
+// inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskState2 &task_state, daxa::TaskImageView depth, u32vec2 render_size) -> daxa::TaskImageView {
+//     auto size = ctx.render_resolution;
 
-    auto output_tex = ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R32_SFLOAT,
-        .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
-        .name = "downscaled_depth",
-    });
+//     auto output_tex = ctx.task_graph.create_transient_image({
+//         .format = daxa::Format::R32_SFLOAT,
+//         .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
+//         .name = "downscaled_depth",
+//     });
 
-    ctx.task_graph.add_task(DownscaleComputeTask2{
-        {
-            .uses = {
-                .gpu_input = *ctx.task_input_buffer,
-                .globals = *ctx.task_globals_buffer,
-                .src_image_id = depth,
-                .dst_image_id = output_tex,
-            },
-        },
-        &task_state,
-        render_size,
-    });
+//     ctx.task_graph.add_task(DownscaleComputeTask2{
+//         {
+//             .uses = {
+//                 .gpu_input = *ctx.task_input_buffer,
+//                 .globals = *ctx.task_globals_buffer,
+//                 .src_image_id = depth,
+//                 .dst_image_id = output_tex,
+//             },
+//         },
+//         &task_state,
+//         render_size,
+//     });
 
-    return output_tex;
-}
+//     return output_tex;
+// }
 
 #endif

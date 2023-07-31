@@ -65,14 +65,14 @@ struct GbufferDepth {
     PingPongImage depth;
 
     // DownscaleComputeTaskState downscale_normal_task_state{};
-    DownscaleComputeTaskState2 downscale_depth_task_state{};
+    // DownscaleComputeTaskState downscale_depth_task_state{};
     // std::optional<daxa::TaskImageView> downscaled_view_normal = std::nullopt;
-    std::optional<daxa::TaskImageView> downscaled_depth = std::nullopt;
+    // std::optional<daxa::TaskImageView> downscaled_depth = std::nullopt;
 
     void next_frame() {
         depth.task_resources.output_image.swap_images(depth.task_resources.history_image);
         // downscaled_view_normal = std::nullopt;
-        downscaled_depth = std::nullopt;
+        // downscaled_depth = std::nullopt;
     }
 
     // auto get_downscaled_view_normal(RecordContext &ctx) -> daxa::TaskImageView {
@@ -84,13 +84,13 @@ struct GbufferDepth {
     //     }
     //     return *downscaled_view_normal;
     // }
-    auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
-        if (!downscaled_depth) {
-            if (!downscale_depth_task_state.pipeline) {
-                downscale_depth_task_state = DownscaleComputeTaskState2(ctx.pipeline_manager, {{"DOWNSCALE_NRM", "1"}});
-            }
-            downscaled_depth = extract_downscaled_depth(ctx, downscale_depth_task_state, depth.task_resources.output_image, ctx.render_resolution);
-        }
-        return *downscaled_depth;
-    }
+    // auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
+    //     if (!downscaled_depth) {
+    //         if (!downscale_depth_task_state.pipeline) {
+    //             downscale_depth_task_state = DownscaleComputeTaskState(ctx.pipeline_manager, {{"DOWNSCALE_NRM", "1"}});
+    //         }
+    //         downscaled_depth = extract_downscaled_depth(ctx, downscale_depth_task_state, depth.task_resources.output_image, ctx.render_resolution);
+    //     }
+    //     return *downscaled_depth;
+    // }
 };
