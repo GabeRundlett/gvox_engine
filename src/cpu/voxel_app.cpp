@@ -204,8 +204,10 @@ VoxelApp::VoxelApp()
               .use_custom_config = false,
           });
       }()},
-      gbuffer_depth{main_pipeline_manager},
+      gbuffer_renderer{main_pipeline_manager},
+      reprojection_renderer{main_pipeline_manager},
       ssao_renderer{main_pipeline_manager, gpu_resources.final_image_sampler},
+      shadow_renderer{main_pipeline_manager},
       gpu_resources{},
       // clang-format off
       startup_task_state{main_pipeline_manager},
@@ -214,11 +216,6 @@ VoxelApp::VoxelApp()
       chunk_opt_x2x4_task_state{main_pipeline_manager},
       chunk_opt_x8up_task_state{main_pipeline_manager},
       chunk_alloc_task_state{main_pipeline_manager},
-      calculate_reprojection_map_task_state{main_pipeline_manager},
-      trace_depth_prepass_task_state{main_pipeline_manager},
-      trace_primary_task_state{main_pipeline_manager},
-      trace_secondary_task_state{main_pipeline_manager},
-      upscale_reconstruct_task_state{main_pipeline_manager},
       postprocessing_task_state{main_pipeline_manager, gpu_resources.final_image_sampler, swapchain.get_format()},
       per_chunk_task_state{main_pipeline_manager},
       voxel_particle_sim_task_state{main_pipeline_manager},
@@ -633,10 +630,9 @@ void VoxelApp::on_update() {
     // task_render_pos_image.swap_images(task_render_prev_pos_image);
     // task_render_col_image.swap_images(task_render_prev_col_image);
 
-    gbuffer_depth.next_frame();
+    gbuffer_renderer.next_frame();
     ssao_renderer.next_frame();
-
-    shading_image_pp.task_resources.output_image.swap_images(shading_image_pp.task_resources.history_image);
+    shadow_renderer.next_frame();
 
     auto t1 = Clock::now();
     ui.update(gpu_input.delta_time, std::chrono::duration<f32>(t1 - t0).count());
@@ -1203,161 +1199,30 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .device = this->device,
         .task_graph = result_task_graph,
         .render_resolution = gpu_input.rounded_frame_dim,
+        .task_blue_noise_vec2_image = task_blue_noise_vec2_image,
         .task_input_buffer = task_input_buffer,
         .task_globals_buffer = task_globals_buffer,
     };
 
-    auto velocity_image = [&]() {
-        gbuffer_depth = GbufferDepth{main_pipeline_manager};
-
-        gbuffer_depth.gbuffer = result_task_graph.create_transient_image({
-            .format = daxa::Format::R32G32B32A32_UINT,
-            .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-            .name = "gbuffer",
-        });
-        gbuffer_depth.geometric_normal = result_task_graph.create_transient_image({
-            .format = daxa::Format::A2B10G10R10_UNORM_PACK32,
-            .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-            .name = "normal",
-        });
-
-        auto [depth_image, prev_depth_image] = gbuffer_depth.depth.get(
-            device,
-            {
-                .format = daxa::Format::R32_SFLOAT,
-                .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-                .name = "depth_image",
-            });
-
-        result_task_graph.use_persistent_image(depth_image);
-        result_task_graph.use_persistent_image(prev_depth_image);
-
-        auto velocity_image = result_task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-            .name = "velocity_image",
-        });
-
-        auto depth_prepass_image = result_task_graph.create_transient_image({
-            .format = daxa::Format::R32_SFLOAT,
-            .size = {gpu_input.rounded_frame_dim.x / PREPASS_SCL, gpu_input.rounded_frame_dim.y / PREPASS_SCL, 1},
-            .name = "depth_prepass_image",
-        });
-
-        result_task_graph.add_task(TraceDepthPrepassComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
-                    .blue_noise_vec2 = task_blue_noise_vec2_image,
-                    .render_depth_prepass_image = depth_prepass_image,
-                },
-            },
-            &trace_depth_prepass_task_state,
-            // gpu_input.rounded_frame_dim,
-        });
-
-        result_task_graph.add_task(TracePrimaryComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
-                    .blue_noise_vec2 = task_blue_noise_vec2_image,
-                    .render_depth_prepass_image = depth_prepass_image,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                    .velocity_image_id = velocity_image,
-                    .depth_image_id = depth_image,
-                },
-            },
-            &trace_primary_task_state,
-            // gpu_input.rounded_frame_dim,
-        });
-
-        return velocity_image;
-    }();
-
-    auto reprojection_map = [&]() {
-        auto reprojection_image = result_task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-            .name = "reprojection_image",
-        });
-        result_task_graph.add_task(CalculateReprojectionMapComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
-                    .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_image,
-                    .velocity_image_id = velocity_image,
-                    .dst_image_id = reprojection_image,
-                },
-            },
-            &calculate_reprojection_map_task_state,
-        });
-        return reprojection_image;
-    }();
-
+    auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
+    auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
     auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
+    auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
 
-    auto shading_image = [&]() {
-        auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
-        shading_image_pp = PingPongImage{};
-        auto [shading_image, prev_shading_image] = shading_image_pp.get(
-            device,
-            {
-                .format = daxa::Format::R16G16B16A16_SFLOAT,
-                .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
-                .name = "shading_image",
-            });
-        auto scaled_shading_image = result_task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {gpu_input.rounded_frame_dim.x / SHADING_SCL, gpu_input.rounded_frame_dim.y / SHADING_SCL, 1},
-            .name = "scaled_shading_image",
-        });
-        result_task_graph.use_persistent_image(shading_image);
-        result_task_graph.use_persistent_image(prev_shading_image);
-        result_task_graph.add_task(TraceSecondaryComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
-                    .blue_noise_vec2 = task_blue_noise_vec2_image,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .depth_image_id = scaled_depth_image,
-                    .indirect_diffuse_image_id = scaled_shading_image,
-                },
-            },
-            &trace_secondary_task_state,
-        });
-
-        result_task_graph.add_task(UpscaleReconstructComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
-                    .reprojection_image_id = reprojection_map,
-                    .scaled_shading_image = scaled_shading_image,
-                    .src_image_id = prev_shading_image,
-                    .dst_image_id = shading_image,
-                },
-            },
-            &upscale_reconstruct_task_state,
-        });
-
-        return daxa::TaskImageView{shading_image};
-    }();
+    // auto composited_image = [](RecordContext &record_ctx) {
+    //     record_ctx.task_graph.add_task(PostprocessingRasterTask{
+    //         {
+    //             .uses = {
+    //                 .gpu_input = task_input_buffer,
+    //                 .g_buffer_image_id = gbuffer_depth.gbuffer,
+    //                 .ssao_image_id = ssao_image,
+    //                 .shading_image_id = shading_image,
+    //                 .render_image = task_swapchain_image,
+    //             },
+    //         },
+    //         &postprocessing_task_state,
+    //     });
+    // }(record_ctx);
 
     result_task_graph.add_task(PostprocessingRasterTask{
         {

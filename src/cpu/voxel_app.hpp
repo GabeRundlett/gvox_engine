@@ -59,10 +59,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AppUi ui;
     daxa::ImGuiRenderer imgui_renderer;
 
-    GbufferDepth gbuffer_depth;
+    GbufferRenderer gbuffer_renderer;
+    ReprojectionRenderer reprojection_renderer;
     SsaoRenderer ssao_renderer;
-    PingPongImage ssao_image_pp;
-    PingPongImage shading_image_pp;
+    ShadowRenderer shadow_renderer;
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
 
@@ -86,11 +86,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ChunkOpt_x2x4_ComputeTaskState chunk_opt_x2x4_task_state;
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
     ChunkAllocComputeTaskState chunk_alloc_task_state;
-    CalculateReprojectionMapComputeTaskState calculate_reprojection_map_task_state;
-    TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
-    TracePrimaryComputeTaskState trace_primary_task_state;
-    TraceSecondaryComputeTaskState trace_secondary_task_state;
-    UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
     PostprocessingRasterTaskState postprocessing_task_state;
     PerChunkComputeTaskState per_chunk_task_state;
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;

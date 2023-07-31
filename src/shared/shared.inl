@@ -28,29 +28,13 @@
 #include <shared/tasks/voxel_particle_sim.inl>
 #endif
 
-#if CALCULATE_REPROJECTION_MAP_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/calculate_reprojection_map.inl>
-#endif
-#if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/trace_depth_prepass.inl>
-#endif
-#if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/trace_primary.inl>
-#endif
-#if DOWNSCALE_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/downscale.inl>
-#endif
-#if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/trace_secondary.inl>
-#endif
-#if UPSCALE_RECONSTRUCT_COMPUTE || defined(__cplusplus)
-#include <shared/tasks/renderer/upscale_reconstruct.inl>
-#endif
-#if POSTPROCESSING_RASTER || defined(__cplusplus)
-#include <shared/tasks/renderer/postprocessing.inl>
-#endif
 #if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
 #include <shared/tasks/renderer/voxel_particle_raster.inl>
 #endif
 
+#include <shared/tasks/renderer/downscale.inl>
+#include <shared/tasks/renderer/trace_primary.inl>
+#include <shared/tasks/renderer/calculate_reprojection_map.inl>
 #include <shared/tasks/renderer/ssao.inl>
+#include <shared/tasks/renderer/trace_secondary.inl>
+#include <shared/tasks/renderer/postprocessing.inl>

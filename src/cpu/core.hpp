@@ -18,6 +18,7 @@ struct RecordContext {
     daxa::TaskGraph task_graph;
     u32vec2 render_resolution;
 
+    daxa::TaskImageView task_blue_noise_vec2_image;
     daxa::TaskBufferView task_input_buffer;
     daxa::TaskBufferView task_globals_buffer;
 };

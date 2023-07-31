@@ -2,6 +2,7 @@
 
 #include <shared/core.inl>
 
+#if POSTPROCESSING_RASTER || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(PostprocessingRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRITE)
@@ -10,6 +11,7 @@ DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, FRAGMENT_SHADER_STORAGE_READ_WRIT
 DAXA_TASK_USE_IMAGE(shading_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
+#endif
 
 struct PostprocessingRasterPush {
     daxa_SamplerId final_sampler;
