@@ -1,5 +1,6 @@
 #include "app_ui.hpp"
 
+#include <imgui_stdlib.h>
 #include <imgui_impl_glfw.h>
 #include <fmt/format.h>
 #include <sago/platform_folders.h>
@@ -593,7 +594,7 @@ void AppUi::settings_controls_ui() {
                         } else {
                             settings.keybinds.erase(limbo_key_index);
                         }
-                        limbo_action_index = GAME_ACTION_LAST + 1;
+                        limbo_action_index = INVALID_GAME_ACTION;
                     } else {
                         auto resolve_action = [this](i32 key_i, std::map<i32, i32> &bindings, bool contains_override) {
                             // set new key
@@ -635,7 +636,7 @@ void AppUi::settings_controls_ui() {
                                 bindings[key_i] = limbo_action_index;
                                 needs_saving = true;
                             }
-                            limbo_action_index = GAME_ACTION_LAST + 1;
+                            limbo_action_index = INVALID_GAME_ACTION;
                         };
                         for (i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
                             auto key_state = glfwGetKey(glfw_window_ptr, key_i);
@@ -644,7 +645,7 @@ void AppUi::settings_controls_ui() {
                                 break;
                             }
                         }
-                        if (limbo_action_index != GAME_ACTION_LAST + 1) {
+                        if (limbo_action_index != INVALID_GAME_ACTION) {
                             for (i32 button_i = 0; button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++button_i) {
                                 auto key_state = glfwGetMouseButton(glfw_window_ptr, button_i);
                                 if (key_state != GLFW_RELEASE) {
@@ -685,7 +686,7 @@ void AppUi::settings_controls_ui() {
                     }
                     auto key_str = std::string{key_name} + "##" + std::to_string(i);
                     if (ImGui::Button(key_str.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
-                        if (limbo_action_index == GAME_ACTION_LAST + 1) {
+                        if (limbo_action_index == INVALID_GAME_ACTION) {
                             limbo_action_index = static_cast<i32>(i);
                             limbo_key_index = temp_limbo_key_index;
                             limbo_is_button = temp_limbo_is_button;

@@ -95,7 +95,7 @@ void main() {
         return;
     }
 
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
     f32vec3 v_vs = -normalize(ray_dir_vs(view_ray_context));
 
     f32vec4 ray_hit_cs = view_ray_context.ray_hit_cs;

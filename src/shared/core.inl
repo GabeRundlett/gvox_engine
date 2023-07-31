@@ -36,15 +36,17 @@
 #define L1_CHUNK_SIZE (L2_CHUNK_SIZE * 8)
 #define L0_CHUNK_SIZE (L1_CHUNK_SIZE * 8)
 
+#define USE_POINTS 0
+#define PREPASS_SCL 2
+#define SHADING_SCL 2
+
 #if defined(__cplusplus)
 #include <cpu/core.hpp>
+#include <cpu/renderer/core.hpp>
+#include <cpu/app_ui.hpp>
 #define CPU_ONLY(x) x
 #define GPU_ONLY(x)
 #else
 #define CPU_ONLY(x)
 #define GPU_ONLY(x) x
 #endif
-
-#define USE_POINTS 0
-#define PREPASS_SCL 2
-#define SHADING_SCL 2

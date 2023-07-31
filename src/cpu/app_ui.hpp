@@ -5,19 +5,18 @@ struct ImFont;
 
 #include "app_settings.hpp"
 #include <imgui.h>
-#include <imgui_stdlib.h>
 #include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
 
 #include <gvox/gvox.h>
 
-#include <shared/input.inl>
-
 struct ChunkHierarchyJobCounters {
     u32 available_threads_queue_top;
     u32 available_threads_queue_bottom;
 };
+
+#define INVALID_GAME_ACTION (-1)
 
 struct AppUi {
     struct Console {
@@ -48,6 +47,8 @@ struct AppUi {
 
     AppUi(GLFWwindow *glfw_window_ptr);
     ~AppUi();
+
+    inline static AppUi *s_instance = nullptr;
 
     AppSettings settings;
 
@@ -83,7 +84,7 @@ struct AppUi {
 
     u32 conflict_resolution_mode = 0;
     i32 new_key_id{};
-    i32 limbo_action_index = GAME_ACTION_LAST + 1;
+    i32 limbo_action_index = INVALID_GAME_ACTION;
     i32 limbo_key_index = GLFW_KEY_LAST + 1;
     bool limbo_is_button = false;
 

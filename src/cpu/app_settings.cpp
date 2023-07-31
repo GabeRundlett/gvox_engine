@@ -3,6 +3,8 @@
 #include <fmt/format.h>
 #include <fstream>
 
+#include <shared/input.inl>
+
 void AppSettings::save(std::filesystem::path const &filepath) {
     auto json = nlohmann::json{};
 

@@ -95,13 +95,12 @@ struct AppWindow {
                 return version_info.dwMajorVersion >= 10 && version_info.dwBuildNumber >= 22000;
             };
             if (!is_windows11_or_greater()) {
-                PostMessage(hwnd, WM_NCACTIVATE, FALSE, 0);
-                PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
-                MSG msg;
-                while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
-                    TranslateMessage(&msg);
-                    DispatchMessage(&msg);
-                }
+                MSG msg{.hwnd = hwnd, .message = WM_NCACTIVATE, .wParam = FALSE, .lParam = 0};
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+                msg.wParam = TRUE;
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
             }
         }
 #endif

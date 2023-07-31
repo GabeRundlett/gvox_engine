@@ -24,15 +24,8 @@ struct RenderImages {
     daxa::ImageId raster_color_image;
     daxa::ImageId raster_depth_image;
 
-    daxa::ImageId g_buffer_image;
-    daxa::ImageId velocity_image;
     daxa::ImageId reprojection_image;
 
-    daxa::ImageId depth32_image;
-    daxa::ImageId prev_depth32_image;
-    daxa::ImageId scaled_depth32_image;
-    daxa::ImageId vs_normal_image_id;
-    daxa::ImageId scaled_vs_normal_image;
     std::array<daxa::ImageId, 2> scaled_ssao_images;
     std::array<daxa::ImageId, 2> ssao_images;
     daxa::ImageId temp_ssao_image;
@@ -106,6 +99,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AppUi ui;
     daxa::ImGuiRenderer imgui_renderer;
 
+    GbufferDepth gbuffer_depth;
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
 
@@ -113,16 +107,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_raster_color_image{{.name = "task_render_raster_color_image"}};
     daxa::TaskImage task_render_raster_depth_image{{.name = "task_render_raster_depth_image"}};
 
-    daxa::TaskImage task_render_g_buffer_image{{.name = "task_render_g_buffer_image"}};
-    daxa::TaskImage task_render_velocity_image{{.name = "task_render_velocity_image"}};
     daxa::TaskImage task_render_reprojection_image{{.name = "task_render_reprojection_image"}};
 
-    daxa::TaskImage task_render_depth32_image{{.name = "task_render_depth32_image"}};
-    daxa::TaskImage task_render_prev_depth32_image{{.name = "task_render_prev_depth32_image"}};
-    daxa::TaskImage task_render_scaled_depth32_image{{.name = "task_render_scaled_depth32_image"}};
-    daxa::TaskImage task_render_vs_normal_image{{.name = "task_render_vs_normal_image"}};
-    daxa::TaskImage task_render_scaled_vs_normal_image{{.name = "task_render_scaled_vs_normal_image"}};
-    std::array<daxa::TaskImage, 2> task_render_scaled_ssao_images{daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}, daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}};
+    std::array<daxa::TaskImage, 2> task_render_scaled_ssao_images{daxa::TaskImage{{.name = "task_render_scaled_ssao_image"}}, daxa::TaskImage{{.name = "task_render_scaled_ssao_image2"}}};
     daxa::TaskImage task_render_ssao_image{{.name = "task_render_ssao_image"}};
     daxa::TaskImage task_render_prev_ssao_image{{.name = "task_render_prev_ssao_image"}};
     daxa::TaskImage task_render_temp_ssao_image{{.name = "task_render_temp_ssao_image"}};
@@ -132,10 +119,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_render_reconstructed_shading_image{{.name = "task_render_reconstructed_shading_image"}};
 
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
-    daxa::TaskImage task_blue_noise_vec1_image{{.name = "task_blue_noise_vec1_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
-    daxa::TaskImage task_blue_noise_unit_vec3_image{{.name = "task_blue_noise_unit_vec3_image"}};
-    daxa::TaskImage task_blue_noise_cosine_vec3_image{{.name = "task_blue_noise_cosine_vec3_image"}};
 
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};

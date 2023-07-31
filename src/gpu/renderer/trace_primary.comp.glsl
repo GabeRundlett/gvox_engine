@@ -69,7 +69,7 @@ void main() {
     }
 
     imageStore(daxa_uimage2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy), output_value);
-    imageStore(daxa_image2D(vs_normal_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_nrm.zyx * 0.5 + 0.5, 0));
+    imageStore(daxa_image2D(vs_normal_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_nrm * 0.5 + 0.5, 0));
     imageStore(daxa_image2D(velocity_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_velocity, 0));
     imageStore(daxa_image2D(depth_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(depth, 0, 0, 0));
 }

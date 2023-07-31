@@ -48,55 +48,11 @@ void RenderImages::create(daxa::Device &device) {
         .name = "raster_depth_image",
     });
 
-    g_buffer_image = device.create_image({
-        .format = daxa::Format::R32G32B32A32_UINT,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
-        .name = "g_buffer_image",
-    });
-    velocity_image = device.create_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
-        .name = "velocity_image",
-    });
     reprojection_image = device.create_image({
         .format = daxa::Format::R16G16B16A16_SNORM,
         .size = {rounded_size.x, rounded_size.y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "reprojection_image",
-    });
-
-    depth32_image = device.create_image({
-        .format = daxa::Format::R32_SFLOAT,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-        .name = "depth32_image",
-    });
-    prev_depth32_image = device.create_image({
-        .format = daxa::Format::R32_SFLOAT,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-        .name = "prev_depth32_image",
-    });
-    scaled_depth32_image = device.create_image({
-        .format = daxa::Format::R32_SFLOAT,
-        .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .name = "scaled_depth32_image",
-    });
-
-    vs_normal_image_id = device.create_image({
-        .format = daxa::Format::A2R10G10B10_UNORM_PACK32,
-        .size = {rounded_size.x, rounded_size.y, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-        .name = "vs_normal_image_id",
-    });
-    scaled_vs_normal_image = device.create_image({
-        .format = daxa::Format::R8G8B8A8_SNORM,
-        .size = {rounded_size.x / SHADING_SCL, rounded_size.y / SHADING_SCL, 1},
-        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .name = "scaled_vs_normal_image",
     });
 
     for (auto &ssao_image : scaled_ssao_images) {
@@ -141,14 +97,7 @@ void RenderImages::destroy(daxa::Device &device) const {
     device.destroy_image(depth_prepass_image);
     device.destroy_image(raster_color_image);
     device.destroy_image(raster_depth_image);
-    device.destroy_image(g_buffer_image);
-    device.destroy_image(velocity_image);
     device.destroy_image(reprojection_image);
-    device.destroy_image(depth32_image);
-    device.destroy_image(prev_depth32_image);
-    device.destroy_image(scaled_depth32_image);
-    device.destroy_image(vs_normal_image_id);
-    device.destroy_image(scaled_vs_normal_image);
     for (auto &ssao_image : scaled_ssao_images) {
         device.destroy_image(ssao_image);
     }
@@ -167,21 +116,7 @@ void VoxelApp::set_task_render_images() {
     task_render_raster_depth_image.set_images({.images = std::array{gpu_resources.render_images.raster_depth_image}});
 
     task_render_depth_prepass_image.set_images({.images = std::array{gpu_resources.render_images.depth_prepass_image}});
-
-    task_render_g_buffer_image.set_images({.images = std::array{gpu_resources.render_images.g_buffer_image}});
-    task_render_velocity_image.set_images({.images = std::array{gpu_resources.render_images.velocity_image}});
     task_render_reprojection_image.set_images({.images = std::array{gpu_resources.render_images.reprojection_image}});
-
-    if ((gpu_input.frame_index % 2) == 0) {
-        task_render_depth32_image.set_images({.images = std::array{gpu_resources.render_images.depth32_image}});
-        task_render_prev_depth32_image.set_images({.images = std::array{gpu_resources.render_images.prev_depth32_image}});
-    } else {
-        task_render_depth32_image.set_images({.images = std::array{gpu_resources.render_images.prev_depth32_image}});
-        task_render_prev_depth32_image.set_images({.images = std::array{gpu_resources.render_images.depth32_image}});
-    }
-    task_render_scaled_depth32_image.set_images({.images = std::array{gpu_resources.render_images.scaled_depth32_image}});
-    task_render_vs_normal_image.set_images({.images = std::array{gpu_resources.render_images.vs_normal_image_id}});
-    task_render_scaled_vs_normal_image.set_images({.images = std::array{gpu_resources.render_images.scaled_vs_normal_image}});
     task_render_scaled_ssao_images[0].set_images({.images = std::array{gpu_resources.render_images.scaled_ssao_images[0]}});
     task_render_scaled_ssao_images[1].set_images({.images = std::array{gpu_resources.render_images.scaled_ssao_images[1]}});
     task_render_ssao_image.set_images({.images = std::array{gpu_resources.render_images.ssao_images[gpu_input.frame_index % 2]}});
@@ -434,16 +369,10 @@ VoxelApp::VoxelApp()
             .device = device,
             .name = "temp_task_graph",
         });
-        temp_task_graph.use_persistent_image(task_blue_noise_vec1_image);
         temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
-        temp_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
-        temp_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
         temp_task_graph.add_task({
             .uses = {
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec1_image},
                 daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec2_image},
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_unit_vec3_image},
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_cosine_vec3_image},
             },
             .task = [this](daxa::TaskInterface task_runtime) {
                 auto staging_buffer = device.create_buffer({
@@ -619,14 +548,7 @@ void VoxelApp::calc_vram_usage() {
     image_size(gpu_resources.render_images.depth_prepass_image);
     image_size(gpu_resources.render_images.raster_color_image);
     image_size(gpu_resources.render_images.raster_depth_image);
-    image_size(gpu_resources.render_images.g_buffer_image);
-    image_size(gpu_resources.render_images.velocity_image);
     image_size(gpu_resources.render_images.reprojection_image);
-    image_size(gpu_resources.render_images.depth32_image);
-    image_size(gpu_resources.render_images.prev_depth32_image);
-    image_size(gpu_resources.render_images.scaled_depth32_image);
-    image_size(gpu_resources.render_images.vs_normal_image_id);
-    image_size(gpu_resources.render_images.scaled_vs_normal_image);
     for (auto const &ssao_image : gpu_resources.render_images.scaled_ssao_images) {
         image_size(ssao_image);
     }
@@ -771,8 +693,8 @@ void VoxelApp::on_update() {
     gpu_input.time = std::chrono::duration<f32>(now - start).count();
     gpu_input.delta_time = std::chrono::duration<f32>(now - prev_time).count();
     prev_time = now;
-    gpu_input.frame_dim = gpu_resources.render_images.size;
-    gpu_input.rounded_frame_dim = gpu_resources.render_images.rounded_size;
+    // gpu_input.frame_dim = gpu_resources.render_images.size;
+    // gpu_input.rounded_frame_dim = gpu_resources.render_images.rounded_size;
     gpu_input.render_res_scl = ui.settings.render_res_scl;
     gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
     gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f);
@@ -865,7 +787,10 @@ void VoxelApp::on_update() {
     // task_render_pos_image.swap_images(task_render_prev_pos_image);
     // task_render_col_image.swap_images(task_render_prev_col_image);
     task_render_reconstructed_shading_image.swap_images(task_render_prev_reconstructed_shading_image);
-    task_render_depth32_image.swap_images(task_render_prev_depth32_image);
+
+    gbuffer_depth.next_frame();
+    // ssao_image_pp.task_resources.output_image.swap_images(ssao_image_pp.task_resources.history_image);
+
     task_render_ssao_image.swap_images(task_render_prev_ssao_image);
     ++gpu_input.frame_index;
 }
@@ -873,7 +798,7 @@ void VoxelApp::on_mouse_move(f32 x, f32 y) {
     f32vec2 const center = {static_cast<f32>(window_size.x / 2), static_cast<f32>(window_size.y / 2)};
     gpu_input.mouse.pos = f32vec2{x, y};
     auto offset = gpu_input.mouse.pos - center;
-    gpu_input.mouse.pos = gpu_input.mouse.pos *f32vec2{static_cast<f32>(gpu_resources.render_images.size.x), static_cast<f32>(gpu_resources.render_images.size.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
+    gpu_input.mouse.pos = gpu_input.mouse.pos *f32vec2{static_cast<f32>(gpu_input.frame_dim.x), static_cast<f32>(gpu_input.frame_dim.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
     if (!ui.paused) {
         gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
         set_mouse_pos(center.x, center.y);
@@ -892,7 +817,7 @@ void VoxelApp::on_mouse_button(i32 button_id, i32 action) {
     if (io.WantCaptureMouse) {
         return;
     }
-    if (ui.limbo_action_index != GAME_ACTION_LAST + 1) {
+    if (ui.limbo_action_index != INVALID_GAME_ACTION) {
         return;
     }
 
@@ -905,7 +830,7 @@ void VoxelApp::on_key(i32 key_id, i32 action) {
     if (io.WantCaptureKeyboard) {
         return;
     }
-    if (ui.limbo_action_index != GAME_ACTION_LAST + 1) {
+    if (ui.limbo_action_index != INVALID_GAME_ACTION) {
         return;
     }
 
@@ -951,6 +876,7 @@ void VoxelApp::on_resize(u32 sx, u32 sy) {
             gpu_resources.render_images.size.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
             recreate_render_images();
         }
+        main_task_graph = record_main_task_graph();
         gpu_input.resize_factor = 0.0f;
         on_update();
     }
@@ -1239,6 +1165,10 @@ void VoxelApp::dynamic_buffers_realloc(daxa::TaskGraph &) {
 // PostprocessingTask            [Render]
 // ImGui draw                    [GUI Render]
 auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
+    gpu_input.frame_dim.x = static_cast<u32>(static_cast<f32>(window_size.x) * render_res_scl);
+    gpu_input.frame_dim.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
+    gpu_input.rounded_frame_dim = round_frame_dim(gpu_input.frame_dim);
+
     daxa::TaskGraph result_task_graph = daxa::TaskGraph({
         .device = device,
         .swapchain = swapchain,
@@ -1247,10 +1177,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     });
 
     result_task_graph.use_persistent_image(task_value_noise_image);
-    result_task_graph.use_persistent_image(task_blue_noise_vec1_image);
     result_task_graph.use_persistent_image(task_blue_noise_vec2_image);
-    result_task_graph.use_persistent_image(task_blue_noise_unit_vec3_image);
-    result_task_graph.use_persistent_image(task_blue_noise_cosine_vec3_image);
     task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
     task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
 
@@ -1284,14 +1211,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     result_task_graph.use_persistent_image(task_render_depth_prepass_image);
     result_task_graph.use_persistent_image(task_render_raster_color_image);
     result_task_graph.use_persistent_image(task_render_raster_depth_image);
-    result_task_graph.use_persistent_image(task_render_g_buffer_image);
-    result_task_graph.use_persistent_image(task_render_velocity_image);
     result_task_graph.use_persistent_image(task_render_reprojection_image);
-    result_task_graph.use_persistent_image(task_render_depth32_image);
-    result_task_graph.use_persistent_image(task_render_prev_depth32_image);
-    result_task_graph.use_persistent_image(task_render_scaled_depth32_image);
-    result_task_graph.use_persistent_image(task_render_vs_normal_image);
-    result_task_graph.use_persistent_image(task_render_scaled_vs_normal_image);
     result_task_graph.use_persistent_image(task_render_scaled_ssao_images[0]);
     result_task_graph.use_persistent_image(task_render_scaled_ssao_images[1]);
     result_task_graph.use_persistent_image(task_render_prev_ssao_image);
@@ -1458,78 +1378,156 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     });
 #endif
 
-    // TraceDepthPrepassTask
-    result_task_graph.add_task(TraceDepthPrepassComputeTask{
-        {
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                .voxel_chunks = task_voxel_chunks_buffer,
-                .blue_noise_vec2 = task_blue_noise_vec2_image,
-                .render_depth_prepass_image = task_render_depth_prepass_image,
-            },
-        },
-        &trace_depth_prepass_task_state,
-    });
+    auto velocity_image = [&]() {
+        gbuffer_depth = GbufferDepth{
+            .gbuffer = result_task_graph.create_transient_image({
+                .format = daxa::Format::R32G32B32A32_UINT,
+                .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
+                .name = "gbuffer",
+            }),
+            .geometric_normal = result_task_graph.create_transient_image({
+                .format = daxa::Format::A2B10G10R10_UNORM_PACK32,
+                .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
+                .name = "normal",
+            }),
+        };
 
-    // TracePrimaryTask
-    result_task_graph.add_task(TracePrimaryComputeTask{
-        {
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                .voxel_chunks = task_voxel_chunks_buffer,
-                .blue_noise_vec2 = task_blue_noise_vec2_image,
-                .render_depth_prepass_image = task_render_depth_prepass_image,
-                .g_buffer_image_id = task_render_g_buffer_image,
-                .vs_normal_image_id = task_render_vs_normal_image,
-                .velocity_image_id = task_render_velocity_image,
-                .depth_image_id = task_render_depth32_image,
+        auto [depth_image, prev_depth_image] = gbuffer_depth.depth.get(
+            device,
+            {
+                .format = daxa::Format::R32_SFLOAT,
+                .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
+                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+                .name = "depth_image",
+            });
+
+        result_task_graph.use_persistent_image(depth_image);
+        result_task_graph.use_persistent_image(prev_depth_image);
+
+        auto velocity_image = result_task_graph.create_transient_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {gpu_input.rounded_frame_dim.x, gpu_input.rounded_frame_dim.y, 1},
+            .name = "velocity_image",
+        });
+
+        auto depth_prepass_image = result_task_graph.create_transient_image({
+            .format = daxa::Format::R32_SFLOAT,
+            .size = {gpu_input.rounded_frame_dim.x / PREPASS_SCL, gpu_input.rounded_frame_dim.y / PREPASS_SCL, 1},
+            .name = "depth_prepass_image",
+        });
+
+        result_task_graph.add_task(TraceDepthPrepassComputeTask{
+            {
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .globals = task_globals_buffer,
+                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
+                    .voxel_chunks = task_voxel_chunks_buffer,
+                    .blue_noise_vec2 = task_blue_noise_vec2_image,
+                    .render_depth_prepass_image = depth_prepass_image,
+                },
             },
-        },
-        &trace_primary_task_state,
-    });
+            &trace_depth_prepass_task_state,
+            // gpu_input.rounded_frame_dim,
+        });
+
+        result_task_graph.add_task(TracePrimaryComputeTask{
+            {
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .globals = task_globals_buffer,
+                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
+                    .voxel_chunks = task_voxel_chunks_buffer,
+                    .blue_noise_vec2 = task_blue_noise_vec2_image,
+                    .render_depth_prepass_image = depth_prepass_image,
+                    .g_buffer_image_id = gbuffer_depth.gbuffer,
+                    .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                    .velocity_image_id = velocity_image,
+                    .depth_image_id = depth_image,
+                },
+            },
+            &trace_primary_task_state,
+            // gpu_input.rounded_frame_dim,
+        });
+
+        return velocity_image;
+    }();
 
     result_task_graph.add_task(CalculateReprojectionMapComputeTask{
         {
             .uses = {
                 .gpu_input = task_input_buffer,
                 .globals = task_globals_buffer,
-                .vs_normal_image_id = task_render_vs_normal_image,
-                .depth_image_id = task_render_depth32_image,
-                .prev_depth_image_id = task_render_prev_depth32_image,
-                .velocity_image_id = task_render_velocity_image,
+                // .vs_normal_image_id = task_render_vs_normal_image,
+                // .depth_image_id = task_render_depth32_image,
+                // .prev_depth_image_id = task_render_prev_depth32_image,
+                // .velocity_image_id = task_render_velocity_image,
+
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
+                .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_image,
+                .velocity_image_id = velocity_image,
+
                 .dst_image_id = task_render_reprojection_image,
             },
         },
         &calculate_reprojection_map_task_state,
     });
 
-    result_task_graph.add_task(DownscaleComputeTask{
-        {
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                .src_image_id = task_render_depth32_image,
-                .dst_image_id = task_render_scaled_depth32_image,
-            },
-        },
-        &downscale_depth_task_state,
-    });
+    // auto record_ctx = RecordContext{
+    //     .device = this->device,
+    //     .pipeline_manager = main_pipeline_manager,
+    //     .task_graph = result_task_graph,
+    //     .render_resolution = gpu_input.rounded_frame_dim,
+    //     .task_input_buffer = &task_input_buffer,
+    //     .task_globals_buffer = &task_globals_buffer,
+    // };
 
-    result_task_graph.add_task(DownscaleComputeTask{
-        {
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                .src_image_id = task_render_g_buffer_image,
-                .dst_image_id = task_render_scaled_vs_normal_image,
+    // auto task_render_scaled_depth32_image = gbuffer_depth.get_downscaled_depth(record_ctx);
+
+    auto task_render_scaled_depth32_image = [&]() {
+        auto output_tex = result_task_graph.create_transient_image({
+            .format = daxa::Format::R32_SFLOAT,
+            .size = {gpu_input.rounded_frame_dim.x / SHADING_SCL, gpu_input.rounded_frame_dim.y / SHADING_SCL, 1},
+            .name = "downscaled_depth",
+        });
+
+        result_task_graph.add_task(DownscaleComputeTask{
+            {
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .globals = task_globals_buffer,
+                    .src_image_id = gbuffer_depth.depth.task_resources.output_image,
+                    .dst_image_id = output_tex,
+                },
             },
-        },
-        &downscale_normal_task_state,
-    });
+            &downscale_depth_task_state,
+        });
+
+        return output_tex;
+    }();
+
+    auto task_render_scaled_vs_normal_image = [&]() {
+        auto output_tex = result_task_graph.create_transient_image({
+            .format = daxa::Format::R8G8B8A8_SNORM,
+            .size = {gpu_input.rounded_frame_dim.x / SHADING_SCL, gpu_input.rounded_frame_dim.y / SHADING_SCL, 1},
+            .name = "downscaled_normal",
+        });
+
+        result_task_graph.add_task(DownscaleComputeTask{
+            {
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .globals = task_globals_buffer,
+                    .src_image_id = gbuffer_depth.gbuffer,
+                    .dst_image_id = output_tex,
+                },
+            },
+            &downscale_normal_task_state,
+        });
+
+        return output_tex;
+    }();
 
     result_task_graph.add_task(SsaoComputeTask{
         {
@@ -1559,8 +1557,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         {
             .uses = {
                 .gpu_input = task_input_buffer,
-                .g_buffer_image_id = task_render_g_buffer_image,
-                .depth_image_id = task_render_depth32_image,
+                .g_buffer_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
                 .src_image_id = task_render_scaled_ssao_images[1],
                 .dst_image_id = task_render_temp_ssao_image,
             },
@@ -1588,7 +1586,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
                 .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
                 .voxel_chunks = task_voxel_chunks_buffer,
                 .blue_noise_vec2 = task_blue_noise_vec2_image,
-                .g_buffer_image_id = task_render_g_buffer_image,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
                 .depth_image_id = task_render_scaled_depth32_image,
                 .indirect_diffuse_image_id = task_render_indirect_diffuse_image,
             },
@@ -1601,7 +1599,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
             .uses = {
                 .gpu_input = task_input_buffer,
                 .globals = task_globals_buffer,
-                .depth_image_id = task_render_depth32_image,
+                .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
                 .reprojection_image_id = task_render_reprojection_image,
                 .ssao_image_id = task_render_scaled_ssao_images[1],
                 .indirect_diffuse_image_id = task_render_indirect_diffuse_image,
@@ -1640,10 +1638,10 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         {
             .uses = {
                 .gpu_input = task_input_buffer,
-                .g_buffer_image_id = task_render_g_buffer_image,
-                .particles_image_id = task_render_raster_color_image,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .particles_image_id = task_render_scaled_ssao_images[0],
                 .ssao_image_id = task_render_ssao_image,
-                .indirect_diffuse_image_id = task_render_indirect_diffuse_image,
+                .indirect_diffuse_image_id = task_render_reprojection_image,
                 .reconstructed_shading_image_id = task_render_reconstructed_shading_image,
                 .render_image = task_swapchain_image,
             },
