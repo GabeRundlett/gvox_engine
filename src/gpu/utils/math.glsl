@@ -105,10 +105,13 @@ u32 f32vec4_to_uint_rgba8(f32vec4 f) {
     return result;
 }
 f32vec3 sRGB_to_YCbCr(f32vec3 col) {
-    return f32mat3x3(0.2126, 0.7152, 0.0722, -0.1146,-0.3854, 0.5, 0.5,-0.4542,-0.0458) * col;
+    return f32mat3x3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
 }
 f32vec3 YCbCr_to_sRGB(f32vec3 col) {
     return max(f32vec3(0.0), f32mat3x3(1.0, 0.0, 1.5748, 1.0, -0.1873, -.4681, 1.0, 1.8556, 0.0) * col);
+}
+float sRGB_to_luminance(f32vec3 col) {
+    return dot(col, f32vec3(0.2126, 0.7152, 0.0722));
 }
 
 // [Drobot2014a] Low Level Optimizations for GCN
@@ -122,6 +125,18 @@ float fast_acos(float inX) {
     float res = -0.156583f * x + PI * 0.5;
     res *= fast_sqrt(1.0f - x);
     return (inX >= 0) ? res : (PI - res);
+}
+
+float inverse_depth_relative_diff(float primary_depth, float secondary_depth) {
+    return abs(max(1e-20, primary_depth) / max(1e-20, secondary_depth) - 1.0);
+}
+
+float exponential_squish(float len, float squish_scale) {
+    return exp2(-clamp(squish_scale * len, 0, 100));
+}
+
+float exponential_unsquish(float len, float squish_scale) {
+    return max(0.0, -1.0 / squish_scale * log2(1e-30 + len));
 }
 
 #define URGB9E5_CONCENTRATION 4.0

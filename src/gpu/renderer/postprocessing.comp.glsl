@@ -52,7 +52,7 @@ f32vec3 aces_filmic(f32vec3 x) {
 f32vec3 color_correct(f32vec3 x) {
 #if defined(FILMIC)
     x = max(x, f32vec3(0, 0, 0));
-    x = x * 0.25;
+    // x = x * 0.25;
     x = aces_filmic(x);
     x = srgb_encode(x);
 #endif
@@ -63,7 +63,7 @@ layout(location = 0) out f32vec4 color;
 
 void main() {
     f32vec2 g_buffer_scl = f32vec2(deref(gpu_input).render_res_scl) * f32vec2(deref(gpu_input).frame_dim) / f32vec2(deref(gpu_input).rounded_frame_dim);
-    f32vec2 uv = f32vec2(gl_FragCoord.xy) * g_buffer_scl;
+    f32vec2 uv = f32vec2(gl_FragCoord.xy);
     f32vec3 final_color = texelFetch(daxa_texture2D(composited_image_id), i32vec2(uv), 0).rgb;
 
     color = f32vec4(color_correct(final_color), 1.0);

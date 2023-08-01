@@ -101,6 +101,81 @@ f32vec4 fetch_reproj(i32vec2 px) {
     return texelFetch(daxa_texture2D(reprojection_map), px, 0);
 }
 
+#define REMAP_FUNC HistoryRemap_remap
+f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewId tex, in daxa_SamplerId linearSampler, in f32vec2 uv, in f32vec2 texSize, bool useCornerTaps) { // , Remap remap = IdentityImageRemap::create()
+    // https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
+
+    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
+    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
+    // location [1, 1] in the grid, where [0, 0] is the top left corner.
+    f32vec2 samplePos = uv * texSize;
+    f32vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+
+    // Compute the fractional offset from our starting texel to our original sample location, which we'll
+    // feed into the Catmull-Rom spline function to get our filter weights.
+    f32vec2 f = samplePos - texPos1;
+
+    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
+    // These equations are pre-expanded based on our knowledge of where the texels will be located,
+    // which lets us avoid having to evaluate a piece-wise function.
+    f32vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    f32vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    f32vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    f32vec2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
+    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
+    f32vec2 w12 = w1 + w2;
+    f32vec2 offset12 = w2 / (w1 + w2);
+
+    // Compute the final UV coordinates we'll use for sampling the texture
+    f32vec2 texPos0 = texPos1 - 1;
+    f32vec2 texPos3 = texPos1 + 2;
+    f32vec2 texPos12 = texPos1 + offset12;
+
+    texPos0 /= texSize;
+    texPos3 /= texSize;
+    texPos12 /= texSize;
+
+    f32vec4 result = f32vec4(0.0);
+
+    if (useCornerTaps) {
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos0.x, texPos0.y), 0.0f)) * w0.x * w0.y;
+    }
+
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos12.x, texPos0.y), 0.0f)) * w12.x * w0.y;
+
+    if (useCornerTaps) {
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos3.x, texPos0.y), 0.0f)) * w3.x * w0.y;
+    }
+
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos0.x, texPos12.y), 0.0f)) * w0.x * w12.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos12.x, texPos12.y), 0.0f)) * w12.x * w12.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos3.x, texPos12.y), 0.0f)) * w3.x * w12.y;
+
+    if (useCornerTaps) {
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos0.x, texPos3.y), 0.0f)) * w0.x * w3.y;
+    }
+
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos12.x, texPos3.y), 0.0f)) * w12.x * w3.y;
+
+    if (useCornerTaps) {
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), f32vec2(texPos3.x, texPos3.y), 0.0f)) * w3.x * w3.y;
+    }
+
+    if (!useCornerTaps) {
+        result /= (w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y);
+    }
+
+    return result;
+}
+#undef REMAP_FUNC
+
+f32vec4 image_sample_catmull_rom_5tap(daxa_ImageViewId tex, daxa_SamplerId linearSampler, in f32vec2 uv, in f32vec2 texSize) { // , Remap remap = IdentityImageRemap::create()
+    return image_sample_catmull_rom_approx(
+        tex, linearSampler, uv, texSize, false);
+}
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     f32vec2 px = gl_GlobalInvocationID.xy;
@@ -142,10 +217,10 @@ void main() {
 
     // Since we're only checking a few pixels, there's a chance we'll miss something.
     // Dilate in the wave to reduce the chance of that happening.
-    // should_dilate |= WaveReadLaneAt(should_dilate, WaveGetLaneIndex() ^ 1);
-    should_dilate |= WaveReadLaneAt(should_dilate, WaveGetLaneIndex() ^ 2);
-    // should_dilate |= WaveReadLaneAt(should_dilate, WaveGetLaneIndex() ^ 8);
-    should_dilate |= WaveReadLaneAt(should_dilate, WaveGetLaneIndex() ^ 16);
+    // should_dilate |= subgroupBroadcast(should_dilate, gl_SubgroupInvocationID ^ 1);
+    should_dilate |= subgroupBroadcast(should_dilate, gl_SubgroupInvocationID ^ 2);
+    // should_dilate |= subgroupBroadcast(should_dilate, gl_SubgroupInvocationID ^ 8);
+    should_dilate |= subgroupBroadcast(should_dilate, gl_SubgroupInvocationID ^ 16);
 
     // We want to find the velocity of the pixel which is closest to the camera,
     // which is critical to anti-aliased moving edges.
@@ -170,8 +245,8 @@ void main() {
         }
     }
 
-    const f32vec2 reproj_xy = fetch_reproj(closest_px).xy;
-    imageStore(daxa_image2D(closest_velocity_img), i32vec2(px), reproj_xy);
+    const f32vec2 reproj_xy = fetch_reproj(i32vec2(closest_px)).xy;
+    imageStore(daxa_image2D(closest_velocity_img), i32vec2(px), f32vec4(reproj_xy, 0, 0));
     f32vec2 history_uv = uv + reproj_xy;
 
 #if 0
@@ -182,7 +257,7 @@ void main() {
     );
 #elif 1
     f32vec4 history_packed = image_sample_catmull_rom_5tap(
-        history_tex, sampler_llc, history_uv, output_tex_size.xy, HistoryRemap::create());
+        history_tex, deref(gpu_input).sampler_llc, history_uv, output_tex_size.xy);
 #else
     f32vec4 history_packed = fetch_history(history_uv);
 #endif
@@ -212,6 +287,13 @@ struct FilteredInput {
     f32vec3 var;
 };
 
+f32 fetch_depth(i32vec2 px) {
+    return texelFetch(daxa_texture2D(depth_image), px, 0).r;
+}
+f32vec4 fetch_input(i32vec2 px) {
+    return texelFetch(daxa_texture2D(input_image), px, 0);
+}
+
 FilteredInput filter_input_inner(u32vec2 px, float center_depth, float luma_cutoff, float depth_scale) {
     f32vec3 iex = f32vec3(0);
     f32vec3 iex2 = f32vec3(0);
@@ -220,22 +302,22 @@ FilteredInput filter_input_inner(u32vec2 px, float center_depth, float luma_cuto
     f32vec3 clamped_iex = f32vec3(0);
     float clamped_iwsum = 0;
 
-    InputRemap input_remap = InputRemap::create();
+    // InputRemap input_remap = InputRemap::create();
 
     const int k = 1;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
             const i32vec2 spx_offset = i32vec2(x, y);
-            const float distance_w = exp(-(0.8 / (k * k)) * dot(spx_offset, spx_offset));
+            const float distance_w = exp(-(0.8 / (k * k)) * dot(f32vec2(spx_offset), f32vec2(spx_offset)));
 
             const i32vec2 spx = i32vec2(px) + spx_offset;
-            f32vec3 s = input_remap.remap(input_tex[spx]).rgb;
+            f32vec3 s = InputRemap_remap(fetch_input(spx)).rgb;
 
-            const float depth = depth_tex[spx];
+            const float depth = fetch_depth(spx);
             float w = 1;
             w *= exp2(-min(16, depth_scale * inverse_depth_relative_diff(center_depth, depth)));
             w *= distance_w;
-            w *= pow(saturate(luma_cutoff / s.x), 8);
+            w *= pow(clamp(luma_cutoff / s.x, 0.0, 1.0), 8);
 
             clamped_iwsum += w;
             clamped_iex += s * w;
@@ -253,14 +335,15 @@ FilteredInput filter_input_inner(u32vec2 px, float center_depth, float luma_cuto
 
     FilteredInput res;
     res.clamped_ex = clamped_iex;
-    res.var = max(0, iex2 - iex * iex);
+    res.var = max(f32vec3(0.0), iex2 - iex * iex);
 
     return res;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    const float center_depth = depth_tex[px];
+    i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
+    const float center_depth = fetch_depth(px);
 
     // Filter the input, with a cross-bilateral weight based on depth
     FilteredInput filtered_input = filter_input_inner(px, center_depth, 1e10, 200);
@@ -269,13 +352,17 @@ void main() {
     // inputs brighter than the just-estimated luminance mean. This clamps bright outliers in the input.
     FilteredInput clamped_filtered_input = filter_input_inner(px, center_depth, filtered_input.clamped_ex.x * 1.001, 200);
 
-    output_tex[px] = clamped_filtered_input.clamped_ex;
-    dev_output_tex[px] = sqrt(filtered_input.var);
+    imageStore(daxa_image2D(filtered_input_img), px, f32vec4(clamped_filtered_input.clamped_ex, 0.0));
+    imageStore(daxa_image2D(filtered_input_deviation_img), px, f32vec4(sqrt(filtered_input.var), 0.0));
 }
 
 #endif
 
 #if TAA_FILTER_HISTORY_COMPUTE
+
+f32vec4 fetch_input(i32vec2 px) {
+    return texelFetch(daxa_texture2D(reprojected_history_img), px, 0);
+}
 
 f32vec3 filter_input(f32vec2 uv, float luma_cutoff, int kernel_radius) {
     f32vec3 iex = f32vec3(0);
@@ -283,7 +370,7 @@ f32vec3 filter_input(f32vec2 uv, float luma_cutoff, int kernel_radius) {
 
     // Note: + epislon to counter precision loss, which manifests itself
     // as bad rounding in a 2x upscale, showing stair-stepping artifacts.
-    i32vec2 src_px = i32vec2(floor(uv * input_tex_size.xy + 1e-3));
+    i32vec2 src_px = i32vec2(floor(uv * push.input_tex_size.xy + 1e-3));
 
     const int k = kernel_radius;
     for (int y = -k; y <= k; ++y) {
@@ -293,13 +380,13 @@ f32vec3 filter_input(f32vec2 uv, float luma_cutoff, int kernel_radius) {
 
             // TODO: consider a weight based on uv diffs between the low-res
             // output `uv` and the low-res input `spx`.
-            const float distance_w = exp(-(0.8 / (k * k)) * dot(spx_offset, spx_offset));
+            const float distance_w = exp(-(0.8 / (k * k)) * dot(f32vec2(spx_offset), f32vec2(spx_offset)));
 
-            f32vec3 s = sRGB_to_YCbCr(input_tex[spx].rgb);
+            f32vec3 s = sRGB_to_YCbCr(fetch_input(spx).rgb);
 
             float w = 1;
             w *= distance_w;
-            w *= pow(saturate(luma_cutoff / s.x), 8);
+            w *= pow(clamp(luma_cutoff / s.x, 0.0, 1.0), 8);
 
             iwsum += w;
             iex += s * w;
@@ -310,15 +397,15 @@ f32vec3 filter_input(f32vec2 uv, float luma_cutoff, int kernel_radius) {
 }
 
 void filter_history(u32vec2 px, int kernel_radius) {
-    f32vec2 uv = get_uv(px, output_tex_size);
+    f32vec2 uv = get_uv(px, push.output_tex_size);
     float filtered_luma = filter_input(uv, 1e10, kernel_radius).x;
-    imageStore(daxa_image2D(filtered_history_img), i32vec2(gl_GlobalInvocationID.xy), filter_input(uv, filtered_luma * 1.001, kernel_radius));
+    imageStore(daxa_image2D(filtered_history_img), i32vec2(px), f32vec4(filter_input(uv, filtered_luma * 1.001, kernel_radius), 0.0));
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     u32vec2 px = gl_GlobalInvocationID.xy;
-    if (input_tex_size.x / output_tex_size.x > 1.75) {
+    if (push.input_tex_size.x / push.output_tex_size.x > 1.75) {
         // If we're upscaling, history is at a higher resolution than
         // the new frame, so we need to filter history more.
         filter_history(px, 2);
@@ -386,11 +473,11 @@ void main() {
             ivar = square(ivar);
         }
 
-        const f32vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) * input_tex_size.zw;
+        const f32vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) * push.input_tex_size.zw;
 
-        const f32vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_tex, deref(gpu_input).sampler_nnc), input_uv, 0);
-        const f32vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0);
-        const f32vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * frame_constants.delta_time_seconds;
+        const f32vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, deref(gpu_input).sampler_nnc), input_uv, 0);
+        const f32vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
+        const f32vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
 
         // Combine spaital and temporla variance. We generally want to use
         // the smoothed temporal estimate, but bound it by this frame's input,
@@ -417,9 +504,9 @@ void main() {
                     const f32vec3 idiff = s - closest_history.rgb;
 
                     const f32vec2 vel = fetch_reproj(px + i32vec2(x, y)).xy;
-                    const float vdiff = length((vel - closest_vel) / max(1, abs(vel + closest_vel)));
+                    const float vdiff = length((vel - closest_vel) / max(f32vec2(1.0), abs(vel + closest_vel)));
 
-                    float prob = exp2(-1.0 * length(idiff * idiff / max(1e-6, combined_var)) - 1000 * vdiff);
+                    float prob = exp2(-1.0 * length(idiff * idiff / max(f32vec3(1e-6), combined_var)) - 1000 * vdiff);
 
                     input_prob = max(input_prob, prob);
                 }
@@ -508,32 +595,35 @@ void main() {
 // Necessary for stability of temporal super-resolution.
 #define USE_CONFIDENCE_BASED_HISTORY_BLEND 1
 
-#define INPUT_TEX input_tex
+#define INPUT_TEX input_image
 #define INPUT_REMAP InputRemap
 
 // Draw a rectangle indicating the current frame index. Useful for debugging frame drops.
 #define USE_FRAME_INDEX_INDICATOR_BAR 0
 
-struct InputRemap {
-    static InputRemap create() {
-        InputRemap res;
-        return res;
-    }
+// struct InputRemap {
+// };
+// static InputRemap create() {
+//     InputRemap res;
+//     return res;
+// }
 
-    f32vec4 remap(f32vec4 v) {
-        return f32vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
-    }
-};
+f32vec4 InputRemap_remap(f32vec4 v) {
+    return f32vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+}
+f32vec4 fetch_history(i32vec2 px) {
+    return texelFetch(daxa_texture2D(reprojected_history_img), px, 0);
+}
 
 f32vec4 fetch_blurred_history(i32vec2 px, int k, float sigma) {
-    const f32vec3 center = history_tex[px].rgb;
+    const f32vec3 center = fetch_history(px).rgb;
 
-    f32vec4 csum = 0;
+    f32vec4 csum = f32vec4(0.0);
     float wsum = 0;
 
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            f32vec4 c = history_tex[px + i32vec2(x, y)];
+            f32vec4 c = fetch_history(px + i32vec2(x, y));
             f32vec2 offset = f32vec2(x, y) * sigma;
             float w = exp(-dot(offset, offset));
             float color_diff =
@@ -557,12 +647,92 @@ f32vec4 HistoryRemap_remap(f32vec4 v) {
     return f32vec4(sRGB_to_YCbCr(v.rgb), 1);
 }
 
+struct UnjitteredSampleInfo {
+    f32vec4 color;
+    float coverage;
+    f32vec3 ex;
+    f32vec3 ex2;
+};
+struct UnjitterSettings {
+    float kernel_scale;
+    int kernel_half_width_pixels;
+};
+
+#define REMAP_FUNC HistoryRemap_remap
+UnjitteredSampleInfo sample_image_unjitter_taa(
+    daxa_ImageViewId img,
+    i32vec2 output_px,
+    f32vec2 output_tex_size,
+    f32vec2 sample_offset_pixels,
+    UnjitterSettings settings) {
+    const f32vec2 input_tex_size = push.input_tex_size.xy; // f32vec2(img.size());
+    const f32vec2 input_resolution_scale = input_tex_size / output_tex_size;
+    const i32vec2 base_src_px = i32vec2((output_px + 0.5) * input_resolution_scale);
+
+    // In pixel units of the destination (upsampled)
+    const f32vec2 dst_sample_loc = output_px + 0.5;
+    const f32vec2 base_src_sample_loc =
+        (base_src_px + 0.5 + sample_offset_pixels * f32vec2(1, -1)) / input_resolution_scale;
+
+    f32vec4 res = f32vec4(0.0);
+    f32vec3 ex = f32vec3(0.0);
+    f32vec3 ex2 = f32vec3(0.0);
+    float dev_wt_sum = 0.0;
+    float wt_sum = 0.0;
+
+    // Stretch the kernel if samples become too sparse due to drastic upsampling
+    // const float kernel_distance_mult = min(1.0, 1.2 * input_resolution_scale.x);
+
+    const float kernel_distance_mult = 1.0 * settings.kernel_scale;
+    // const float kernel_distance_mult = 0.3333 / 2;
+
+    int k = settings.kernel_half_width_pixels;
+    for (int y = -k; y <= k; ++y) {
+        for (int x = -k; x <= k; ++x) {
+            i32vec2 src_px = base_src_px + i32vec2(x, y);
+            f32vec2 src_sample_loc = base_src_sample_loc + f32vec2(x, y) / input_resolution_scale;
+
+            f32vec4 col = REMAP_FUNC(texelFetch(daxa_texture2D(img), src_px, 0));
+            f32vec2 sample_center_offset = (src_sample_loc - dst_sample_loc) * kernel_distance_mult;
+
+            float dist2 = dot(sample_center_offset, sample_center_offset);
+            float dist = sqrt(dist2);
+
+            // float wt = all(abs(sample_center_offset) < 0.83);//dist < 0.33;
+            float dev_wt = exp2(-dist2 * input_resolution_scale.x);
+            // float wt = mitchell_netravali(2.5 * dist * input_resolution_scale.x);
+            float wt = exp2(-10 * dist2 * input_resolution_scale.x);
+            // float wt = sinc(1 * dist * input_resolution_scale.x) * smoothstep(3, 0, dist * input_resolution_scale.x);
+            // float wt = lanczos(2.2 * dist * input_resolution_scale.x, 3);
+            // wt = max(wt, 0.0);
+
+            res += col * wt;
+            wt_sum += wt;
+
+            ex += col.xyz * dev_wt;
+            ex2 += col.xyz * col.xyz * dev_wt;
+            dev_wt_sum += dev_wt;
+        }
+    }
+
+    f32vec2 sample_center_offset = -sample_offset_pixels / input_resolution_scale * f32vec2(1, -1) - (base_src_sample_loc - dst_sample_loc);
+
+    UnjitteredSampleInfo info;
+    info.color = res;
+    info.coverage = wt_sum;
+    info.ex = ex / dev_wt_sum;
+    info.ex2 = ex2 / dev_wt_sum;
+    return info;
+}
+#undef REMAP_FUNC
+
 f32vec4 fetch_reproj(i32vec2 px) {
     return texelFetch(daxa_texture2D(reprojection_map), px, 0);
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
+    i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
 #if USE_FRAME_INDEX_INDICATOR_BAR
     if (px.y < 50) {
         f32vec4 val = 0;
@@ -575,83 +745,84 @@ void main() {
     }
 #endif
 
-    const f32vec2 input_resolution_fraction = input_tex_size.xy / output_tex_size.xy;
-    const u32vec2 reproj_px = u32vec2((px + 0.5) * input_resolution_fraction);
+    const f32vec2 input_resolution_fraction = push.input_tex_size.xy / push.output_tex_size.xy;
+    const u32vec2 reproj_px = u32vec2((f32vec2(px) + 0.5) * input_resolution_fraction);
     // const u32vec2 reproj_px = u32vec2(px * input_resolution_fraction + 0.5);
 
 #if SHORT_CIRCUIT
-    temporal_output_tex[px] = mix(input_tex[reproj_px], f32vec4(encode_rgb(history_tex[px].rgb), 1), 1.0 - 1.0 / SHORT_CIRCUIT);
+    temporal_output_tex[px] = mix(input_tex[reproj_px], f32vec4(encode_rgb(fetch_history(px).rgb), 1), 1.0 - 1.0 / SHORT_CIRCUIT);
     output_tex[px] = temporal_output_tex[px];
     return;
 #endif
 
-    f32vec2 uv = get_uv(px, output_tex_size);
+    f32vec2 uv = get_uv(px, push.output_tex_size);
 
-    f32vec4 history_packed = history_tex[px];
+    f32vec4 history_packed = fetch_history(px);
     f32vec3 history = history_packed.rgb;
     float history_coverage = max(0.0, history_packed.a);
 
     f32vec4 bhistory_packed = fetch_blurred_history(px, 2, 1);
     f32vec3 bhistory = bhistory_packed.rgb;
-    f32vec3 bhistory_coverage = bhistory_packed.a;
+    f32vec3 bhistory_coverage = f32vec3(bhistory_packed.a);
 
     history = sRGB_to_YCbCr(history);
     bhistory = sRGB_to_YCbCr(bhistory);
 
-    const f32vec4 reproj = fetch_reproj(reproj_px);
-    const f32vec2 reproj_xy = closest_velocity_tex[px];
+    const f32vec4 reproj = fetch_reproj(i32vec2(reproj_px));
+    const f32vec2 reproj_xy = texelFetch(daxa_texture2D(closest_velocity_img), px, 0).xy;
 
+    UnjitterSettings unjitter_settings;
+    unjitter_settings.kernel_scale = 1;
+    unjitter_settings.kernel_half_width_pixels = 1;
     UnjitteredSampleInfo center_sample = sample_image_unjitter_taa(
-        TextureImage::from_parts(INPUT_TEX, input_tex_size.xy),
+        INPUT_TEX,
         px,
-        output_tex_size.xy,
+        push.output_tex_size.xy,
         SAMPLE_OFFSET_PIXELS,
-        UnjitterSettings::make_default().with_kernel_half_width_pixels(1),
-        INPUT_REMAP::create());
-
+        unjitter_settings);
+    unjitter_settings.kernel_scale = 0.333;
     UnjitteredSampleInfo bcenter_sample = sample_image_unjitter_taa(
-        TextureImage::from_parts(INPUT_TEX, input_tex_size.xy),
+        INPUT_TEX,
         px,
-        output_tex_size.xy,
+        push.output_tex_size.xy,
         SAMPLE_OFFSET_PIXELS,
-        UnjitterSettings::make_default().with_kernel_scale(0.333),
-        INPUT_REMAP::create());
+        unjitter_settings);
 
     float coverage = 1;
 #if FILTER_CURRENT_FRAME
     f32vec3 center = center_sample.color.rgb;
     coverage = center_sample.coverage;
 #else
-    f32vec3 center = sRGB_to_YCbCr(decode_rgb(INPUT_TEX[px].rgb));
+    f32vec3 center = sRGB_to_YCbCr(decode_rgb(texelFetch(daxa_texture2D(INPUT_TEX), px, 0).rgb));
 #endif
 
     f32vec3 bcenter = bcenter_sample.color.rgb / bcenter_sample.coverage;
 
-    history = mix(history, bcenter, saturate(1.0 - history_coverage));
-    bhistory = mix(bhistory, bcenter, saturate(1.0 - bhistory_coverage));
+    history = mix(history, bcenter, clamp(1.0 - history_coverage, 0.0, 1.0));
+    bhistory = mix(bhistory, bcenter, clamp(1.0 - bhistory_coverage, 0.0, 1.0));
 
-    const float input_prob = input_prob_tex[reproj_px];
+    const float input_prob = texelFetch(daxa_texture2D(input_prob_img), i32vec2(reproj_px), 0).r;
 
     f32vec3 ex = center_sample.ex;
     f32vec3 ex2 = center_sample.ex2;
     const f32vec3 var = max(0.0.xxx, ex2 - ex * ex);
 
-    const f32vec3 prev_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), uv + reproj_xy, 0).x;
+    const f32vec3 prev_var = f32vec3(textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), uv + reproj_xy, 0).x);
 
     // TODO: factor-out camera-only velocity
-    const f32vec2 vel_now = closest_velocity_tex[px] / frame_constants.delta_time_seconds;
-    const f32vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_llc), uv + closest_velocity_tex[px], 0);
-    const float vel_diff = length((vel_now - vel_prev) / max(1, abs(vel_now + vel_prev)));
-    const float var_blend = saturate(0.3 + 0.7 * (1 - reproj.z) + vel_diff);
+    const f32vec2 vel_now = texelFetch(daxa_texture2D(closest_velocity_img), px, 0).xy / deref(gpu_input).delta_time;
+    const f32vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_llc), uv + texelFetch(daxa_texture2D(closest_velocity_img), px, 0).xy, 0).xy;
+    const float vel_diff = length((vel_now - vel_prev) / max(f32vec2(1.0), abs(vel_now + vel_prev)));
+    const float var_blend = clamp(0.3 + 0.7 * (1 - reproj.z) + vel_diff, 0.0, 1.0);
 
     f32vec3 smooth_var = max(var, mix(prev_var, var, var_blend));
 
-    const float var_prob_blend = saturate(input_prob);
+    const float var_prob_blend = clamp(input_prob, 0.0, 1.0);
     smooth_var = mix(var, smooth_var, var_prob_blend);
 
     const f32vec3 input_dev = sqrt(var);
 
-    f32vec4 this_frame_result = 0;
+    f32vec4 this_frame_result = f32vec4(0.0);
 #define DEBUG_SHOW(value) \
     { this_frame_result = f32vec4((f32vec3)(value), 1); }
 
@@ -662,7 +833,7 @@ void main() {
         // Use a narrow color bounding box to avoid disocclusions
         float box_n_deviations = 0.8;
 
-        if (USE_CONFIDENCE_BASED_HISTORY_BLEND) {
+        if (USE_CONFIDENCE_BASED_HISTORY_BLEND != 0) {
             // Expand the box based on input confidence.
             box_n_deviations = mix(box_n_deviations, 3, input_prob);
         }
@@ -677,10 +848,10 @@ void main() {
         f32vec3 clamped_bhistory = bhistory;
 #endif
 
-        const float clamping_event = length(max(0.0, max(bhistory - nmax, nmin - bhistory)) / max(0.01, ex));
+        const float clamping_event = length(max(f32vec3(0.0), max(bhistory - nmax, nmin - bhistory)) / max(f32vec3(0.01), ex));
 
-        f32vec3 outlier3 = max(0.0, (max(nmin - history, history - nmax)) / (0.1 + max(max(abs(history), abs(ex)), 1e-5)));
-        f32vec3 boutlier3 = max(0.0, (max(nmin - bhistory, bhistory - nmax)) / (0.1 + max(max(abs(bhistory), abs(ex)), 1e-5)));
+        f32vec3 outlier3 = max(f32vec3(0.0), (max(nmin - history, history - nmax)) / (0.1 + max(max(abs(history), abs(ex)), 1e-5)));
+        f32vec3 boutlier3 = max(f32vec3(0.0), (max(nmin - bhistory, bhistory - nmax)) / (0.1 + max(max(abs(bhistory), abs(ex)), 1e-5)));
 
         // Temporal outliers in sharp history
         float outlier = max(outlier3.x, max(outlier3.y, outlier3.z));
@@ -690,7 +861,7 @@ void main() {
         float boutlier = max(boutlier3.x, max(boutlier3.y, boutlier3.z));
         // DEBUG_SHOW(boutlier);
 
-        const bool history_valid = all(uv + reproj_xy == saturate(uv + reproj_xy));
+        const bool history_valid = all(bvec2(uv + reproj_xy == clamp(uv + reproj_xy, f32vec2(0.0), f32vec2(1.0))));
 
 #if 1
         if (history_valid) {
@@ -705,10 +876,10 @@ void main() {
             // DEBUG_SHOW(temporal_clamping_detail);
 
             // Close to 1.0 when temporal clamping is relatively low. Close to 0.0 when disocclusions happen.
-            const float temporal_stability = saturate(1 - temporal_clamping_detail);
+            const float temporal_stability = clamp(1 - temporal_clamping_detail, 0.0, 1.0);
             // DEBUG_SHOW(temporal_stability);
 
-            const float allow_unclamped_detail = saturate(non_disoccluding_outliers) * temporal_stability;
+            const float allow_unclamped_detail = clamp(non_disoccluding_outliers, 0.0, 1.0) * temporal_stability;
             // const float allow_unclamped_detail = saturate(non_disoccluding_outliers * exp2(-length(input_tex_size.xy * reproj_xy))) * temporal_stability;
             // DEBUG_SHOW(allow_unclamped_detail);
 
@@ -723,12 +894,13 @@ void main() {
             history_detail = mix(history_detail, unclamped_history_detail, allow_unclamped_detail);
 
             // 0..1 value of how much clamping initially happened in the blurry history
-            const float initial_bclamp_amount = saturate(dot(
-                                                             clamped_bhistory - bhistory, bcenter - bhistory) /
-                                                         max(1e-5, length(clamped_bhistory - bhistory) * length(bcenter - bhistory)));
+            const float initial_bclamp_amount = clamp(dot(
+                                                          clamped_bhistory - bhistory, bcenter - bhistory) /
+                                                          max(1e-5, length(clamped_bhistory - bhistory) * length(bcenter - bhistory)),
+                                                      0.0, 1.0);
 
             // Ditto, after adjusting for `allow_unclamped_detail`
-            const float effective_clamp_amount = saturate(initial_bclamp_amount) * (1 - allow_unclamped_detail);
+            const float effective_clamp_amount = clamp(initial_bclamp_amount, 0.0, 1.0) * (1 - allow_unclamped_detail);
             // DEBUG_SHOW(effective_clamp_amount);
 
             // Where clamping happened to the blurry history, also remove the detail (history-bhistory)
@@ -747,7 +919,7 @@ void main() {
                 // clamping happens allows us to boost this convergence.
 
                 history_coverage *= mix(
-                    mix(0.0, 0.9, keep_detail), 1.0, saturate(10 * clamping_event));
+                    mix(0.0, 0.9, keep_detail), 1.0, clamp(10 * clamping_event, 0.0, 1.0));
             }
 #endif
         } else {
@@ -760,7 +932,7 @@ void main() {
         clamped_history = clamp(history, nmin, nmax);
 #endif
 
-        if (USE_CONFIDENCE_BASED_HISTORY_BLEND) {
+        if (USE_CONFIDENCE_BASED_HISTORY_BLEND != 0) {
             // If input confidence is high, blend in unclamped history.
             clamped_history = mix(
                 clamped_history,
@@ -784,27 +956,22 @@ void main() {
 #else
         f32vec3 temporal_result = center / coverage;
 #endif
-
-    smooth_var_output_tex[px] = smooth_var;
+    imageStore(daxa_image2D(smooth_var_output_tex), px, f32vec4(smooth_var, 0.0));
 
     temporal_result = YCbCr_to_sRGB(temporal_result);
     temporal_result = encode_rgb(temporal_result);
-    temporal_result = max(0.0, temporal_result);
+    temporal_result = max(f32vec3(0.0), temporal_result);
 
     this_frame_result.rgb = mix(temporal_result, this_frame_result.rgb, this_frame_result.a);
 
-    temporal_output_tex[px] = f32vec4(temporal_result, coverage);
-    output_tex[px] = this_frame_result;
+    imageStore(daxa_image2D(temporal_output_tex), px, f32vec4(temporal_result, coverage));
+    imageStore(daxa_image2D(this_frame_output_img), px, this_frame_result);
 
     f32vec2 vel_out = reproj_xy;
     float vel_out_depth = 0;
 
     // It's critical that this uses the closest depth since it's compared to closest depth
-    velocity_output_tex[px] = closest_velocity_tex[px] / frame_constants.delta_time_seconds;
+    imageStore(daxa_image2D(temporal_velocity_output_tex), px, f32vec4(texelFetch(daxa_texture2D(closest_velocity_img), px, 0).xy / deref(gpu_input).delta_time, 0.0, 0.0));
 }
 
 #endif
-
-// i32vec2 src_px = i32vec2(gl_GlobalInvocationID.xy);
-// f32vec4 output_val = texelFetch(daxa_texture2D(src_image_id), src_px, 0);
-// imageStore(daxa_image2D(dst_image_id), i32vec2(gl_GlobalInvocationID.xy), output_val);

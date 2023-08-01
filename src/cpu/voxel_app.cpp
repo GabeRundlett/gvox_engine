@@ -1237,7 +1237,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         {
             .uses = {
                 .gpu_input = task_input_buffer,
-                .composited_image_id = composited_image,
+                .composited_image_id = final_image,
                 .render_image = task_swapchain_image,
             },
         },
