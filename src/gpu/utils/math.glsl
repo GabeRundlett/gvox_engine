@@ -104,6 +104,12 @@ u32 f32vec4_to_uint_rgba8(f32vec4 f) {
     result |= u32(clamp(f.a, 0, 1) * 255) << 0x18;
     return result;
 }
+f32vec3 sRGB_to_YCbCr(f32vec3 col) {
+    return f32mat3x3(0.2126, 0.7152, 0.0722, -0.1146,-0.3854, 0.5, 0.5,-0.4542,-0.0458) * col;
+}
+f32vec3 YCbCr_to_sRGB(f32vec3 col) {
+    return max(f32vec3(0.0), f32mat3x3(1.0, 0.0, 1.5748, 1.0, -0.1873, -.4681, 1.0, 1.8556, 0.0) * col);
+}
 
 // [Drobot2014a] Low Level Optimizations for GCN
 float fast_sqrt(float x) {

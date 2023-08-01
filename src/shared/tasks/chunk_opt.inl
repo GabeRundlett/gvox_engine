@@ -2,12 +2,14 @@
 
 #include <shared/core.inl>
 
+#if CHUNK_OPT_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(ChunkOptComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_BufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
+#endif
 
 #if defined(__cplusplus)
 

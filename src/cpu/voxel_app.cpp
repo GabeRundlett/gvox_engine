@@ -93,12 +93,22 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(u32) * std::max<u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
         .name = "placed_voxel_particles_buffer",
     });
-    final_image_sampler = device.create_sampler({
+    sampler_nnc = device.create_sampler({
+        .magnification_filter = daxa::Filter::NEAREST,
+        .minification_filter = daxa::Filter::NEAREST,
+        .max_lod = 0.0f,
+    });
+    sampler_lnc = device.create_sampler({
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::NEAREST,
         .max_lod = 0.0f,
     });
-    value_noise_sampler = device.create_sampler({
+    sampler_llc = device.create_sampler({
+        .magnification_filter = daxa::Filter::LINEAR,
+        .minification_filter = daxa::Filter::LINEAR,
+        .max_lod = 0.0f,
+    });
+    sampler_llr = device.create_sampler({
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::LINEAR,
         .address_mode_u = daxa::SamplerAddressMode::REPEAT,
@@ -125,8 +135,10 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(simulated_voxel_particles_buffer);
     device.destroy_buffer(rendered_voxel_particles_buffer);
     device.destroy_buffer(placed_voxel_particles_buffer);
-    device.destroy_sampler(final_image_sampler);
-    device.destroy_sampler(value_noise_sampler);
+    device.destroy_sampler(sampler_nnc);
+    device.destroy_sampler(sampler_lnc);
+    device.destroy_sampler(sampler_llc);
+    device.destroy_sampler(sampler_llr);
 }
 
 // Code flow
@@ -206,8 +218,10 @@ VoxelApp::VoxelApp()
       }()},
       gbuffer_renderer{main_pipeline_manager},
       reprojection_renderer{main_pipeline_manager},
-      ssao_renderer{main_pipeline_manager, gpu_resources.final_image_sampler},
+      ssao_renderer{main_pipeline_manager},
       shadow_renderer{main_pipeline_manager},
+      compositor{main_pipeline_manager},
+      taa_renderer{main_pipeline_manager},
       gpu_resources{},
       // clang-format off
       startup_task_state{main_pipeline_manager},
@@ -216,7 +230,7 @@ VoxelApp::VoxelApp()
       chunk_opt_x2x4_task_state{main_pipeline_manager},
       chunk_opt_x8up_task_state{main_pipeline_manager},
       chunk_alloc_task_state{main_pipeline_manager},
-      postprocessing_task_state{main_pipeline_manager, gpu_resources.final_image_sampler, swapchain.get_format()},
+      postprocessing_task_state{main_pipeline_manager, swapchain.get_format()},
       per_chunk_task_state{main_pipeline_manager},
       voxel_particle_sim_task_state{main_pipeline_manager},
       voxel_particle_raster_task_state{main_pipeline_manager},
@@ -547,7 +561,12 @@ void VoxelApp::on_update() {
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
     gpu_input.log2_chunks_per_axis = ui.settings.log2_chunks_per_axis;
 
-    {
+    gpu_input.sampler_nnc = gpu_resources.sampler_nnc;
+    gpu_input.sampler_lnc = gpu_resources.sampler_lnc;
+    gpu_input.sampler_llc = gpu_resources.sampler_llc;
+    gpu_input.sampler_llr = gpu_resources.sampler_llr;
+
+    if (ui.should_hotload_shaders) {
         auto reload_result = main_pipeline_manager.reload_all();
         if (auto *reload_err = std::get_if<daxa::PipelineReloadError>(&reload_result)) {
             AppUi::Console::s_instance->add_log(reload_err->message);
@@ -731,6 +750,12 @@ void VoxelApp::on_drop(std::span<char const *> filepaths) {
     ui.should_upload_gvox_model = true;
 }
 
+void VoxelApp::compute_image_sizes() {
+    gpu_input.frame_dim.x = static_cast<u32>(static_cast<f32>(window_size.x) * render_res_scl);
+    gpu_input.frame_dim.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
+    gpu_input.rounded_frame_dim = round_frame_dim(gpu_input.frame_dim);
+    gpu_input.output_resolution = window_size;
+}
 void VoxelApp::recreate_render_images() {
     device.wait_idle();
     needs_vram_calc = true;
@@ -1008,9 +1033,7 @@ void VoxelApp::dynamic_buffers_realloc(daxa::TaskGraph &) {
 // PostprocessingTask            [Render]
 // ImGui draw                    [GUI Render]
 auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
-    gpu_input.frame_dim.x = static_cast<u32>(static_cast<f32>(window_size.x) * render_res_scl);
-    gpu_input.frame_dim.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
-    gpu_input.rounded_frame_dim = round_frame_dim(gpu_input.frame_dim);
+    compute_image_sizes();
 
     daxa::TaskGraph result_task_graph = daxa::TaskGraph({
         .device = device,
@@ -1121,7 +1144,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
             },
         },
         &per_chunk_task_state,
-        &gpu_resources.value_noise_sampler,
     });
 
     result_task_graph.add_task(ChunkEditComputeTask{
@@ -1139,7 +1161,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
             },
         },
         &chunk_edit_task_state,
-        &gpu_resources.value_noise_sampler,
     });
 
     result_task_graph.add_task(ChunkOpt_x2x4_ComputeTask{
@@ -1199,6 +1220,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .device = this->device,
         .task_graph = result_task_graph,
         .render_resolution = gpu_input.rounded_frame_dim,
+        .output_resolution = gpu_input.output_resolution,
         .task_blue_noise_vec2_image = task_blue_noise_vec2_image,
         .task_input_buffer = task_input_buffer,
         .task_globals_buffer = task_globals_buffer,
@@ -1208,29 +1230,14 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
     auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
     auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
-
-    // auto composited_image = [](RecordContext &record_ctx) {
-    //     record_ctx.task_graph.add_task(PostprocessingRasterTask{
-    //         {
-    //             .uses = {
-    //                 .gpu_input = task_input_buffer,
-    //                 .g_buffer_image_id = gbuffer_depth.gbuffer,
-    //                 .ssao_image_id = ssao_image,
-    //                 .shading_image_id = shading_image,
-    //                 .render_image = task_swapchain_image,
-    //             },
-    //         },
-    //         &postprocessing_task_state,
-    //     });
-    // }(record_ctx);
+    auto composited_image = compositor.render(record_ctx, gbuffer_depth, ssao_image, shading_image);
+    auto final_image = taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
 
     result_task_graph.add_task(PostprocessingRasterTask{
         {
             .uses = {
                 .gpu_input = task_input_buffer,
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .ssao_image_id = ssao_image,
-                .shading_image_id = shading_image,
+                .composited_image_id = composited_image,
                 .render_image = task_swapchain_image,
             },
         },

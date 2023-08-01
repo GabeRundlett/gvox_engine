@@ -32,8 +32,11 @@ struct GpuResources {
     daxa::BufferId simulated_voxel_particles_buffer;
     daxa::BufferId rendered_voxel_particles_buffer;
     daxa::BufferId placed_voxel_particles_buffer;
-    daxa::SamplerId final_image_sampler;
-    daxa::SamplerId value_noise_sampler;
+
+    daxa::SamplerId sampler_nnc;
+    daxa::SamplerId sampler_lnc;
+    daxa::SamplerId sampler_llc;
+    daxa::SamplerId sampler_llr;
 
     void create(daxa::Device &device);
     void destroy(daxa::Device &device) const;
@@ -63,6 +66,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ReprojectionRenderer reprojection_renderer;
     SsaoRenderer ssao_renderer;
     ShadowRenderer shadow_renderer;
+    Compositor compositor;
+    TaaRenderer taa_renderer;
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
 
@@ -132,6 +137,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_resize(u32 sx, u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
+    void compute_image_sizes();
     void recreate_render_images();
     void recreate_voxel_chunks();
 

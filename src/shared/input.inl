@@ -29,18 +29,23 @@ struct MouseInput {
 };
 
 struct GpuInput {
+    u32vec2 frame_dim;
+    u32vec2 rounded_frame_dim;
+    u32vec2 output_resolution;
+    f32vec2 halton_jitter;
+    f32 render_res_scl;
+    f32 resize_factor;
     f32 fov;
     f32 sensitivity;
     u32 log2_chunks_per_axis;
     u32 frame_index;
     u32 fif_index;
-    u32vec2 frame_dim;
-    u32vec2 rounded_frame_dim;
-    f32vec2 halton_jitter;
     f32 time;
     f32 delta_time;
-    f32 render_res_scl;
-    f32 resize_factor;
+    daxa_SamplerId sampler_nnc;
+    daxa_SamplerId sampler_lnc;
+    daxa_SamplerId sampler_llc;
+    daxa_SamplerId sampler_llr;
     MouseInput mouse;
     u32 actions[GAME_ACTION_LAST + 1];
 };

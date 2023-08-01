@@ -2,6 +2,7 @@
 
 #include <shared/core.inl>
 
+#if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(VoxelParticleRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), FRAGMENT_SHADER_READ)
@@ -10,6 +11,7 @@ DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), FRAGMEN
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, DEPTH_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
+#endif
 
 #if defined(__cplusplus)
 

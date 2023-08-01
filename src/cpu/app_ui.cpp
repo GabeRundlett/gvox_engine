@@ -486,6 +486,7 @@ void AppUi::settings_ui() {
                 gvox_region_range.extent.y = static_cast<u32>(std::max(temp_i32vec3.y, 0));
                 gvox_region_range.extent.z = static_cast<u32>(std::max(temp_i32vec3.z, 0));
             }
+            ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Graphics")) {
@@ -795,7 +796,7 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
             frametime_graph(full_frametimes);
             ImGui::TreePop();
         }
-        if (ImGui::TreeNode("CPU only frame-time")) {
+        if (ImGui::TreeNode("CPU-only frame-time")) {
             frametime_graph(cpu_frametimes);
             ImGui::TreePop();
         }

@@ -346,8 +346,6 @@ void main() {
 #endif
 #if SSAO_TEMPORAL_FILTER_COMPUTE
 
-DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
-
 float fetch_src(u32vec2 px) {
     return texelFetch(daxa_texture2D(src_image_id), i32vec2(px), 0).r;
 }
@@ -365,7 +363,7 @@ void main() {
 
     float center = WORKING_TO_LINEAR(fetch_src(px));
     f32vec4 reproj = texelFetch(daxa_texture2D(reprojection_image_id), i32vec2(px), 0);
-    float history = WORKING_TO_LINEAR(textureLod(daxa_sampler2D(history_image_id, push.history_sampler), uv + reproj.xy, 0).r);
+    float history = WORKING_TO_LINEAR(textureLod(daxa_sampler2D(history_image_id, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).r);
 
     float vsum = 0.0;
     float vsum2 = 0.0;

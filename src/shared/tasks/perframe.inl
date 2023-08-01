@@ -2,6 +2,7 @@
 
 #include <shared/core.inl>
 
+#if PERFRAME_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(PerframeComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_output, daxa_RWBufferPtr(GpuOutput), COMPUTE_SHADER_READ_WRITE)
@@ -12,6 +13,7 @@ DAXA_TASK_USE_BUFFER(voxel_leaf_chunk_allocator, daxa_RWBufferPtr(VoxelLeafChunk
 DAXA_TASK_USE_BUFFER(voxel_parent_chunk_allocator, daxa_RWBufferPtr(VoxelParentChunkAllocator), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
 DAXA_DECL_TASK_USES_END()
+#endif
 
 #if defined(__cplusplus)
 

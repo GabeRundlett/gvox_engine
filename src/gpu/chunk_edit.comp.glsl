@@ -16,8 +16,6 @@ i32vec3 world_voxel;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
-DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
-
 b32 mandelbulb(in f32vec3 c, in out f32vec3 color) {
     f32vec3 z = c;
     u32 i = 0;
@@ -50,7 +48,7 @@ f32vec4 terrain_noise(f32vec3 p) {
         /* .scale       = */ 0.005,
         /* .lacunarity  = */ 4.5,
         /* .octaves     = */ 6);
-    f32vec4 val = fractal_noise(value_noise_texture, push.value_noise_sampler, p, noise_conf);
+    f32vec4 val = fractal_noise(value_noise_texture, deref(gpu_input).sampler_llr, p, noise_conf);
     val.x += p.z * 0.003 - 1.0;
     val.yzw = normalize(val.yzw + vec3(0, 0, 0.003));
     // val.x += -0.24;
