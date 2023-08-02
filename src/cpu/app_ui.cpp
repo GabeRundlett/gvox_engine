@@ -496,8 +496,8 @@ void AppUi::settings_ui() {
             if (ImGui::SliderFloat("Camera FOV", &settings.camera_fov, 0.01f, 170.0f)) {
                 needs_saving = true;
             }
-            if (ImGui::SliderFloat("Resolution Scale", &settings.render_res_scl, 0.1f, 2.0f)) {
-                settings.render_res_scl = std::clamp(std::round(settings.render_res_scl * 20.0f) / 20.0f, 0.1f, 2.0f);
+            if (ImGui::Combo("Resolution Scale", &resolution_scale_id, resolution_scale_options, 4)) {
+                settings.render_res_scl = resolution_scale_values[resolution_scale_id];
                 needs_saving = true;
             }
             // {

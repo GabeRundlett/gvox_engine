@@ -118,41 +118,44 @@ TreeSDF sd_spruce_tree(in f32vec3 p, in f32vec3 seed) {
 // Random noise
 f32vec3 hash33(f32vec3 p3) {
     p3 = fract(p3 * vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yxz+33.33);
-    return fract((p3.xxy + p3.yxx)*p3.zyx);
+    p3 += dot(p3, p3.yxz + 33.33);
+    return fract((p3.xxy + p3.yxx) * p3.zyx);
 }
 
 // Value noise + fbm noise
-float hash( in ivec2 p ) {
-    int n = p.x*3 + p.y*113;
-	n = (n << 13) ^ n;
+float hash(in ivec2 p) {
+    int n = p.x * 3 + p.y * 113;
+    n = (n << 13) ^ n;
     n = n * (n * n * 15731 + 789221) + 1376312589;
-    return -1.0+2.0*float( n & 0x0fffffff)/float(0x0fffffff);
+    return -1.0 + 2.0 * float(n & 0x0fffffff) / float(0x0fffffff);
 }
-float value_noise( in vec2 p ) {
-    ivec2 i = ivec2(floor( p ));
-    vec2 f = fract( p );
-    vec2 u = f*f*(3.0-2.0*f);
-    return mix( mix( hash( i + ivec2(0,0) ), 
-                     hash( i + ivec2(1,0) ), u.x),
-                mix( hash( i + ivec2(0,1) ), 
-                     hash( i + ivec2(1,1) ), u.x), u.y);
+float value_noise(in vec2 p) {
+    ivec2 i = ivec2(floor(p));
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i + ivec2(0, 0)),
+                   hash(i + ivec2(1, 0)), u.x),
+               mix(hash(i + ivec2(0, 1)),
+                   hash(i + ivec2(1, 1)), u.x),
+               u.y);
 }
-f32 fbm2( vec2 uv ) {
+f32 fbm2(vec2 uv) {
     f32 f = 0;
-    mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
-    f  = 0.5000*value_noise( uv ); uv = m*uv;
-    f += 0.2500*value_noise( uv ); uv = m*uv;
-    return f*.5 + .5;
+    mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
+    f = 0.5000 * value_noise(uv);
+    uv = m * uv;
+    f += 0.2500 * value_noise(uv);
+    uv = m * uv;
+    return f * .5 + .5;
 }
 
 // Forest generation
 #define TREE_MARCH_STEPS 4
 
-f32vec3 get_closest_surface(f32vec3 center_cell_world, f32 current_noise, f32 rep, inout f32 scale) { 
+f32vec3 get_closest_surface(f32vec3 center_cell_world, f32 current_noise, f32 rep, inout f32 scale) {
     f32vec3 offset = hash33(center_cell_world);
     scale = offset.z * .3 + .7;
-    center_cell_world.xy += (offset.xy * 2 - 1) * max(0, rep/scale - 5);
+    center_cell_world.xy += (offset.xy * 2 - 1) * max(0, rep / scale - 5);
 
     f32 step_size = rep / 2 / TREE_MARCH_STEPS;
 
@@ -160,16 +163,16 @@ f32vec3 get_closest_surface(f32vec3 center_cell_world, f32 current_noise, f32 re
     if (current_noise > 0) {
         for (u32 i = 0; i < TREE_MARCH_STEPS; i++) {
             center_cell_world.z -= step_size;
-            if (terrain_noise(center_cell_world).x < 0) 
+            if (terrain_noise(center_cell_world).x < 0)
                 return center_cell_world;
         }
     }
-    // Inside terrain 
+    // Inside terrain
     else {
         for (u32 i = 0; i < TREE_MARCH_STEPS; i++) {
             center_cell_world.z += step_size;
-            if (terrain_noise(center_cell_world).x > 0) 
-                return center_cell_world - f32vec3(0, 0, step_size);  
+            if (terrain_noise(center_cell_world).x > 0)
+                return center_cell_world - f32vec3(0, 0, step_size);
         }
     }
 
@@ -177,11 +180,11 @@ f32vec3 get_closest_surface(f32vec3 center_cell_world, f32 current_noise, f32 re
 }
 
 // Color palettes
-f32vec3 palette( in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d ) {
-    return a + b*cos( 6.28318*(c*t+d) );
+f32vec3 palette(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
+    return a + b * cos(6.28318 * (c * t + d));
 }
 f32vec3 forest_biome_palette(f32 t) {
-    return palette(t+.5, f32vec3(0.388, 0.718, 0.011), f32vec3(0.478, -0.172, 0.936), f32vec3(-1.212, -2.052, 0.058), f32vec3(1.598, 6.178, 0.380));
+    return palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
 }
 
 void brushgen_world(in out f32vec3 col, in out u32 id) {
@@ -216,21 +219,21 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     // Smooth noise depending on 2d position only
     f32 voxel_noise_xy = fbm2(voxel_pos.xy / 8 / 40);
     // Smooth biome color
-    f32vec3 forest_biome_color = forest_biome_palette(voxel_noise_xy*2-1);
+    f32vec3 forest_biome_color = forest_biome_palette(voxel_noise_xy * 2 - 1);
 
     if (val < 0) {
         id = 1;
         f32 r = good_rand(-val);
         if (val > -0.002 && upwards > 0.65) {
             // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
-            col = f32vec3(0.054, 0.22, 0.028);
+            col = f32vec3(0.05, 0.26, 0.03);
             if (r < 0.5) {
                 col *= 0.7;
             }
             // Mix with biome color
             col = mix(col, forest_biome_color * .75, .3);
         } else if (val > -0.05 && upwards > 0.5) {
-            col = f32vec3(0.08, 0.05, 0.03);
+            col = f32vec3(0.12, 0.08, 0.06);
             if (r < 0.5) {
                 col.r *= 0.5;
                 col.g *= 0.5;
@@ -241,17 +244,17 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
                 col.b *= 1.5;
             }
         } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
-            col = f32vec3(0.09, 0.08, 0.07);
+            col = f32vec3(0.17, 0.15, 0.07);
             if (r < 0.5) {
                 col.r *= 0.75;
                 col.g *= 0.75;
                 col.b *= 0.75;
             }
         } else {
-            col = f32vec3(0.08, 0.08, 0.07);
+            col = f32vec3(0.11, 0.11, 0.07);
         }
-    } 
-    #if ENABLE_TREE_GENERATION
+    }
+#if ENABLE_TREE_GENERATION
     else {
         // Meters per cell
         f32 rep = 6;
@@ -261,7 +264,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         // Local coordinates in current cell (centered at 0 [-rep/2, rep/2])
         f32vec3 q = mod(voxel_pos, rep) - rep / 2;
         // Current cell's center voxel (world space)
-        f32vec3 cell_center_world = qid * rep + rep/2.;
+        f32vec3 cell_center_world = qid * rep + rep / 2.;
 
         // Query terrain noise at current cell's center
         f32vec4 center_noise = terrain_noise(cell_center_world);
@@ -273,25 +276,25 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
         f32 forest_noise = fbm2(qid.xy / 10.);
         f32 forest_density = .45;
 
-        if (forest_noise > forest_density) 
+        if (forest_noise > forest_density)
             can_spawn = false;
 
         if (can_spawn) {
             // Tree scale
-            f32 scale; 
+            f32 scale;
             // Try to get the nearest point on the surface below (in the starting cell)
             f32vec3 hitPoint = get_closest_surface(cell_center_world, center_noise.x, rep, scale);
 
             if (hitPoint == f32vec3(0) && center_noise.x > 0) {
                 // If no terrain was found, try again for the bottom cell (upper tree case)
                 scale = forest_noise;
-                f32vec3 down_neighbor_cell_center_world = cell_center_world - f32vec3(0,0,rep);
+                f32vec3 down_neighbor_cell_center_world = cell_center_world - f32vec3(0, 0, rep);
                 hitPoint = get_closest_surface(down_neighbor_cell_center_world, terrain_noise(down_neighbor_cell_center_world).x, rep, scale);
             }
 
             // Debug space repetition boundaries
             // f32 tresh = 1. / 8.;
-            // if (abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh || 
+            // if (abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh ||
             //     abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.z)-rep/2.) <= tresh ||
             //     abs(abs(q.z)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh) {
             //     id = 1;
@@ -307,14 +310,14 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             // Colorize tree
             if (tree.wood < 0) {
                 id = 1;
-                col = (.3 - h_cell*.2) * (1. - h_voxel*.25) * f32vec3(.66,.5,.05);
+                col = (.3 - h_cell * .2) * (1. - h_voxel * .25) * f32vec3(.68, .4, .15);
             } else if (tree.leaves < 0) {
                 id = 1;
-                col = forest_biome_color * (.8 - h_cell.brg*.6) * (1. - h_voxel*.4);
+                col = forest_biome_color * (.8 - h_cell.brg * .6) * (1. - h_voxel * .4) * 2.0;
             }
         }
     }
-    #endif
+#endif
 #elif 1
     voxel_pos += f32vec3(0, 0, 150);
     if (voxel_i.x == 0 || voxel_i.y == 0 || voxel_i.z == 0) {

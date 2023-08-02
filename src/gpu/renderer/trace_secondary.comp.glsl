@@ -31,9 +31,9 @@ void main() {
 
     u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
 
-    // mat3 tbn = tbn_from_normal(SUN_DIR);
-    // f32vec3 ray_dir = tbn * normalize(vec3(rand_circle_pt(blue_noise * 0.5 + 0.5) * 0.03, 1));
-    f32vec3 ray_dir = SUN_DIR;
+    mat3 tbn = tbn_from_normal(SUN_DIR);
+    f32vec3 ray_dir = tbn * normalize(vec3((rand_circle_pt(abs(blue_noise)) - 0.5) * tan(SUN_ANGULAR_DIAMETER), 1));
+    // f32vec3 ray_dir = SUN_DIR;
 
     VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 

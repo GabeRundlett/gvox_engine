@@ -95,6 +95,20 @@ struct AppUi {
     bool should_upload_seed_data = true;
     bool should_hotload_shaders = false;
 
+    static inline char const * resolution_scale_options[4] = {
+        "33%",
+        "50%",
+        "75%",
+        "100%",
+    };
+    static inline constexpr std::array<float, 4> resolution_scale_values = {
+        0.33f,
+        0.50f,
+        0.75f,
+        1.00f,
+    };
+    i32 resolution_scale_id = 3;
+
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;
     GvoxRegionRange gvox_region_range{

@@ -23,7 +23,9 @@ void main() {
     // Direct sun illumination
     lighting += direct_value * max(0.0, dot(nrm, SUN_DIR));
     // Sky ambient
-    lighting += f32vec3(ssao_value) * sample_sky_ambient(nrm);
+    lighting += f32vec3(ssao_value) * sample_sky_ambient(nrm) * 1.0;
+    // Default ambient
+    lighting += 0.0;
 
     f32vec3 final_color = emit_col + albedo_col * lighting;
 
@@ -33,29 +35,15 @@ void main() {
 
 #if POSTPROCESSING_RASTER
 
-#define FILMIC
 DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
 
 f32vec3 srgb_encode(f32vec3 x) {
     return mix(12.92 * x, 1.055 * pow(x, f32vec3(.41666)) - .055, step(.0031308, x));
 }
 
-f32vec3 aces_filmic(f32vec3 x) {
-    f32 a = 2.51;
-    f32 b = 0.03;
-    f32 c = 2.43;
-    f32 d = 0.59;
-    f32 e = 0.14;
-    return (x * (a * x + b)) / (x * (c * x + d) + e);
-}
-
 f32vec3 color_correct(f32vec3 x) {
-#if defined(FILMIC)
-    x = max(x, f32vec3(0, 0, 0));
-    // x = x * 0.25;
-    x = aces_filmic(x);
+    x = x * 0.25;
     x = srgb_encode(x);
-#endif
     return x;
 }
 

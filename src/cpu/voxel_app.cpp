@@ -20,7 +20,8 @@ using namespace std::chrono_literals;
 
 constexpr auto round_frame_dim(u32vec2 size) {
     constexpr auto over_estimation = u32vec2{32, 32};
-    auto result = (size + u32vec2{over_estimation.x - 1u, over_estimation.y - 1u}) / over_estimation * over_estimation;
+    auto result = size;
+    // auto result = (size + u32vec2{over_estimation.x - 1u, over_estimation.y - 1u}) / over_estimation * over_estimation;
     // not necessary, since it rounds up!
     // result = {std::max(result.x, over_estimation.x), std::max(result.y, over_estimation.y)};
     return result;
@@ -652,6 +653,7 @@ void VoxelApp::on_update() {
     gbuffer_renderer.next_frame();
     ssao_renderer.next_frame();
     shadow_renderer.next_frame();
+    taa_renderer.next_frame();
 
     auto t1 = Clock::now();
     ui.update(gpu_input.delta_time, std::chrono::duration<f32>(t1 - t0).count());

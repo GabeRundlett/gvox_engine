@@ -166,6 +166,7 @@ struct TaaRenderer {
     void next_frame() {
         ping_pong_taa_col_image.task_resources.output_image.swap_images(ping_pong_taa_col_image.task_resources.history_image);
         ping_pong_taa_vel_image.task_resources.output_image.swap_images(ping_pong_taa_vel_image.task_resources.history_image);
+        ping_pong_smooth_var_image.task_resources.output_image.swap_images(ping_pong_smooth_var_image.task_resources.history_image);
     }
 
     auto render(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa::TaskImageView depth_image, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
