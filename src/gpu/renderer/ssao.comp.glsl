@@ -85,7 +85,7 @@ void main() {
     output_tex_size.zw = f32vec2(1.0, 1.0) / output_tex_size.xy;
     u32vec2 offset = get_downscale_offset(gpu_input);
     f32vec2 uv = get_uv(px * SHADING_SCL + offset, output_tex_size);
-    output_tex_size *= vec4(0.5, 0.5, 2.0, 2.0);
+    output_tex_size *= vec4((1.0 / SHADING_SCL).xx, SHADING_SCL.xx);
 
     f32 depth = fetch_depth(px);
     f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image_id), i32vec2(px), 0).xyz;
@@ -325,10 +325,10 @@ void main() {
         const int kernel_half_size = 1;
         for (int y = -kernel_half_size; y <= kernel_half_size; ++y) {
             for (int x = -kernel_half_size; x <= kernel_half_size; ++x) {
-                i32vec2 sample_pix = i32vec2(px / 2) + i32vec2(x, y);
-                float depth = fetch_depth(sample_pix * 2);
+                i32vec2 sample_pix = i32vec2(px / SHADING_SCL) + i32vec2(x, y);
+                float depth = fetch_depth(sample_pix * SHADING_SCL);
                 float ssgi = fetch_src(sample_pix);
-                f32vec3 normal = fetch_nrm(sample_pix * 2);
+                f32vec3 normal = fetch_nrm(sample_pix * SHADING_SCL);
                 result += process_sample(f32vec2(x, y), ssgi, depth, normal, center_depth, center_normal, w_sum);
             }
         }
@@ -339,7 +339,7 @@ void main() {
     if (w_sum > 1e-6) {
         imageStore(daxa_image2D(dst_image_id), i32vec2(px), f32vec4(result / w_sum, 0, 0, 0));
     } else {
-        imageStore(daxa_image2D(dst_image_id), i32vec2(px), f32vec4(fetch_src(px / 2), 0, 0, 0));
+        imageStore(daxa_image2D(dst_image_id), i32vec2(px), f32vec4(fetch_src(px / SHADING_SCL), 0, 0, 0));
     }
 }
 

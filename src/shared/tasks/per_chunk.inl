@@ -41,7 +41,7 @@ struct PerChunkComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        auto const dispatch_size = 4; // 1 << (ui.settings.log2_chunks_per_axis - 3);
+        auto const dispatch_size = 1 << (LOG2_CHUNKS_PER_LEVEL_PER_AXIS - 3);
         cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size);
     }
 };

@@ -107,4 +107,28 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &ctx, Dow
     return output_tex;
 }
 
+inline auto extract_downscaled_ssao(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView ssao_image) -> daxa::TaskImageView {
+    auto size = ctx.render_resolution;
+
+    auto output_tex = ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R16_SFLOAT,
+        .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
+        .name = "downscaled_ssao_image",
+    });
+
+    ctx.task_graph.add_task(DownscaleComputeTask{
+        {
+            .uses = {
+                .gpu_input = ctx.task_input_buffer,
+                .globals = ctx.task_globals_buffer,
+                .src_image_id = ssao_image,
+                .dst_image_id = output_tex,
+            },
+        },
+        &task_state,
+    });
+
+    return output_tex;
+}
+
 #endif

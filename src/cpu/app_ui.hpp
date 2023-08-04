@@ -102,7 +102,7 @@ struct AppUi {
         "100%",
     };
     static inline constexpr std::array<float, 4> resolution_scale_values = {
-        0.33f,
+        0.33333f,
         0.50f,
         0.75f,
         1.00f,

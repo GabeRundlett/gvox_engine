@@ -25,7 +25,7 @@ void player_fix_chunk_offset(
 void player_startup(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(10.01, 10.02, 80.03);
+    PLAYER.pos = f32vec3(0.01, 0.02, 0.03);
     // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
 
@@ -33,7 +33,7 @@ void player_startup(
     // PLAYER.pos = f32vec3(173.78, 113.72, 12.09);
 
     PLAYER.pitch = PI * 0.349;
-    // PLAYER.yaw = PI * 0.25;
+    PLAYER.yaw = PI * 0.25;
 
     // PLAYER.pitch = PI * 0.249;
     // PLAYER.yaw = PI * 1.25;

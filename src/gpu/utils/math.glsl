@@ -841,3 +841,7 @@ ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32ve
     res.ray_hit_ws_h = deref(globals).player.cam.view_to_world * res.ray_hit_vs_h;
     return res;
 }
+#define BIAS uintBitsToFloat(0x3f800040) // uintBitsToFloat(0x3f800040) == 1.00000762939453125
+ViewRayContext vrc_from_uv_and_biased_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv, float depth) {
+    return vrc_from_uv_and_depth(globals, uv, min(1.0, depth * BIAS));
+}

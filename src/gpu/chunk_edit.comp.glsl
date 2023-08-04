@@ -209,7 +209,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     // }
 
 #elif 1 // Terrain world
-    voxel_pos += f32vec3(0, 0, 200);
+    voxel_pos += f32vec3(0, 0, 280);
 
     f32vec4 val4 = terrain_noise(voxel_pos);
     f32 val = val4.x;
@@ -233,7 +233,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             // Mix with biome color
             col = mix(col, forest_biome_color * .75, .3);
         } else if (val > -0.05 && upwards > 0.5) {
-            col = f32vec3(0.12, 0.08, 0.06);
+            col = f32vec3(0.13, 0.09, 0.05);
             if (r < 0.5) {
                 col.r *= 0.5;
                 col.g *= 0.5;
@@ -251,7 +251,7 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
                 col.b *= 0.75;
             }
         } else {
-            col = f32vec3(0.11, 0.11, 0.07);
+            col = f32vec3(0.11, 0.10, 0.07);
         }
     }
 #if ENABLE_TREE_GENERATION
@@ -304,16 +304,16 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
             // Distance to tree
             TreeSDF tree = sd_spruce_tree((voxel_pos - hitPoint) / scale, qid);
 
-            f32vec3 h_cell = hash33(qid);
-            f32vec3 h_voxel = hash33(voxel_pos);
+            f32vec3 h_cell = vec3(0); // hash33(qid);
+            f32vec3 h_voxel = vec3(0); // hash33(voxel_pos);
 
             // Colorize tree
             if (tree.wood < 0) {
                 id = 1;
-                col = (.3 - h_cell * .2) * (1. - h_voxel * .25) * f32vec3(.68, .4, .15);
+                col = f32vec3(.68, .4, .15) * 0.16;
             } else if (tree.leaves < 0) {
                 id = 1;
-                col = forest_biome_color * (.8 - h_cell.brg * .6) * (1. - h_voxel * .4) * 2.0;
+                col = forest_biome_color * 0.5;
             }
         }
     }

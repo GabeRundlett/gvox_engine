@@ -7,7 +7,7 @@ void main() {
     u32vec2 offset = get_downscale_offset(gpu_input);
     i32vec2 src_px = i32vec2(gl_GlobalInvocationID.xy * SHADING_SCL + offset);
 
-#if DOWNSCALE_DEPTH
+#if DOWNSCALE_DEPTH || DOWNSCALE_SSAO
     f32vec4 output_val = texelFetch(daxa_texture2D(src_image_id), src_px, 0);
 #elif DOWNSCALE_NRM
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(src_image_id), src_px, 0);

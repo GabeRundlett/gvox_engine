@@ -66,6 +66,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     ReprojectionRenderer reprojection_renderer;
     SsaoRenderer ssao_renderer;
     ShadowRenderer shadow_renderer;
+    DiffuseGiRenderer diffuse_gi_renderer;
     Compositor compositor;
     TaaRenderer taa_renderer;
     GpuResources gpu_resources;

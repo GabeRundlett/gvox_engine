@@ -159,7 +159,7 @@ void GpuResources::destroy(daxa::Device &device) const {
 // Creates temp task graph
 VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {800, 600}),
-      daxa_instance{daxa::create_instance({.enable_validation = false})},
+      daxa_instance{daxa::create_instance({})},
       device{daxa_instance.create_device({
           // .enable_buffer_device_address_capture_replay = false,
           .name = "device",
@@ -221,6 +221,7 @@ VoxelApp::VoxelApp()
       reprojection_renderer{main_pipeline_manager},
       ssao_renderer{main_pipeline_manager},
       shadow_renderer{main_pipeline_manager},
+      diffuse_gi_renderer{main_pipeline_manager},
       compositor{main_pipeline_manager},
       taa_renderer{main_pipeline_manager},
       gpu_resources{},
@@ -654,6 +655,7 @@ void VoxelApp::on_update() {
     ssao_renderer.next_frame();
     shadow_renderer.next_frame();
     taa_renderer.next_frame();
+    diffuse_gi_renderer.next_frame();
 
     auto t1 = Clock::now();
     ui.update(gpu_input.delta_time, std::chrono::duration<f32>(t1 - t0).count());
@@ -1232,6 +1234,19 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
     auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
     auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
+
+    auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);
+    diffuse_gi_renderer.render(
+                record_ctx,
+                gbuffer_depth,
+                reprojected_rtdgi,
+                reprojection_map,
+                // &convolved_sky_cube,
+                // &mut ircache_state,
+                // &wrc,
+                // tlas,
+                ssao_image);
+
     auto composited_image = compositor.render(record_ctx, gbuffer_depth, ssao_image, shading_image);
     auto final_image = taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
 

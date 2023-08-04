@@ -21,5 +21,6 @@
 #include <shared/tasks/renderer/calculate_reprojection_map.inl>
 #include <shared/tasks/renderer/ssao.inl>
 #include <shared/tasks/renderer/trace_secondary.inl>
+#include <shared/tasks/renderer/diffuse_gi.inl>
 #include <shared/tasks/renderer/taa.inl>
 #include <shared/tasks/renderer/postprocessing.inl>

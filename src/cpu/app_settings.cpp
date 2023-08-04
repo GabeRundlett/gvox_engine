@@ -81,7 +81,7 @@ void AppSettings::clear() {
     camera_fov = 90.0f;
     mouse_sensitivity = 1.0f;
     render_res_scl = 1.0f;
-    log2_chunks_per_axis = 5;
+    log2_chunks_per_axis = LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     gpu_heap_size = 1u << 30;
     world_seed_str = "gvox";
 
