@@ -21,11 +21,11 @@ void main() {
 
     f32vec3 lighting = f32vec3(0.0);
     // Direct sun illumination
-    lighting += direct_value * max(0.0, dot(nrm, SUN_DIR));
+    lighting += direct_value * 1.0;
     // Sky ambient
-    lighting += f32vec3(ssao_value) * sample_sky_ambient(nrm) * 1.0;
+    // lighting += f32vec3(ssao_value) * sample_sky_ambient(nrm) * 1.0;
     // Default ambient
-    lighting += 0.0;
+    // lighting += 2.0;
 
     f32vec3 final_color = emit_col + albedo_col * lighting;
 

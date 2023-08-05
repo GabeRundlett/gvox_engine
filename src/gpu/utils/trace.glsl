@@ -83,15 +83,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
         info.ray_dir.z == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.z));
     u32 lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, ray_pos, result.voxel_data);
     if (lod == 0) {
-        if (info.extend_to_max_dist) {
-#if TRACE_SECONDARY_COMPUTE
-            result.dist = 0.0;
-#else
-            result.dist = info.max_dist;
-#endif
-        } else {
-            result.dist = 0.0;
-        }
+        result.dist = 0.0;
         return result;
     }
     f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;

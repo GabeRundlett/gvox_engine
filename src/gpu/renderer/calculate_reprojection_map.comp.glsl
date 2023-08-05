@@ -14,23 +14,6 @@ f32vec3 fetch_nrm(u32vec2 px) {
     return texelFetch(daxa_texture2D(vs_normal_image_id), i32vec2(px), 0).xyz;
 }
 
-struct Bilinear {
-    f32vec2 origin;
-    f32vec2 weights;
-};
-
-i32vec2 px0(in Bilinear b) { return i32vec2(b.origin); }
-i32vec2 px1(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 0); }
-i32vec2 px2(in Bilinear b) { return i32vec2(b.origin) + i32vec2(0, 1); }
-i32vec2 px3(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 1); }
-
-Bilinear get_bilinear_filter(f32vec2 uv, f32vec2 tex_size) {
-    Bilinear result;
-    result.origin = trunc(uv * tex_size - 0.5);
-    result.weights = fract(uv * tex_size - 0.5);
-    return result;
-}
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     u32vec2 px = gl_GlobalInvocationID.xy;

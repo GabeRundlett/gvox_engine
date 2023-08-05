@@ -141,6 +141,9 @@ struct GbufferRenderer {
             .name = "normal",
         });
 
+        gbuffer_depth.downscaled_view_normal = std::nullopt;
+        gbuffer_depth.downscaled_depth = std::nullopt;
+
         gbuffer_depth.depth = PingPongImage{};
         auto [depth_image, prev_depth_image] = gbuffer_depth.depth.get(
             record_ctx.device,

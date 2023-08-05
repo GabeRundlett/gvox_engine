@@ -40,6 +40,8 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(RtdgiValidateComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(half_view_normal_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(reprojected_gi_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -57,6 +59,9 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(RtdgiTraceComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(half_view_normal_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(reprojected_gi_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -129,6 +134,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(RtdgiRestirResolveComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(radiance_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(reservoir_input_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(gbuffer_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -147,15 +153,24 @@ DAXA_DECL_TASK_USES_END()
 struct RtdgiPush {
     f32vec4 output_tex_size;
 };
+struct RtdgiTemporalPush {
+    f32vec4 output_tex_size;
+    f32vec4 gbuffer_tex_size;
+};
+struct RtdgiRestirTemporalPush {
+    f32vec4 gbuffer_tex_size;
+};
 struct RtdgiRestirSpatialPush {
+    f32vec4 gbuffer_tex_size;
     f32vec4 output_tex_size;
     u32 spatial_reuse_pass_idx;
+    // Only done in the last spatial resampling pass
     u32 perform_occlusion_raymarch;
     u32 occlusion_raymarch_importance_only;
 };
 struct RtdgiRestirResolvePush {
+    f32vec4 gbuffer_tex_size;
     f32vec4 output_tex_size;
-    f32vec4 input_tex_size;
 };
 
 #if defined(__cplusplus)
@@ -205,13 +220,13 @@ inline void rtdgi_compile_compute_pipeline(daxa::PipelineManager &pipeline_manag
         }                                                                                                                                                           \
     }
 
-RTDGI_DECL_TASK_STATE(RtdgiTemporal, RTDGI_TEMPORAL, RtdgiRestirResolvePush);
+RTDGI_DECL_TASK_STATE(RtdgiTemporal, RTDGI_TEMPORAL, RtdgiTemporalPush);
 RTDGI_DECL_TASK_STATE(RtdgiSpatial, RTDGI_SPATIAL, RtdgiPush);
-RTDGI_DECL_TASK_STATE(RtdgiReproject, RTDGI_SPATIAL, RtdgiPush);
-RTDGI_DECL_TASK_STATE(RtdgiValidate, RTDGI_VALIDATE, RtdgiPush);
-RTDGI_DECL_TASK_STATE(RtdgiTrace, RTDGI_TRACE, RtdgiPush);
-RTDGI_DECL_TASK_STATE(RtdgiValidityIntegrate, RTDGI_VALIDITY_INTEGRATE, RtdgiPush);
-RTDGI_DECL_TASK_STATE(RtdgiRestirTemporal, RTDGI_RESTIR_TEMPORAL, RtdgiPush);
+RTDGI_DECL_TASK_STATE(RtdgiReproject, RTDGI_REPROJECT, RtdgiPush);
+RTDGI_DECL_TASK_STATE(RtdgiValidate, RTDGI_VALIDATE, RtdgiRestirTemporalPush);
+RTDGI_DECL_TASK_STATE(RtdgiTrace, RTDGI_TRACE, RtdgiRestirTemporalPush);
+RTDGI_DECL_TASK_STATE(RtdgiValidityIntegrate, RTDGI_VALIDITY_INTEGRATE, RtdgiRestirResolvePush);
+RTDGI_DECL_TASK_STATE(RtdgiRestirTemporal, RTDGI_RESTIR_TEMPORAL, RtdgiRestirTemporalPush);
 RTDGI_DECL_TASK_STATE(RtdgiRestirSpatial, RTDGI_RESTIR_SPATIAL, RtdgiRestirSpatialPush);
 RTDGI_DECL_TASK_STATE(RtdgiRestirResolve, RTDGI_RESTIR_RESOLVE, RtdgiRestirResolvePush);
 
@@ -314,9 +329,9 @@ struct DiffuseGiRenderer {
             },
             &rtdgi_temporal_task_state,
             record_ctx.render_resolution,
-            RtdgiRestirResolvePush{
+            RtdgiTemporalPush{
                 extent_inv_extent,
-                scaled_extent_inv_extent,
+                extent_inv_extent,
             },
         });
 
@@ -369,6 +384,10 @@ struct DiffuseGiRenderer {
         daxa::TaskImageView reprojection_map)
         -> ReprojectedRtdgi {
 
+        extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.render_resolution.x), static_cast<f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
+        extent_inv_extent.z = 1.0f / extent_inv_extent.x;
+        extent_inv_extent.w = 1.0f / extent_inv_extent.y;
+
         temporal2_tex = PingPongImage{};
         auto [temporal_output_tex, history_tex] = temporal2_tex.get(
             record_ctx.device,
@@ -417,6 +436,7 @@ struct DiffuseGiRenderer {
         GbufferDepth &gbuffer_depth,
         ReprojectedRtdgi reprojected_rtdgi,
         daxa::TaskImageView reprojection_map,
+        daxa::TaskBufferView voxel_malloc_task_allocator_buffer, daxa::TaskBufferView task_voxel_chunks_buffer,
         daxa::TaskImageView ssao_tex)
         -> daxa::TaskImageView {
         temporal_radiance_tex = PingPongImage{};
@@ -488,9 +508,7 @@ struct DiffuseGiRenderer {
         scaled_extent_inv_extent.z = 1.0f / scaled_extent_inv_extent.x;
         scaled_extent_inv_extent.w = 1.0f / scaled_extent_inv_extent.y;
 
-        extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.render_resolution.x), static_cast<f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
-        extent_inv_extent.z = 1.0f / extent_inv_extent.x;
-        extent_inv_extent.w = 1.0f / extent_inv_extent.y;
+        auto debug_tex = daxa::TaskImageView{};
 
         auto [radiance_tex, local_temporal_reservoir_tex] = [&]() -> std::array<daxa::TaskImageView, 2> {
             auto [radiance_output_tex, radiance_history_tex] = temporal_radiance_tex.get(
@@ -548,6 +566,8 @@ struct DiffuseGiRenderer {
                     .uses = {
                         .gpu_input = record_ctx.task_input_buffer,
                         .globals = record_ctx.task_globals_buffer,
+                        .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
+                        .voxel_chunks = task_voxel_chunks_buffer,
 
                         .half_view_normal_tex = half_view_normal_tex,
                         .depth_tex = gbuffer_depth.depth.task_resources.output_image,
@@ -567,8 +587,8 @@ struct DiffuseGiRenderer {
                 },
                 &rtdgi_validate_task_state,
                 shading_resolution,
-                RtdgiPush{
-                    scaled_extent_inv_extent,
+                RtdgiRestirTemporalPush{
+                    extent_inv_extent,
                 },
             });
 
@@ -583,6 +603,9 @@ struct DiffuseGiRenderer {
                     .uses = {
                         .gpu_input = record_ctx.task_input_buffer,
                         .globals = record_ctx.task_globals_buffer,
+                        .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
+                        .voxel_chunks = task_voxel_chunks_buffer,
+                        .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
 
                         .half_view_normal_tex = half_view_normal_tex,
                         .depth_tex = gbuffer_depth.depth.task_resources.output_image,
@@ -603,10 +626,12 @@ struct DiffuseGiRenderer {
                 },
                 &rtdgi_trace_task_state,
                 shading_resolution,
-                RtdgiPush{
-                    scaled_extent_inv_extent,
+                RtdgiRestirTemporalPush{
+                    extent_inv_extent,
                 },
             });
+
+            debug_tex = candidate_radiance_tex;
 
             record_ctx.task_graph.add_task(RtdgiValidityIntegrateComputeTask{
                 {
@@ -625,7 +650,8 @@ struct DiffuseGiRenderer {
                 },
                 &rtdgi_validity_integrate_task_state,
                 shading_resolution,
-                RtdgiPush{
+                RtdgiRestirResolvePush{
+                    extent_inv_extent,
                     scaled_extent_inv_extent,
                 },
             });
@@ -661,8 +687,8 @@ struct DiffuseGiRenderer {
                 },
                 &rtdgi_restir_temporal_task_state,
                 shading_resolution,
-                RtdgiPush{
-                    scaled_extent_inv_extent,
+                RtdgiRestirTemporalPush{
+                    extent_inv_extent,
                 },
             });
 
@@ -705,11 +731,11 @@ struct DiffuseGiRenderer {
                             .gpu_input = record_ctx.task_input_buffer,
                             .globals = record_ctx.task_globals_buffer,
 
-                            .reservoir_input_tex = half_view_normal_tex,
-                            .bounced_radiance_input_tex = half_depth_tex,
-                            .half_view_normal_tex = gbuffer_depth.depth.task_resources.output_image,
-                            .half_depth_tex = reservoir_input_tex,
-                            .depth_tex = bounced_radiance_input_tex,
+                            .reservoir_input_tex = reservoir_input_tex,
+                            .bounced_radiance_input_tex = bounced_radiance_input_tex,
+                            .half_view_normal_tex = half_view_normal_tex,
+                            .half_depth_tex = half_depth_tex,
+                            .depth_tex = gbuffer_depth.depth.task_resources.output_image,
                             .half_ssao_tex = half_ssao_tex,
                             .temporal_reservoir_packed_tex = temporal_reservoir_packed_tex,
                             .reprojected_gi_tex = reprojected_rtdgi.history_tex,
@@ -721,6 +747,7 @@ struct DiffuseGiRenderer {
                     &rtdgi_restir_spatial_task_state,
                     shading_resolution,
                     RtdgiRestirSpatialPush{
+                        extent_inv_extent,
                         scaled_extent_inv_extent,
                         spatial_reuse_pass_idx,
                         perform_occlusion_raymarch,
@@ -750,6 +777,7 @@ struct DiffuseGiRenderer {
                     .uses = {
                         .gpu_input = record_ctx.task_input_buffer,
                         .globals = record_ctx.task_globals_buffer,
+                        .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
 
                         .radiance_tex = radiance_tex,
                         .reservoir_input_tex = reservoir_input_tex,
@@ -767,10 +795,10 @@ struct DiffuseGiRenderer {
                     },
                 },
                 &rtdgi_restir_resolve_task_state,
-                shading_resolution,
+                record_ctx.render_resolution,
                 RtdgiRestirResolvePush{
                     extent_inv_extent,
-                    scaled_extent_inv_extent,
+                    extent_inv_extent,
                 },
             });
 
@@ -792,7 +820,7 @@ struct DiffuseGiRenderer {
             gbuffer_depth,
             ssao_tex);
 
-        return filtered_tex;
+        return debug_tex;
     }
 };
 

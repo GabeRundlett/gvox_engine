@@ -26,6 +26,10 @@ struct CapsulePoints {
 
 // Common Functions
 
+f32 saturate(f32 x) { return clamp(x, 0.0, 1.0); }
+f32vec2 saturate(f32vec2 x) { return clamp(x, f32vec2(0.0), f32vec2(1.0)); }
+f32vec3 saturate(f32vec3 x) { return clamp(x, f32vec3(0.0), f32vec3(1.0)); }
+f32vec4 saturate(f32vec4 x) { return clamp(x, f32vec4(0.0), f32vec4(1.0)); }
 f32 nonzero_sign(f32 x) {
     if (x < 0.0)
         return -1.0;
@@ -70,6 +74,8 @@ f32vec3 rotate_z(f32vec3 v, f32 angle) {
         0, 0, 1);
     return rot_mat * v;
 }
+
+// Color functions
 f32vec3 rgb2hsv(f32vec3 c) {
     f32vec4 K = f32vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     f32vec4 p = mix(f32vec4(c.bg, K.wz), f32vec4(c.gb, K.xy), step(c.b, c.g));
@@ -112,6 +118,27 @@ f32vec3 YCbCr_to_sRGB(f32vec3 col) {
 }
 float sRGB_to_luminance(f32vec3 col) {
     return dot(col, f32vec3(0.2126, 0.7152, 0.0722));
+}
+f32vec4 linear_rgb_to_crunched_luma_chroma(f32vec4 v) {
+    v.rgb = sRGB_to_YCbCr(v.rgb);
+    float k = sqrt(v.x) / max(1e-8, v.x);
+    return f32vec4(v.rgb * k, v.a);
+}
+f32vec4 crunched_luma_chroma_to_linear_rgb(f32vec4 v) {
+    v.rgb *= v.x;
+    v.rgb = YCbCr_to_sRGB(v.rgb);
+    return v;
+}
+
+float uint_to_u01_float(uint h) {
+    const uint mantissaMask = 0x007FFFFFu;
+    const uint one = 0x3F800000u;
+
+    h &= mantissaMask;
+    h |= one;
+
+    float r2 = uintBitsToFloat(h);
+    return r2 - 1.0;
 }
 
 // [Drobot2014a] Low Level Optimizations for GCN
@@ -212,6 +239,34 @@ f32vec3 u16_to_nrm_unnormalized(u32 x) {
 u32 nrm_to_u16(f32vec3 nrm) {
     return octahedral_16(nrm);
     // return spheremap_16(nrm);
+}
+
+float unpack_unorm(uint pckd, uint bitCount) {
+    uint maxVal = (1u << bitCount) - 1;
+    return float(pckd & maxVal) / maxVal;
+}
+
+uint pack_unorm(float val, uint bitCount) {
+    uint maxVal = (1u << bitCount) - 1;
+    return uint(clamp(val, 0.0, 1.0) * maxVal + 0.5);
+}
+
+float pack_normal_11_10_11(f32vec3 n) {
+    uint pckd = 0;
+    pckd += pack_unorm(n.x * 0.5 + 0.5, 11);
+    pckd += pack_unorm(n.y * 0.5 + 0.5, 10) << 11;
+    pckd += pack_unorm(n.z * 0.5 + 0.5, 11) << 21;
+    return uintBitsToFloat(pckd);
+}
+
+f32vec3 unpack_normal_11_10_11(float pckd) {
+    uint p = floatBitsToUint(pckd);
+    return normalize(f32vec3(
+                         unpack_unorm(p, 11),
+                         unpack_unorm(p >> 11, 10),
+                         unpack_unorm(p >> 21, 11)) *
+                         2.0 -
+                     1.0);
 }
 
 u32 ceil_log2(u32 x) {
@@ -533,6 +588,11 @@ f32 sd_pyramid(in f32vec3 p, in f32 r, in f32 h) {
 
 // Random functions
 
+float interleaved_gradient_noise(u32vec2 px) {
+    return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// Jenkins hash function
 u32 good_rand_hash(u32 x) {
     x += (x << 10u);
     x ^= (x >> 6u);
@@ -560,6 +620,27 @@ f32 good_rand(f32 x) { return good_rand_float_construct(good_rand_hash(floatBits
 f32 good_rand(f32vec2 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 f32 good_rand(f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 f32 good_rand(f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+
+// TODO: check if we need a better hash function
+uint hash1(uint x) { return good_rand_hash(x); }
+uint hash1_mut(inout uint h) {
+    uint res = h;
+    h = hash1(h);
+    return res;
+}
+uint hash_combine2(uint x, uint y) {
+    const uint M = 1664525u, C = 1013904223u;
+    uint seed = (x * M + y + C) * M;
+    // Tempering (from Matsumoto)
+    seed ^= (seed >> 11u);
+    seed ^= (seed << 7u) & 0x9d2c5680u;
+    seed ^= (seed << 15u) & 0xefc60000u;
+    seed ^= (seed >> 18u);
+    return seed;
+}
+uint hash2(u32vec2 v) { return hash_combine2(v.x, hash1(v.y)); }
+uint hash3(u32vec3 v) { return hash_combine2(v.x, hash2(v.yz)); }
+uint hash4(u32vec4 v) { return hash_combine2(v.x, hash3(v.yzw)); }
 
 u32 _rand_state;
 void rand_seed(u32 seed) {
@@ -610,6 +691,21 @@ f32mat3x3 tbn_from_normal(f32vec3 nrm) {
     f32vec3 tangent = normalize(cross(nrm, -nrm.zxy));
     f32vec3 bi_tangent = cross(nrm, tangent);
     return f32mat3x3(tangent, bi_tangent, nrm);
+}
+
+f32vec3 uniform_sample_hemisphere(f32vec2 urand) {
+    float phi = urand.y * 2.0 * PI;
+    float cos_theta = 1.0 - urand.x;
+    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    return f32vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+}
+
+float rtr_encode_cos_theta_for_fp16(float x) {
+    return 1 - x;
+}
+
+float rtr_decode_cos_theta_from_fp16(float x) {
+    return 1 - x;
 }
 
 vec2 rsi(vec3 r0, vec3 rd, float sr) {
@@ -737,6 +833,28 @@ i32vec3 imod3(i32vec3 p, i32vec3 m) {
     return i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
 
+f32mat3x3 build_orthonormal_basis(f32vec3 n) {
+    f32vec3 b1;
+    f32vec3 b2;
+
+    if (n.z < 0.0) {
+        const float a = 1.0 / (1.0 - n.z);
+        const float b = n.x * n.y * a;
+        b1 = f32vec3(1.0 - n.x * n.x * a, -b, n.x);
+        b2 = f32vec3(b, n.y * n.y * a - 1.0, -n.y);
+    } else {
+        const float a = 1.0 / (1.0 + n.z);
+        const float b = -n.x * n.y * a;
+        b1 = f32vec3(1.0 - n.x * n.x * a, b, -n.x);
+        b2 = f32vec3(b, 1.0 - n.y * n.y * a, -n.y);
+    }
+
+    return f32mat3x3(
+        b1.x, b2.x, n.x,
+        b1.y, b2.y, n.y,
+        b1.z, b2.z, n.z);
+}
+
 f32mat4x4 rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
     float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
     float sin_rot_y = sin(roll), cos_rot_y = cos(roll);
@@ -783,6 +901,12 @@ f32mat4x4 translation_matrix(f32vec3 pos) {
         0, 1, 0, 0,
         0, 0, 1, 0,
         pos, 1);
+}
+
+f32vec3 position_world_to_clip(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    f32vec4 p = (deref(globals).player.cam.world_to_view * f32vec4(v, 1));
+    p = (deref(globals).player.cam.view_to_clip * p);
+    return p.xyz / p.w;
 }
 
 f32vec2 get_uv(i32vec2 pix, f32vec4 tex_size) { return (f32vec2(pix) + 0.5) * tex_size.zw; }
@@ -844,4 +968,54 @@ ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32ve
 #define BIAS uintBitsToFloat(0x3f800040) // uintBitsToFloat(0x3f800040) == 1.00000762939453125
 ViewRayContext vrc_from_uv_and_biased_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv, float depth) {
     return vrc_from_uv_and_depth(globals, uv, min(1.0, depth * BIAS));
+}
+
+f32vec3 direction_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    return (deref(globals).player.cam.view_to_world * f32vec4(v, 0)).xyz;
+}
+f32vec3 direction_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    return (deref(globals).player.cam.world_to_view * f32vec4(v, 0)).xyz;
+}
+f32vec3 position_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    return (deref(globals).player.cam.world_to_view, f32vec4(v, 1)).xyz;
+}
+f32vec3 position_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    return (deref(globals).player.cam.view_to_world, f32vec4(v, 1)).xyz;
+}
+
+f32vec3 position_world_to_sample(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
+    f32vec4 p = deref(globals).player.cam.world_to_view * f32vec4(v, 1);
+    p = deref(globals).player.cam.view_to_sample * p;
+    return p.xyz / p.w;
+}
+
+struct Bilinear {
+    f32vec2 origin;
+    f32vec2 weights;
+};
+
+i32vec2 px0(in Bilinear b) { return i32vec2(b.origin); }
+i32vec2 px1(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 0); }
+i32vec2 px2(in Bilinear b) { return i32vec2(b.origin) + i32vec2(0, 1); }
+i32vec2 px3(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 1); }
+
+Bilinear get_bilinear_filter(f32vec2 uv, f32vec2 tex_size) {
+    Bilinear result;
+    result.origin = trunc(uv * tex_size - 0.5);
+    result.weights = fract(uv * tex_size - 0.5);
+    return result;
+}
+
+f32vec4 get_bilinear_custom_weights(Bilinear f, f32vec4 custom_weights) {
+    f32vec4 weights;
+    weights.x = (1.0 - f.weights.x) * (1.0 - f.weights.y);
+    weights.y = f.weights.x * (1.0 - f.weights.y);
+    weights.z = (1.0 - f.weights.x) * f.weights.y;
+    weights.w = f.weights.x * f.weights.y;
+    return weights * custom_weights;
+}
+
+f32vec4 apply_bilinear_custom_weights(f32vec4 s00, f32vec4 s10, f32vec4 s01, f32vec4 s11, f32vec4 w, bool should_normalize) {
+	f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
+	return r * (should_normalize ? (1.0 / dot(w, f32vec4(1.0))) : 1.0);
 }
