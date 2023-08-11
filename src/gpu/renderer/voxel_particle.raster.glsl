@@ -1,4 +1,4 @@
-#include <shared/shared.inl>
+#include <shared/app.inl>
 #define VOXEL_SCL 8
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX

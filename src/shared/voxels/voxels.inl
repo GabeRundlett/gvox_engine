@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/voxel_malloc.inl>
+#include <shared/voxels/voxel_malloc.inl>
 
 struct GpuGvoxModel {
     u32 magic;

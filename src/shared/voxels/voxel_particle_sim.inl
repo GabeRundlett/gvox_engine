@@ -22,7 +22,7 @@ struct VoxelParticleSimComputeTaskState {
     VoxelParticleSimComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxel_particle_sim.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},
                 .compile_options = {.defines = {{"VOXEL_PARTICLE_SIM_COMPUTE", "1"}}},
             },
             .name = "voxel_particle_sim",

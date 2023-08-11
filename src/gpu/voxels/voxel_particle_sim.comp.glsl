@@ -1,4 +1,4 @@
-#include <shared/shared.inl>
+#include <shared/app.inl>
 #include <utils/voxel_particle.glsl>
 #include <utils/voxel_world.glsl>
 

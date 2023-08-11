@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/voxels.inl>
+#include <shared/voxels/voxels.inl>
 
 // clang-format off
 #define GAME_ACTION_MOVE_FORWARD       0

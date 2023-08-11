@@ -1,4 +1,4 @@
-#include <shared/shared.inl>
+#include <shared/app.inl>
 #include <utils/downscale.glsl>
 #include <utils/math.glsl>
 

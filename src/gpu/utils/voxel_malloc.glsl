@@ -2,7 +2,7 @@
 
 #extension GL_EXT_shader_atomic_int64 : require
 
-#include <shared/shared.inl>
+#include <shared/app.inl>
 
 #define UserAllocatorType VoxelMallocPageAllocator
 #define UserIndexType VoxelMalloc_PageIndex

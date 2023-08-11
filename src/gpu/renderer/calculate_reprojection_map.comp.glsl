@@ -1,4 +1,4 @@
-#include <shared/shared.inl>
+#include <shared/app.inl>
 #include <utils/math.glsl>
 
 float fetch_depth(u32vec2 px) {
