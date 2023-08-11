@@ -67,7 +67,7 @@ struct UpscaleReconstructComputeTaskState {
     UpscaleReconstructComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"upscale_reconstruct.comp.glsl"},
+                .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
                 .compile_options = {.defines = {{"UPSCALE_RECONSTRUCT_COMPUTE", "1"}}},
             },
             .name = "upscale_reconstruct",

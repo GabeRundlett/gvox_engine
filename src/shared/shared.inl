@@ -14,13 +14,13 @@
 #include <shared/tasks/per_chunk.inl>
 #include <shared/tasks/voxel_particle_sim.inl>
 
-#include <shared/tasks/renderer/voxel_particle_raster.inl>
+#include <shared/renderer/voxel_particle_raster.inl>
 
-#include <shared/tasks/renderer/downscale.inl>
-#include <shared/tasks/renderer/trace_primary.inl>
-#include <shared/tasks/renderer/calculate_reprojection_map.inl>
-#include <shared/tasks/renderer/ssao.inl>
-#include <shared/tasks/renderer/trace_secondary.inl>
-#include <shared/tasks/renderer/diffuse_gi.inl>
-#include <shared/tasks/renderer/taa.inl>
-#include <shared/tasks/renderer/postprocessing.inl>
+#include <shared/renderer/downscale.inl>
+#include <shared/renderer/trace_primary.inl>
+#include <shared/renderer/calculate_reprojection_map.inl>
+#include <shared/renderer/ssao.inl>
+#include <shared/renderer/trace_secondary.inl>
+#include <shared/renderer/diffuse_gi.inl>
+#include <shared/renderer/taa.inl>
+#include <shared/renderer/postprocessing.inl>

@@ -35,7 +35,7 @@ struct TraceDepthPrepassComputeTaskState {
     TraceDepthPrepassComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"trace_depth_prepass.comp.glsl"},
+                .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
                 .compile_options = {.defines = {{"TRACE_DEPTH_PREPASS_COMPUTE", "1"}}},
             },
             .name = "trace_depth_prepass",

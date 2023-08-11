@@ -176,7 +176,7 @@ struct RtdgiRestirResolvePush {
 #define ENABLE_RESTIR 0
 
 #if defined(__cplusplus)
-#include <shared/tasks/renderer/downscale.inl>
+#include <shared/renderer/downscale.inl>
 
 template <typename PushT>
 inline void rtdgi_compile_compute_pipeline(daxa::PipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
@@ -281,14 +281,15 @@ struct DiffuseGiRenderer {
         temporal_candidate_tex.task_resources.output_image.swap_images(temporal_candidate_tex.task_resources.history_image);
         temporal_invalidity_tex.task_resources.output_image.swap_images(temporal_invalidity_tex.task_resources.history_image);
         temporal2_tex.task_resources.output_image.swap_images(temporal2_tex.task_resources.history_image);
+#if ENABLE_RESTIR
         temporal2_variance_tex.task_resources.output_image.swap_images(temporal2_variance_tex.task_resources.history_image);
+#endif
         temporal_hit_normal_tex.task_resources.output_image.swap_images(temporal_hit_normal_tex.task_resources.history_image);
     }
 
     auto temporal(
         RecordContext &record_ctx,
         daxa::TaskImageView input_color,
-        GbufferDepth &gbuffer_depth,
         daxa::TaskImageView reprojection_map,
         daxa::TaskImageView reprojected_history_tex,
         daxa::TaskImageView rt_history_invalidity_tex,
@@ -455,7 +456,6 @@ struct DiffuseGiRenderer {
         temporal_hit_normal_tex = PingPongImage{};
 
         auto half_ssao_tex = extract_downscaled_ssao(record_ctx, downscale_ssao_task_state, ssao_tex);
-        auto const shading_resolution = u32vec2{record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL};
 
         auto [hit_normal_output_tex, hit_normal_history_tex] = temporal_hit_normal_tex.get(
             record_ctx.device,
@@ -815,7 +815,6 @@ struct DiffuseGiRenderer {
         auto filtered_tex = temporal(
             record_ctx,
             irradiance_tex,
-            gbuffer_depth,
             reprojection_map,
             reprojected_rtdgi.history_tex,
             invalidity_output_tex,

@@ -1,7 +1,10 @@
 #pragma once
 
+#include <shared/renderer/downscale.inl>
+
+#if defined(__cplusplus)
+
 #include <cpu/core.hpp>
-#include <shared/tasks/renderer/downscale.inl>
 
 struct GbufferDepth {
     daxa::TaskImageView gbuffer;
@@ -37,3 +40,5 @@ struct GbufferDepth {
         return *downscaled_view_normal;
     }
 };
+
+#endif
