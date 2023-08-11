@@ -173,6 +173,8 @@ struct RtdgiRestirResolvePush {
     f32vec4 output_tex_size;
 };
 
+#define ENABLE_RESTIR 0
+
 #if defined(__cplusplus)
 #include <shared/tasks/renderer/downscale.inl>
 
@@ -256,6 +258,7 @@ struct DiffuseGiRenderer {
 
     f32vec4 scaled_extent_inv_extent;
     f32vec4 extent_inv_extent;
+    u32vec2 shading_resolution;
 
     DiffuseGiRenderer(daxa::PipelineManager &pipeline_manager)
         : downscale_ssao_task_state{pipeline_manager, {{"DOWNSCALE_SSAO", "1"}}},
@@ -291,8 +294,6 @@ struct DiffuseGiRenderer {
         daxa::TaskImageView rt_history_invalidity_tex,
         daxa::TaskImageView temporal_output_tex)
         -> daxa::TaskImageView {
-        auto const shading_resolution = u32vec2{record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL};
-
         auto [temporal_variance_output_tex, variance_history_tex] = temporal2_variance_tex.get(
             record_ctx.device,
             {
@@ -383,10 +384,15 @@ struct DiffuseGiRenderer {
         RecordContext &record_ctx,
         daxa::TaskImageView reprojection_map)
         -> ReprojectedRtdgi {
+        shading_resolution = u32vec2{record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL};
 
         extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.render_resolution.x), static_cast<f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
         extent_inv_extent.z = 1.0f / extent_inv_extent.x;
         extent_inv_extent.w = 1.0f / extent_inv_extent.y;
+
+        scaled_extent_inv_extent = f32vec4(static_cast<f32>(shading_resolution.x), static_cast<f32>(shading_resolution.y), 0.0f, 0.0f);
+        scaled_extent_inv_extent.z = 1.0f / scaled_extent_inv_extent.x;
+        scaled_extent_inv_extent.w = 1.0f / scaled_extent_inv_extent.y;
 
         temporal2_tex = PingPongImage{};
         auto [temporal_output_tex, history_tex] = temporal2_tex.get(
@@ -504,10 +510,6 @@ struct DiffuseGiRenderer {
         });
         auto half_depth_tex = gbuffer_depth.get_downscaled_depth(record_ctx);
 
-        scaled_extent_inv_extent = f32vec4(static_cast<f32>(shading_resolution.x), static_cast<f32>(shading_resolution.y), 0.0f, 0.0f);
-        scaled_extent_inv_extent.z = 1.0f / scaled_extent_inv_extent.x;
-        scaled_extent_inv_extent.w = 1.0f / scaled_extent_inv_extent.y;
-
         auto debug_tex = daxa::TaskImageView{};
 
         auto [radiance_tex, local_temporal_reservoir_tex] = [&]() -> std::array<daxa::TaskImageView, 2> {
@@ -561,6 +563,7 @@ struct DiffuseGiRenderer {
                 .name = "rt_history_validity_pre_input_tex",
             });
 
+#if ENABLE_RESTIR
             record_ctx.task_graph.add_task(RtdgiValidateComputeTask{
                 {
                     .uses = {
@@ -591,6 +594,7 @@ struct DiffuseGiRenderer {
                     extent_inv_extent,
                 },
             });
+#endif
 
             auto rt_history_validity_input_tex = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R8_UNORM,
@@ -633,6 +637,7 @@ struct DiffuseGiRenderer {
 
             debug_tex = candidate_radiance_tex;
 
+#if ENABLE_RESTIR
             record_ctx.task_graph.add_task(RtdgiValidityIntegrateComputeTask{
                 {
                     .uses = {
@@ -691,10 +696,12 @@ struct DiffuseGiRenderer {
                     extent_inv_extent,
                 },
             });
+#endif
 
             return {radiance_output_tex, reservoir_output_tex};
         }();
 
+#if ENABLE_RESTIR
         auto irradiance_tex = [&]() -> daxa::TaskImageView {
             auto half_view_normal_tex = gbuffer_depth.get_downscaled_view_normal(record_ctx);
             auto reservoir_output_tex0 = record_ctx.task_graph.create_transient_image({
@@ -820,7 +827,10 @@ struct DiffuseGiRenderer {
             gbuffer_depth,
             ssao_tex);
 
-        return debug_tex;
+        return filtered_tex;
+#else
+        return candidate_radiance_tex;
+#endif
     }
 };
 

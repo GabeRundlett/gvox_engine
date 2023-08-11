@@ -8,7 +8,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
 
-    f32 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy), 0).x;
+    f32vec3 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy / 2), 0).rgb;
     // f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
     f32vec4 shaded_value = texelFetch(daxa_texture2D(shading_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
     // f32vec4 particles_color = texelFetch(daxa_texture2D(particles_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
@@ -23,7 +23,7 @@ void main() {
     // Direct sun illumination
     lighting += direct_value * 1.0;
     // Sky ambient
-    // lighting += f32vec3(ssao_value) * sample_sky_ambient(nrm) * 1.0;
+    lighting += f32vec3(ssao_value);
     // Default ambient
     // lighting += 2.0;
 
@@ -42,7 +42,6 @@ f32vec3 srgb_encode(f32vec3 x) {
 }
 
 f32vec3 color_correct(f32vec3 x) {
-    x = x * 0.25;
     x = srgb_encode(x);
     return x;
 }

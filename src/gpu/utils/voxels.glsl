@@ -206,14 +206,19 @@ u32 sample_lod(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buffer
     // of total steps required to reach the intersection.
     if (voxel_uniformity_lod_nonuniform(4)(voxel_chunk_ptr, lod_index_x4, lod_mask_x4))
         return 1;
+    if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
+        return 3;
+#elif RTDGI_TRACE_COMPUTE
+    if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
+        return 1;
 #else
     if (voxel_uniformity_lod_nonuniform(2)(voxel_chunk_ptr, lod_index_x2, lod_mask_x2))
         return 1;
     if (voxel_uniformity_lod_nonuniform(4)(voxel_chunk_ptr, lod_index_x4, lod_mask_x4))
         return 2;
-#endif
     if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
         return 3;
+#endif
     if (voxel_uniformity_lod_nonuniform(16)(voxel_chunk_ptr, lod_index_x16, lod_mask_x16))
         return 4;
     if (voxel_uniformity_lod_nonuniform(32)(voxel_chunk_ptr, lod_index_x32, lod_mask_x32))

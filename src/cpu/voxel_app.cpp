@@ -653,7 +653,7 @@ void VoxelApp::on_update() {
 
     gbuffer_renderer.next_frame();
     ssao_renderer.next_frame();
-    // shadow_renderer.next_frame();
+    shadow_renderer.next_frame();
     taa_renderer.next_frame();
     diffuse_gi_renderer.next_frame();
 
@@ -1233,27 +1233,25 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
     auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
     auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-    // auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
+    auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer);
 
     auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);
     auto irradiance = diffuse_gi_renderer.render(
-                record_ctx,
-                gbuffer_depth,
-                reprojected_rtdgi,
-                reprojection_map,
-                // &convolved_sky_cube,
-                // &mut ircache_state,
-                // &wrc,
-                // tlas,
-                gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer,
-                ssao_image);
+        record_ctx,
+        gbuffer_depth,
+        reprojected_rtdgi,
+        reprojection_map,
+        // &convolved_sky_cube,
+        // &mut ircache_state,
+        // &wrc,
+        // tlas,
+        gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer,
+        ssao_image);
 
-    auto shading_image = irradiance;
-
-    auto composited_image = compositor.render(record_ctx, gbuffer_depth, ssao_image, shading_image);
+    auto composited_image = compositor.render(record_ctx, gbuffer_depth, irradiance, shading_image);
     auto final_image = taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
 
-    final_image = irradiance;
+    // final_image = irradiance;
 
     result_task_graph.add_task(PostprocessingRasterTask{
         {

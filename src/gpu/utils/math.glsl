@@ -833,28 +833,6 @@ i32vec3 imod3(i32vec3 p, i32vec3 m) {
     return i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
 
-f32mat3x3 build_orthonormal_basis(f32vec3 n) {
-    f32vec3 b1;
-    f32vec3 b2;
-
-    if (n.z < 0.0) {
-        const float a = 1.0 / (1.0 - n.z);
-        const float b = n.x * n.y * a;
-        b1 = f32vec3(1.0 - n.x * n.x * a, -b, n.x);
-        b2 = f32vec3(b, n.y * n.y * a - 1.0, -n.y);
-    } else {
-        const float a = 1.0 / (1.0 + n.z);
-        const float b = -n.x * n.y * a;
-        b1 = f32vec3(1.0 - n.x * n.x * a, b, -n.x);
-        b2 = f32vec3(b, 1.0 - n.y * n.y * a, -n.y);
-    }
-
-    return f32mat3x3(
-        b1.x, b2.x, n.x,
-        b1.y, b2.y, n.y,
-        b1.z, b2.z, n.z);
-}
-
 f32mat4x4 rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
     float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
     float sin_rot_y = sin(roll), cos_rot_y = cos(roll);

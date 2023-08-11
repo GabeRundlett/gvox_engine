@@ -113,16 +113,24 @@ struct RayDesc {
 };
 
 bool is_rtdgi_validation_frame() {
+#if ENABLE_RESTIR
 #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
     return deref(gpu_input).frame_index % RTDGI_INTERLEAVED_VALIDATION_PERIOD == 0;
 #else
     return true;
 #endif
+#else
+    return false;
+#endif
 }
 
 bool is_rtdgi_tracing_frame() {
+#if ENABLE_RESTIR
 #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
     return !is_rtdgi_validation_frame();
+#else
+    return true;
+#endif
 #else
     return true;
 #endif
@@ -185,12 +193,30 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
             is_on_screen = reprojected_radiance.w > 0;
         }
 
-        // total_radiance += shadowed_sun_radiance;
+        // gbuffer.roughness = lerp(gbuffer.roughness, 1.0, ROUGHNESS_BIAS);
+        const f32mat3x3 tangent_to_world = tbn_from_normal(hit_normal_ws);
+        const f32vec3 wo = (-outgoing_ray.Direction * tangent_to_world);
+        // const LayeredBrdf brdf = LayeredBrdf::from_gbuffer_ndotv(gbuffer, wo.z);
+
+        f32vec3 sun_radiance = SUN_COL;
+        {
+            const f32vec3 to_light_norm = SUN_DIR;
+            ray_pos += to_light_norm * 1.0e-4;
+            VoxelTraceResult sun_trace_result = trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+            const bool is_shadowed = (sun_trace_result.dist != outgoing_ray.TMax);
+
+            const f32vec3 wi = (to_light_norm * tangent_to_world);
+            const f32vec3 brdf_value = max(f32vec3(0.0), dot(hit_normal_ws, to_light_norm)); // brdf.evaluate(wo, wi) * max(0.0, wi.z);
+            const f32vec3 light_radiance = select(is_shadowed, f32vec3(0.0), sun_radiance);
+            total_radiance += brdf_value * light_radiance;
+        }
 
         // total_radiance += trace_result.emissive;
 
         if (is_on_screen) {
+#if ENABLE_RESTIR
             total_radiance += reprojected_radiance.rgb * hit_albedo;
+#endif
         } else {
             // if (USE_IRCACHE) {
             //     const f32vec3 gi = IrcacheLookupParams::create(
@@ -203,7 +229,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
             // }
         }
     } else {
-        total_radiance += sample_sky(outgoing_ray.Direction) * 100.0;
+        total_radiance += sample_sky_ambient(outgoing_ray.Direction);
     }
 
     f32vec3 out_value = total_radiance;
@@ -655,7 +681,7 @@ void main() {
     u32vec2 px = gl_GlobalInvocationID.xy;
     const u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
     const i32vec2 hi_px_offset = i32vec2(HALFRES_SUBSAMPLE_OFFSET);
-    const u32vec2 hi_px = px * 2 + hi_px_offset;
+    const u32vec2 hi_px = px * SHADING_SCL + hi_px_offset;
 
     if (0.0 == texelFetch(daxa_texture2D(depth_tex), i32vec2(hi_px), 0).r) {
         imageStore(daxa_image2D(rt_history_invalidity_out_tex), i32vec2(px), f32vec4(1.0));
@@ -729,12 +755,10 @@ f32vec3 rtdgi_candidate_ray_dir(u32vec2 px, f32mat3x3 tangent_to_world) {
     return tangent_to_world * wi;
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    u32vec2 px = gl_GlobalInvocationID.xy;
+void rtdgi_trace_job(u32vec2 px) {
     const u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
     const i32vec2 hi_px_offset = i32vec2(HALFRES_SUBSAMPLE_OFFSET);
-    const u32vec2 hi_px = px * 2 + hi_px_offset;
+    const u32vec2 hi_px = px * SHADING_SCL + hi_px_offset;
 
     float depth = texelFetch(daxa_texture2D(depth_tex), i32vec2(hi_px), 0).r;
 
@@ -746,7 +770,7 @@ void main() {
     }
 
     const f32vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv_to_ss(gpu_input, uv, push.gbuffer_tex_size), depth);
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.gbuffer_tex_size.w * 0.5);
 
@@ -758,7 +782,7 @@ void main() {
     {
         const f32vec3 normal_vs = texelFetch(daxa_texture2D(half_view_normal_tex), i32vec2(px), 0).xyz;
         const f32vec3 normal_ws = direction_view_to_world(globals, normal_vs);
-        const f32mat3x3 tangent_to_world = build_orthonormal_basis(normal_ws);
+        const f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);
         const f32vec3 outgoing_dir = rtdgi_candidate_ray_dir(px, tangent_to_world);
 
         RayDesc outgoing_ray;
@@ -803,6 +827,45 @@ void main() {
     const i32vec2 reproj_px = i32vec2(floor(f32vec2(px) + push.gbuffer_tex_size.xy * reproj.xy / 2.0 + 0.5));
     imageStore(daxa_image2D(rt_history_invalidity_out_tex), i32vec2(px), texelFetch(daxa_texture2D(rt_history_invalidity_in_tex), i32vec2(reproj_px), 0));
 }
+
+#define ONE_JOB_PER_THREAD 1
+
+#if ONE_JOB_PER_THREAD
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    u32vec2 px = gl_GlobalInvocationID.xy;
+    rtdgi_trace_job(px);
+}
+#elif FOUR_JOBS_PER_THREAD
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    u32vec2 px = gl_GlobalInvocationID.xy;
+    for (u32 yi = 0; yi < 2; ++yi) {
+        for (u32 xi = 0; xi < 2; ++xi) {
+            rtdgi_trace_job(px * 2 + u32vec2(xi, yi));
+        }
+    }
+}
+#elif VARIABLE_JOBS_PER_THREAD
+shared u32 job_counter;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    if (gl_LocalInvocationIndex == 0) {
+        job_counter = 0;
+    }
+    barrier();
+    memoryBarrierShared();
+    while (true) {
+        u32 job_index = atomicAdd(job_counter, 1);
+        if (job_index >= 256) {
+            break;
+        }
+        u32vec2 px = gl_WorkGroupID.xy * 16 + u32vec2(job_index % 16, job_index / 16);
+        rtdgi_trace_job(px);
+    }
+}
+#endif
+
 #endif
 
 #if RTDGI_VALIDITY_INTEGRATE_COMPUTE
@@ -969,7 +1032,7 @@ void main() {
     const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
     const f32vec3 normal_vs = texelFetch(daxa_texture2D(half_view_normal_tex), i32vec2(px), 0).xyz;
     const f32vec3 normal_ws = direction_view_to_world(globals, normal_vs);
-    const f32mat3x3 tangent_to_world = build_orthonormal_basis(normal_ws);
+    const f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);
     const f32vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
 
     const f32vec3 hit_offset_ws = texelFetch(daxa_texture2D(candidate_hit_tex), i32vec2(px), 0).xyz;
