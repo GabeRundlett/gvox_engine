@@ -36,7 +36,7 @@ void FUNC_NAME(perframe)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
     }
 }
 
-u32 FUNC_NAME(get_consumed_element_count)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
+u32 FUNC_NAME(get_consumed_element_count)(daxa_BufferPtr(UserAllocatorType) allocator) {
     return deref(allocator).element_count - u32(max(deref(allocator).available_element_stack_size, 0));
 }
 

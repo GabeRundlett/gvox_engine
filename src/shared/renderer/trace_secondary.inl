@@ -6,8 +6,7 @@
 DAXA_DECL_TASK_USES_BEGIN(TraceSecondaryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -127,7 +126,7 @@ struct ShadowRenderer {
         ping_pong_shading_image.task_resources.output_image.swap_images(ping_pong_shading_image.task_resources.history_image);
     }
 
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map, daxa::TaskBufferView voxel_malloc_task_allocator_buffer, daxa::TaskBufferView task_voxel_chunks_buffer)
+    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map, ChunkEditor::Buffers &voxel_buffers)
         -> daxa::TaskImageView {
         auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
         ping_pong_shading_image = PingPongImage{};
@@ -151,8 +150,7 @@ struct ShadowRenderer {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
-                    .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                     .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,
                     .depth_image_id = scaled_depth_image,

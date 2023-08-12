@@ -6,8 +6,7 @@
 DAXA_DECL_TASK_USES_BEGIN(TraceDepthPrepassComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
 DAXA_DECL_TASK_USES_END()
 #endif
@@ -16,8 +15,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(TracePrimaryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
@@ -128,7 +126,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, daxa::TaskBufferView voxel_malloc_task_allocator_buffer, daxa::TaskBufferView task_voxel_chunks_buffer)
+    auto render(RecordContext &record_ctx, ChunkEditor::Buffers &voxel_buffers)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
@@ -174,8 +172,7 @@ struct GbufferRenderer {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
-                    .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                     .render_depth_prepass_image = depth_prepass_image,
                 },
             },
@@ -187,8 +184,7 @@ struct GbufferRenderer {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
-                    .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                     .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
                     .render_depth_prepass_image = depth_prepass_image,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,

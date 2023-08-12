@@ -22,7 +22,7 @@
 DAXA_DECL_TASK_USES_BEGIN(StartupComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_DECL_TASK_USES_END()
 #endif
 
@@ -32,10 +32,7 @@ DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gpu_output, daxa_RWBufferPtr(GpuOutput), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_RWBufferPtr(SimulatedVoxelParticle), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_leaf_chunk_allocator, daxa_RWBufferPtr(VoxelLeafChunkAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_parent_chunk_allocator, daxa_RWBufferPtr(VoxelParentChunkAllocator), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
 #endif
 
@@ -342,12 +339,11 @@ struct GpuApp {
 
         buffer_size(gpu_resources.input_buffer);
         buffer_size(gpu_resources.globals_buffer);
-        buffer_size(chunk_editor.temp_voxel_chunks_buffer);
-        buffer_size(chunk_editor.voxel_chunks_buffer);
+        buffer_size(chunk_editor.buffers.voxel_chunks_buffer);
 
-        chunk_editor.voxel_malloc.for_each_buffer(buffer_size);
-        chunk_editor.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
-        chunk_editor.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
+        chunk_editor.buffers.voxel_malloc.for_each_buffer(buffer_size);
+        chunk_editor.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
+        chunk_editor.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
 
         buffer_size(gpu_resources.gvox_model_buffer);
         buffer_size(gpu_resources.simulated_voxel_particles_buffer);
@@ -431,7 +427,7 @@ struct GpuApp {
                 .uses = {
                     .gpu_input = task_input_buffer,
                     .globals = task_globals_buffer,
-                    .voxel_chunks = chunk_editor.task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
                 },
             },
             &startup_task_state,
@@ -480,10 +476,7 @@ struct GpuApp {
             .name = "GpuInputUploadTransferTask",
         });
 
-        chunk_editor.voxel_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        chunk_editor.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        chunk_editor.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        record_ctx.task_graph.use_persistent_buffer(chunk_editor.task_voxel_chunks_buffer);
+        chunk_editor.use_buffers(record_ctx);
 
         record_ctx.task_graph.add_task(PerframeComputeTask{
             {
@@ -492,10 +485,7 @@ struct GpuApp {
                     .gpu_output = task_output_buffer,
                     .globals = task_globals_buffer,
                     .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                    .voxel_malloc_page_allocator = chunk_editor.voxel_malloc.task_allocator_buffer,
-                    .voxel_leaf_chunk_allocator = chunk_editor.voxel_leaf_chunk_malloc.task_allocator_buffer,
-                    .voxel_parent_chunk_allocator = chunk_editor.voxel_parent_chunk_malloc.task_allocator_buffer,
-                    .voxel_chunks = chunk_editor.task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
                 },
             },
             &perframe_task_state,
@@ -509,8 +499,7 @@ struct GpuApp {
                     .settings = task_settings_buffer,
                     .gpu_input = task_input_buffer,
                     .globals = task_globals_buffer,
-                    .voxel_malloc_page_allocator = gpu_resources.voxel_malloc.task_allocator_buffer,
-                    .voxel_chunks = task_voxel_chunks_buffer,
+                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
                     .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                     .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
                     .placed_voxel_particles = task_placed_voxel_particles_buffer,
@@ -538,10 +527,10 @@ struct GpuApp {
         });
 #endif
 
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, chunk_editor.voxel_malloc.task_allocator_buffer, chunk_editor.task_voxel_chunks_buffer);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, chunk_editor.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, chunk_editor.voxel_malloc.task_allocator_buffer, chunk_editor.task_voxel_chunks_buffer);
+        auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, chunk_editor.buffers);
 
 #if ENABLE_DIFFUSE_GI
         auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);

@@ -42,7 +42,7 @@ void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
 }
 
 struct VoxelTraceInfo {
-    daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator;
+    daxa_BufferPtr(VoxelMallocPageAllocator) allocator;
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr;
     u32vec3 chunk_n;
     f32vec3 ray_dir;
@@ -51,6 +51,8 @@ struct VoxelTraceInfo {
     f32 angular_coverage;
     bool extend_to_max_dist;
 };
+
+#define VOXEL_TRACE_INFO_PTRS daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks)
 
 struct VoxelTraceResult {
     f32 dist;
@@ -170,29 +172,4 @@ void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk
     STEP(32)
     STEP(64)
     ray_pos += ray_dir * MAX_DIST;
-}
-
-f32vec3 scene_nrm(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, f32vec3 pos) {
-#if 0
-    const i32 RANGE = 1;
-    f32vec3 result = f32vec3(0);
-    for (i32 zi = -RANGE; zi <= RANGE; ++zi) {
-        for (i32 yi = -RANGE; yi <= RANGE; ++yi) {
-            for (i32 xi = -RANGE; xi <= RANGE; ++xi) {
-                u32 voxel = sample_voxel_chunk(allocator, voxel_chunks_ptr, chunk_n, u32vec3(pos * VOXEL_SCL + f32vec3(xi, yi, zi)));
-                u32 id = voxel >> 0x18;
-                if (voxel != 0) {
-                    result += f32vec3(xi, yi, zi);
-                }
-            }
-        }
-    }
-    return -normalize(result);
-#else
-    // return -sdmap_nrm(pos);
-    f32vec3 d = fract(pos * VOXEL_SCL) - .5;
-    f32vec3 ad = abs(d);
-    f32 m = max(max(ad.x, ad.y), ad.z);
-    return -(abs(sign(ad - m)) - 1.) * sign(d);
-#endif
 }

@@ -8,7 +8,7 @@
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     player_startup(gpu_input, globals);
-    voxel_world_startup(globals, voxel_chunks);
+    voxel_world_startup(globals);
 
     deref(globals).chunk_thread_pool_state.work_items_l0_dispatch_y = 1;
     deref(globals).chunk_thread_pool_state.work_items_l0_dispatch_z = 1;
@@ -67,7 +67,7 @@ void main() {
         f32vec3 cam_pos = ray_origin_ws(vrc);
         f32vec3 ray_pos = cam_pos;
         u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
-        trace_hierarchy_traversal(VoxelTraceInfo(voxel_malloc_page_allocator, voxel_chunks, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+        trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;
@@ -112,15 +112,15 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 
     VoxelMallocPageAllocator_perframe(voxel_malloc_page_allocator);
-    VoxelLeafChunkAllocator_perframe(voxel_leaf_chunk_allocator);
-    VoxelParentChunkAllocator_perframe(voxel_parent_chunk_allocator);
+    // VoxelLeafChunkAllocator_perframe(voxel_leaf_chunk_allocator);
+    // VoxelParentChunkAllocator_perframe(voxel_parent_chunk_allocator);
 
     deref(gpu_output[INPUT.fif_index]).voxel_malloc_output.current_element_count =
-        VoxelMallocPageAllocator_get_consumed_element_count(voxel_malloc_page_allocator);
-    deref(gpu_output[INPUT.fif_index]).voxel_leaf_chunk_output.current_element_count =
-        VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
-    deref(gpu_output[INPUT.fif_index]).voxel_parent_chunk_output.current_element_count =
-        VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
+        VoxelMallocPageAllocator_get_consumed_element_count(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator));
+    // deref(gpu_output[INPUT.fif_index]).voxel_leaf_chunk_output.current_element_count =
+    //     VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
+    // deref(gpu_output[INPUT.fif_index]).voxel_parent_chunk_output.current_element_count =
+    //     VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
 
     THREAD_POOL.queue_index = 1 - THREAD_POOL.queue_index;
 

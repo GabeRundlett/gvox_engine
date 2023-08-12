@@ -40,8 +40,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(RtdgiValidateComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(half_view_normal_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(reprojected_gi_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -59,8 +58,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(RtdgiTraceComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(half_view_normal_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(depth_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -443,7 +441,7 @@ struct DiffuseGiRenderer {
         GbufferDepth &gbuffer_depth,
         ReprojectedRtdgi reprojected_rtdgi,
         daxa::TaskImageView reprojection_map,
-        daxa::TaskBufferView voxel_malloc_task_allocator_buffer, daxa::TaskBufferView task_voxel_chunks_buffer,
+        ChunkEditor::Buffers &voxel_buffers,
         daxa::TaskImageView ssao_tex)
         -> daxa::TaskImageView {
         temporal_radiance_tex = PingPongImage{};
@@ -569,8 +567,7 @@ struct DiffuseGiRenderer {
                     .uses = {
                         .gpu_input = record_ctx.task_input_buffer,
                         .globals = record_ctx.task_globals_buffer,
-                        .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
-                        .voxel_chunks = task_voxel_chunks_buffer,
+                        VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
 
                         .half_view_normal_tex = half_view_normal_tex,
                         .depth_tex = gbuffer_depth.depth.task_resources.output_image,
@@ -607,8 +604,7 @@ struct DiffuseGiRenderer {
                     .uses = {
                         .gpu_input = record_ctx.task_input_buffer,
                         .globals = record_ctx.task_globals_buffer,
-                        .voxel_malloc_page_allocator = voxel_malloc_task_allocator_buffer,
-                        .voxel_chunks = task_voxel_chunks_buffer,
+                        VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                         .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
 
                         .half_view_normal_tex = half_view_normal_tex,

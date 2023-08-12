@@ -9,8 +9,7 @@
 #define VOXEL_WORLD deref(globals_ptr).voxel_world
 #define CHUNKS(i) deref(voxel_chunks_ptr + i)
 void voxel_world_startup(
-    daxa_RWBufferPtr(GpuGlobals) globals_ptr,
-    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks_ptr) {
+    daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 
     VOXEL_WORLD.chunk_update_n = 0;
 }
