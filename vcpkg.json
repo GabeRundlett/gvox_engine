@@ -1,9 +1,20 @@
 {
-  "name": "gabecraft",
+  "name": "gvox-engine",
   "version": "0.1.0",
   "dependencies": [
-    "daxa",
+    {
+      "name": "daxa",
+      "features": [
+        "utils-pipeline-manager-spirv-validation"
+      ]
+    },
+    "gvox",
     "fmt",
+    "stb",
+    "nlohmann-json",
+    "platform-folders",
+    "nativefiledialog",
+    "minizip",
     {
       "name": "glfw3",
       "features": [
@@ -11,11 +22,6 @@
         "wayland"
       ]
     },
-    "glm",
-    "stb",
-    "nlohmann-json",
-    "platform-folders",
-    "libsoundio",
     {
       "name": "imgui",
       "features": [
@@ -24,7 +30,7 @@
       ]
     }
   ],
-  "builtin-baseline": "d1e2ff0c340f89cc14ca67883dd069c6ada93582",
+  "builtin-baseline": "0fa8459cf3a7caca7adc58f992bc32ff13630684",
   "overrides": [
     {
       "name": "glfw3",
@@ -33,7 +39,12 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "./cmake/vcpkg-overlay-ports/glfw3"
+      "../gvox/cmake/vcpkg-port",
+      "../Daxa/cmake/vcpkg-port",
+      "../Daxa/cmake/vcpkg-overlay-ports/dxc",
+      "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
+      "../Daxa/cmake/vcpkg-overlay-ports/fsr2",
+      "cmake/vcpkg-overlay-ports/imgui-node-editor"
     ]
   }
 }

@@ -1,44 +1,43 @@
 cmake_minimum_required(VERSION 3.21)
 
-# execute_process(COMMAND vcpkg x-update-baseline)
+include(cmake/warnings.cmake)
+include(cmake/static_analysis.cmake)
 
-project(gabe_voxel_game VERSION 0.1.13)
+project(gvox_engine VERSION 0.1.14)
+add_executable(${PROJECT_NAME}
+    "src/cpu/main.cpp"
+    "src/cpu/deps.cpp"
+    "src/cpu/voxel_app.cpp"
+    "src/cpu/app_ui.cpp"
+    "src/cpu/app_settings.cpp"
+)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+set_project_warnings(${PROJECT_NAME})
 
-find_package(fmt CONFIG REQUIRED)
 find_package(daxa CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
+find_package(gvox CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
-find_package(libsoundio CONFIG REQUIRED)
+find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+find_package(minizip CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME}
-    "src/main.cpp"
-    "src/app.cpp"
-)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
+    gvox::gvox
     fmt::fmt
-    libsoundio::libsoundio
+    glfw
     nlohmann_json::nlohmann_json
     sago::platform_folders
-    glm::glm
-    glfw
+    unofficial::nativefiledialog::nfd
+    minizip::minizip
 )
-target_include_directories(${PROJECT_NAME} PRIVATE "src")
-target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
-
-foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-    add_custom_command(
-        TARGET gabe_voxel_game
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:gvox::gvox_format_${FORMAT_NAME}>
-            $<TARGET_FILE_DIR:gabe_voxel_game>
-    )
-endforeach()
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "src"
+    ${Stb_INCLUDE_DIR}
+)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -49,24 +48,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(${PROJECT_NAME} PRIVATE Dwmapi)
 endif()
 
-set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gabe_voxel_game>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
-target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
-
 set(PACKAGE_VOXEL_GAME true)
 
 if(PACKAGE_VOXEL_GAME)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw)
+        list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw gvox::gvox)
     endif()
 
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets" DESTINATION bin)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders" DESTINATION bin)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/shaders)
-    install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/gpu" DESTINATION bin)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shared" DESTINATION bin/gpu)
+    install(FILES "${daxa_DIR}/../../include/daxa/daxa.inl" "${daxa_DIR}/../../include/daxa/daxa.glsl" DESTINATION bin/gpu/daxa)
+    install(FILES "${daxa_DIR}/../../include/daxa/utils/task_graph.inl" DESTINATION bin/gpu/daxa/utils)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
     install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
+    # install(FILES "${CMAKE_SOURCE_DIR}/zlib1.dll" DESTINATION bin)
+    install(FILES $<TARGET_RUNTIME_DLLS:gvox_engine> DESTINATION bin)
     foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
         install(FILES $<TARGET_FILE:gvox::gvox_format_${FORMAT_NAME}> DESTINATION bin)
     endforeach()
