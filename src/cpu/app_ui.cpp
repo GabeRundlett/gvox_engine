@@ -9,7 +9,7 @@
 #include <vector>
 #include <iostream>
 
-#include <shared/voxels/voxel_malloc.inl>
+#include <shared/voxels/impl/voxel_malloc.inl>
 
 using namespace std::literals;
 

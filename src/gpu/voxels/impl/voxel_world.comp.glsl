@@ -3,7 +3,7 @@
 #if PER_CHUNK_COMPUTE
 
 #include <utils/math.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/impl/voxels.glsl>
 
 #define VOXEL_WORLD deref(globals).voxel_world
 #define PLAYER deref(globals).player
@@ -75,7 +75,7 @@ void main() {
 
 #include <utils/math.glsl>
 #include <utils/noise.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/impl/voxels.glsl>
 
 u32vec3 chunk_n;
 u32 temp_chunk_index;
@@ -89,7 +89,7 @@ i32vec3 world_voxel;
 f32vec3 voxel_pos;
 BrushInput brush_input;
 
-#include "brushes.glsl"
+#include "../brushes.glsl"
 
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
@@ -164,7 +164,7 @@ void main() {
 
 #if CHUNK_OPT_COMPUTE
 
-#include <voxels/voxels.glsl>
+#include <voxels/impl/voxels.glsl>
 
 #define WAVE_SIZE gl_SubgroupSize
 #define WAVE_SIZE_MUL (WAVE_SIZE / 32)
@@ -431,8 +431,8 @@ void main() {
 #extension GL_EXT_shader_atomic_int64 : require
 
 #include <utils/math.glsl>
-#include <voxels/voxel_malloc.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/impl/voxel_malloc.glsl>
+#include <voxels/impl/voxels.glsl>
 
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];

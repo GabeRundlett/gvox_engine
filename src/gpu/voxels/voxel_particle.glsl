@@ -2,7 +2,7 @@
 
 #include <shared/app.inl>
 #include <utils/math.glsl>
-#include <voxels/trace.glsl>
+#include <voxels/core.glsl>
 
 #define PARTICLE_ALIVE_FLAG (1 << 0)
 #define PARTICLE_SMOKE_FLAG (1 << 1)
@@ -44,7 +44,7 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
     float curr_dist_in_dt = curr_speed * dt;
     vec3 ray_pos = self.pos;
 
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, self.vel / curr_speed, MAX_STEPS, curr_dist_in_dt, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, self.vel / curr_speed, MAX_STEPS, curr_dist_in_dt, 0.0, true), ray_pos);
     float dist = trace_result.dist;
 
     if (!(dist > curr_dist_in_dt)) {

@@ -4,7 +4,7 @@
 
 #if SSAO_COMPUTE
 
-#include <voxels/trace.glsl>
+#include <voxels/core.glsl>
 #include <utils/downscale.glsl>
 
 f32vec4 output_tex_size;

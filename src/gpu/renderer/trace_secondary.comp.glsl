@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#include <voxels/trace.glsl>
+#include <voxels/core.glsl>
 #include <utils/sky.glsl>
 #include <utils/downscale.glsl>
 
@@ -37,7 +37,7 @@ void main() {
     f32vec3 ray_dir = tbn * normalize(vec3((rand_circle_pt(abs(blue_noise)) - 0.5) * tan(SUN_ANGULAR_DIAMETER), 1));
     // f32vec3 ray_dir = SUN_DIR;
 
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
     f32vec3 col = SUN_COL * f32(trace_result.dist == MAX_DIST);
 

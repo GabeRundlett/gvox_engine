@@ -139,7 +139,7 @@ bool is_rtdgi_tracing_frame() {
 #define select(cond, a, b) ((cond) ? (a) : (b))
 
 #if RTDGI_TRACE_COMPUTE || RTDGI_VALIDATE_COMPUTE
-#include <voxels/trace.glsl>
+#include <voxels/core.glsl>
 #include <utils/sky.glsl>
 
 struct TraceResult {
@@ -159,7 +159,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
 
     u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     f32vec3 ray_pos = outgoing_ray.Origin;
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
 
     TraceResult result;
     result.is_hit = (trace_result.dist != outgoing_ray.TMax);
@@ -202,7 +202,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
         {
             const f32vec3 to_light_norm = SUN_DIR;
             ray_pos += to_light_norm * 1.0e-4;
-            VoxelTraceResult sun_trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+            VoxelTraceResult sun_trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
             const bool is_shadowed = (sun_trace_result.dist != outgoing_ray.TMax);
 
             const f32vec3 wi = (to_light_norm * tangent_to_world);

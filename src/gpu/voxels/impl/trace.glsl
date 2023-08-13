@@ -3,29 +3,11 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/impl/voxels.glsl>
 
-struct VoxelTraceInfo {
-    daxa_BufferPtr(VoxelMallocPageAllocator) allocator;
-    daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr;
-    u32vec3 chunk_n;
-    f32vec3 ray_dir;
-    u32 max_steps;
-    f32 max_dist;
-    f32 angular_coverage;
-    bool extend_to_max_dist;
-};
+#define VOXEL_TRACE_INFO_PTRS VoxelTraceInfoPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks))
 
-#define VOXEL_TRACE_INFO_PTRS daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks)
-
-struct VoxelTraceResult {
-    f32 dist;
-    f32vec3 nrm;
-    u32 step_n;
-    u32 voxel_data;
-};
-
-VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
+VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
     VoxelTraceResult result;
 
     BoundingBox b;
@@ -47,7 +29,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
         info.ray_dir.x == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.x),
         info.ray_dir.y == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.y),
         info.ray_dir.z == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.z));
-    u32 lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, ray_pos, result.voxel_data);
+    u32 lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, info.chunk_n, ray_pos, result.voxel_data);
     if (lod == 0) {
         result.dist = 0.0;
         return result;
@@ -78,7 +60,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
         if (!inside(current_pos + info.ray_dir * 0.001, b) || t_curr > info.max_dist) {
             break;
         }
-        lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, current_pos, result.voxel_data);
+        lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, info.chunk_n, current_pos, result.voxel_data);
 #if TRACE_DEPTH_PREPASS_COMPUTE
         bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7);
 #else

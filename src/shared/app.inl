@@ -5,7 +5,7 @@
 #include <shared/input.inl>
 #include <shared/globals.inl>
 
-#include <shared/voxels/voxel_world.inl>
+#include <shared/voxels/impl/voxel_world.inl>
 #include <shared/voxels/voxel_particle_sim.inl>
 
 #include <shared/renderer/downscale.inl>

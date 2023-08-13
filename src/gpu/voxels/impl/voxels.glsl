@@ -3,7 +3,7 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
-#include <voxels/voxel_malloc.glsl>
+#include <voxels/impl/voxel_malloc.glsl>
 #include <voxels/gvox_model.glsl>
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \

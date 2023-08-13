@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#include <voxels/trace.glsl>
+#include <voxels/core.glsl>
 
 #if TRACE_DEPTH_PREPASS_COMPUTE
 
@@ -19,7 +19,7 @@ void main() {
     u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
 
 #if ENABLE_DEPTH_PREPASS
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 32.0 * output_tex_size.w * deref(globals).player.cam.clip_to_view[1][1], true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 32.0 * output_tex_size.w * deref(globals).player.cam.clip_to_view[1][1], true), ray_pos);
     u32 step_n = trace_result.step_n;
 #else
     u32 step_n = 0;
@@ -74,7 +74,7 @@ void main() {
     f32vec3 ray_pos = cam_pos + ray_dir * prepass_depth;
     u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
 
-    VoxelTraceResult trace_result = trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
 
     f32vec3 chunk_offset_delta = f32vec3(deref(globals).player.chunk_offset - deref(globals).player.prev_chunk_offset) * CHUNK_WORLDSPACE_SIZE;

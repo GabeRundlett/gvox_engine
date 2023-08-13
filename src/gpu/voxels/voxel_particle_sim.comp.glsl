@@ -1,6 +1,5 @@
 #include <shared/app.inl>
 #include <voxels/voxel_particle.glsl>
-#include <voxels/voxel_world.glsl>
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {

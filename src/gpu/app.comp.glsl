@@ -3,7 +3,7 @@
 #if STARTUP_COMPUTE
 
 #include <utils/player.glsl>
-#include <voxels/voxel_world.glsl>
+#include <voxels/core.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -17,9 +17,7 @@ void main() {
 
 #include <utils/player.glsl>
 
-#include <voxels/trace.glsl>
-#include <voxels/voxel_world.glsl>
-#include <voxels/voxel_malloc.glsl>
+#include <voxels/core.glsl>
 #include <voxels/voxel_particle.glsl>
 
 // #define UserAllocatorType VoxelLeafChunkAllocator
@@ -50,7 +48,7 @@ void main() {
     PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
 
     player_perframe(gpu_input, globals);
-    voxel_world_perframe(gpu_input, globals);
+    voxel_world_perframe(gpu_input, gpu_output, globals, VOXEL_PERFRAME_INFO_PTRS);
 
     {
         f32vec2 frame_dim = INPUT.frame_dim;
@@ -61,7 +59,7 @@ void main() {
         f32vec3 cam_pos = ray_origin_ws(vrc);
         f32vec3 ray_pos = cam_pos;
         u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
-        trace_hierarchy_traversal(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+        voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;
@@ -104,17 +102,6 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
     deref(gpu_output[INPUT.fif_index]).player_rot = f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
-
-    VoxelMallocPageAllocator_perframe(voxel_malloc_page_allocator);
-    // VoxelLeafChunkAllocator_perframe(voxel_leaf_chunk_allocator);
-    // VoxelParentChunkAllocator_perframe(voxel_parent_chunk_allocator);
-
-    deref(gpu_output[INPUT.fif_index]).voxel_malloc_output.current_element_count =
-        VoxelMallocPageAllocator_get_consumed_element_count(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator));
-    // deref(gpu_output[INPUT.fif_index]).voxel_leaf_chunk_output.current_element_count =
-    //     VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
-    // deref(gpu_output[INPUT.fif_index]).voxel_parent_chunk_output.current_element_count =
-    //     VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
 
     deref(gpu_output[INPUT.fif_index]).job_counters_packed = 0;
     deref(gpu_output[INPUT.fif_index]).total_jobs_ran = 0;

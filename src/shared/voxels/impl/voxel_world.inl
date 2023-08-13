@@ -1,14 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
-
-#define VOXELS_USE_BUFFERS(ptr_type, mode)                             \
-    DAXA_TASK_USE_BUFFER(voxel_chunks, ptr_type(VoxelLeafChunk), mode) \
-    DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, ptr_type(VoxelMallocPageAllocator), mode)
-
-#define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers)            \
-    .voxel_chunks = voxel_buffers.task_voxel_chunks_buffer, \
-    .voxel_malloc_page_allocator = voxel_buffers.voxel_malloc.task_allocator_buffer
+#include <shared/voxels/impl/voxels.inl>
 
 #if PER_CHUNK_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(PerChunkComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
@@ -61,7 +53,7 @@ struct PerChunkComputeTaskState {
     PerChunkComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"PER_CHUNK_COMPUTE", "1"}}},
             },
             .name = "per_chunk",
@@ -93,7 +85,7 @@ struct ChunkEditComputeTaskState {
     ChunkEditComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_EDIT_COMPUTE", "1"}}},
             },
             .name = "voxel_world",
@@ -129,7 +121,7 @@ struct ChunkOptComputeTaskState {
         char const define_str[2] = {'0' + PASS_INDEX, '\0'};
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {
                     .defines = {
                         {"CHUNK_OPT_COMPUTE", "1"},
@@ -176,7 +168,7 @@ struct ChunkAllocComputeTaskState {
     ChunkAllocComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_ALLOC_COMPUTE", "1"}}},
             },
             .name = "chunk_alloc",
