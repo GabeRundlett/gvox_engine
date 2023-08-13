@@ -807,8 +807,6 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
         ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(debug_player_rot.x), static_cast<double>(debug_player_rot.y), static_cast<double>(debug_player_rot.z));
         ImGui::Text("Chunk offs: %.2f, %.2f, %.2f", static_cast<double>(debug_chunk_offset.x), static_cast<double>(debug_chunk_offset.y), static_cast<double>(debug_chunk_offset.z));
-        ImGui::Text("job_queue_bottom: %u", debug_job_counters.available_threads_queue_bottom);
-        ImGui::Text("job_queue_top:    %u", debug_job_counters.available_threads_queue_top);
         ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
         if (ImGui::TreeNode("GPU Resources")) {

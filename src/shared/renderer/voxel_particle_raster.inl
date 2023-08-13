@@ -32,9 +32,6 @@ struct VoxelParticleRasterTaskState {
                 .depth_test_compare_op = daxa::CompareOp::GREATER,
             },
             .raster = {
-#if USE_POINTS
-                .polygon_mode = daxa::PolygonMode::POINT,
-#endif
                 .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
             },
             .name = "voxel_particle_sim",

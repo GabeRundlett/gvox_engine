@@ -252,8 +252,8 @@ struct VoxelWorld {
         daxa::BufferId voxel_chunks_buffer;
         daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
         AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
-        AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
-        AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
+        // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
+        // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
     };
 
     Buffers buffers;
@@ -281,8 +281,8 @@ struct VoxelWorld {
         });
 
         buffers.voxel_malloc.create(device);
-        buffers.voxel_leaf_chunk_malloc.create(device);
-        buffers.voxel_parent_chunk_malloc.create(device);
+        // buffers.voxel_leaf_chunk_malloc.create(device);
+        // buffers.voxel_parent_chunk_malloc.create(device);
 
         buffers.task_voxel_chunks_buffer.set_buffers({.buffers = std::array{buffers.voxel_chunks_buffer}});
     }
@@ -291,21 +291,21 @@ struct VoxelWorld {
             device.destroy_buffer(buffers.voxel_chunks_buffer);
         }
         buffers.voxel_malloc.destroy(device);
-        buffers.voxel_leaf_chunk_malloc.destroy(device);
-        buffers.voxel_parent_chunk_malloc.destroy(device);
+        // buffers.voxel_leaf_chunk_malloc.destroy(device);
+        // buffers.voxel_parent_chunk_malloc.destroy(device);
     }
 
     void startup(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_chunks_buffer);
         buffers.voxel_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_chunks_buffer},
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
             },
             .task = [this](daxa::TaskInterface task_runtime) {
                 auto cmd_list = task_runtime.get_command_list();
@@ -318,8 +318,8 @@ struct VoxelWorld {
                     .clear_value = 0,
                 });
                 buffers.voxel_malloc.clear_buffers(cmd_list);
-                buffers.voxel_leaf_chunk_malloc.clear_buffers(cmd_list);
-                buffers.voxel_parent_chunk_malloc.clear_buffers(cmd_list);
+                // buffers.voxel_leaf_chunk_malloc.clear_buffers(cmd_list);
+                // buffers.voxel_parent_chunk_malloc.clear_buffers(cmd_list);
             },
             .name = "clear chunk editor",
         });
@@ -327,14 +327,14 @@ struct VoxelWorld {
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_allocator_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_allocator_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_allocator_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_allocator_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_allocator_buffer},
             },
             .task = [this](daxa::TaskInterface task_runtime) {
                 auto cmd_list = task_runtime.get_command_list();
                 buffers.voxel_malloc.init(task_runtime.get_device(), cmd_list);
-                buffers.voxel_leaf_chunk_malloc.init(task_runtime.get_device(), cmd_list);
-                buffers.voxel_parent_chunk_malloc.init(task_runtime.get_device(), cmd_list);
+                // buffers.voxel_leaf_chunk_malloc.init(task_runtime.get_device(), cmd_list);
+                // buffers.voxel_parent_chunk_malloc.init(task_runtime.get_device(), cmd_list);
             },
             .name = "Initialize",
         });
@@ -355,26 +355,29 @@ struct VoxelWorld {
 
     auto check_for_realloc(daxa::Device &device, GpuOutput &gpu_output) -> bool {
         buffers.voxel_malloc.check_for_realloc(device, gpu_output.voxel_malloc_output.current_element_count);
-        buffers.voxel_leaf_chunk_malloc.check_for_realloc(device, gpu_output.voxel_leaf_chunk_output.current_element_count);
-        buffers.voxel_parent_chunk_malloc.check_for_realloc(device, gpu_output.voxel_parent_chunk_output.current_element_count);
+        // buffers.voxel_leaf_chunk_malloc.check_for_realloc(device, gpu_output.voxel_leaf_chunk_output.current_element_count);
+        // buffers.voxel_parent_chunk_malloc.check_for_realloc(device, gpu_output.voxel_parent_chunk_output.current_element_count);
 
-        return buffers.voxel_malloc.needs_realloc() ||
-               buffers.voxel_leaf_chunk_malloc.needs_realloc() ||
-               buffers.voxel_parent_chunk_malloc.needs_realloc();
+        bool needs_realloc = false;
+        needs_realloc = needs_realloc || buffers.voxel_malloc.needs_realloc();
+        // needs_realloc = needs_realloc || buffers.voxel_leaf_chunk_malloc.needs_realloc();
+        // needs_realloc = needs_realloc || buffers.voxel_parent_chunk_malloc.needs_realloc();
+
+        return needs_realloc;
     }
 
     void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph, bool &needs_vram_calc) {
         buffers.voxel_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
         temp_task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_malloc.task_old_element_buffer},
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_leaf_chunk_malloc.task_old_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_parent_chunk_malloc.task_old_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_leaf_chunk_malloc.task_old_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_parent_chunk_malloc.task_old_element_buffer},
+                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
             },
             .task = [this, &needs_vram_calc](daxa::TaskInterface task_runtime) {
                 auto cmd_list = task_runtime.get_command_list();
@@ -382,14 +385,14 @@ struct VoxelWorld {
                     buffers.voxel_malloc.realloc(task_runtime.get_device(), cmd_list);
                     needs_vram_calc = true;
                 }
-                if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
-                    buffers.voxel_leaf_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
-                    needs_vram_calc = true;
-                }
-                if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
-                    buffers.voxel_parent_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
-                    needs_vram_calc = true;
-                }
+                // if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
+                //     buffers.voxel_leaf_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
+                //     needs_vram_calc = true;
+                // }
+                // if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
+                //     buffers.voxel_parent_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
+                //     needs_vram_calc = true;
+                // }
             },
             .name = "Transfer Task",
         });
@@ -397,8 +400,8 @@ struct VoxelWorld {
 
     void use_buffers(RecordContext &record_ctx) {
         buffers.voxel_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
+        // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
         record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_chunks_buffer);
     }
 

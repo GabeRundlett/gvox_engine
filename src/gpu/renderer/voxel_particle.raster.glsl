@@ -7,19 +7,6 @@ layout(location = 0) out f32vec3 pos;
 layout(location = 1) out uint id;
 
 void main() {
-#if USE_POINTS
-    u32 particle_index = gl_VertexIndex;
-
-    u32 simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
-    SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
-
-    f32mat4x4 vp_mat = deref(globals).player.cam.world_to_view * deref(globals).player.cam.view_to_clip;
-    pos = floor(particle.pos * VOXEL_SCL) / VOXEL_SCL;
-    gl_Position = vp_mat * f32vec4(pos, 1);
-    gl_PointSize = deref(gpu_input).frame_dim.y / gl_Position.w * 0.1;
-
-    id = simulated_particle_index;
-#else
     u32 particle_index = gl_VertexIndex / 36;
     f32vec3 positions[36];
 
@@ -77,7 +64,6 @@ void main() {
     gl_Position = cs_pos;
 
     id = simulated_particle_index;
-#endif
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT

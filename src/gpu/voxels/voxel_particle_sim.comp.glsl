@@ -28,7 +28,7 @@ void main() {
             // if (my_place_index == 0) {
             //     ChunkWorkItem brush_work_item;
             //     brush_work_item.i = u32vec3(0);
-            //     brush_work_item.brush_id = CHUNK_FLAGS_PARTICLE_BRUSH;
+            //     brush_work_item.brush_id = BRUSH_FLAGS_PARTICLE_BRUSH;
             //     brush_work_item.brush_input = deref(globals).brush_input;
             //     zero_work_item_children(brush_work_item);
             //     queue_root_work_item(globals, brush_work_item);
@@ -43,10 +43,7 @@ void main() {
         }
     }
 
-#if USE_POINTS
-    u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 1);
-#else
     u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
-#endif
+
     deref(rendered_voxel_particles[my_render_index]) = particle_index;
 }

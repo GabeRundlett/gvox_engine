@@ -44,7 +44,7 @@ VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {800, 600}),
       daxa_instance{daxa::create_instance({})},
       device{daxa_instance.create_device({
-          // .enable_buffer_device_address_capture_replay = false,
+          .enable_buffer_device_address_capture_replay = !GVOX_ENGINE_INSTALL,
           .name = "device",
       })},
       swapchain{device.create_swapchain({
@@ -334,7 +334,7 @@ void VoxelApp::on_update() {
         }
     }
 
-    gpu_app.begin_frame(device, ui);
+    gpu_app.begin_frame(device, main_task_graph, ui);
 
     if (ui.should_run_startup || model_is_ready) {
         run_startup(main_task_graph);
@@ -358,7 +358,6 @@ void VoxelApp::on_update() {
     ui.debug_player_rot = gpu_output.player_rot;
     ui.debug_chunk_offset = gpu_output.chunk_offset;
     ui.debug_page_count = gpu_app.voxel_world.buffers.voxel_malloc.current_element_count;
-    ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
     ui.debug_total_jobs_ran = gpu_output.total_jobs_ran;
 
     // task_render_pos_image.swap_images(task_render_prev_pos_image);
@@ -620,9 +619,6 @@ void VoxelApp::upload_model(daxa::TaskGraph &) {
 // VoxelParticleSimComputeTask
 // -> Simulate the particles
 
-// ChunkHierarchy (chunk_hierarchy.comp.glsl) (x2)
-// -> Creates hierarchical structure / chunk work items to be generated and processed by Chunk Edit
-
 // ChunkEdit (voxel_world.comp.glsl)
 // -> Actually build the chunks depending on the chunk work items (containing brush infos)
 
@@ -642,6 +638,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     daxa::TaskGraph result_task_graph = daxa::TaskGraph({
         .device = device,
         .swapchain = swapchain,
+        .alias_transients = GVOX_ENGINE_INSTALL,
         .permutation_condition_count = static_cast<usize>(Conditions::COUNT),
         .name = "main_task_graph",
     });

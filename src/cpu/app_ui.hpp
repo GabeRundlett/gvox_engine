@@ -11,11 +11,6 @@ struct ImFont;
 
 #include <gvox/gvox.h>
 
-struct ChunkHierarchyJobCounters {
-    u32 available_threads_queue_top;
-    u32 available_threads_queue_bottom;
-};
-
 #define INVALID_GAME_ACTION (-1)
 
 struct AppUi {
@@ -67,7 +62,6 @@ struct AppUi {
     f32vec3 debug_player_pos{};
     f32vec3 debug_player_rot{};
     f32vec3 debug_chunk_offset{};
-    ChunkHierarchyJobCounters debug_job_counters{};
     u32 debug_total_jobs_ran{};
 
     struct GpuResourceInfo {

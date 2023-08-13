@@ -68,7 +68,6 @@ struct GpuGlobals {
     BrushState brush_state;
     VoxelWorldGlobals voxel_world;
     GpuIndirectDispatch indirect_dispatch;
-    ChunkThreadPoolState chunk_thread_pool_state;
     VoxelParticlesState voxel_particles_state;
     u32 padding[10];
 };

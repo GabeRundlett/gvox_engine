@@ -297,7 +297,7 @@ struct GpuApp {
         voxel_world.destroy(device);
     }
 
-    void calc_vram_usage(daxa::Device &device, usize &result_size, std::vector<AppUi::GpuResourceInfo> &debug_gpu_resource_infos) {
+    void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph, usize &result_size, std::vector<AppUi::GpuResourceInfo> &debug_gpu_resource_infos) {
         debug_gpu_resource_infos.clear();
         result_size = 0;
 
@@ -342,13 +342,23 @@ struct GpuApp {
         buffer_size(voxel_world.buffers.voxel_chunks_buffer);
 
         voxel_world.buffers.voxel_malloc.for_each_buffer(buffer_size);
-        voxel_world.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
-        voxel_world.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
+        // voxel_world.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
+        // voxel_world.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
 
         buffer_size(gpu_resources.gvox_model_buffer);
         buffer_size(gpu_resources.simulated_voxel_particles_buffer);
         buffer_size(gpu_resources.rendered_voxel_particles_buffer);
         buffer_size(gpu_resources.placed_voxel_particles_buffer);
+
+        {
+            auto size = task_graph.get_transient_memory_size();
+            debug_gpu_resource_infos.push_back({
+                .type = "buffer",
+                .name = "Transient Memory Buffer",
+                .size = size,
+            });
+            result_size += size;
+        }
 
         needs_vram_calc = false;
     }
@@ -358,14 +368,14 @@ struct GpuApp {
         needs_vram_calc = true;
     }
 
-    void begin_frame(daxa::Device &device, AppUi &ui) {
+    void begin_frame(daxa::Device &device, daxa::TaskGraph &task_graph, AppUi &ui) {
         gpu_input.sampler_nnc = gpu_resources.sampler_nnc;
         gpu_input.sampler_lnc = gpu_resources.sampler_lnc;
         gpu_input.sampler_llc = gpu_resources.sampler_llc;
         gpu_input.sampler_llr = gpu_resources.sampler_llr;
 
         if (needs_vram_calc) {
-            calc_vram_usage(device, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
+            calc_vram_usage(device, task_graph, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
         }
 
         bool should_realloc = voxel_world.check_for_realloc(device, gpu_output);
@@ -383,9 +393,11 @@ struct GpuApp {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
         shadow_renderer.next_frame();
-        taa_renderer.next_frame();
         if (ENABLE_DIFFUSE_GI) {
             diffuse_gi_renderer.next_frame();
+        }
+        if (ENABLE_TAA) {
+            taa_renderer.next_frame();
         }
     }
 
@@ -449,6 +461,8 @@ struct GpuApp {
         record_ctx.task_graph.use_persistent_buffer(task_rendered_voxel_particles_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_placed_voxel_particles_buffer);
 
+        voxel_world.use_buffers(record_ctx);
+
         record_ctx.task_blue_noise_vec2_image = task_blue_noise_vec2_image;
         record_ctx.task_input_buffer = task_input_buffer;
         record_ctx.task_globals_buffer = task_globals_buffer;
@@ -475,8 +489,6 @@ struct GpuApp {
             },
             .name = "GpuInputUploadTransferTask",
         });
-
-        voxel_world.use_buffers(record_ctx);
 
         record_ctx.task_graph.add_task(PerframeComputeTask{
             {
@@ -549,9 +561,13 @@ struct GpuApp {
         }
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, irradiance, shading_image);
-        auto final_image = taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
-
-        // final_image = irradiance;
+        auto final_image = [&]() {
+            if (ENABLE_TAA) {
+                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
+            } else {
+                return composited_image;
+            }
+        }();
 
         record_ctx.task_graph.add_task(PostprocessingRasterTask{
             {
@@ -585,6 +601,8 @@ struct GpuApp {
             },
             .name = "GpuOutputDownloadTransferTask",
         });
+
+        needs_vram_calc = true;
     }
 };
 

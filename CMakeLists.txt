@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
+target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_ENGINE_INSTALL=${GVOX_ENGINE_INSTALL})
 
 find_package(daxa CONFIG REQUIRED)
 find_package(gvox CONFIG REQUIRED)
@@ -22,7 +23,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
-find_package(minizip CONFIG REQUIRED)
+find_package(unofficial-minizip CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
@@ -32,7 +33,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     sago::platform_folders
     unofficial::nativefiledialog::nfd
-    minizip::minizip
+    unofficial::minizip::minizip
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"
@@ -48,7 +49,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(${PROJECT_NAME} PRIVATE Dwmapi)
 endif()
 
-set(PACKAGE_VOXEL_GAME true)
+set(PACKAGE_VOXEL_GAME ${GVOX_ENGINE_INSTALL})
 
 if(PACKAGE_VOXEL_GAME)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

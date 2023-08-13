@@ -59,7 +59,7 @@ struct GpuOutput {
     u32 total_jobs_ran;
 
     VoxelMallocPageAllocatorGpuOutput voxel_malloc_output;
-    VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
-    VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
+    // VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
+    // VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)

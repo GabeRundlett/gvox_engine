@@ -5,16 +5,12 @@
 #include <utils/math.glsl>
 #include <voxels/voxels.glsl>
 
-i32vec3 chunk_n;
-i32vec3 chunk_i;
-u32 chunk_index;
-
 #define VOXEL_WORLD deref(globals).voxel_world
 #define PLAYER deref(globals).player
 #define CHUNKS(i) deref(voxel_chunks[i])
 #define INDIRECT deref(globals).indirect_dispatch
 
-void try_elect(in out ChunkWorkItem work_item) {
+void try_elect(in out VoxelChunkUpdateInfo work_item) {
     u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
     // Check if the work item can be added
@@ -23,26 +19,21 @@ void try_elect(in out ChunkWorkItem work_item) {
         atomicAdd(INDIRECT.chunk_edit_dispatch.z, CHUNK_SIZE / 8);
         atomicAdd(INDIRECT.subchunk_x2x4_dispatch.z, 1);
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
-        u32 prev_flags = atomicOr(CHUNKS(chunk_index).flags, work_item.brush_id);
-        // Set the chunk update infos
-        VOXEL_WORLD.chunk_update_infos[prev_update_n].i = chunk_i;
-        VOXEL_WORLD.chunk_update_infos[prev_update_n].brush_input = work_item.brush_input;
-        VOXEL_WORLD.chunk_update_infos[prev_update_n].chunk_offset = work_item.chunk_offset;
+        // Set the chunk update info
+        VOXEL_WORLD.chunk_update_infos[prev_update_n] = work_item;
     }
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
-    // (const) number of chunks in each axis
-    chunk_n = i32vec3(1 << deref(gpu_input).log2_chunks_per_axis);
-    chunk_i = i32vec3(gl_GlobalInvocationID.xyz);
-    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
-
-    // Temporary.
-    ChunkWorkItem terrain_work_item;
-    terrain_work_item.i = i32vec3(0);
+    VoxelChunkUpdateInfo terrain_work_item;
+    terrain_work_item.i = i32vec3(gl_GlobalInvocationID.xyz);
     terrain_work_item.chunk_offset = PLAYER.chunk_offset;
-    terrain_work_item.brush_id = CHUNK_FLAGS_WORLD_BRUSH;
+    terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
+
+    // (const) number of chunks in each axis
+    i32vec3 chunk_n = i32vec3(1 << deref(gpu_input).log2_chunks_per_axis);
+    u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n);
 
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
         try_elect(terrain_work_item);
@@ -62,7 +53,7 @@ void main() {
         start.z = diff.z < 0 ? 0 : chunk_n.z - diff.z;
         end.z = diff.z < 0 ? -diff.z : chunk_n.z;
 
-        u32vec3 temp_chunk_i = u32vec3((i32vec3(chunk_i) - deref(globals).player.chunk_offset) % i32vec3(chunk_n));
+        u32vec3 temp_chunk_i = u32vec3((i32vec3(terrain_work_item.i) - deref(globals).player.chunk_offset) % i32vec3(chunk_n));
 
         if ((temp_chunk_i.x >= start.x && temp_chunk_i.x < end.x) ||
             (temp_chunk_i.y >= start.y && temp_chunk_i.y < end.y) ||
@@ -122,6 +113,8 @@ void main() {
     i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
     // Brush informations
     brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
+    // Brush flags
+    u32 brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
     // Chunk u32 index in voxel_chunks buffer
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     // Pointer to the previous chunk
@@ -148,18 +141,16 @@ void main() {
     f32vec3 col = f32vec3(0.0);
     u32 id = 0;
 
-    u32 chunk_flags = deref(voxel_chunk_ptr).flags;
-
-    if ((chunk_flags & CHUNK_FLAGS_WORLD_BRUSH) != 0) {
+    if ((brush_flags & BRUSH_FLAGS_WORLD_BRUSH) != 0) {
         brushgen_world(col, id);
     }
-    if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_A) != 0) {
+    if ((brush_flags & BRUSH_FLAGS_USER_BRUSH_A) != 0) {
         brushgen_a(col, id);
     }
-    if ((chunk_flags & CHUNK_FLAGS_USER_BRUSH_B) != 0) {
+    if ((brush_flags & BRUSH_FLAGS_USER_BRUSH_B) != 0) {
         brushgen_b(col, id);
     }
-    // if ((chunk_flags & CHUNK_FLAGS_PARTICLE_BRUSH) != 0) {
+    // if ((brush_flags & BRUSH_FLAGS_PARTICLE_BRUSH) != 0) {
     //     brushgen_particles(col, id);
     // }
 

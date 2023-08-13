@@ -186,35 +186,40 @@ void brushgen_world_terrain(in out f32vec3 col, in out u32 id) {
 
     if (val < 0) {
         id = 1;
-        f32 r = good_rand(-val);
-        if (val > -0.002 && upwards > 0.65) {
-            // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
-            col = f32vec3(0.05, 0.26, 0.03);
-            if (r < 0.5) {
-                col *= 0.7;
-            }
-            // Mix with biome color
-            col = mix(col, forest_biome_color * .75, .3);
-        } else if (val > -0.05 && upwards > 0.5) {
-            col = f32vec3(0.13, 0.09, 0.05);
-            if (r < 0.5) {
-                col.r *= 0.5;
-                col.g *= 0.5;
-                col.b *= 0.5;
-            } else if (r < 0.52) {
-                col.r *= 1.5;
-                col.g *= 1.5;
-                col.b *= 1.5;
-            }
-        } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
-            col = f32vec3(0.17, 0.15, 0.07);
-            if (r < 0.5) {
-                col.r *= 0.75;
-                col.g *= 0.75;
-                col.b *= 0.75;
+        const bool SHOULD_COLOR_WORLD = true;
+        if (SHOULD_COLOR_WORLD) {
+            f32 r = good_rand(-val);
+            if (val > -0.002 && upwards > 0.65) {
+                // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
+                col = f32vec3(0.05, 0.26, 0.03);
+                if (r < 0.5) {
+                    col *= 0.7;
+                }
+                // Mix with biome color
+                col = mix(col, forest_biome_color * .75, .3);
+            } else if (val > -0.05 && upwards > 0.5) {
+                col = f32vec3(0.13, 0.09, 0.05);
+                if (r < 0.5) {
+                    col.r *= 0.5;
+                    col.g *= 0.5;
+                    col.b *= 0.5;
+                } else if (r < 0.52) {
+                    col.r *= 1.5;
+                    col.g *= 1.5;
+                    col.b *= 1.5;
+                }
+            } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
+                col = f32vec3(0.17, 0.15, 0.07);
+                if (r < 0.5) {
+                    col.r *= 0.75;
+                    col.g *= 0.75;
+                    col.b *= 0.75;
+                }
+            } else {
+                col = f32vec3(0.11, 0.10, 0.07);
             }
         } else {
-            col = f32vec3(0.11, 0.10, 0.07);
+            col = f32vec3(0.25);
         }
     } else if (ENABLE_TREE_GENERATION != 0) {
         // Meters per cell

@@ -14,7 +14,8 @@
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
                 "ENABLE_STATIC_ANALYSIS": false,
-                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "GVOX_ENGINE_INSTALL": false
             }
         },
         {
@@ -59,6 +60,22 @@
             "inherits": [ "defaults-linux" ],
             "cacheVariables": {
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/clang-x86_64-linux-gnu.cmake"
+            }
+        },
+        {
+            "name": "windows-dist",
+            "displayName": "Windows Distribution",
+            "inherits": [ "cl-x86_64-windows-msvc" ],
+            "cacheVariables": {
+                "GVOX_ENGINE_INSTALL": true
+            }
+        },
+        {
+            "name": "linux-dist",
+            "displayName": "Linux Distribution",
+            "inherits": [ "gcc-x86_64-linux-gnu" ],
+            "cacheVariables": {
+                "GVOX_ENGINE_INSTALL": true
             }
         }
     ],

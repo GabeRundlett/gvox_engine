@@ -178,10 +178,3 @@ u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPt
     u32 chunk_index = calc_chunk_index(chunk_i, chunk_n);
     return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }
-
-// Set the state of all 512 (16x32) children to uncompleted
-void zero_work_item_children(in out ChunkWorkItem work_item) {
-    for (u32 i = 0; i < 16; ++i) {
-        work_item.children_finished[i] = 0;
-    }
-}
