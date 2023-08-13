@@ -3,42 +3,27 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
-#include <utils/voxels.glsl>
+#include <voxels/voxels.glsl>
 
-#define PLAYER deref(globals_ptr).player
-#define VOXEL_WORLD deref(globals_ptr).voxel_world
-#define CHUNKS(i) deref(voxel_chunks_ptr + i)
 void voxel_world_startup(
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-
-    VOXEL_WORLD.chunk_update_n = 0;
+    deref(globals_ptr).voxel_world.chunk_update_n = 0;
 }
-#undef CHUNKS
-#undef VOXEL_WORLD
-#undef PLAYER
 
-#define INPUT deref(input_ptr)
-#define PLAYER deref(globals_ptr).player
-#define VOXEL_WORLD deref(globals_ptr).voxel_world
-#define INDIRECT deref(globals_ptr).indirect_dispatch
 void voxel_world_perframe(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 
     for (u32 i = 0; i < MAX_CHUNK_UPDATES_PER_FRAME; ++i) {
-        VOXEL_WORLD.chunk_update_infos[i].flags = 0;
+        deref(globals_ptr).voxel_world.chunk_update_infos[i].flags = 0;
     }
 
-    VOXEL_WORLD.chunk_update_n = 0;
+    deref(globals_ptr).voxel_world.chunk_update_n = 0;
 
-    INDIRECT.chunk_edit_dispatch = u32vec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
-    INDIRECT.subchunk_x2x4_dispatch = u32vec3(1, 64, 0);
-    INDIRECT.subchunk_x8up_dispatch = u32vec3(1, 1, 0);
+    deref(globals_ptr).indirect_dispatch.chunk_edit_dispatch = u32vec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
+    deref(globals_ptr).indirect_dispatch.subchunk_x2x4_dispatch = u32vec3(1, 64, 0);
+    deref(globals_ptr).indirect_dispatch.subchunk_x8up_dispatch = u32vec3(1, 1, 0);
 }
-#undef INDIRECT
-#undef VOXEL_WORLD
-#undef PLAYER
-#undef INPUT
 
 // Add a root work item to the L0 ChunkWorkItems queue of the ChunkThreadPoolState
 #define A_THREAD_POOL deref(globals).chunk_thread_pool_state

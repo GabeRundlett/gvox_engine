@@ -139,7 +139,7 @@ bool is_rtdgi_tracing_frame() {
 #define select(cond, a, b) ((cond) ? (a) : (b))
 
 #if RTDGI_TRACE_COMPUTE || RTDGI_VALIDATE_COMPUTE
-#include <utils/trace.glsl>
+#include <voxels/trace.glsl>
 #include <utils/sky.glsl>
 
 struct TraceResult {

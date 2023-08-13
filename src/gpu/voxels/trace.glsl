@@ -3,43 +3,7 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
-#include <utils/voxels.glsl>
-
-f32 sdmap(f32vec3 p) {
-    f32 value = MAX_DIST;
-    // value = sd_union(value, +sd_plane_x(p - f32vec3(-6.4, 0.0, 0.0)));
-    // value = sd_union(value, -sd_plane_x(p - f32vec3(+6.4, 0.0, 0.0)));
-    // value = sd_union(value, +sd_plane_y(p - f32vec3(0.0, -6.4, 0.0)));
-    // value = sd_union(value, -sd_plane_y(p - f32vec3(0.0, +6.4, 0.0)));
-    // value = sd_union(value, +sd_plane_z(p - f32vec3(0.0, 0.0, -6.4)));
-    // value = sd_union(value, -sd_plane_z(p - f32vec3(0.0, 0.0, +6.4)));
-    value = sd_union(value, sd_sphere(p - f32vec3(0.0, 2.0, 0.0), 0.5));
-    return value;
-}
-
-f32vec3 sdmap_nrm(f32vec3 pos) {
-    f32vec3 n = f32vec3(0.0);
-    for (u32 i = 0; i < 4; ++i) {
-        f32vec3 e = 0.5773 * (2.0 * f32vec3((((i + 3) >> 1) & 1), ((i >> 1) & 1), (i & 1)) - 1.0);
-        n += e * sdmap(pos + 0.001 * e);
-    }
-    return normalize(n);
-}
-
-void trace_sphere_trace(in out f32vec3 ray_pos, f32vec3 ray_dir) {
-    f32 t = 0.0;
-    f32 final_dist = MAX_DIST;
-    for (u32 i = 0; i < 512 && t < MAX_DIST; ++i) {
-        f32vec3 p = ray_pos + ray_dir * t;
-        f32 d = sdmap(p);
-        if (abs(d) < (0.0001 * t)) {
-            final_dist = t;
-            break;
-        }
-        t += d;
-    }
-    ray_pos = ray_pos + ray_dir * t;
-}
+#include <voxels/voxels.glsl>
 
 struct VoxelTraceInfo {
     daxa_BufferPtr(VoxelMallocPageAllocator) allocator;
@@ -115,7 +79,7 @@ VoxelTraceResult trace_hierarchy_traversal(in VoxelTraceInfo info, in out f32vec
             break;
         }
         lod = sample_lod(info.allocator, info.voxel_chunks_ptr, info.chunk_n, current_pos, result.voxel_data);
-#if defined(TRACE_DEPTH_PREPASS_COMPUTE)
+#if TRACE_DEPTH_PREPASS_COMPUTE
         bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7);
 #else
         bool hit_surface = lod == 0;

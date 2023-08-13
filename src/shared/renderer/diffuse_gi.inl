@@ -441,7 +441,7 @@ struct DiffuseGiRenderer {
         GbufferDepth &gbuffer_depth,
         ReprojectedRtdgi reprojected_rtdgi,
         daxa::TaskImageView reprojection_map,
-        ChunkEditor::Buffers &voxel_buffers,
+        VoxelWorld::Buffers &voxel_buffers,
         daxa::TaskImageView ssao_tex)
         -> daxa::TaskImageView {
         temporal_radiance_tex = PingPongImage{};

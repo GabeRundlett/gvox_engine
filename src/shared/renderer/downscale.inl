@@ -24,7 +24,7 @@ struct DownscaleComputeTaskState {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"downscale.comp.glsl"},
-                .compile_options = {.defines = extra_defines},
+                .compile_options = {.defines = extra_defines, .enable_debug_info = true},
             },
             .name = "downscale",
         });

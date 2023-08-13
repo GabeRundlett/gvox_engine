@@ -9,11 +9,12 @@ void main() {
     u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
     f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-#if ENABLE_DIFFUSE_GI
-    f32vec3 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy / 2), 0).rgb;
-#else
-    f32vec3 ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy), 0).rrr * sample_sky_ambient(nrm);
-#endif
+    f32vec3 ssao_value;
+    if (ENABLE_DIFFUSE_GI) {
+        ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy / 2), 0).rgb;
+    } else {
+        ssao_value = texelFetch(daxa_texture2D(ssao_image_id), i32vec2(gl_GlobalInvocationID.xy), 0).rrr * sample_sky_ambient(nrm);
+    }
     // f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
     f32vec4 shaded_value = texelFetch(daxa_texture2D(shading_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);
     // f32vec4 particles_color = texelFetch(daxa_texture2D(particles_image_id), i32vec2(gl_GlobalInvocationID.xy), 0);

@@ -3,7 +3,7 @@
 #if PER_CHUNK_COMPUTE
 
 #include <utils/math.glsl>
-#include <utils/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 i32vec3 chunk_n;
 i32vec3 chunk_i;
@@ -83,8 +83,8 @@ void main() {
 #if CHUNK_EDIT_COMPUTE
 
 #include <utils/math.glsl>
-#include <utils/voxels.glsl>
 #include <utils/noise.glsl>
+#include <voxels/voxels.glsl>
 
 u32vec3 chunk_n;
 u32 temp_chunk_index;
@@ -173,7 +173,7 @@ void main() {
 
 #if CHUNK_OPT_COMPUTE
 
-#include <utils/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 #define WAVE_SIZE gl_SubgroupSize
 #define WAVE_SIZE_MUL (WAVE_SIZE / 32)
@@ -440,8 +440,8 @@ void main() {
 #extension GL_EXT_shader_atomic_int64 : require
 
 #include <utils/math.glsl>
-#include <utils/voxel_malloc.glsl>
-#include <utils/voxels.glsl>
+#include <voxels/voxel_malloc.glsl>
+#include <voxels/voxels.glsl>
 
 shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];

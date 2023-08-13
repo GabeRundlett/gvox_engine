@@ -52,7 +52,7 @@
 #define GPU_ONLY(x) x
 #endif
 
-#define ENABLE_DIFFUSE_GI 0
+#define ENABLE_DIFFUSE_GI false
 
 #define DECL_TASK_STATE(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z)                                                                                         \
     struct Name##ComputeTaskState {                                                                                                                                            \
@@ -61,7 +61,7 @@
             auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \
-                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}},                                                                                                 \
+                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}, .enable_debug_info = true},                                                                      \
                 },                                                                                                                                                             \
                 .name = #NAME "_COMPUTE",                                                                                                                                      \
             });                                                                                                                                                                \
@@ -99,7 +99,7 @@
             auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \
-                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}},                                                                                                 \
+                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}, .enable_debug_info = true},                                                                      \
                 },                                                                                                                                                             \
                 .push_constant_size = sizeof(TaaPush),                                                                                                                         \
                 .name = #NAME "_COMPUTE",                                                                                                                                      \

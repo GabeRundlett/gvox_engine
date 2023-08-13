@@ -28,10 +28,9 @@
         "glfw-binding",
         "docking-experimental"
       ]
-    },
-    "imgui-node-editor"
+    }
   ],
-  "builtin-baseline": "959f8e317599dd439bc86f5cb5f0aca648d88c3f",
+  "builtin-baseline": "0fa8459cf3a7caca7adc58f992bc32ff13630684",
   "overrides": [
     {
       "name": "glfw3",

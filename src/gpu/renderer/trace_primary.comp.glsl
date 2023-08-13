@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#include <utils/trace.glsl>
+#include <voxels/trace.glsl>
 
 #if TRACE_DEPTH_PREPASS_COMPUTE
 

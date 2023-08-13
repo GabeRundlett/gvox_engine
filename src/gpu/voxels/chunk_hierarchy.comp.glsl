@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#include <utils/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 #define THREAD_POOL deref(globals).chunk_thread_pool_state
 

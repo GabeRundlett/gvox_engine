@@ -126,7 +126,7 @@ struct ShadowRenderer {
         ping_pong_shading_image.task_resources.output_image.swap_images(ping_pong_shading_image.task_resources.history_image);
     }
 
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map, ChunkEditor::Buffers &voxel_buffers)
+    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map, VoxelWorld::Buffers &voxel_buffers)
         -> daxa::TaskImageView {
         auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
         ping_pong_shading_image = PingPongImage{};

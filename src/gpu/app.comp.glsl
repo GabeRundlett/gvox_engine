@@ -3,7 +3,7 @@
 #if STARTUP_COMPUTE
 
 #include <utils/player.glsl>
-#include <utils/voxel_world.glsl>
+#include <voxels/voxel_world.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -22,10 +22,11 @@ void main() {
 #if PERFRAME_COMPUTE
 
 #include <utils/player.glsl>
-#include <utils/voxel_world.glsl>
-#include <utils/voxel_malloc.glsl>
-#include <utils/voxel_particle.glsl>
-#include <utils/trace.glsl>
+
+#include <voxels/trace.glsl>
+#include <voxels/voxel_world.glsl>
+#include <voxels/voxel_malloc.glsl>
+#include <voxels/voxel_particle.glsl>
 
 #define UserAllocatorType VoxelLeafChunkAllocator
 #define UserIndexType u32

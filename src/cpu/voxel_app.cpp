@@ -357,7 +357,7 @@ void VoxelApp::on_update() {
     ui.debug_player_pos = gpu_output.player_pos;
     ui.debug_player_rot = gpu_output.player_rot;
     ui.debug_chunk_offset = gpu_output.chunk_offset;
-    ui.debug_page_count = gpu_app.chunk_editor.buffers.voxel_malloc.current_element_count;
+    ui.debug_page_count = gpu_app.voxel_world.buffers.voxel_malloc.current_element_count;
     ui.debug_job_counters = std::bit_cast<ChunkHierarchyJobCounters>(gpu_output.job_counters_packed);
     ui.debug_total_jobs_ran = gpu_output.total_jobs_ran;
 
@@ -623,7 +623,7 @@ void VoxelApp::upload_model(daxa::TaskGraph &) {
 // ChunkHierarchy (chunk_hierarchy.comp.glsl) (x2)
 // -> Creates hierarchical structure / chunk work items to be generated and processed by Chunk Edit
 
-// ChunkEdit (chunk_edit.comp.glsl)
+// ChunkEdit (voxel_world.comp.glsl)
 // -> Actually build the chunks depending on the chunk work items (containing brush infos)
 
 // ChunkOpt_x2x4                 [Optim]

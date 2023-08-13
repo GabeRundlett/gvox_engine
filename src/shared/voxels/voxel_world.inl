@@ -61,7 +61,7 @@ struct PerChunkComputeTaskState {
     PerChunkComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/chunk_edit.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"PER_CHUNK_COMPUTE", "1"}}},
             },
             .name = "per_chunk",
@@ -93,10 +93,10 @@ struct ChunkEditComputeTaskState {
     ChunkEditComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/chunk_edit.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_EDIT_COMPUTE", "1"}}},
             },
-            .name = "chunk_edit",
+            .name = "voxel_world",
         });
         if (compile_result.is_err()) {
             AppUi::Console::s_instance->add_log(compile_result.message());
@@ -129,7 +129,7 @@ struct ChunkOptComputeTaskState {
         char const define_str[2] = {'0' + PASS_INDEX, '\0'};
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/chunk_edit.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
                 .compile_options = {
                     .defines = {
                         {"CHUNK_OPT_COMPUTE", "1"},
@@ -176,7 +176,7 @@ struct ChunkAllocComputeTaskState {
     ChunkAllocComputeTaskState(daxa::PipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
-                .source = daxa::ShaderFile{"voxels/chunk_edit.comp.glsl"},
+                .source = daxa::ShaderFile{"voxels/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_ALLOC_COMPUTE", "1"}}},
             },
             .name = "chunk_alloc",
@@ -247,7 +247,7 @@ struct ChunkAllocComputeTask : ChunkAllocComputeUses {
     }
 };
 
-struct ChunkEditor {
+struct VoxelWorld {
     struct Buffers {
         daxa::BufferId voxel_chunks_buffer;
         daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
@@ -264,7 +264,7 @@ struct ChunkEditor {
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
     ChunkAllocComputeTaskState chunk_alloc_task_state;
 
-    ChunkEditor(daxa::PipelineManager &pipeline_manager)
+    VoxelWorld(daxa::PipelineManager &pipeline_manager)
         : per_chunk_task_state{pipeline_manager},
           chunk_edit_task_state{pipeline_manager},
           chunk_opt_x2x4_task_state{pipeline_manager},
@@ -363,7 +363,7 @@ struct ChunkEditor {
                buffers.voxel_parent_chunk_malloc.needs_realloc();
     }
 
-    void dynamic_buffers_realloc(daxa::Device &device, daxa::TaskGraph &temp_task_graph, bool &needs_vram_calc) {
+    void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph, bool &needs_vram_calc) {
         buffers.voxel_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
         buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
         buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <shared/core.inl>
-#include <shared/allocator.inl>
+#include <shared/utils/allocator.inl>
 
 // One u32 per voxel, and an extra u32
 #define VOXEL_MALLOC_MAX_ALLOCATION_SIZE_U32S 513

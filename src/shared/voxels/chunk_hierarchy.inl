@@ -19,7 +19,7 @@ struct ChunkHierarchyComputeTaskState {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"chunk_hierarchy.comp.glsl"},
-                .compile_options = {.defines = {{"CHUNK_HIERARCHY_COMPUTE", "1"}, {"CHUNK_LEVEL", depth_str}}},
+                .compile_options = {.defines = {{"CHUNK_HIERARCHY_COMPUTE", "1"}, {"CHUNK_LEVEL", depth_str}}, .enable_debug_info = true},
             },
             .name = "chunk_hierarchy",
         });

@@ -2,7 +2,7 @@
 
 #include <shared/app.inl>
 #include <utils/math.glsl>
-#include <utils/trace.glsl>
+#include <voxels/trace.glsl>
 
 #define PARTICLE_ALIVE_FLAG (1 << 0)
 #define PARTICLE_SMOKE_FLAG (1 << 1)

@@ -126,7 +126,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, ChunkEditor::Buffers &voxel_buffers)
+    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,

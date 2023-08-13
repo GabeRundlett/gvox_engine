@@ -23,7 +23,7 @@ struct CalculateReprojectionMapComputeTaskState {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"calculate_reprojection_map.comp.glsl"},
-                .compile_options = {.defines = {{"CALCULATE_REPROJECTION_MAP_COMPUTE", "1"}}},
+                .compile_options = {.defines = {{"CALCULATE_REPROJECTION_MAP_COMPUTE", "1"}}, .enable_debug_info = true},
             },
             .name = "calculate_reprojection_map",
         });

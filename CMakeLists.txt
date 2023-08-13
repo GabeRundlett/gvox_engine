@@ -22,7 +22,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
-find_package(imgui-node-editor CONFIG REQUIRED)
 find_package(minizip CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -33,7 +32,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     sago::platform_folders
     unofficial::nativefiledialog::nfd
-    imgui-node-editor::imgui-node-editor
     minizip::minizip
 )
 target_include_directories(${PROJECT_NAME} PRIVATE

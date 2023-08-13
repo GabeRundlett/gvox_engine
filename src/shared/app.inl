@@ -5,7 +5,7 @@
 #include <shared/input.inl>
 #include <shared/globals.inl>
 
-#include <shared/voxels/chunk_edit.inl>
+#include <shared/voxels/voxel_world.inl>
 #include <shared/voxels/voxel_particle_sim.inl>
 
 #include <shared/renderer/downscale.inl>
@@ -163,7 +163,7 @@ struct GpuApp {
     Compositor compositor;
     TaaRenderer taa_renderer;
 
-    ChunkEditor chunk_editor;
+    VoxelWorld voxel_world;
 
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
@@ -201,7 +201,7 @@ struct GpuApp {
           compositor{pipeline_manager},
           taa_renderer{pipeline_manager},
 
-          chunk_editor{pipeline_manager},
+          voxel_world{pipeline_manager},
           gpu_resources{},
 
           startup_task_state{pipeline_manager},
@@ -224,7 +224,7 @@ struct GpuApp {
         task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
         task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
 
-        chunk_editor.create(device, LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+        voxel_world.create(device, LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
 
         {
             daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
@@ -294,7 +294,7 @@ struct GpuApp {
 
     void destroy(daxa::Device &device) {
         gpu_resources.destroy(device);
-        chunk_editor.destroy(device);
+        voxel_world.destroy(device);
     }
 
     void calc_vram_usage(daxa::Device &device, usize &result_size, std::vector<AppUi::GpuResourceInfo> &debug_gpu_resource_infos) {
@@ -339,11 +339,11 @@ struct GpuApp {
 
         buffer_size(gpu_resources.input_buffer);
         buffer_size(gpu_resources.globals_buffer);
-        buffer_size(chunk_editor.buffers.voxel_chunks_buffer);
+        buffer_size(voxel_world.buffers.voxel_chunks_buffer);
 
-        chunk_editor.buffers.voxel_malloc.for_each_buffer(buffer_size);
-        chunk_editor.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
-        chunk_editor.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
+        voxel_world.buffers.voxel_malloc.for_each_buffer(buffer_size);
+        voxel_world.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
+        voxel_world.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
 
         buffer_size(gpu_resources.gvox_model_buffer);
         buffer_size(gpu_resources.simulated_voxel_particles_buffer);
@@ -354,7 +354,7 @@ struct GpuApp {
     }
 
     void recreate_voxel_chunks(daxa::Device &device, u32 log2_chunks_per_axis) {
-        chunk_editor.recreate_voxel_chunks(device, log2_chunks_per_axis);
+        voxel_world.recreate_voxel_chunks(device, log2_chunks_per_axis);
         needs_vram_calc = true;
     }
 
@@ -368,7 +368,7 @@ struct GpuApp {
             calc_vram_usage(device, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
         }
 
-        bool should_realloc = chunk_editor.check_for_realloc(device, gpu_output);
+        bool should_realloc = voxel_world.check_for_realloc(device, gpu_output);
 
         if (ui.should_recreate_voxel_buffers) {
             recreate_voxel_chunks(device, ui.settings.log2_chunks_per_axis);
@@ -384,9 +384,9 @@ struct GpuApp {
         ssao_renderer.next_frame();
         shadow_renderer.next_frame();
         taa_renderer.next_frame();
-#if ENABLE_DIFFUSE_GI
-        diffuse_gi_renderer.next_frame();
-#endif
+        if (ENABLE_DIFFUSE_GI) {
+            diffuse_gi_renderer.next_frame();
+        }
     }
 
     void dynamic_buffers_realloc(daxa::Device &device) {
@@ -395,7 +395,7 @@ struct GpuApp {
             .name = "temp_task_graph",
         });
 
-        chunk_editor.dynamic_buffers_realloc(device, temp_task_graph, needs_vram_calc);
+        voxel_world.dynamic_buffers_realloc(temp_task_graph, needs_vram_calc);
 
         temp_task_graph.submit({});
         temp_task_graph.complete({});
@@ -406,7 +406,7 @@ struct GpuApp {
         record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
 
-        chunk_editor.startup(record_ctx);
+        voxel_world.startup(record_ctx);
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_globals_buffer},
@@ -427,7 +427,7 @@ struct GpuApp {
                 .uses = {
                     .gpu_input = task_input_buffer,
                     .globals = task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
                 },
             },
             &startup_task_state,
@@ -476,7 +476,7 @@ struct GpuApp {
             .name = "GpuInputUploadTransferTask",
         });
 
-        chunk_editor.use_buffers(record_ctx);
+        voxel_world.use_buffers(record_ctx);
 
         record_ctx.task_graph.add_task(PerframeComputeTask{
             {
@@ -485,7 +485,7 @@ struct GpuApp {
                     .gpu_output = task_output_buffer,
                     .globals = task_globals_buffer,
                     .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
                 },
             },
             &perframe_task_state,
@@ -499,7 +499,7 @@ struct GpuApp {
                     .settings = task_settings_buffer,
                     .gpu_input = task_input_buffer,
                     .globals = task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(chunk_editor.buffers),
+                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
                     .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                     .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
                     .placed_voxel_particles = task_placed_voxel_particles_buffer,
@@ -509,7 +509,7 @@ struct GpuApp {
         });
 #endif
 
-        chunk_editor.update(record_ctx, task_gvox_model_buffer, task_value_noise_image);
+        voxel_world.update(record_ctx, task_gvox_model_buffer, task_value_noise_image);
 
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
         record_ctx.task_graph.add_task(VoxelParticleRasterTask{
@@ -527,27 +527,26 @@ struct GpuApp {
         });
 #endif
 
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, chunk_editor.buffers);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, chunk_editor.buffers);
+        auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
 
-#if ENABLE_DIFFUSE_GI
-        auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);
-        auto irradiance = diffuse_gi_renderer.render(
-            record_ctx,
-            gbuffer_depth,
-            reprojected_rtdgi,
-            reprojection_map,
-            // &convolved_sky_cube,
-            // &mut ircache_state,
-            // &wrc,
-            // tlas,
-            gpu_resources.voxel_malloc.task_allocator_buffer, task_voxel_chunks_buffer,
-            ssao_image);
-#else
         auto irradiance = ssao_image;
-#endif
+        if (ENABLE_DIFFUSE_GI) {
+            auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);
+            irradiance = diffuse_gi_renderer.render(
+                record_ctx,
+                gbuffer_depth,
+                reprojected_rtdgi,
+                reprojection_map,
+                // &convolved_sky_cube,
+                // &mut ircache_state,
+                // &wrc,
+                // tlas,
+                voxel_world.buffers,
+                ssao_image);
+        }
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, irradiance, shading_image);
         auto final_image = taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
