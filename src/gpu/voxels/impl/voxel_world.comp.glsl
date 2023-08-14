@@ -32,7 +32,7 @@ void main() {
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
 
     // (const) number of chunks in each axis
-    i32vec3 chunk_n = i32vec3(1 << deref(gpu_input).log2_chunks_per_axis);
+    i32vec3 chunk_n = i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n);
 
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
@@ -95,7 +95,7 @@ BrushInput brush_input;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     // (const) number of chunks in each axis
-    chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
+    chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     // Index in chunk_update_infos buffer
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     // Chunk 3D index in leaf chunk space (0^3 - 31^3)
@@ -267,7 +267,7 @@ void main() {
         return;
     }
     u32vec3 chunk_n;
-    chunk_n.x = 1u << deref(gpu_input).log2_chunks_per_axis;
+    chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
@@ -407,7 +407,7 @@ void main() {
         return;
     }
     u32vec3 chunk_n;
-    chunk_n.x = 1u << deref(gpu_input).log2_chunks_per_axis;
+    chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
     u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
@@ -466,7 +466,7 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
 #define VOXEL_WORLD deref(globals).voxel_world
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
-    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
+    u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     if (chunk_i == INVALID_CHUNK_I) {

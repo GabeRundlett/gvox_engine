@@ -1,10 +1,9 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/voxels/voxels.inl>
 
 struct VoxelTraceInfo {
-    VoxelTraceInfoPtrs ptrs;
-    u32vec3 chunk_n;
+    VoxelBufferPtrs ptrs;
     f32vec3 ray_dir;
     u32 max_steps;
     f32 max_dist;
@@ -22,13 +21,8 @@ struct VoxelTraceResult {
 // These are the functions that this file must define!
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos);
 
+void voxel_world_startup(daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBufferPtrs ptrs);
+void voxel_world_perframe(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferPtr(GpuOutput) gpu_output, daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBufferPtrs ptrs);
+
 #include <voxels/impl/trace.glsl>
 #include <voxels/impl/voxel_world.glsl>
-
-#if !defined(VOXEL_TRACE_INFO_PTRS)
-#error "The implementation must define a way for the users to construct the trace info pointers!"
-#endif
-
-#if !defined(VOXEL_PERFRAME_INFO_PTRS)
-#error "The implementation must define a way for the users to construct the perframe info pointers!"
-#endif

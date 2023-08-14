@@ -157,9 +157,8 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
     float hit_t = outgoing_ray.TMax;
     float pdf = max(0.0, 1.0 / (dot(normal_ws, outgoing_ray.Direction) * 2.0 * PI));
 
-    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     f32vec3 ray_pos = outgoing_ray.Origin;
-    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
 
     TraceResult result;
     result.is_hit = (trace_result.dist != outgoing_ray.TMax);
@@ -202,7 +201,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
         {
             const f32vec3 to_light_norm = SUN_DIR;
             ray_pos += to_light_norm * 1.0e-4;
-            VoxelTraceResult sun_trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+            VoxelTraceResult sun_trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
             const bool is_shadowed = (sun_trace_result.dist != outgoing_ray.TMax);
 
             const f32vec3 wi = (to_light_norm * tangent_to_world);

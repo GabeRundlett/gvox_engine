@@ -39,12 +39,11 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
         self.vel += f32vec3(0.0, 0.0, -9.8) * dt;
     }
 
-    u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
     float curr_speed = length(self.vel);
     float curr_dist_in_dt = curr_speed * dt;
     vec3 ray_pos = self.pos;
 
-    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, self.vel / curr_speed, MAX_STEPS, curr_dist_in_dt, 0.0, true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, self.vel / curr_speed, MAX_STEPS, curr_dist_in_dt, 0.0, true), ray_pos);
     float dist = trace_result.dist;
 
     if (!(dist > curr_dist_in_dt)) {

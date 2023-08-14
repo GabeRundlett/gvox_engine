@@ -297,7 +297,6 @@ void VoxelApp::on_update() {
     gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
     gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
-    gpu_input.log2_chunks_per_axis = ui.settings.log2_chunks_per_axis;
 
     if (ui.should_hotload_shaders) {
         auto reload_result = main_pipeline_manager.reload_all();
@@ -353,12 +352,12 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
-    ui.debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
+    // ui.debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
+    // ui.debug_page_count = gpu_app.voxel_world.buffers.voxel_malloc.current_element_count;
+
     ui.debug_player_pos = gpu_output.player_pos;
     ui.debug_player_rot = gpu_output.player_rot;
     ui.debug_chunk_offset = gpu_output.chunk_offset;
-    ui.debug_page_count = gpu_app.voxel_world.buffers.voxel_malloc.current_element_count;
-    ui.debug_total_jobs_ran = gpu_output.total_jobs_ran;
 
     // task_render_pos_image.swap_images(task_render_prev_pos_image);
     // task_render_col_image.swap_images(task_render_prev_col_image);

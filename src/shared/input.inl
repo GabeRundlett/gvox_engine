@@ -37,7 +37,6 @@ struct GpuInput {
     f32 resize_factor;
     f32 fov;
     f32 sensitivity;
-    u32 log2_chunks_per_axis;
     u32 frame_index;
     u32 fif_index;
     f32 time;
@@ -52,14 +51,10 @@ struct GpuInput {
 DAXA_DECL_BUFFER_PTR(GpuInput)
 
 struct GpuOutput {
-    u64 job_counters_packed;
     f32vec3 player_pos;
     f32vec3 player_rot;
     f32vec3 chunk_offset;
-    u32 total_jobs_ran;
 
-    VoxelMallocPageAllocatorGpuOutput voxel_malloc_output;
-    // VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
-    // VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
+    VoxelWorldOutput voxel_world;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)

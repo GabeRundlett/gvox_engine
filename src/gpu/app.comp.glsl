@@ -8,7 +8,7 @@
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     player_startup(gpu_input, globals);
-    voxel_world_startup(globals);
+    voxel_world_startup(globals, VOXELS_RW_BUFFER_PTRS);
 }
 
 #endif
@@ -20,24 +20,6 @@ void main() {
 #include <voxels/core.glsl>
 #include <voxels/voxel_particle.glsl>
 
-// #define UserAllocatorType VoxelLeafChunkAllocator
-// #define UserIndexType u32
-// #include <utils/allocator.glsl>
-
-// #define UserAllocatorType VoxelParentChunkAllocator
-// #define UserIndexType u32
-// #include <utils/allocator.glsl>
-
-// Queue a L0 terrain generation item
-// void queue_terrain_generation_work_item(i32vec3 chunk_offset) {
-//     ChunkWorkItem terrain_work_item;
-//     terrain_work_item.i = i32vec3(0);
-//     terrain_work_item.chunk_offset = chunk_offset;
-//     terrain_work_item.brush_id = BRUSH_FLAGS_WORLD_BRUSH;
-//     zero_work_item_children(terrain_work_item);
-//     queue_root_work_item(globals, terrain_work_item);
-// }
-
 #define INPUT deref(gpu_input)
 #define BRUSH_STATE deref(globals).brush_state
 #define PLAYER deref(globals).player
@@ -48,7 +30,7 @@ void main() {
     PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
 
     player_perframe(gpu_input, globals);
-    voxel_world_perframe(gpu_input, gpu_output, globals, VOXEL_PERFRAME_INFO_PTRS);
+    voxel_world_perframe(gpu_input, gpu_output, globals, VOXELS_RW_BUFFER_PTRS);
 
     {
         f32vec2 frame_dim = INPUT.frame_dim;
@@ -58,8 +40,7 @@ void main() {
         f32vec3 ray_dir = ray_dir_ws(vrc);
         f32vec3 cam_pos = ray_origin_ws(vrc);
         f32vec3 ray_pos = cam_pos;
-        u32vec3 chunk_n = u32vec3(1u << deref(gpu_input).log2_chunks_per_axis);
-        voxel_trace(VoxelTraceInfo(VOXEL_TRACE_INFO_PTRS, chunk_n, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
+        voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
             BRUSH_STATE.initial_ray = ray_pos - cam_pos;
@@ -102,9 +83,6 @@ void main() {
     deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
     deref(gpu_output[INPUT.fif_index]).player_rot = f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
-
-    deref(gpu_output[INPUT.fif_index]).job_counters_packed = 0;
-    deref(gpu_output[INPUT.fif_index]).total_jobs_ran = 0;
 
     deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;

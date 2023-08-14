@@ -264,8 +264,8 @@ struct VoxelWorld {
           chunk_alloc_task_state{pipeline_manager} {
     }
 
-    void create(daxa::Device &device, u32 log2_chunks_per_axis) {
-        auto chunk_n = (1u << log2_chunks_per_axis);
+    void create(daxa::Device &device) {
+        auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
         chunk_n = chunk_n * chunk_n * chunk_n;
         buffers.voxel_chunks_buffer = device.create_buffer({
             .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
@@ -285,6 +285,13 @@ struct VoxelWorld {
         buffers.voxel_malloc.destroy(device);
         // buffers.voxel_leaf_chunk_malloc.destroy(device);
         // buffers.voxel_parent_chunk_malloc.destroy(device);
+    }
+
+    void for_each_buffer(auto func) {
+        func(buffers.voxel_chunks_buffer);
+        buffers.voxel_malloc.for_each_buffer(func);
+        // buffers.voxel_leaf_chunk_malloc.for_each_buffer(func);
+        // buffers.voxel_parent_chunk_malloc.for_each_buffer(func);
     }
 
     void startup(RecordContext &record_ctx) {
@@ -332,20 +339,7 @@ struct VoxelWorld {
         });
     }
 
-    void recreate_voxel_chunks(daxa::Device &device, u32 log2_chunks_per_axis) {
-        if (!buffers.voxel_chunks_buffer.is_empty()) {
-            device.destroy_buffer(buffers.voxel_chunks_buffer);
-        }
-        auto chunk_n = (1u << log2_chunks_per_axis);
-        chunk_n = chunk_n * chunk_n * chunk_n;
-        buffers.voxel_chunks_buffer = device.create_buffer({
-            .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
-            .name = "voxel_chunks_buffer",
-        });
-        buffers.task_voxel_chunks_buffer.set_buffers({.buffers = {&buffers.voxel_chunks_buffer, 1}});
-    }
-
-    auto check_for_realloc(daxa::Device &device, GpuOutput &gpu_output) -> bool {
+    auto check_for_realloc(daxa::Device &device, VoxelWorldOutput const &gpu_output) -> bool {
         buffers.voxel_malloc.check_for_realloc(device, gpu_output.voxel_malloc_output.current_element_count);
         // buffers.voxel_leaf_chunk_malloc.check_for_realloc(device, gpu_output.voxel_leaf_chunk_output.current_element_count);
         // buffers.voxel_parent_chunk_malloc.check_for_realloc(device, gpu_output.voxel_parent_chunk_output.current_element_count);

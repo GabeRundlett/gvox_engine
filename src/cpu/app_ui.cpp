@@ -500,17 +500,6 @@ void AppUi::settings_ui() {
                 settings.render_res_scl = resolution_scale_values[resolution_scale_id];
                 needs_saving = true;
             }
-            // {
-            //     auto temp_int = static_cast<int32_t>(1u << settings.log2_chunks_per_axis);
-            //     ImGui::InputInt("Render Distance", &temp_int, (temp_int + 1) / 2);
-            //     temp_int = std::max(temp_int, 1);
-            //     auto new_log2_chunks_per_axis = static_cast<uint32_t>(round(log2(static_cast<double>(temp_int))));
-            //     if (new_log2_chunks_per_axis != settings.log2_chunks_per_axis) {
-            //         settings.log2_chunks_per_axis = new_log2_chunks_per_axis;
-            //         should_recreate_voxel_buffers = true;
-            //         needs_saving = true;
-            //     }
-            // }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("UI")) {
@@ -802,12 +791,11 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
         }
         ImGui::Text("GPU: %s", debug_gpu_name);
         ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
-        ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-        ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
+        // ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
+        // ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
         ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(debug_player_rot.x), static_cast<double>(debug_player_rot.y), static_cast<double>(debug_player_rot.z));
         ImGui::Text("Chunk offs: %.2f, %.2f, %.2f", static_cast<double>(debug_chunk_offset.x), static_cast<double>(debug_chunk_offset.y), static_cast<double>(debug_chunk_offset.z));
-        ImGui::Text("total_jobs_ran:   %u", debug_total_jobs_ran);
 
         if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =

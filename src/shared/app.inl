@@ -5,6 +5,7 @@
 #include <shared/input.inl>
 #include <shared/globals.inl>
 
+#include <shared/voxels/voxels.inl>
 #include <shared/voxels/impl/voxel_world.inl>
 #include <shared/voxels/voxel_particle_sim.inl>
 
@@ -22,7 +23,7 @@
 DAXA_DECL_TASK_USES_BEGIN(StartupComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
-VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
 #endif
 
@@ -37,6 +38,8 @@ DAXA_DECL_TASK_USES_END()
 #endif
 
 #if defined(__cplusplus)
+
+static_assert(IsVoxelWorld<VoxelWorld>);
 
 #include <minizip/unzip.h>
 
@@ -224,7 +227,7 @@ struct GpuApp {
         task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
         task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
 
-        voxel_world.create(device, LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+        voxel_world.create(device);
 
         {
             daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
@@ -339,11 +342,8 @@ struct GpuApp {
 
         buffer_size(gpu_resources.input_buffer);
         buffer_size(gpu_resources.globals_buffer);
-        buffer_size(voxel_world.buffers.voxel_chunks_buffer);
 
-        voxel_world.buffers.voxel_malloc.for_each_buffer(buffer_size);
-        // voxel_world.buffers.voxel_leaf_chunk_malloc.for_each_buffer(buffer_size);
-        // voxel_world.buffers.voxel_parent_chunk_malloc.for_each_buffer(buffer_size);
+        voxel_world.for_each_buffer(buffer_size);
 
         buffer_size(gpu_resources.gvox_model_buffer);
         buffer_size(gpu_resources.simulated_voxel_particles_buffer);
@@ -363,11 +363,6 @@ struct GpuApp {
         needs_vram_calc = false;
     }
 
-    void recreate_voxel_chunks(daxa::Device &device, u32 log2_chunks_per_axis) {
-        voxel_world.recreate_voxel_chunks(device, log2_chunks_per_axis);
-        needs_vram_calc = true;
-    }
-
     void begin_frame(daxa::Device &device, daxa::TaskGraph &task_graph, AppUi &ui) {
         gpu_input.sampler_nnc = gpu_resources.sampler_nnc;
         gpu_input.sampler_lnc = gpu_resources.sampler_lnc;
@@ -378,12 +373,8 @@ struct GpuApp {
             calc_vram_usage(device, task_graph, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
         }
 
-        bool should_realloc = voxel_world.check_for_realloc(device, gpu_output);
+        bool should_realloc = voxel_world.check_for_realloc(device, gpu_output.voxel_world);
 
-        if (ui.should_recreate_voxel_buffers) {
-            recreate_voxel_chunks(device, ui.settings.log2_chunks_per_axis);
-            ui.should_recreate_voxel_buffers = false;
-        }
         if (should_realloc) {
             dynamic_buffers_realloc(device);
         }

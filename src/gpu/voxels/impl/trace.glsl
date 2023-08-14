@@ -5,14 +5,14 @@
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
 
-#define VOXEL_TRACE_INFO_PTRS VoxelTraceInfoPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks))
-
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
     VoxelTraceResult result;
 
+    u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+
     BoundingBox b;
     b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(info.chunk_n) * CHUNK_WORLDSPACE_SIZE;
+    b.bound_max = f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
 
     intersect(ray_pos, info.ray_dir, f32vec3(1) / info.ray_dir, b);
     ray_pos += info.ray_dir * 0.01 / VOXEL_SCL;
@@ -29,7 +29,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
         info.ray_dir.x == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.x),
         info.ray_dir.y == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.y),
         info.ray_dir.z == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.z));
-    u32 lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, info.chunk_n, ray_pos, result.voxel_data);
+    u32 lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, ray_pos, result.voxel_data);
     if (lod == 0) {
         result.dist = 0.0;
         return result;
@@ -60,7 +60,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
         if (!inside(current_pos + info.ray_dir * 0.001, b) || t_curr > info.max_dist) {
             break;
         }
-        lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, info.chunk_n, current_pos, result.voxel_data);
+        lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, current_pos, result.voxel_data);
 #if TRACE_DEPTH_PREPASS_COMPUTE
         bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7);
 #else
