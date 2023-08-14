@@ -2,6 +2,9 @@
 
 #include <shared/core.inl>
 
+#define TAA_WG_SIZE_X 16
+#define TAA_WG_SIZE_Y 8
+
 #if TAA_REPROJECT_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(TaaReprojectComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
@@ -118,7 +121,7 @@ inline void taa_compile_compute_pipeline(daxa::PipelineManager &pipeline_manager
                 return;                                                                                                                                 \
             cmd_list.set_pipeline(*pipeline);                                                                                                           \
             cmd_list.push_constant(push);                                                                                                               \
-            cmd_list.dispatch((thread_count.x + 7) / 8, (thread_count.y + 7) / 8);                                                                      \
+            cmd_list.dispatch((thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y);          \
         }                                                                                                                                               \
     };                                                                                                                                                  \
     struct Name##ComputeTask : Name##ComputeUses {                                                                                                      \

@@ -176,7 +176,7 @@ f32vec4 image_sample_catmull_rom_5tap(daxa_ImageViewId tex, daxa_SamplerId linea
         tex, linearSampler, uv, texSize, false);
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     f32vec2 px = gl_GlobalInvocationID.xy;
     const f32vec2 input_resolution_scale = f32vec2(deref(gpu_input).render_res_scl); // input_tex_size.xy / output_tex_size.xy;
@@ -340,7 +340,7 @@ FilteredInput filter_input_inner(u32vec2 px, float center_depth, float luma_cuto
     return res;
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
     const float center_depth = fetch_depth(px);
@@ -402,7 +402,7 @@ void filter_history(u32vec2 px, int kernel_radius) {
     imageStore(daxa_image2D(filtered_history_img), i32vec2(px), f32vec4(filter_input(uv, filtered_luma * 1.001, kernel_radius), 0.0));
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     u32vec2 px = gl_GlobalInvocationID.xy;
     if (push.input_tex_size.x / push.output_tex_size.x > 1.75) {
@@ -452,7 +452,7 @@ f32vec4 fetch_reproj(i32vec2 px) {
     return texelFetch(daxa_texture2D(reprojection_map), px, 0);
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     float input_prob = 0;
     i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
@@ -525,7 +525,7 @@ f32 fetch_input(i32vec2 px) {
     return texelFetch(daxa_texture2D(input_prob_img), px, 0).r;
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
     float prob = fetch_input(px);
@@ -551,7 +551,7 @@ f32 fetch_input(i32vec2 px) {
     return texelFetch(daxa_texture2D(prob_filtered1_img), px, 0).r;
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
     float prob = fetch_input(px);
@@ -730,7 +730,7 @@ f32vec4 fetch_reproj(i32vec2 px) {
     return texelFetch(daxa_texture2D(reprojection_map), px, 0);
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     i32vec2 px = i32vec2(gl_GlobalInvocationID.xy);
 #if USE_FRAME_INDEX_INDICATOR_BAR

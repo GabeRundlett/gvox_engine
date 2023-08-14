@@ -2,6 +2,7 @@
 
 #include <shared/voxels/impl/voxel_malloc.inl>
 #include <shared/voxels/gvox_model.inl>
+#include <shared/voxels/brushes.inl>
 
 // 1364 u32's
 // 10.65625 bytes per 8x8x8
@@ -45,11 +46,6 @@ struct TempVoxelChunk {
     TempVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 };
 DAXA_DECL_BUFFER_PTR(TempVoxelChunk)
-
-struct BrushInput {
-    f32vec3 pos;
-    f32vec3 prev_pos;
-};
 
 struct VoxelChunkUpdateInfo {
     i32vec3 i;

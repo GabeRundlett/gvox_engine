@@ -6,6 +6,8 @@
 #include <voxels/impl/voxel_malloc.glsl>
 #include <voxels/gvox_model.glsl>
 
+#define INVALID_CHUNK_I i32vec3(0x80000000)
+
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \
     u32 uniformity_lod_index_##N(u32vec3 index_within_lod) {          \
         return index_within_lod.x + index_within_lod.y * u32(64 / N); \

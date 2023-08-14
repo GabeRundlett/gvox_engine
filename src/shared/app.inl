@@ -8,6 +8,7 @@
 #include <shared/voxels/voxels.inl>
 #include <shared/voxels/impl/voxel_world.inl>
 #include <shared/voxels/voxel_particle_sim.inl>
+#include <shared/voxels/gvox_model.inl>
 
 #include <shared/renderer/downscale.inl>
 #include <shared/renderer/trace_primary.inl>
@@ -408,6 +409,8 @@ struct GpuApp {
     void startup(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
+
+        voxel_world.use_buffers(record_ctx);
 
         voxel_world.startup(record_ctx);
         record_ctx.task_graph.add_task({

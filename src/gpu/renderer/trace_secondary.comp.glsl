@@ -1,5 +1,6 @@
 #include <shared/app.inl>
 
+#include <utils/math.glsl>
 #include <voxels/core.glsl>
 #include <utils/sky.glsl>
 #include <utils/downscale.glsl>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/voxels/voxels.inl>
+#include <shared/voxels/brushes.inl>
 
 struct IndirectDrawParams {
     u32 vertex_count;

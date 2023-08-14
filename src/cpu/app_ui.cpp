@@ -9,8 +9,6 @@
 #include <vector>
 #include <iostream>
 
-#include <shared/voxels/impl/voxel_malloc.inl>
-
 using namespace std::literals;
 
 static constexpr std::array control_strings = {

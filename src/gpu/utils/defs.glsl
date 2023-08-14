@@ -18,5 +18,9 @@
 #define USE_BLUE_NOISE 1
 
 #define VOXEL_SCL 8
+
+#if !defined(CHUNK_SIZE)
+#define CHUNK_SIZE VOXEL_SCL
+#endif
+
 #define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / VOXEL_SCL)
-#define INVALID_CHUNK_I i32vec3(0x80000000)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/voxels/impl/voxels.inl>
+#include <shared/globals.inl>
 
 #if PER_CHUNK_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(PerChunkComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
