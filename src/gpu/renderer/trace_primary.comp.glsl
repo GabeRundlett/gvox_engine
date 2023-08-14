@@ -76,14 +76,12 @@ void main() {
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
     u32 step_n = trace_result.step_n;
 
-    f32vec3 chunk_offset_delta = f32vec3(deref(globals).player.chunk_offset - deref(globals).player.prev_chunk_offset) * CHUNK_WORLDSPACE_SIZE;
-
     u32vec4 output_value = u32vec4(0);
 
     // f32 depth = length(cam_pos - ray_pos);
     // transform depth to ndc space
     vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos, 1));
-    vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos + chunk_offset_delta, 1)); // when animated objects exist, this is where they'd put their velocity
+    vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos + trace_result.vel, 1)); // when animated objects exist, this is where they'd put their velocity
     vec4 cs_pos = (deref(globals).player.cam.view_to_sample * vs_pos);
     f32 depth = cs_pos.z / cs_pos.w;
     f32vec3 vs_nrm = f32vec3(0);

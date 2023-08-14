@@ -1,6 +1,5 @@
 #pragma once
 
-#include <shared/voxels/voxels.inl>
 #include <shared/voxels/brushes.inl>
 
 struct IndirectDrawParams {
@@ -26,12 +25,11 @@ struct Camera {
 
 struct Player {
     Camera cam;
-    f32vec3 pos; // Player (mod 8) position centered around 128 [124-132] (in meters)
+    f32vec3 pos; // Player (mod 1) position centered around 0.5 [0-1] (in meters)
     f32vec3 vel;
     f32 pitch, yaw, roll;
     f32vec3 forward, lateral;
     i32vec3 chunk_offset;
-    i32vec3 prev_chunk_offset;
     f32 max_speed;
 };
 
@@ -67,9 +65,7 @@ struct GpuGlobals {
     Player player;
     BrushInput brush_input;
     BrushState brush_state;
-    VoxelWorldGlobals voxel_world;
     GpuIndirectDispatch indirect_dispatch;
     VoxelParticlesState voxel_particles_state;
-    u32 padding[10];
 };
 DAXA_DECL_BUFFER_PTR(GpuGlobals)

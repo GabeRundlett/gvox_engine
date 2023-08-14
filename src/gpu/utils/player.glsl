@@ -9,13 +9,11 @@ void player_fix_chunk_offset(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 #if ENABLE_CHUNK_WRAPPING
-    const u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-    const f32vec3 HALF_CHUNK_N = f32vec3(chunk_n) * 0.5;
-    PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos / CHUNK_WORLDSPACE_SIZE - HALF_CHUNK_N + 0.5));
-    PLAYER.pos = mod(PLAYER.pos - 0.5 * CHUNK_WORLDSPACE_SIZE, CHUNK_WORLDSPACE_SIZE) + CHUNK_WORLDSPACE_SIZE * (HALF_CHUNK_N - 0.5);
+    PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos));
+    PLAYER.pos = fract(PLAYER.pos);
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
-    PLAYER.pos += f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+    PLAYER.pos += f32vec3(PLAYER.chunk_offset);
     PLAYER.chunk_offset = i32vec3(0);
 #endif
 }

@@ -18,9 +18,3 @@
 #define USE_BLUE_NOISE 1
 
 #define VOXEL_SCL 8
-
-#if !defined(CHUNK_SIZE)
-#define CHUNK_SIZE VOXEL_SCL
-#endif
-
-#define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / VOXEL_SCL)

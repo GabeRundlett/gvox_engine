@@ -57,14 +57,19 @@ struct VoxelChunkUpdateInfo {
 struct VoxelWorldGlobals {
     VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
     u32 chunk_update_n; // Number of chunks to update
+    i32vec3 prev_offset;
+    i32vec3 offset;
 };
+DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
-#define VOXELS_USE_BUFFERS(ptr_type, mode)                             \
-    DAXA_TASK_USE_BUFFER(voxel_chunks, ptr_type(VoxelLeafChunk), mode) \
+#define VOXELS_USE_BUFFERS(ptr_type, mode)                                 \
+    DAXA_TASK_USE_BUFFER(voxel_globals, ptr_type(VoxelWorldGlobals), mode) \
+    DAXA_TASK_USE_BUFFER(voxel_chunks, ptr_type(VoxelLeafChunk), mode)     \
     DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, ptr_type(VoxelMallocPageAllocator), mode)
 
-#define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers)            \
-    .voxel_chunks = voxel_buffers.task_voxel_chunks_buffer, \
+#define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers)              \
+    .voxel_globals = voxel_buffers.task_voxel_globals_buffer, \
+    .voxel_chunks = voxel_buffers.task_voxel_chunks_buffer,   \
     .voxel_malloc_page_allocator = voxel_buffers.voxel_malloc.task_allocator_buffer
 
 struct VoxelWorldOutput {
@@ -76,11 +81,13 @@ struct VoxelWorldOutput {
 struct VoxelBufferPtrs {
     daxa_BufferPtr(VoxelMallocPageAllocator) allocator;
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr;
+    daxa_BufferPtr(VoxelWorldGlobals) globals;
 };
 struct VoxelRWBufferPtrs {
     daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks_ptr;
+    daxa_RWBufferPtr(VoxelWorldGlobals) globals;
 };
 
-#define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks))
-#define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_RWBufferPtr(VoxelLeafChunk)(voxel_chunks))
+#define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks), daxa_BufferPtr(VoxelWorldGlobals)(voxel_globals))
+#define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_RWBufferPtr(VoxelLeafChunk)(voxel_chunks), daxa_RWBufferPtr(VoxelWorldGlobals)(voxel_globals))

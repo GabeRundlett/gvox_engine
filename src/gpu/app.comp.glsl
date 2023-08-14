@@ -26,9 +26,6 @@ void main() {
 #define CHUNKS(i) deref(voxel_chunks[i])
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    // Update previous chunk offset
-    PLAYER.prev_chunk_offset = PLAYER.chunk_offset;
-
     player_perframe(gpu_input, globals);
     voxel_world_perframe(gpu_input, gpu_output, globals, VOXELS_RW_BUFFER_PTRS);
 
@@ -47,7 +44,7 @@ void main() {
         }
 
         deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + f32vec3(deref(globals).player.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + f32vec3(deref(globals).player.chunk_offset);
 
         if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
             {
@@ -80,7 +77,7 @@ void main() {
         }
     }
 
-    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset) * CHUNK_WORLDSPACE_SIZE;
+    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset);
     deref(gpu_output[INPUT.fif_index]).player_rot = f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
 

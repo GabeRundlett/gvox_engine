@@ -8,6 +8,7 @@ DAXA_DECL_TASK_USES_BEGIN(PerChunkComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gvox_model, daxa_BufferPtr(GpuGvoxModel), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
+DAXA_TASK_USE_BUFFER(voxel_globals, daxa_RWBufferPtr(VoxelWorldGlobals), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_IMAGE(value_noise_texture, REGULAR_2D_ARRAY, COMPUTE_SHADER_SAMPLED)
 DAXA_DECL_TASK_USES_END()
@@ -18,6 +19,7 @@ DAXA_DECL_TASK_USES_BEGIN(ChunkEditComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(gvox_model, daxa_BufferPtr(GpuGvoxModel), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_globals, daxa_BufferPtr(VoxelWorldGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_BufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_BufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_RWBufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ_WRITE)
@@ -31,6 +33,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(ChunkOptComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_globals, daxa_BufferPtr(VoxelWorldGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_BufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
@@ -40,6 +43,7 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(ChunkAllocComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(voxel_globals, daxa_BufferPtr(VoxelWorldGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_BufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, daxa_RWBufferPtr(VoxelMallocPageAllocator), COMPUTE_SHADER_READ_WRITE)
@@ -242,6 +246,8 @@ struct ChunkAllocComputeTask : ChunkAllocComputeUses {
 
 struct VoxelWorld {
     struct Buffers {
+        daxa::BufferId voxel_globals_buffer;
+        daxa::TaskBuffer task_voxel_globals_buffer{{.name = "task_voxel_globals_buffer"}};
         daxa::BufferId voxel_chunks_buffer;
         daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
         AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
@@ -266,29 +272,34 @@ struct VoxelWorld {
     }
 
     void create(daxa::Device &device) {
+        buffers.voxel_globals_buffer = device.create_buffer({
+            .size = static_cast<u32>(sizeof(VoxelWorldGlobals)),
+            .name = "voxel_globals_buffer",
+        });
+        buffers.task_voxel_globals_buffer.set_buffers({.buffers = std::array{buffers.voxel_globals_buffer}});
+
         auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
         chunk_n = chunk_n * chunk_n * chunk_n;
         buffers.voxel_chunks_buffer = device.create_buffer({
             .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
             .name = "voxel_chunks_buffer",
         });
+        buffers.task_voxel_chunks_buffer.set_buffers({.buffers = std::array{buffers.voxel_chunks_buffer}});
 
         buffers.voxel_malloc.create(device);
         // buffers.voxel_leaf_chunk_malloc.create(device);
         // buffers.voxel_parent_chunk_malloc.create(device);
-
-        buffers.task_voxel_chunks_buffer.set_buffers({.buffers = std::array{buffers.voxel_chunks_buffer}});
     }
     void destroy(daxa::Device &device) const {
-        if (!buffers.voxel_chunks_buffer.is_empty()) {
-            device.destroy_buffer(buffers.voxel_chunks_buffer);
-        }
+        device.destroy_buffer(buffers.voxel_globals_buffer);
+        device.destroy_buffer(buffers.voxel_chunks_buffer);
         buffers.voxel_malloc.destroy(device);
         // buffers.voxel_leaf_chunk_malloc.destroy(device);
         // buffers.voxel_parent_chunk_malloc.destroy(device);
     }
 
     void for_each_buffer(auto func) {
+        func(buffers.voxel_globals_buffer);
         func(buffers.voxel_chunks_buffer);
         buffers.voxel_malloc.for_each_buffer(func);
         // buffers.voxel_leaf_chunk_malloc.for_each_buffer(func);
@@ -296,12 +307,9 @@ struct VoxelWorld {
     }
 
     void startup(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_chunks_buffer);
-        buffers.voxel_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
         record_ctx.task_graph.add_task({
             .uses = {
+                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_globals_buffer},
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_chunks_buffer},
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_element_buffer},
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
@@ -309,6 +317,14 @@ struct VoxelWorld {
             },
             .task = [this](daxa::TaskInterface task_runtime) {
                 auto cmd_list = task_runtime.get_command_list();
+
+                cmd_list.clear_buffer({
+                    .buffer = buffers.task_voxel_globals_buffer.get_state().buffers[0],
+                    .offset = 0,
+                    .size = sizeof(VoxelWorldGlobals),
+                    .clear_value = 0,
+                });
+
                 auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
                 chunk_n = chunk_n * chunk_n * chunk_n;
                 cmd_list.clear_buffer({
@@ -317,6 +333,7 @@ struct VoxelWorld {
                     .size = sizeof(VoxelLeafChunk) * chunk_n,
                     .clear_value = 0,
                 });
+
                 buffers.voxel_malloc.clear_buffers(cmd_list);
                 // buffers.voxel_leaf_chunk_malloc.clear_buffers(cmd_list);
                 // buffers.voxel_parent_chunk_malloc.clear_buffers(cmd_list);
@@ -386,10 +403,11 @@ struct VoxelWorld {
     }
 
     void use_buffers(RecordContext &record_ctx) {
+        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_globals_buffer);
+        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_chunks_buffer);
         buffers.voxel_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
         // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
         // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
-        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_chunks_buffer);
     }
 
     void update(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
@@ -399,6 +417,7 @@ struct VoxelWorld {
                     .gpu_input = record_ctx.task_input_buffer,
                     .gvox_model = task_gvox_model_buffer,
                     .globals = record_ctx.task_globals_buffer,
+                    .voxel_globals = buffers.task_voxel_globals_buffer,
                     .voxel_chunks = buffers.task_voxel_chunks_buffer,
                     .value_noise_texture = task_value_noise_image.view({.layer_count = 256}),
                 },
@@ -417,6 +436,7 @@ struct VoxelWorld {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
                     .gvox_model = task_gvox_model_buffer,
+                    .voxel_globals = buffers.task_voxel_globals_buffer,
                     .voxel_chunks = buffers.task_voxel_chunks_buffer,
                     .voxel_malloc_page_allocator = buffers.voxel_malloc.task_allocator_buffer,
                     .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
@@ -433,6 +453,7 @@ struct VoxelWorld {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
+                    .voxel_globals = buffers.task_voxel_globals_buffer,
                     .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
                     .voxel_chunks = buffers.task_voxel_chunks_buffer,
                 },
@@ -445,6 +466,7 @@ struct VoxelWorld {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
+                    .voxel_globals = buffers.task_voxel_globals_buffer,
                     .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
                     .voxel_chunks = buffers.task_voxel_chunks_buffer,
                 },
@@ -457,6 +479,7 @@ struct VoxelWorld {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
+                    .voxel_globals = buffers.task_voxel_globals_buffer,
                     .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
                     .voxel_chunks = buffers.task_voxel_chunks_buffer,
                     .voxel_malloc_page_allocator = buffers.voxel_malloc.task_allocator_buffer,

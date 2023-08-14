@@ -5,23 +5,35 @@
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
 
+#define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / VOXEL_SCL)
+
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
     VoxelTraceResult result;
 
+    result.vel = f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
+
     u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
 
-    BoundingBox b;
-    b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
+    f32vec3 offset = f32vec3(deref(info.ptrs.globals).offset & 0x7) + f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+    ray_pos += offset;
 
-    intersect(ray_pos, info.ray_dir, f32vec3(1) / info.ray_dir, b);
+    BoundingBox b;
+    b.bound_min = f32vec3(0.0);
+    b.bound_max = b.bound_min + f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
+
+    if (false) {
+        intersect(ray_pos, info.ray_dir, f32vec3(1) / info.ray_dir, b);
+    }
+
     ray_pos += info.ray_dir * 0.01 / VOXEL_SCL;
+
     if (!inside(ray_pos, b)) {
         if (info.extend_to_max_dist) {
             result.dist = info.max_dist;
         } else {
             result.dist = 0.0;
         }
+        ray_pos -= offset;
         return result;
     }
 
@@ -29,9 +41,10 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
         info.ray_dir.x == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.x),
         info.ray_dir.y == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.y),
         info.ray_dir.z == 0 ? 3.0 * info.max_steps : abs(1.0 / info.ray_dir.z));
-    u32 lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, ray_pos, result.voxel_data);
+    u32 lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, ray_pos, result.voxel_data);
     if (lod == 0) {
         result.dist = 0.0;
+        ray_pos -= offset;
         return result;
     }
     f32 cell_size = f32(1l << (lod - 1)) / VOXEL_SCL;
@@ -60,7 +73,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
         if (!inside(current_pos + info.ray_dir * 0.001, b) || t_curr > info.max_dist) {
             break;
         }
-        lod = sample_lod(info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, current_pos, result.voxel_data);
+        lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, current_pos, result.voxel_data);
 #if TRACE_DEPTH_PREPASS_COMPUTE
         bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage), 1, 7);
 #else
@@ -84,38 +97,6 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
     ray_pos = ray_pos + info.ray_dir * t_curr;
 
     result.dist = t_curr;
+    ray_pos -= offset;
     return result;
-}
-
-void trace_sparse(daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, in out f32vec3 ray_pos, f32vec3 ray_dir, u32 max_steps) {
-    BoundingBox b;
-    b.bound_min = f32vec3(0, 0, 0);
-    b.bound_max = f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
-
-    intersect(ray_pos, ray_dir, f32vec3(1) / ray_dir, b);
-    ray_pos += ray_dir * 0.001 / VOXEL_SCL;
-    if (!inside(ray_pos, b)) {
-        ray_pos = ray_pos + ray_dir * MAX_DIST;
-        return;
-    }
-
-#define STEP(N)                                                                                        \
-    for (u32 i = 0; i < max_steps; ++i) {                                                              \
-        ray_pos += ray_dir * N / 8;                                                                    \
-        if (!inside(f32vec3(ray_pos), b)) {                                                            \
-            ray_pos += ray_dir * MAX_DIST;                                                             \
-            return;                                                                                    \
-        }                                                                                              \
-        b32 present = sample_lod_presence(N)(voxel_chunks_ptr, chunk_n, u32vec3(ray_pos * VOXEL_SCL)); \
-        if (present) {                                                                                 \
-            return;                                                                                    \
-        }                                                                                              \
-    }
-    STEP(2)
-    STEP(4)
-    STEP(8)
-    STEP(16)
-    STEP(32)
-    STEP(64)
-    ray_pos += ray_dir * MAX_DIST;
 }

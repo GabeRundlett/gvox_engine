@@ -190,7 +190,6 @@ void brushgen_world_terrain(in out f32vec3 col, in out u32 id) {
         if (SHOULD_COLOR_WORLD) {
             f32 r = good_rand(-val);
             if (val > -0.002 && upwards > 0.65) {
-                // col = fract(f32vec3(voxel_i) / CHUNK_SIZE);
                 col = f32vec3(0.05, 0.26, 0.03);
                 if (r < 0.5) {
                     col *= 0.7;
@@ -288,7 +287,7 @@ void brushgen_world_terrain(in out f32vec3 col, in out u32 id) {
 void brushgen_world(in out f32vec3 col, in out u32 id) {
     if (false) { // Mandelbulb world
         f32vec3 mandelbulb_color;
-        if (mandelbulb((voxel_pos / (CHUNK_WORLDSPACE_SIZE * 4) * 2 - 1) * 1, mandelbulb_color)) {
+        if (mandelbulb((voxel_pos / 64 - 1) * 1, mandelbulb_color)) {
             col = f32vec3(0.02);
             id = 1;
         }
@@ -307,12 +306,12 @@ void brushgen_world(in out f32vec3 col, in out u32 id) {
     } else if (true) { // Terrain world
         brushgen_world_terrain(col, id);
     } else if (true) { // Ball world (each ball is centered on a chunk center)
-        if (length(fract(voxel_pos / CHUNK_WORLDSPACE_SIZE) - 0.5) < 0.15) {
+        if (length(fract(voxel_pos / 8) - 0.5) < 0.15) {
             id = 1;
             col = f32vec3(0.1);
         }
     } else if (false) { // Checker board world
-        u32vec3 voxel_i = u32vec3(voxel_pos / CHUNK_WORLDSPACE_SIZE);
+        u32vec3 voxel_i = u32vec3(voxel_pos / 8);
         if ((voxel_i.x + voxel_i.y + voxel_i.z) % 2 == 1) {
             id = 1;
             col = f32vec3(0.1);
@@ -341,12 +340,6 @@ void brushgen_b(in out f32vec3 col, in out u32 id) {
 
     col = prev_col;
     id = prev_id;
-
-    // f32vec3 mandelbulb_color;
-    // if (mandelbulb(((voxel_pos-brush_input.pos + CHUNK_WORLDSPACE_SIZE * 8 / 2) / (CHUNK_WORLDSPACE_SIZE * 8) * 2 - 1) * 1, mandelbulb_color)) {
-    //     col = floor(mandelbulb_color * 10) / 10;
-    //     id = 1;
-    // }
 
     if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
         // f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;

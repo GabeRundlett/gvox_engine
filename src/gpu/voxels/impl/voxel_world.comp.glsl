@@ -5,7 +5,7 @@
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
 
-#define VOXEL_WORLD deref(globals).voxel_world
+#define VOXEL_WORLD deref(voxel_globals)
 #define PLAYER deref(globals).player
 #define CHUNKS(i) deref(voxel_chunks[i])
 #define INDIRECT deref(globals).indirect_dispatch
@@ -26,20 +26,25 @@ void try_elect(in out VoxelChunkUpdateInfo work_item) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
+    i32vec3 chunk_n = i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+
+    i32vec3 offset = (VOXEL_WORLD.offset >> i32vec3(3));
+    i32vec3 prev_offset = (VOXEL_WORLD.prev_offset >> i32vec3(3));
+
     VoxelChunkUpdateInfo terrain_work_item;
     terrain_work_item.i = i32vec3(gl_GlobalInvocationID.xyz);
-    terrain_work_item.chunk_offset = PLAYER.chunk_offset;
+    terrain_work_item.chunk_offset = offset;
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
 
     // (const) number of chunks in each axis
-    i32vec3 chunk_n = i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n);
 
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
         try_elect(terrain_work_item);
-    } else if (PLAYER.chunk_offset != PLAYER.prev_chunk_offset) {
+    } 
+    else if (offset != prev_offset) {
         // invalidate chunks outside the chunk_offset
-        i32vec3 diff = clamp(i32vec3(PLAYER.chunk_offset - PLAYER.prev_chunk_offset), -chunk_n, chunk_n);
+        i32vec3 diff = clamp(i32vec3(offset - prev_offset), -chunk_n, chunk_n);
 
         i32vec3 start;
         i32vec3 end;
@@ -53,7 +58,7 @@ void main() {
         start.z = diff.z < 0 ? 0 : chunk_n.z - diff.z;
         end.z = diff.z < 0 ? -diff.z : chunk_n.z;
 
-        u32vec3 temp_chunk_i = u32vec3((i32vec3(terrain_work_item.i) - deref(globals).player.chunk_offset) % i32vec3(chunk_n));
+        u32vec3 temp_chunk_i = u32vec3((i32vec3(terrain_work_item.i) - offset) % i32vec3(chunk_n));
 
         if ((temp_chunk_i.x >= start.x && temp_chunk_i.x < end.x) ||
             (temp_chunk_i.y >= start.y && temp_chunk_i.y < end.y) ||
@@ -91,7 +96,7 @@ BrushInput brush_input;
 
 #include "../brushes.glsl"
 
-#define VOXEL_WORLD deref(globals).voxel_world
+#define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     // (const) number of chunks in each axis
@@ -129,7 +134,7 @@ void main() {
     // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
     i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset - i32vec3(chunk_n), i32vec3(chunk_n)), i32vec3(chunk_n));
     // Leaf chunk position in world space
-    i32vec3 world_chunk = chunk_offset + wrapped_chunk_i;
+    i32vec3 world_chunk = chunk_offset + wrapped_chunk_i - i32vec3(chunk_n / 2);
 
     // Voxel position in world space (voxels)
     world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
@@ -259,7 +264,7 @@ void chunk_opt_x2x4(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 }
 #undef VOXEL_CHUNK
 
-#define VOXEL_WORLD deref(globals).voxel_world
+#define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
     i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
@@ -399,7 +404,7 @@ void chunk_opt_x8up(daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RW
 }
 #undef VOXEL_CHUNK
 
-#define VOXEL_WORLD deref(globals).voxel_world
+#define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
     i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
@@ -463,7 +468,7 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
     }
 }
 
-#define VOXEL_WORLD deref(globals).voxel_world
+#define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
     u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
