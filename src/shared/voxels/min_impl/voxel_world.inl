@@ -4,8 +4,8 @@
 
 struct VoxelWorld {
     struct Buffers {
-        daxa::BufferId _dummy;
-        daxa::TaskBuffer task_dummy{{.name = "task_dummy"}};
+        daxa::BufferId voxel_globals;
+        daxa::TaskBuffer task_voxel_globals{{.name = "task_voxel_globals"}};
     };
 
     Buffers buffers;
@@ -14,21 +14,21 @@ struct VoxelWorld {
     }
 
     void create(daxa::Device &device) {
-        buffers._dummy = device.create_buffer({
+        buffers.voxel_globals = device.create_buffer({
             .size = static_cast<u32>(sizeof(u32)),
-            .name = "_dummy",
+            .name = "voxel_globals",
         });
 
-        buffers.task_dummy.set_buffers({.buffers = std::array{buffers._dummy}});
+        buffers.task_voxel_globals.set_buffers({.buffers = std::array{buffers.voxel_globals}});
     }
     void destroy(daxa::Device &device) const {
-        if (!buffers._dummy.is_empty()) {
-            device.destroy_buffer(buffers._dummy);
+        if (!buffers.voxel_globals.is_empty()) {
+            device.destroy_buffer(buffers.voxel_globals);
         }
     }
 
     void for_each_buffer(auto func) {
-        func(buffers._dummy);
+        func(buffers.voxel_globals);
     }
 
     void startup(RecordContext &record_ctx) {
@@ -42,7 +42,7 @@ struct VoxelWorld {
     }
 
     void use_buffers(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_buffer(buffers.task_dummy);
+        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_globals);
     }
 
     void update(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
