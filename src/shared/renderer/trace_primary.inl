@@ -17,6 +17,7 @@ DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(debug_texture, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
 DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
@@ -186,6 +187,7 @@ struct GbufferRenderer {
                     .globals = record_ctx.task_globals_buffer,
                     VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                     .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
+                    .debug_texture = record_ctx.task_debug_texture,
                     .render_depth_prepass_image = depth_prepass_image,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,
                     .vs_normal_image_id = gbuffer_depth.geometric_normal,

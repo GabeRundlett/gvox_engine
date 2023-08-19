@@ -881,6 +881,13 @@ f32mat4x4 translation_matrix(f32vec3 pos) {
         pos, 1);
 }
 
+vec3 apply_inv_rotation(vec3 pt, vec3 ypr) {
+    float yaw = ypr[0];
+    float pitch = ypr[1];
+    float roll = ypr[2];
+    return (inv_rotation_matrix(ypr[0], ypr[1], ypr[2]) * vec4(pt, 0.0)).xyz;
+}
+
 f32vec3 position_world_to_clip(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
     f32vec4 p = (deref(globals).player.cam.world_to_view * f32vec4(v, 1));
     p = (deref(globals).player.cam.view_to_clip * p);
@@ -996,4 +1003,15 @@ f32vec4 get_bilinear_custom_weights(Bilinear f, f32vec4 custom_weights) {
 f32vec4 apply_bilinear_custom_weights(f32vec4 s00, f32vec4 s10, f32vec4 s01, f32vec4 s11, f32vec4 w, bool should_normalize) {
 	f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
 	return r * (should_normalize ? (1.0 / dot(w, f32vec4(1.0))) : 1.0);
+}
+
+void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 friction_vec, float friction_coeff) {
+    float fac = deref(gpu_input).delta_time * friction_coeff;
+    vec3 new_vel = vel - normalize(friction_vec) * fac;
+
+    if (dot(vel, new_vel) > 0.000) {
+        vel = new_vel;
+    } else {
+        vel -= friction_vec;
+    }
 }

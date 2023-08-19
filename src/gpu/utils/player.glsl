@@ -24,6 +24,7 @@ void player_startup(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
     PLAYER.pos = f32vec3(0.01, 0.02, 0.03);
+    PLAYER.vel = f32vec3(0.0);
     // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
 
@@ -63,9 +64,13 @@ void player_perframe(
     PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
     PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
 
+    const bool is_flying = true;
+
     const f32 accel_rate = 30.0;
     const f32 speed = 2.5;
-    const f32 sprint_speed = 25.5;
+    const f32 sprint_speed = is_flying ? 25.5 : 2.5;
+
+    const f32 MAX_SPEED = speed * sprint_speed;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
         move_vec += PLAYER.forward;
@@ -76,17 +81,51 @@ void player_perframe(
     if (INPUT.actions[GAME_ACTION_MOVE_RIGHT] != 0)
         move_vec += PLAYER.lateral;
 
-    if (INPUT.actions[GAME_ACTION_JUMP] != 0)
-        move_vec += f32vec3(0, 0, 1);
-    if (INPUT.actions[GAME_ACTION_CROUCH] != 0)
-        move_vec -= f32vec3(0, 0, 1);
-
     f32 applied_speed = speed;
-    if (INPUT.actions[GAME_ACTION_SPRINT] != 0)
+    if ((INPUT.actions[GAME_ACTION_SPRINT] != 0) == is_flying)
         applied_speed *= sprint_speed;
 
-    PLAYER.vel = move_vec * applied_speed;
-    PLAYER.pos += PLAYER.vel * INPUT.delta_time;
+    if (is_flying) {
+        if (INPUT.actions[GAME_ACTION_JUMP] != 0)
+            move_vec += f32vec3(0, 0, 1);
+        if (INPUT.actions[GAME_ACTION_CROUCH] != 0)
+            move_vec -= f32vec3(0, 0, 1);
+
+        PLAYER.vel = move_vec * applied_speed;
+        PLAYER.pos += PLAYER.vel * INPUT.delta_time;
+    } else {
+        vec3 pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset);
+        vec3 vel = PLAYER.vel;
+
+        f32vec3 nonvertical_vel = f32vec3(vel.xy, 0);
+
+        vel += f32vec3(0, 0, -9.8) * INPUT.delta_time;
+        pos += vel * INPUT.delta_time;
+
+        bool is_on_ground = pos.z < 0.0;
+
+        if (is_on_ground) {
+            pos.z = 0.0;
+            vel.z = 0.0;
+            if (INPUT.actions[GAME_ACTION_JUMP] != 0)
+                vel += f32vec3(0, 0, 3.0);
+
+            apply_friction(input_ptr, vel, nonvertical_vel, 8.0);
+
+            if (dot(nonvertical_vel, nonvertical_vel) > MAX_SPEED * MAX_SPEED) {
+                vel.xy -= normalize(vel.xy) * MAX_SPEED;
+            }
+        } else {
+        }
+
+        if (dot(move_vec, move_vec) != 0.0) {
+            move_vec = normalize(move_vec);
+            vel += move_vec * max(applied_speed - dot(nonvertical_vel, move_vec), 0.0);
+        }
+
+        PLAYER.pos = pos - f32vec3(PLAYER.chunk_offset);
+        PLAYER.vel = vel;
+    }
 
     player_fix_chunk_offset(input_ptr, globals_ptr);
 

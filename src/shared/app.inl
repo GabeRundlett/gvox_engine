@@ -50,6 +50,8 @@ DECL_TASK_STATE("app.comp.glsl", Perframe, PERFRAME, 1, 1, 1);
 struct GpuResources {
     daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec2_image;
+    daxa::ImageId debug_texture;
+
     daxa::BufferId input_buffer;
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
@@ -141,6 +143,9 @@ struct GpuResources {
     void destroy(daxa::Device &device) const {
         device.destroy_image(value_noise_image);
         device.destroy_image(blue_noise_vec2_image);
+        if (!debug_texture.is_empty()) {
+            device.destroy_image(debug_texture);
+        }
         device.destroy_buffer(input_buffer);
         device.destroy_buffer(output_buffer);
         device.destroy_buffer(staging_output_buffer);
@@ -181,6 +186,7 @@ struct GpuApp {
 
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
+    daxa::TaskImage task_debug_texture{{.name = "task_debug_texture"}};
 
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
@@ -294,6 +300,59 @@ struct GpuApp {
             temp_task_graph.complete({});
             temp_task_graph.execute({});
         }
+
+        {
+            daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
+                .device = device,
+                .name = "temp_task_graph",
+            });
+
+            i32 size_x = 0;
+            i32 size_y = 0;
+            i32 channel_n = 0;
+            auto *temp_data = stbi_load("assets/debug.png", &size_x, &size_y, &channel_n, 4);
+            auto size = static_cast<u32>(size_x) * static_cast<u32>(size_y) * 4 * 1;
+
+            gpu_resources.debug_texture = device.create_image({
+                .dimensions = 2,
+                .format = daxa::Format::R8G8B8A8_UNORM,
+                .size = {static_cast<u32>(size_x), static_cast<u32>(size_y), 1},
+                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+                .name = "debug_texture",
+            });
+
+            task_debug_texture.set_images({.images = std::array{gpu_resources.debug_texture}});
+            temp_task_graph.use_persistent_image(task_debug_texture);
+            temp_task_graph.add_task({
+                .uses = {
+                    daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_debug_texture},
+                },
+                .task = [&, this](daxa::TaskInterface task_runtime) {
+                    auto staging_buffer = task_runtime.get_device().create_buffer({
+                        .size = size,
+                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .name = "staging_buffer",
+                    });
+                    auto *buffer_ptr = task_runtime.get_device().get_host_address_as<u8>(staging_buffer);
+                    std::copy(temp_data + 0, temp_data + size, buffer_ptr);
+                    auto cmd_list = task_runtime.get_command_list();
+                    cmd_list.pipeline_barrier({
+                        .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
+                    });
+                    cmd_list.destroy_buffer_deferred(staging_buffer);
+                    cmd_list.copy_buffer_to_image({
+                        .buffer = staging_buffer,
+                        .image = task_debug_texture.get_state().images[0],
+                        .image_extent = {static_cast<u32>(size_x), static_cast<u32>(size_y), 1},
+                    });
+                    needs_vram_calc = true;
+                },
+                .name = "upload_debug_texture",
+            });
+            temp_task_graph.submit({});
+            temp_task_graph.complete({});
+            temp_task_graph.execute({});
+        }
     }
 
     void destroy(daxa::Device &device) {
@@ -370,6 +429,9 @@ struct GpuApp {
         gpu_input.sampler_llc = gpu_resources.sampler_llc;
         gpu_input.sampler_llr = gpu_resources.sampler_llr;
 
+        gpu_input.flags &= ~GAME_FLAG_BITS_PAUSED;
+        gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<u32>(ui.paused);
+
         if (needs_vram_calc) {
             calc_vram_usage(device, task_graph, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
         }
@@ -444,6 +506,7 @@ struct GpuApp {
     void update(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_image(task_value_noise_image);
         record_ctx.task_graph.use_persistent_image(task_blue_noise_vec2_image);
+        record_ctx.task_graph.use_persistent_image(task_debug_texture);
 
         record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_output_buffer);
@@ -458,6 +521,7 @@ struct GpuApp {
         voxel_world.use_buffers(record_ctx);
 
         record_ctx.task_blue_noise_vec2_image = task_blue_noise_vec2_image;
+        record_ctx.task_debug_texture = task_debug_texture;
         record_ctx.task_input_buffer = task_input_buffer;
         record_ctx.task_globals_buffer = task_globals_buffer;
 

@@ -20,6 +20,9 @@
 #define GAME_ACTION_BRUSH_A            14
 #define GAME_ACTION_BRUSH_B            15
 #define GAME_ACTION_LAST               GAME_ACTION_BRUSH_B
+
+#define GAME_FLAGS_PAUSED 0
+#define GAME_FLAG_BITS_PAUSED (1 << GAME_FLAGS_PAUSED)
 // clang-format on
 
 struct MouseInput {
@@ -39,6 +42,7 @@ struct GpuInput {
     f32 sensitivity;
     u32 frame_index;
     u32 fif_index;
+    u32 flags;
     f32 time;
     f32 delta_time;
     daxa_SamplerId sampler_nnc;
