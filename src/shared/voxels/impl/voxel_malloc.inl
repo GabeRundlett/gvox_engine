@@ -19,16 +19,13 @@
 
 #define MAX_CHUNK_UPDATES_PER_FRAME 64
 
-// One u32 per voxel, and an extra u32
-#define VOXEL_MALLOC_MAX_ALLOCATION_SIZE_U32S 513
-#define VOXEL_MALLOC_MAX_ALLOCATION_SIZE_BYTES (VOXEL_MALLOC_MAX_ALLOCATION_SIZE_U32S)
-
+#define PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S 3
 // Minimum size allocation is 76 bytes, aka 19 u32s
 // This is because a palette of size 2 has 1 bit per
 // voxel, and 2 u32s. This counts to 512 bits, plus
 // 2 * 32 bits for the 2 palette entries, plus 32 bits
 // for the allocation meta-data.
-#define VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT 19
+#define VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT (512 / 32 + 2 + 1 + PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S)
 #define VOXEL_MALLOC_BYTES_PER_PAGE_BITFIELD_BIT (VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT * 4)
 #define VOXEL_MALLOC_BITS_PER_PAGE_BITFIELD_BIT (VOXEL_MALLOC_BYTES_PER_PAGE_BITFIELD_BIT * 8)
 // Because of this, the max number of allocations that
@@ -36,7 +33,7 @@
 // to be at least 27. Below, we assert that this is
 // large enough to hold the maximum allocation size of
 // 2052 bytes (513 uints)
-#define VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD 27
+#define VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD 24
 // Useful variable for knowing how many bits are necessarily
 // reserved for a page-local index.
 #define VOXEL_MALLOC_CEIL_LOG2_MAX_ALLOCATIONS_IN_PAGE_BITFIELD 5
@@ -44,10 +41,6 @@
 #define VOXEL_MALLOC_PAGE_SIZE_U32S (VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT * VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD)
 #define VOXEL_MALLOC_PAGE_SIZE_BYTES (VOXEL_MALLOC_PAGE_SIZE_U32S * 4)
 #define VOXEL_MALLOC_PAGE_SIZE_BITS (VOXEL_MALLOC_PAGE_SIZE_BYTES * 8)
-
-#if VOXEL_MALLOC_MAX_ALLOCATION_SIZE_U32S > VOXEL_MALLOC_PAGE_SIZE_U32S
-#error "Not enough memory in a page to hold a max allocation!"
-#endif
 
 #define VOXEL_MALLOC_MAX_ALLOCATIONS_PER_CHUNK PALETTES_PER_CHUNK
 

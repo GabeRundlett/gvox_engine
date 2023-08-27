@@ -1,0 +1,95 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c8f2f2b..8dca8d9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -23,7 +23,10 @@
+  ##
+ 
+ cmake_minimum_required(VERSION 3.8)
+-project(FiberTaskingLib CXX)
++project(FiberTaskingLib LANGUAGES CXX VERSION 0.1.0)
++
++include(CMakePackageConfigHelpers)
++include(GNUInstallDirs)
+ 
+ # Options
+ option(FTL_BUILD_TESTS "Build FiberTaskingLib tests" ON)
+diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
+index 85f5e66..07e82a8 100644
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -97,18 +97,42 @@ set(FIBER_TASKING_LIB_SRC
+ 
+ add_library(ftl STATIC ${FIBER_TASKING_LIB_SRC})
+ target_compile_options(ftl PUBLIC -DNUM_WAITING_FIBER_SLOTS=${FTL_NUM_WAITING_FIBER_SLOTS})
+-target_include_directories(ftl PUBLIC ../include)
++target_include_directories(ftl PUBLIC
++	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
++	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
+ target_link_libraries(ftl boost_context ${CMAKE_THREAD_LIBS_INIT})
+ 
+ # Remove the prefix
+ set_target_properties(ftl PROPERTIES PREFIX "")
+ 
+-# Set the c++ std
+-if (FTL_CPP_17)
+-	target_compile_features(ftl PUBLIC cxx_std_17)
+-else()
+-	target_compile_features(ftl PUBLIC cxx_std_11)
+-endif()
++target_compile_features(ftl PRIVATE cxx_std_17)
+ 
+ # Set the warnings
+ AddCompilerFlags(ftl)
++
++# Packaging
++file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
++@PACKAGE_INIT@
++include(${CMAKE_CURRENT_LIST_DIR}/fiber-tasking-lib-targets.cmake)
++check_required_components(fiber-tasking-lib)
++check_required_components(boost_context)
++]=])
++
++configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/fiber-tasking-lib-config.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/fiber-tasking-lib
++    NO_SET_AND_CHECK_MACRO)
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/fiber-tasking-lib-config-version.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY SameMajorVersion)
++install(
++    FILES
++    ${CMAKE_CURRENT_BINARY_DIR}/fiber-tasking-lib-config.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/fiber-tasking-lib-config-version.cmake
++    DESTINATION
++    ${CMAKE_INSTALL_DATADIR}/fiber-tasking-lib)
++install(TARGETS ftl EXPORT fiber-tasking-lib-targets)
++install(EXPORT fiber-tasking-lib-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/fiber-tasking-lib NAMESPACE fiber-tasking-lib::)
++install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ TYPE INCLUDE)
+diff --git a/third_party/boost_context/CMakeLists.txt b/third_party/boost_context/CMakeLists.txt
+index 96557c4..4ca1b57 100644
+--- a/third_party/boost_context/CMakeLists.txt
++++ b/third_party/boost_context/CMakeLists.txt
+@@ -4,7 +4,7 @@
+ ##          http://www.boost.org/LICENSE_1_0.txt)
+ 
+ cmake_minimum_required(VERSION 3.2)
+-project(boost_context ASM)
++project(boost_context LANGUAGES ASM VERSION 1.0.0)
+ 
+ include(SetSourceGroup)
+ 
+@@ -108,4 +108,10 @@ if (CONTEXT_ASM MATCHES "masm.asm" AND CONTEXT_PLATFORM MATCHES "i386")
+ endif()
+ 
+ add_library(boost_context STATIC ${BOOST_CONTEXT_ROOT})
+-target_include_directories(boost_context INTERFACE include)
++target_include_directories(boost_context INTERFACE
++	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
++	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
++
++install(TARGETS boost_context EXPORT fiber-tasking-lib-targets)
++install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ TYPE INCLUDE)

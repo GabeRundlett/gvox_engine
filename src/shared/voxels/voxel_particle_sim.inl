@@ -18,7 +18,7 @@ DAXA_DECL_TASK_USES_END()
 struct VoxelParticleSimComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    VoxelParticleSimComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    VoxelParticleSimComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},

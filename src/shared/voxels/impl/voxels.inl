@@ -6,7 +6,7 @@
 
 // 1364 u32's
 // 10.65625 bytes per 8x8x8
-struct VoxelChunkUniformity {
+struct TempVoxelChunkUniformity {
     u32 lod_x2[1024];
     u32 lod_x4[256];
     u32 lod_x8[64];
@@ -29,8 +29,10 @@ DAXA_DECL_BUFFER_PTR(VoxelParentChunk)
 
 struct VoxelLeafChunk {
     u32 flags;
-    VoxelChunkUniformity uniformity;
+    u32 uniformity_bits[3];
+    // 8 bytes per 8x8x8
     VoxelMalloc_ChunkLocalPageSubAllocatorState sub_allocator_state;
+    // 8 bytes per 8x8x8
     PaletteHeader palette_headers[PALETTES_PER_CHUNK];
 };
 DAXA_DECL_BUFFER_PTR(VoxelLeafChunk)
@@ -44,6 +46,7 @@ struct TempVoxel {
 
 struct TempVoxelChunk {
     TempVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    TempVoxelChunkUniformity uniformity;
 };
 DAXA_DECL_BUFFER_PTR(TempVoxelChunk)
 

@@ -177,7 +177,7 @@ struct RtdgiRestirResolvePush {
 #include <shared/renderer/downscale.inl>
 
 template <typename PushT>
-inline void rtdgi_compile_compute_pipeline(daxa::PipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
+inline void rtdgi_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
     auto compile_result = pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"diffuse_gi.comp.glsl"},
@@ -199,7 +199,7 @@ inline void rtdgi_compile_compute_pipeline(daxa::PipelineManager &pipeline_manag
 #define RTDGI_DECL_TASK_STATE(Name, NAME, PushType)                                                                                                                 \
     struct Name##ComputeTaskState {                                                                                                                                 \
         std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                            \
-        Name##ComputeTaskState(daxa::PipelineManager &pipeline_manager) { rtdgi_compile_compute_pipeline<PushType>(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { rtdgi_compile_compute_pipeline<PushType>(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
         auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                               \
         void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, PushType const &push) {                                                             \
             if (!pipeline_is_valid())                                                                                                                               \
@@ -258,7 +258,7 @@ struct DiffuseGiRenderer {
     f32vec4 extent_inv_extent;
     u32vec2 shading_resolution;
 
-    DiffuseGiRenderer(daxa::PipelineManager &pipeline_manager)
+    DiffuseGiRenderer(AsyncPipelineManager &pipeline_manager)
         : downscale_ssao_task_state{pipeline_manager, {{"DOWNSCALE_SSAO", "1"}}},
           rtdgi_temporal_task_state{pipeline_manager},
           rtdgi_spatial_task_state{pipeline_manager},

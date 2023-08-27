@@ -202,7 +202,7 @@ struct GpuApp {
 
     bool needs_vram_calc = true;
 
-    GpuApp(daxa::Device &device, daxa::PipelineManager &pipeline_manager, daxa::Format swapchain_format)
+    GpuApp(daxa::Device &device, AsyncPipelineManager &pipeline_manager, daxa::Format swapchain_format)
         : gbuffer_renderer{pipeline_manager},
           reprojection_renderer{pipeline_manager},
           ssao_renderer{pipeline_manager},

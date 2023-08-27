@@ -13,7 +13,7 @@
 #if defined(__cplusplus)
 
 template <typename T>
-concept IsVoxelWorld = requires(T x, daxa::PipelineManager &p, RecordContext &r, bool b) {
+concept IsVoxelWorld = requires(T x, AsyncPipelineManager &p, RecordContext &r, bool b) {
     { T(p) };
     { x.buffers } -> std::same_as<typename T::Buffers &>;
     { x.create(r.device) };

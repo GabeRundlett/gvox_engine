@@ -19,7 +19,7 @@ DAXA_DECL_TASK_USES_END()
 struct CalculateReprojectionMapComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    CalculateReprojectionMapComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    CalculateReprojectionMapComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"calculate_reprojection_map.comp.glsl"},
@@ -62,7 +62,7 @@ struct CalculateReprojectionMapComputeTask : CalculateReprojectionMapComputeUses
 struct ReprojectionRenderer {
     CalculateReprojectionMapComputeTaskState calculate_reprojection_map_task_state;
 
-    ReprojectionRenderer(daxa::PipelineManager &pipeline_manager)
+    ReprojectionRenderer(AsyncPipelineManager &pipeline_manager)
         : calculate_reprojection_map_task_state{pipeline_manager} {
     }
 

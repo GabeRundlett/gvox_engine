@@ -30,7 +30,7 @@ struct PostprocessingRasterPush {
 struct CompositingComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    CompositingComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    CompositingComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
@@ -67,7 +67,7 @@ struct PostprocessingRasterTaskState {
         return render_color_format;
     }
 
-    PostprocessingRasterTaskState(daxa::PipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
+    PostprocessingRasterTaskState(AsyncPipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
         : render_color_format{a_render_color_format} {
         auto compile_result = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
@@ -128,7 +128,7 @@ struct PostprocessingRasterTask : PostprocessingRasterUses {
 
 struct Compositor {
     CompositingComputeTaskState compositing_compute_task_state;
-    Compositor(daxa::PipelineManager &pipeline_manager)
+    Compositor(AsyncPipelineManager &pipeline_manager)
         : compositing_compute_task_state{pipeline_manager} {
     }
 

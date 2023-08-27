@@ -34,7 +34,7 @@ DAXA_DECL_TASK_USES_BEGIN(ChunkOptComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_BufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(voxel_globals, daxa_BufferPtr(VoxelWorldGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_BufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(temp_voxel_chunks, daxa_RWBufferPtr(TempVoxelChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_TASK_USE_BUFFER(voxel_chunks, daxa_RWBufferPtr(VoxelLeafChunk), COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_USES_END()
 #endif
@@ -55,7 +55,7 @@ DAXA_DECL_TASK_USES_END()
 struct PerChunkComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    PerChunkComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    PerChunkComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
@@ -87,7 +87,7 @@ struct PerChunkComputeTaskState {
 struct ChunkEditComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    ChunkEditComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    ChunkEditComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
@@ -122,7 +122,7 @@ template <int PASS_INDEX>
 struct ChunkOptComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    ChunkOptComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    ChunkOptComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         char const define_str[2] = {'0' + PASS_INDEX, '\0'};
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -170,7 +170,7 @@ struct ChunkOptComputeTaskState {
 struct ChunkAllocComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    ChunkAllocComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    ChunkAllocComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
@@ -263,7 +263,7 @@ struct VoxelWorld {
     ChunkOpt_x8up_ComputeTaskState chunk_opt_x8up_task_state;
     ChunkAllocComputeTaskState chunk_alloc_task_state;
 
-    VoxelWorld(daxa::PipelineManager &pipeline_manager)
+    VoxelWorld(AsyncPipelineManager &pipeline_manager)
         : per_chunk_task_state{pipeline_manager},
           chunk_edit_task_state{pipeline_manager},
           chunk_opt_x2x4_task_state{pipeline_manager},

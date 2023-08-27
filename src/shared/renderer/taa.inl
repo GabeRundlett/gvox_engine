@@ -92,7 +92,7 @@ struct TaaPush {
 
 #if defined(__cplusplus)
 
-inline void taa_compile_compute_pipeline(daxa::PipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
+inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
     auto compile_result = pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"taa.comp.glsl"},
@@ -114,7 +114,7 @@ inline void taa_compile_compute_pipeline(daxa::PipelineManager &pipeline_manager
 #define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                                 \
     struct Name##ComputeTaskState {                                                                                                                     \
         std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                \
-        Name##ComputeTaskState(daxa::PipelineManager &pipeline_manager) { taa_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { taa_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
         auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                   \
         void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, TaaPush const &push) {                                                  \
             if (!pipeline_is_valid())                                                                                                                   \
@@ -156,7 +156,7 @@ struct TaaRenderer {
     TaaProbFilter2ComputeTaskState taa_prob_filter2_task_state;
     TaaComputeTaskState taa_task_state;
 
-    TaaRenderer(daxa::PipelineManager &pipeline_manager)
+    TaaRenderer(AsyncPipelineManager &pipeline_manager)
         : taa_reproject_task_state{pipeline_manager},
           taa_filter_input_task_state{pipeline_manager},
           taa_filter_history_task_state{pipeline_manager},

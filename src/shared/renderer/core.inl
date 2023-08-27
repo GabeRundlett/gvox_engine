@@ -16,7 +16,7 @@ struct GbufferDepth {
     std::optional<daxa::TaskImageView> downscaled_depth = std::nullopt;
     std::optional<daxa::TaskImageView> downscaled_view_normal = std::nullopt;
 
-    GbufferDepth(daxa::PipelineManager &pipeline_manager)
+    GbufferDepth(AsyncPipelineManager &pipeline_manager)
         : downscale_depth_task_state{pipeline_manager, {{"DOWNSCALE_DEPTH", "1"}}},
           downscale_normal_task_state{pipeline_manager, {{"DOWNSCALE_NRM", "1"}}} {
     }

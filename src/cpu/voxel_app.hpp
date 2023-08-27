@@ -23,7 +23,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImageId swapchain_image{};
     daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
-    daxa::PipelineManager main_pipeline_manager;
+    AsyncPipelineManager main_pipeline_manager;
 
     AppUi ui;
     daxa::ImGuiRenderer imgui_renderer;

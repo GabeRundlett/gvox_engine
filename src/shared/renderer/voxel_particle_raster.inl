@@ -18,7 +18,7 @@ DAXA_DECL_TASK_USES_END()
 struct VoxelParticleRasterTaskState {
     std::shared_ptr<daxa::RasterPipeline> pipeline;
 
-    VoxelParticleRasterTaskState(daxa::PipelineManager &pipeline_manager) {
+    VoxelParticleRasterTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},

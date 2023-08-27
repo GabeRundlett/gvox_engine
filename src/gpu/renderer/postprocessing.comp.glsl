@@ -62,7 +62,7 @@ void main() {
     f32vec3 final_color = texelFetch(daxa_texture2D(composited_image_id), i32vec2(uv), 0).rgb;
 
     if ((deref(gpu_input).flags & GAME_FLAG_BITS_PAUSED) == 0) {
-        i32vec2 center_offset_uv = i32vec2(uv.xy) - i32vec2(deref(gpu_input).frame_dim.xy) / 2;
+        i32vec2 center_offset_uv = i32vec2(uv.xy) - i32vec2(deref(gpu_input).frame_dim.xy / deref(gpu_input).render_res_scl) / 2;
         if ((abs(center_offset_uv.x) <= 1 || abs(center_offset_uv.y) <= 1) && abs(center_offset_uv.x) + abs(center_offset_uv.y) < 6) {
             final_color *= f32vec3(0.1);
         }

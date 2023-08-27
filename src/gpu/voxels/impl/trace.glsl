@@ -21,11 +21,43 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
     b.bound_min = f32vec3(0.0);
     b.bound_max = b.bound_min + f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE;
 
-    if (false) {
+    if (ENABLE_CHUNK_WRAPPING == 0) {
         intersect(ray_pos, info.ray_dir, f32vec3(1) / info.ray_dir, b);
     }
 
     ray_pos += info.ray_dir * 0.01 / VOXEL_SCL;
+
+    if (false) {
+        result.dist = 0.0;
+        if (!inside(ray_pos, b)) {
+            if (info.extend_to_max_dist) {
+                result.dist = info.max_dist;
+            }
+        } else {
+            u32 dontcare;
+            u32 lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, info.ptrs.voxel_chunks_ptr, chunk_n, ray_pos, dontcare);
+            vec3 col = vec3(0);
+            switch (lod) {
+            case 0: col = vec3(0.0, 0.0, 0.0); break;
+            case 1: col = vec3(1.0, 0.0, 0.0); break;
+            case 2: col = vec3(0.0, 1.0, 0.0); break;
+            case 3: col = vec3(1.0, 1.0, 0.0); break;
+            case 4: col = vec3(0.0, 0.0, 1.0); break;
+            case 5: col = vec3(1.0, 0.0, 1.0); break;
+            case 6: col = vec3(0.0, 1.0, 1.0); break;
+            case 7: col = vec3(1.0, 1.0, 1.0); break;
+            }
+            // if (abs(fract(ray_pos.x * VOXEL_SCL) - 0.05) < 0.1 ||
+            //     abs(fract(ray_pos.y * VOXEL_SCL) - 0.05) < 0.1 ||
+            //     abs(fract(ray_pos.z * VOXEL_SCL) - 0.05) < 0.1) {
+            //     col = col * 0.5 + 0.25;
+            // }
+            result.voxel_data = f32vec4_to_uint_rgba8(f32vec4(col, 0.0)) | (1u << 0x18);
+            result.nrm = vec3(0, 0, 1);
+        }
+        ray_pos -= offset;
+        return result;
+    }
 
     if (!inside(ray_pos, b)) {
         if (info.extend_to_max_dist) {

@@ -31,7 +31,7 @@ DAXA_DECL_TASK_USES_END()
 struct TraceSecondaryComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    TraceSecondaryComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    TraceSecondaryComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
@@ -63,7 +63,7 @@ struct TraceSecondaryComputeTaskState {
 struct UpscaleReconstructComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    UpscaleReconstructComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    UpscaleReconstructComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
@@ -117,7 +117,7 @@ struct ShadowRenderer {
     TraceSecondaryComputeTaskState trace_secondary_task_state;
     UpscaleReconstructComputeTaskState upscale_reconstruct_task_state;
 
-    ShadowRenderer(daxa::PipelineManager &pipeline_manager)
+    ShadowRenderer(AsyncPipelineManager &pipeline_manager)
         : trace_secondary_task_state{pipeline_manager},
           upscale_reconstruct_task_state{pipeline_manager} {
     }

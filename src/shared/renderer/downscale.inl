@@ -19,7 +19,7 @@ struct DownscaleComputeTaskState {
     void compile_pipeline() {
     }
 
-    DownscaleComputeTaskState(daxa::PipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
+    DownscaleComputeTaskState(AsyncPipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
         extra_defines.push_back({"DOWNSCALE_COMPUTE", "1"});
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {

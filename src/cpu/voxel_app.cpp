@@ -56,7 +56,7 @@ VoxelApp::VoxelApp()
           .name = "swapchain",
       })},
       main_pipeline_manager{[this]() {
-          auto result = daxa::PipelineManager({
+          auto result = AsyncPipelineManager({
               .device = device,
               .shader_compile_options = {
                   .root_paths = {
@@ -373,7 +373,7 @@ void VoxelApp::on_mouse_move(f32 x, f32 y) {
     f32vec2 const center = {static_cast<f32>(window_size.x / 2), static_cast<f32>(window_size.y / 2)};
     gpu_input.mouse.pos = f32vec2{x, y};
     auto offset = gpu_input.mouse.pos - center;
-    gpu_input.mouse.pos = gpu_input.mouse.pos *f32vec2{static_cast<f32>(gpu_input.frame_dim.x), static_cast<f32>(gpu_input.frame_dim.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
+    gpu_input.mouse.pos = gpu_input.mouse.pos * f32vec2{static_cast<f32>(gpu_input.frame_dim.x), static_cast<f32>(gpu_input.frame_dim.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
     if (!ui.paused) {
         gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
         set_mouse_pos(center.x, center.y);

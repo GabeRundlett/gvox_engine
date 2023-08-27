@@ -30,7 +30,7 @@
 #define DECL_TASK_STATE(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z)                                                                                         \
     struct Name##ComputeTaskState {                                                                                                                                            \
         std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                                       \
-        Name##ComputeTaskState(daxa::PipelineManager &pipeline_manager) {                                                                                                      \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                      \
             auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \
@@ -68,7 +68,7 @@
 #define DECL_TASK_STATE_WITH_PUSH(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z, PushType)                                                                     \
     struct Name##ComputeTaskState {                                                                                                                                            \
         std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                                       \
-        Name##ComputeTaskState(daxa::PipelineManager &pipeline_manager) {                                                                                                      \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                      \
             auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \

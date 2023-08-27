@@ -10,7 +10,7 @@ struct VoxelWorld {
 
     Buffers buffers;
 
-    VoxelWorld(daxa::PipelineManager &pipeline_manager) {
+    VoxelWorld(AsyncPipelineManager &pipeline_manager) {
     }
 
     void create(daxa::Device &device) {

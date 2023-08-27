@@ -31,7 +31,7 @@ DAXA_DECL_TASK_USES_END()
 struct TraceDepthPrepassComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    TraceDepthPrepassComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    TraceDepthPrepassComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
@@ -63,7 +63,7 @@ struct TraceDepthPrepassComputeTaskState {
 struct TracePrimaryComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    TracePrimaryComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    TracePrimaryComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
@@ -117,7 +117,7 @@ struct GbufferRenderer {
     TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
     TracePrimaryComputeTaskState trace_primary_task_state;
 
-    GbufferRenderer(daxa::PipelineManager &pipeline_manager)
+    GbufferRenderer(AsyncPipelineManager &pipeline_manager)
         : gbuffer_depth{pipeline_manager},
           trace_depth_prepass_task_state{pipeline_manager},
           trace_primary_task_state{pipeline_manager} {

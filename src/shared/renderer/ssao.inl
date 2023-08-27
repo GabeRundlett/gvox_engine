@@ -47,7 +47,7 @@ DAXA_DECL_TASK_USES_END()
 struct SsaoComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    SsaoComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    SsaoComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -79,7 +79,7 @@ struct SsaoComputeTaskState {
 struct SsaoSpatialFilterComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    SsaoSpatialFilterComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    SsaoSpatialFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -111,7 +111,7 @@ struct SsaoSpatialFilterComputeTaskState {
 struct SsaoUpscaleComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    SsaoUpscaleComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    SsaoUpscaleComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -143,7 +143,7 @@ struct SsaoUpscaleComputeTaskState {
 struct SsaoTemporalFilterComputeTaskState {
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 
-    SsaoTemporalFilterComputeTaskState(daxa::PipelineManager &pipeline_manager) {
+    SsaoTemporalFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
@@ -219,7 +219,7 @@ struct SsaoRenderer {
     SsaoUpscaleComputeTaskState ssao_upscale_task_state;
     SsaoTemporalFilterComputeTaskState ssao_temporal_filter_task_state;
 
-    SsaoRenderer(daxa::PipelineManager &pipeline_manager)
+    SsaoRenderer(AsyncPipelineManager &pipeline_manager)
         : ssao_task_state{pipeline_manager},
           ssao_spatial_filter_task_state{pipeline_manager},
           ssao_upscale_task_state{pipeline_manager},

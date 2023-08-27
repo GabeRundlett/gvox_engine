@@ -12,38 +12,84 @@
     u32 uniformity_lod_index_##N(u32vec3 index_within_lod) {          \
         return index_within_lod.x + index_within_lod.y * u32(64 / N); \
     }
-UNIFORMITY_LOD_INDEX_IMPL(1)
 UNIFORMITY_LOD_INDEX_IMPL(2)
 UNIFORMITY_LOD_INDEX_IMPL(4)
 UNIFORMITY_LOD_INDEX_IMPL(8)
 UNIFORMITY_LOD_INDEX_IMPL(16)
 UNIFORMITY_LOD_INDEX_IMPL(32)
 UNIFORMITY_LOD_INDEX_IMPL(64)
-u32 uniformity_lod_mask(u32vec3 index_within_lod) {
-    return 1u << index_within_lod.z;
-}
+
+#define UNIFORMITY_LOD_MASK_IMPL(N)                         \
+    u32 uniformity_lod_mask_##N(u32vec3 index_within_lod) { \
+        return 1u << index_within_lod.z;                    \
+    }
+UNIFORMITY_LOD_MASK_IMPL(2)
+UNIFORMITY_LOD_MASK_IMPL(4)
+UNIFORMITY_LOD_MASK_IMPL(8)
+UNIFORMITY_LOD_MASK_IMPL(16)
+UNIFORMITY_LOD_MASK_IMPL(32)
+UNIFORMITY_LOD_MASK_IMPL(64)
+
+#define LINEAR_INDEX(N, within_lod_i) (within_lod_i.x + within_lod_i.y * N + within_lod_i.z * N * N)
+
+u32 new_uniformity_lod_index_2 (u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) >> 5; }
+u32 new_uniformity_lod_index_4 (u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) >> 5; }
+u32 new_uniformity_lod_index_8 (u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) >> 5; }
+u32 new_uniformity_lod_index_16(u32vec3 within_lod_i) { return (LINEAR_INDEX(4, within_lod_i) + 0) >> 5; }
+u32 new_uniformity_lod_index_32(u32vec3 within_lod_i) { return (LINEAR_INDEX(2, within_lod_i) + 64) >> 5; }
+u32 new_uniformity_lod_index_64(u32vec3 within_lod_i) { return (LINEAR_INDEX(1, within_lod_i) + 72) >> 5; }
+
+u32 new_uniformity_lod_bit_pos_2 (u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) & 31; }
+u32 new_uniformity_lod_bit_pos_4 (u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) & 31; }
+u32 new_uniformity_lod_bit_pos_8 (u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) & 31; }
+u32 new_uniformity_lod_bit_pos_16(u32vec3 within_lod_i) { return (LINEAR_INDEX(4, within_lod_i) + 0) & 31; }
+u32 new_uniformity_lod_bit_pos_32(u32vec3 within_lod_i) { return (LINEAR_INDEX(2, within_lod_i) + 64) & 31; }
+u32 new_uniformity_lod_bit_pos_64(u32vec3 within_lod_i) { return (LINEAR_INDEX(1, within_lod_i) + 72) & 31; }
+
+u32 new_uniformity_lod_mask_2 (u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_2(within_lod_i); }
+u32 new_uniformity_lod_mask_4 (u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_4(within_lod_i); }
+u32 new_uniformity_lod_mask_8 (u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_8(within_lod_i); }
+u32 new_uniformity_lod_mask_16(u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_16(within_lod_i); }
+u32 new_uniformity_lod_mask_32(u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_32(within_lod_i); }
+u32 new_uniformity_lod_mask_64(u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_64(within_lod_i); }
 
 #define uniformity_lod_index(N) uniformity_lod_index_##N
+#define new_uniformity_lod_index(N) new_uniformity_lod_index_##N
+#define uniformity_lod_mask(N) uniformity_lod_mask_##N
+#define new_uniformity_lod_mask(N) new_uniformity_lod_mask_##N
 
-#define VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(N)                                                                      \
-    b32 VoxelUniformityChunk_lod_nonuniform_##N(daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) { \
-        return (deref(voxel_chunk_ptr).uniformity.lod_x##N[index] & mask) != 0;                                        \
+b32 VoxelUniformityChunk_lod_nonuniform_2(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, u32 index, u32 mask) {
+    if (palette_header.variant_n < 2) {
+        return false;
     }
 
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(2)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(4)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(8)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(16)
-VOXEL_UNIFORMITY_CHUNK_IMPL_NONUNIFORM(32)
+    daxa_RWBufferPtr(daxa_u32) blob_u32s;
+    voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
+    return (deref(blob_u32s[index]) & mask) != 0;
+}
+b32 VoxelUniformityChunk_lod_nonuniform_4(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, u32 index, u32 mask) {
+    if (palette_header.variant_n < 2) {
+        return false;
+    }
+    daxa_RWBufferPtr(daxa_u32) blob_u32s;
+    voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
+    return (deref(blob_u32s[index]) & mask) != 0;
+}
+b32 VoxelUniformityChunk_lod_nonuniform_8(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, u32 index, u32 mask) {
+    return palette_header.variant_n > 1;
+}
+
+b32 VoxelUniformityChunk_lod_nonuniform_16(daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) {
+    return (deref(voxel_chunk_ptr).uniformity_bits[index] & mask) != 0;
+}
+b32 VoxelUniformityChunk_lod_nonuniform_32(daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) {
+    return (deref(voxel_chunk_ptr).uniformity_bits[index] & mask) != 0;
+}
 b32 VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 index, u32 mask) {
-    return (u32(deref(voxel_chunk_ptr).uniformity.lod_x32[0] != 0) |
-            u32(deref(voxel_chunk_ptr).uniformity.lod_x32[1] != 0) |
-            u32(deref(voxel_chunk_ptr).uniformity.lod_x32[2] != 0) |
-            u32(deref(voxel_chunk_ptr).uniformity.lod_x32[3] != 0)) != 0;
+    return (deref(voxel_chunk_ptr).uniformity_bits[index] & mask) != 0;
 }
 
 #define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_lod_nonuniform_##N
-#define voxel_rw_uniformity_lod_nonuniform(N) rw_VoxelUniformityChunk_lod_nonuniform_##N
 
 // 3D Leaf Chunk index => u32 index in buffer
 u32 calc_chunk_index(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, u32vec3 chunk_i, u32vec3 chunk_n) {
@@ -61,19 +107,23 @@ u32 calc_chunk_index_from_worldspace(i32vec3 chunk_i, u32vec3 chunk_n) {
     return chunk_index;
 }
 
-#define READ_FROM_HEAP 1
-u32 sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
+u32 calc_palette_region_index(u32vec3 inchunk_voxel_i) {
     u32vec3 palette_region_i = inchunk_voxel_i / PALETTE_REGION_SIZE;
-    u32vec3 palette_voxel_i = inchunk_voxel_i - palette_region_i * PALETTE_REGION_SIZE;
-    u32 palette_region_index = palette_region_i.x + palette_region_i.y * PALETTES_PER_CHUNK_AXIS + palette_region_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
-    u32 palette_voxel_index = palette_voxel_i.x + palette_voxel_i.y * PALETTE_REGION_SIZE + palette_voxel_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
-    PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
-    if (palette_header.variant_n < 2) {
-        return palette_header.blob_ptr;
-    }
+    return palette_region_i.x + palette_region_i.y * PALETTES_PER_CHUNK_AXIS + palette_region_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
+}
+
+u32 calc_palette_voxel_index(u32vec3 inchunk_voxel_i) {
+    u32vec3 palette_voxel_i = inchunk_voxel_i & (PALETTE_REGION_SIZE - 1);
+    return palette_voxel_i.x + palette_voxel_i.y * PALETTE_REGION_SIZE + palette_voxel_i.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
+}
+
+#define READ_FROM_HEAP 1
+// This function assumes the variant_n is greater than 1.
+u32 sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, u32 palette_voxel_index) {
 #if READ_FROM_HEAP
     daxa_RWBufferPtr(daxa_u32) blob_u32s;
     voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
+    blob_u32s = blob_u32s + PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S;
 #endif
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
 #if READ_FROM_HEAP
@@ -100,45 +150,44 @@ u32 sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_
 #endif
 }
 
-#define SAMPLE_LOD_PRESENCE_IMPL(N)                                                                                                                                   \
-    b32 sample_lod_presence_##N(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, u32vec3 chunk_n, u32vec3 voxel_i) { \
-        u32vec3 chunk_i = voxel_i / CHUNK_SIZE;                                                                                                                       \
-        u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;                                                                                                     \
-        u32 chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n);                                                                                          \
-        daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];                                                                               \
-        u32 lod_index = uniformity_lod_index(N)(inchunk_voxel_i / N);                                                                                                 \
-        u32 lod_mask = uniformity_lod_mask(inchunk_voxel_i / N);                                                                                                      \
-        return voxel_uniformity_lod_nonuniform(N)(voxel_chunk_ptr, lod_index, lod_mask);                                                                              \
+u32 sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 inchunk_voxel_i) {
+    u32 palette_region_index = calc_palette_region_index(inchunk_voxel_i);
+    u32 palette_voxel_index = calc_palette_voxel_index(inchunk_voxel_i);
+    PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
+    if (palette_header.variant_n < 2) {
+        return palette_header.blob_ptr;
     }
-SAMPLE_LOD_PRESENCE_IMPL(2)
-SAMPLE_LOD_PRESENCE_IMPL(4)
-SAMPLE_LOD_PRESENCE_IMPL(8)
-SAMPLE_LOD_PRESENCE_IMPL(16)
-SAMPLE_LOD_PRESENCE_IMPL(32)
-SAMPLE_LOD_PRESENCE_IMPL(64)
-
-#define sample_lod_presence(N) sample_lod_presence_##N
+    return sample_palette(allocator, palette_header, palette_voxel_index);
+}
 
 u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32vec3 chunk_i, u32vec3 inchunk_voxel_i, out u32 voxel_data) {
-    u32 lod_index_x2 = uniformity_lod_index(2)(inchunk_voxel_i / 2);
-    u32 lod_mask_x2 = uniformity_lod_mask(inchunk_voxel_i / 2);
-    u32 lod_index_x4 = uniformity_lod_index(4)(inchunk_voxel_i / 4);
-    u32 lod_mask_x4 = uniformity_lod_mask(inchunk_voxel_i / 4);
-    u32 lod_index_x8 = uniformity_lod_index(8)(inchunk_voxel_i / 8);
-    u32 lod_mask_x8 = uniformity_lod_mask(inchunk_voxel_i / 8);
-    u32 lod_index_x16 = uniformity_lod_index(16)(inchunk_voxel_i / 16);
-    u32 lod_mask_x16 = uniformity_lod_mask(inchunk_voxel_i / 16);
-    u32 lod_index_x32 = uniformity_lod_index(32)(inchunk_voxel_i / 32);
-    u32 lod_mask_x32 = uniformity_lod_mask(inchunk_voxel_i / 32);
-    u32 lod_index_x64 = uniformity_lod_index(64)(inchunk_voxel_i / 64);
-    u32 lod_mask_x64 = uniformity_lod_mask(inchunk_voxel_i / 64);
-
+    u32 lod_index_x2 = new_uniformity_lod_index(2)(inchunk_voxel_i / 2);
+    u32 lod_mask_x2 = new_uniformity_lod_mask(2)(inchunk_voxel_i / 2);
+    u32 lod_index_x4 = new_uniformity_lod_index(4)(inchunk_voxel_i / 4);
+    u32 lod_mask_x4 = new_uniformity_lod_mask(4)(inchunk_voxel_i / 4);
+    u32 lod_index_x8 = new_uniformity_lod_index(8)(inchunk_voxel_i / 8);
+    u32 lod_mask_x8 = new_uniformity_lod_mask(8)(inchunk_voxel_i / 8);
+    u32 lod_index_x16 = new_uniformity_lod_index(16)(inchunk_voxel_i / 16);
+    u32 lod_mask_x16 = new_uniformity_lod_mask(16)(inchunk_voxel_i / 16);
+    u32 lod_index_x32 = new_uniformity_lod_index(32)(inchunk_voxel_i / 32);
+    u32 lod_mask_x32 = new_uniformity_lod_mask(32)(inchunk_voxel_i / 32);
+    u32 lod_index_x64 = new_uniformity_lod_index(64)(inchunk_voxel_i / 64);
+    u32 lod_mask_x64 = new_uniformity_lod_mask(64)(inchunk_voxel_i / 64);
     u32 chunk_flags = deref(voxel_chunk_ptr).flags;
     if ((chunk_flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0)
         return 7;
 
 #if !defined(TRACE_DEPTH_PREPASS_COMPUTE) || VOXEL_ACCEL_UNIFORMITY
-    voxel_data = sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    u32 palette_region_index = calc_palette_region_index(inchunk_voxel_i);
+    u32 palette_voxel_index = calc_palette_voxel_index(inchunk_voxel_i);
+    PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
+
+    if (palette_header.variant_n < 2) {
+        voxel_data = palette_header.blob_ptr;
+    } else {
+        voxel_data = sample_palette(allocator, palette_header, palette_voxel_index);
+    }
+
     if ((voxel_data & 0xff000000) != 0)
         return 0;
 #endif
@@ -148,19 +197,19 @@ u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPt
     // perf for the secondary trace, due to the fact that the secondary rays are
     // very divergent. This improves cache coherency, despite increasing the number
     // of total steps required to reach the intersection.
-    if (voxel_uniformity_lod_nonuniform(4)(voxel_chunk_ptr, lod_index_x4, lod_mask_x4))
+    if (voxel_uniformity_lod_nonuniform(4)(allocator, palette_header, lod_index_x4, lod_mask_x4))
         return 1;
-    if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
+    if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
         return 3;
 #elif RTDGI_TRACE_COMPUTE
-    if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
+    if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
         return 1;
 #else
-    if (voxel_uniformity_lod_nonuniform(2)(voxel_chunk_ptr, lod_index_x2, lod_mask_x2))
+    if (voxel_uniformity_lod_nonuniform(2)(allocator, palette_header, lod_index_x2, lod_mask_x2))
         return 1;
-    if (voxel_uniformity_lod_nonuniform(4)(voxel_chunk_ptr, lod_index_x4, lod_mask_x4))
+    if (voxel_uniformity_lod_nonuniform(4)(allocator, palette_header, lod_index_x4, lod_mask_x4))
         return 2;
-    if (voxel_uniformity_lod_nonuniform(8)(voxel_chunk_ptr, lod_index_x8, lod_mask_x8))
+    if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
         return 3;
 #endif
     if (voxel_uniformity_lod_nonuniform(16)(voxel_chunk_ptr, lod_index_x16, lod_mask_x16))
