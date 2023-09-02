@@ -75,7 +75,7 @@ struct AllocatorBufferState {
             .name = AllocatorConstants<T>::allocator_buffer_name,
         });
         element_buffer = device.create_buffer({
-            .size = static_cast<u32>(sizeof(AllocatorConstants<T>::ElementType)) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
+            .size = static_cast<u32>(sizeof(AllocatorConstants<T>::ElementType)) * static_cast<u32>(AllocatorConstants<T>::ELEMENT_MULTIPLIER) * current_element_count,
             .name = AllocatorConstants<T>::element_buffer_name,
         });
         available_element_stack_buffer = device.create_buffer({
@@ -121,7 +121,7 @@ struct AllocatorBufferState {
             .name = "staging_buffer",
         });
         cmd_list.destroy_buffer_deferred(staging_buffer);
-        auto *buffer_ptr = device.get_host_address_as<AllocatorConstants<T>::AllocatorType>(staging_buffer);
+        auto *buffer_ptr = device.get_host_address_as<typename AllocatorConstants<T>::AllocatorType>(staging_buffer);
         *buffer_ptr = typename AllocatorConstants<T>::AllocatorType{
             .heap = device.get_device_address(element_buffer),
             .available_element_stack = device.get_device_address(available_element_stack_buffer),
@@ -188,7 +188,7 @@ struct AllocatorBufferState {
             .name = "staging_buffer",
         });
         cmd_list.destroy_buffer_deferred(staging_buffer);
-        auto *buffer_ptr = device.get_host_address_as<AllocatorConstants<T>::AllocatorType>(staging_buffer);
+        auto *buffer_ptr = device.get_host_address_as<typename AllocatorConstants<T>::AllocatorType>(staging_buffer);
         *buffer_ptr = typename AllocatorConstants<T>::AllocatorType{
             .heap = device.get_device_address(element_buffer),
             .available_element_stack = device.get_device_address(available_element_stack_buffer),
@@ -213,7 +213,7 @@ struct AllocatorBufferState {
     }
     void check_for_realloc(daxa::Device &device, usize current_known_element_count) {
         constexpr auto MAX_ELEMENT_ALLOCATIONS_PER_FRAME = AllocatorConstants<T>::MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
-        auto const ELEM_SIZE_BYTES = static_cast<u32>(sizeof(AllocatorConstants<T>::ElementType)) * AllocatorConstants<T>::ELEMENT_MULTIPLIER;
+        auto const ELEM_SIZE_BYTES = static_cast<u32>(sizeof(AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER);
         auto const max_count_after_cpu_catch_up = static_cast<u32>(current_known_element_count + MAX_ELEMENT_ALLOCATIONS_PER_FRAME * (FRAMES_IN_FLIGHT + 1));
         auto const max_size_after_cpu_catch_up = static_cast<usize>(max_count_after_cpu_catch_up) * ELEM_SIZE_BYTES;
         auto const current_size = static_cast<usize>(current_element_count) * ELEM_SIZE_BYTES;

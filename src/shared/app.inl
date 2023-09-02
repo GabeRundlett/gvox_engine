@@ -163,7 +163,7 @@ struct GpuResources {
     }
 };
 
-struct GpuApp {
+struct GpuApp : AppUi::DebugDisplayProvider {
     GbufferRenderer gbuffer_renderer;
     ReprojectionRenderer reprojection_renderer;
     SsaoRenderer ssao_renderer;
@@ -199,8 +199,12 @@ struct GpuApp {
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
+    std::vector<std::string> ui_strings;
 
     bool needs_vram_calc = true;
+
+    using Clock = std::chrono::high_resolution_clock;
+    Clock::time_point prev_phys_update_time = Clock::now();
 
     GpuApp(daxa::Device &device, AsyncPipelineManager &pipeline_manager, daxa::Format swapchain_format)
         : gbuffer_renderer{pipeline_manager},
@@ -235,6 +239,9 @@ struct GpuApp {
         task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
 
         voxel_world.create(device);
+
+        AppUi::DebugDisplay::s_instance->providers.push_back(this);
+        AppUi::DebugDisplay::s_instance->providers.push_back(&voxel_world);
 
         {
             daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
@@ -354,15 +361,29 @@ struct GpuApp {
             temp_task_graph.execute({});
         }
     }
+    virtual ~GpuApp() override = default;
+
+    virtual void add_ui() override {
+        for (auto const &str : ui_strings) {
+            ImGui::Text(str.c_str());
+        }
+        ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_pos.x), static_cast<double>(gpu_output.player_pos.y), static_cast<double>(gpu_output.player_pos.z));
+        ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_rot.x), static_cast<double>(gpu_output.player_rot.y), static_cast<double>(gpu_output.player_rot.z));
+        ImGui::Text("Player unit offs: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_unit_offset.x), static_cast<double>(gpu_output.player_unit_offset.y), static_cast<double>(gpu_output.player_unit_offset.z));
+    }
 
     void destroy(daxa::Device &device) {
         gpu_resources.destroy(device);
         voxel_world.destroy(device);
     }
 
-    void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph, usize &result_size, std::vector<AppUi::GpuResourceInfo> &debug_gpu_resource_infos) {
+    void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph) {
+        std::vector<AppUi::DebugDisplay::GpuResourceInfo> &debug_gpu_resource_infos = AppUi::DebugDisplay::s_instance->gpu_resource_infos;
+
         debug_gpu_resource_infos.clear();
-        result_size = 0;
+        ui_strings.clear();
+
+        usize result_size = 0;
 
         auto format_to_pixel_size = [](daxa::Format format) -> u32 {
             switch (format) {
@@ -421,6 +442,8 @@ struct GpuApp {
         }
 
         needs_vram_calc = false;
+
+        ui_strings.push_back(fmt::format("Est. VRAM usage: {} MB", static_cast<float>(result_size) / 1000000));
     }
 
     void begin_frame(daxa::Device &device, daxa::TaskGraph &task_graph, AppUi &ui) {
@@ -432,8 +455,16 @@ struct GpuApp {
         gpu_input.flags &= ~GAME_FLAG_BITS_PAUSED;
         gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<u32>(ui.paused);
 
+        gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
+
+        auto now = Clock::now();
+        if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
+            gpu_input.flags |= GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
+            prev_phys_update_time = now;
+        }
+
         if (needs_vram_calc) {
-            calc_vram_usage(device, task_graph, ui.debug_vram_usage, ui.debug_gpu_resource_infos);
+            calc_vram_usage(device, task_graph);
         }
 
         bool should_realloc = voxel_world.check_for_realloc(device, gpu_output.voxel_world);

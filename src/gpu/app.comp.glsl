@@ -44,7 +44,7 @@ void main() {
         }
 
         deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + f32vec3(deref(globals).player.chunk_offset);
+        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + f32vec3(deref(globals).player.player_unit_offset);
 
         if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
             {
@@ -77,9 +77,9 @@ void main() {
         }
     }
 
-    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset);
+    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + f32vec3(PLAYER.player_unit_offset);
     deref(gpu_output[INPUT.fif_index]).player_rot = f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
-    deref(gpu_output[INPUT.fif_index]).chunk_offset = f32vec3(PLAYER.chunk_offset);
+    deref(gpu_output[INPUT.fif_index]).player_unit_offset = f32vec3(PLAYER.player_unit_offset);
 
     deref(globals).voxel_particles_state.simulation_dispatch = u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;

@@ -12,20 +12,26 @@ const float floor_z = -1.0;
 
 vec2 map(in out VoxelBufferPtrs ptrs, in vec3 pos) {
     vec2 res = vec2(pos.z - floor_z, 0.0);
-    res = opU(res, vec2(sd_sphere(pos - vec3(+1.0, +1.0, 0.25 + floor_z), 0.25), 1.0));
-    // res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), f32vec3(0.1, 0.2, 0.25)), 1.0));
-    res = opU(res, vec2(sd_box(apply_inv_rotation(pos - deref(ptrs.globals).box0.pos, deref(ptrs.globals).box0.rot), deref(ptrs.globals).box0.size), 2.0));
-    res = opU(res, vec2(sd_box(apply_inv_rotation(pos - deref(ptrs.globals).box1.pos, deref(ptrs.globals).box1.rot), deref(ptrs.globals).box1.size), 3.0));
-    // res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
-    // res = opU(res, vec2(sd_cylinder(pos - vec3(+2.0, +2.0, 0.25 + floor_z), 0.25, 0.25), 1.0));
-    // res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), f32vec2(0.18, 0.07)), 1.0));
+
+    u32 body_n = min(RIGID_BODY_MAX_N, deref(ptrs.globals).rigid_body_n);
+    RigidBody body;
+    for (u32 i = 0; i < body_n; ++i) {
+        body = deref(ptrs.globals).rigid_bodies[i];
+        f32 mat_id = i + 1;
+        switch (body.flags & RIGID_BODY_FLAG_MASK_SHAPE_TYPE) {
+        case RIGID_BODY_SHAPE_TYPE_SPHERE: res = opU(res, vec2(sd_sphere(apply_inv_rotation(pos - body.pos, body.rot), body.size.x), mat_id)); break;
+        case RIGID_BODY_SHAPE_TYPE_BOX: res = opU(res, vec2(sd_box(apply_inv_rotation(pos - body.pos, body.rot), body.size * 0.5), mat_id)); break;
+        }
+    }
+
     return res;
 }
 
 vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
+    RigidBody body;
     switch (id) {
     case 0:
-#if TRACE_PRIMARY_COMPUTE
+#if 0 // TRACE_PRIMARY_COMPUTE
         return texture(daxa_sampler2D(debug_texture, deref(gpu_input).sampler_llr), pos.xy).rgb;
 #else
         return f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
@@ -33,6 +39,15 @@ vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
     case 1:
     case 2:
     case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+        body = deref(ptrs.globals).rigid_bodies[id - 1];
+        pos = apply_inv_rotation(pos - body.pos, body.rot);
         return f32vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
     default:
         return f32vec3(0.0);
@@ -118,14 +133,6 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
 
         vec3 obj_space = ray_pos;
         result.nrm = map_nrm(info.ptrs, ro + rd * t);
-        if (res.y == 2.0) {
-            result.vel += deref(info.ptrs.globals).box0.pos - deref(info.ptrs.globals).box0.prev_pos;
-            obj_space -= deref(info.ptrs.globals).box0.pos;
-        }
-        if (res.y == 3.0) {
-            result.vel += deref(info.ptrs.globals).box1.pos - deref(info.ptrs.globals).box1.prev_pos;
-            obj_space -= deref(info.ptrs.globals).box1.pos;
-        }
         f32vec3 col = map_col(info.ptrs, obj_space, int(res.y));
         u32 id = 1;
 

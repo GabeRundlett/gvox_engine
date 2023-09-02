@@ -29,7 +29,7 @@ struct Player {
     f32vec3 vel;
     f32 pitch, yaw, roll;
     f32vec3 forward, lateral;
-    i32vec3 chunk_offset;
+    i32vec3 player_unit_offset;
     f32 max_speed;
 };
 

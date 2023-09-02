@@ -41,7 +41,7 @@ constexpr auto round_frame_dim(u32vec2 size) {
 // Creates GVOX Context (gvox_ctx)
 // Creates temp task graph
 VoxelApp::VoxelApp()
-    : AppWindow(APPNAME, {800, 600}),
+    : AppWindow(APPNAME, {1280, 720}),
       daxa_instance{daxa::create_instance({})},
       device{daxa_instance.create_device({
           .enable_buffer_device_address_capture_replay = !GVOX_ENGINE_INSTALL,
@@ -352,16 +352,6 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
-    // ui.debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
-    // ui.debug_page_count = gpu_app.voxel_world.buffers.voxel_malloc.current_element_count;
-
-    ui.debug_player_pos = gpu_output.player_pos;
-    ui.debug_player_rot = gpu_output.player_rot;
-    ui.debug_chunk_offset = gpu_output.chunk_offset;
-
-    // task_render_pos_image.swap_images(task_render_prev_pos_image);
-    // task_render_col_image.swap_images(task_render_prev_col_image);
-
     gpu_app.end_frame();
 
     auto t1 = Clock::now();
@@ -531,7 +521,7 @@ void VoxelApp::update_seeded_value_noise() {
 //
 // Initialize Task:
 // init VoxelMallocPageAllocator buffer
-void VoxelApp::run_startup(daxa::TaskGraph &) {
+void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     auto temp_task_graph = daxa::TaskGraph({
         .device = device,
         .name = "temp_task_graph",
@@ -551,7 +541,7 @@ void VoxelApp::run_startup(daxa::TaskGraph &) {
     ui.should_run_startup = false;
 }
 
-void VoxelApp::upload_model(daxa::TaskGraph &) {
+void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
     auto temp_task_graph = daxa::TaskGraph({
         .device = device,
         .name = "temp_task_graph",

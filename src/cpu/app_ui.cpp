@@ -131,6 +131,16 @@ AppUi::Console::~Console() {
     }
 }
 
+AppUi::DebugDisplay::DebugDisplay() {
+    s_instance = this;
+}
+
+AppUi::DebugDisplay::~DebugDisplay() {
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
+}
+
 void AppUi::Console::clear_log() {
     items.clear();
 }
@@ -152,16 +162,6 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
         }
         ImGui::EndPopup();
     }
-    // if (ImGui::SmallButton("Add Debug Text")) {
-    //     add_log("{} some text", items.size());
-    //     add_log("some more text");
-    //     add_log("display very important message here!");
-    // }
-    // ImGui::SameLine();
-    // if (ImGui::SmallButton("Add Debug Error")) {
-    //     add_log("[error] something went wrong");
-    // }
-    // ImGui::SameLine();
     if (ImGui::SmallButton("Clear")) {
         clear_log();
     }
@@ -694,8 +694,8 @@ void AppUi::settings_controls_ui() {
 static ImGuiTableSortSpecs *current_gpu_resource_info_sort_specs = nullptr;
 
 static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int {
-    auto const *a = static_cast<AppUi::GpuResourceInfo const *>(lhs);
-    auto const *b = static_cast<AppUi::GpuResourceInfo const *>(rhs);
+    auto const *a = static_cast<AppUi::DebugDisplay::GpuResourceInfo const *>(lhs);
+    auto const *b = static_cast<AppUi::DebugDisplay::GpuResourceInfo const *>(rhs);
     for (int n = 0; n < current_gpu_resource_info_sort_specs->SpecsCount; n++) {
         auto const *sort_spec = &current_gpu_resource_info_sort_specs->Specs[n];
         int delta = 0;
@@ -788,13 +788,9 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
             ImGui::TreePop();
         }
         ImGui::Text("GPU: %s", debug_gpu_name);
-        ImGui::Text("Est. VRAM usage: %.2f MB", static_cast<double>(debug_vram_usage) / 1000000);
-        // ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-        // ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
-        ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(debug_player_pos.x), static_cast<double>(debug_player_pos.y), static_cast<double>(debug_player_pos.z));
-        ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(debug_player_rot.x), static_cast<double>(debug_player_rot.y), static_cast<double>(debug_player_rot.z));
-        ImGui::Text("Chunk offs: %.2f, %.2f, %.2f", static_cast<double>(debug_chunk_offset.x), static_cast<double>(debug_chunk_offset.y), static_cast<double>(debug_chunk_offset.z));
-
+        for (auto *provider : debug_display.providers) {
+            provider->add_ui();
+        }
         if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =
                 ImGuiTableFlags_Resizable |
@@ -819,8 +815,8 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
                     if (sorts_specs->SpecsDirty) {
                         current_gpu_resource_info_sort_specs = sorts_specs;
-                        if (debug_gpu_resource_infos.size() > 1) {
-                            qsort(debug_gpu_resource_infos.data(), debug_gpu_resource_infos.size(), sizeof(debug_gpu_resource_infos[0]), compare_gpu_resource_infos);
+                        if (debug_display.gpu_resource_infos.size() > 1) {
+                            qsort(debug_display.gpu_resource_infos.data(), debug_display.gpu_resource_infos.size(), sizeof(debug_display.gpu_resource_infos[0]), compare_gpu_resource_infos);
                         }
                         current_gpu_resource_info_sort_specs = nullptr;
                         sorts_specs->SpecsDirty = false;
@@ -828,10 +824,10 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
                 }
 
                 ImGuiListClipper clipper;
-                clipper.Begin(static_cast<i32>(debug_gpu_resource_infos.size()));
+                clipper.Begin(static_cast<i32>(debug_display.gpu_resource_infos.size()));
                 while (clipper.Step()) {
                     for (int row_i = clipper.DisplayStart; row_i < clipper.DisplayEnd; row_i++) {
-                        auto const &res_info = debug_gpu_resource_infos[static_cast<usize>(row_i)];
+                        auto const &res_info = debug_display.gpu_resource_infos[static_cast<usize>(row_i)];
                         ImGui::PushID(&res_info);
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();

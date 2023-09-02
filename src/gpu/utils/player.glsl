@@ -9,12 +9,12 @@ void player_fix_chunk_offset(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 #if ENABLE_CHUNK_WRAPPING
-    PLAYER.chunk_offset += i32vec3(floor(PLAYER.pos));
+    PLAYER.player_unit_offset += i32vec3(floor(PLAYER.pos));
     PLAYER.pos = fract(PLAYER.pos);
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
-    PLAYER.pos += f32vec3(PLAYER.chunk_offset);
-    PLAYER.chunk_offset = i32vec3(0);
+    PLAYER.pos += f32vec3(PLAYER.player_unit_offset);
+    PLAYER.player_unit_offset = i32vec3(0);
 #endif
 }
 #undef PLAYER
@@ -94,7 +94,7 @@ void player_perframe(
         PLAYER.vel = move_vec * applied_speed;
         PLAYER.pos += PLAYER.vel * INPUT.delta_time;
     } else {
-        vec3 pos = PLAYER.pos + f32vec3(PLAYER.chunk_offset);
+        vec3 pos = PLAYER.pos + f32vec3(PLAYER.player_unit_offset);
         vec3 vel = PLAYER.vel;
 
         f32vec3 nonvertical_vel = f32vec3(vel.xy, 0);
@@ -123,7 +123,7 @@ void player_perframe(
             vel += move_vec * max(applied_speed - dot(nonvertical_vel, move_vec), 0.0);
         }
 
-        PLAYER.pos = pos - f32vec3(PLAYER.chunk_offset);
+        PLAYER.pos = pos - f32vec3(PLAYER.player_unit_offset);
         PLAYER.vel = vel;
     }
 

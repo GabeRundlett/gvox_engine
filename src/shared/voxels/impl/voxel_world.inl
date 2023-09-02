@@ -79,8 +79,8 @@ struct PerChunkComputeTaskState {
             return;
         }
         cmd_list.set_pipeline(*pipeline);
-        auto const dispatch_size = 1 << (LOG2_CHUNKS_PER_LEVEL_PER_AXIS - 3);
-        cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size);
+        auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
+        cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS);
     }
 };
 
@@ -244,7 +244,7 @@ struct ChunkAllocComputeTask : ChunkAllocComputeUses {
     }
 };
 
-struct VoxelWorld {
+struct VoxelWorld : AppUi::DebugDisplayProvider {
     struct Buffers {
         daxa::BufferId voxel_globals_buffer;
         daxa::TaskBuffer task_voxel_globals_buffer{{.name = "task_voxel_globals_buffer"}};
@@ -256,6 +256,8 @@ struct VoxelWorld {
     };
 
     Buffers buffers;
+    u32 debug_page_count{};
+    u32 debug_gpu_heap_usage{};
 
     PerChunkComputeTaskState per_chunk_task_state;
     ChunkEditComputeTaskState chunk_edit_task_state;
@@ -270,6 +272,15 @@ struct VoxelWorld {
           chunk_opt_x8up_task_state{pipeline_manager},
           chunk_alloc_task_state{pipeline_manager} {
     }
+    virtual ~VoxelWorld() override = default;
+
+    virtual void add_ui() override {
+        if (ImGui::TreeNode("Voxel World")) {
+            ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
+            ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
+            ImGui::TreePop();
+        }
+    }
 
     void create(daxa::Device &device) {
         buffers.voxel_globals_buffer = device.create_buffer({
@@ -279,7 +290,7 @@ struct VoxelWorld {
         buffers.task_voxel_globals_buffer.set_buffers({.buffers = std::array{buffers.voxel_globals_buffer}});
 
         auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-        chunk_n = chunk_n * chunk_n * chunk_n;
+        chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
         buffers.voxel_chunks_buffer = device.create_buffer({
             .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
             .name = "voxel_chunks_buffer",
@@ -326,7 +337,7 @@ struct VoxelWorld {
                 });
 
                 auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-                chunk_n = chunk_n * chunk_n * chunk_n;
+                chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
                 cmd_list.clear_buffer({
                     .buffer = buffers.task_voxel_chunks_buffer.get_state().buffers[0],
                     .offset = 0,
@@ -366,6 +377,9 @@ struct VoxelWorld {
         needs_realloc = needs_realloc || buffers.voxel_malloc.needs_realloc();
         // needs_realloc = needs_realloc || buffers.voxel_leaf_chunk_malloc.needs_realloc();
         // needs_realloc = needs_realloc || buffers.voxel_parent_chunk_malloc.needs_realloc();
+
+        debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
+        debug_page_count = buffers.voxel_malloc.current_element_count;
 
         return needs_realloc;
     }

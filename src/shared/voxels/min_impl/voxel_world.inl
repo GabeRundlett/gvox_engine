@@ -2,7 +2,7 @@
 
 #if defined(__cplusplus)
 
-struct VoxelWorld {
+struct VoxelWorld : AppUi::DebugDisplayProvider {
     struct Buffers {
         daxa::BufferId voxel_globals;
         daxa::TaskBuffer task_voxel_globals{{.name = "task_voxel_globals"}};
@@ -10,7 +10,11 @@ struct VoxelWorld {
 
     Buffers buffers;
 
-    VoxelWorld(AsyncPipelineManager &pipeline_manager) {
+    VoxelWorld(AsyncPipelineManager &) {
+    }
+    virtual ~VoxelWorld() override = default;
+
+    virtual void add_ui() override {
     }
 
     void create(daxa::Device &device) {
@@ -31,21 +35,21 @@ struct VoxelWorld {
         func(buffers.voxel_globals);
     }
 
-    void startup(RecordContext &record_ctx) {
+    void startup(RecordContext &) {
     }
 
-    auto check_for_realloc(daxa::Device &device, VoxelWorldOutput const &gpu_output) -> bool {
+    auto check_for_realloc(daxa::Device &, VoxelWorldOutput const &) -> bool {
         return false;
     }
 
-    void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph, bool &needs_vram_calc) {
+    void dynamic_buffers_realloc(daxa::TaskGraph &, bool &) {
     }
 
     void use_buffers(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_globals);
     }
 
-    void update(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
+    void update(RecordContext &, daxa::TaskBufferView, daxa::TaskImageView) {
     }
 };
 

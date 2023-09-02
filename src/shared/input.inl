@@ -22,7 +22,12 @@
 #define GAME_ACTION_LAST               GAME_ACTION_BRUSH_B
 
 #define GAME_FLAGS_PAUSED 0
+#define GAME_FLAGS_NEEDS_PHYS_UPDATE 1
 #define GAME_FLAG_BITS_PAUSED (1 << GAME_FLAGS_PAUSED)
+#define GAME_FLAG_BITS_NEEDS_PHYS_UPDATE (1 << GAME_FLAGS_NEEDS_PHYS_UPDATE)
+
+#define GAME_PHYS_UPDATE_RATE 64
+#define GAME_PHYS_UPDATE_DT (1.0f / GAME_PHYS_UPDATE_RATE)
 // clang-format on
 
 struct MouseInput {
@@ -57,7 +62,7 @@ DAXA_DECL_BUFFER_PTR(GpuInput)
 struct GpuOutput {
     f32vec3 player_pos;
     f32vec3 player_rot;
-    f32vec3 chunk_offset;
+    f32vec3 player_unit_offset;
 
     VoxelWorldOutput voxel_world;
 };

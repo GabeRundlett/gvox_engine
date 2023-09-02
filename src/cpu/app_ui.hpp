@@ -39,6 +39,26 @@ struct AppUi {
         int on_text_edit(ImGuiInputTextCallbackData *data);
     };
 
+    struct DebugDisplayProvider {
+        virtual ~DebugDisplayProvider() = default;
+        virtual void add_ui() = 0;
+    };
+
+    struct DebugDisplay {
+        struct GpuResourceInfo {
+            std::string type;
+            std::string name;
+            usize size;
+        };
+        std::vector<GpuResourceInfo> gpu_resource_infos;
+        std::vector<DebugDisplayProvider *> providers;
+
+        inline static DebugDisplay *s_instance = nullptr;
+
+        DebugDisplay();
+        ~DebugDisplay();
+    };
+
     using Clock = std::chrono::high_resolution_clock;
 
     AppUi(GLFWwindow *glfw_window_ptr);
@@ -56,23 +76,11 @@ struct AppUi {
 
     f32 debug_menu_size{};
     char const *debug_gpu_name{};
-    usize debug_vram_usage{};
-    // u32 debug_page_count{};
-    // u32 debug_gpu_heap_usage{};
-    f32vec3 debug_player_pos{};
-    f32vec3 debug_player_rot{};
-    f32vec3 debug_chunk_offset{};
-
-    struct GpuResourceInfo {
-        std::string type;
-        std::string name;
-        usize size;
-    };
-    std::vector<GpuResourceInfo> debug_gpu_resource_infos;
 
     bool needs_saving = false;
     Clock::time_point last_save_time{};
     Console console{};
+    DebugDisplay debug_display{};
 
     u32 conflict_resolution_mode = 0;
     i32 new_key_id{};

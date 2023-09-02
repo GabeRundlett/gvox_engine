@@ -28,16 +28,18 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     i32vec3 chunk_n = i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
 
-    i32vec3 offset = (VOXEL_WORLD.offset >> i32vec3(3));
-    i32vec3 prev_offset = (VOXEL_WORLD.prev_offset >> i32vec3(3));
-
     VoxelChunkUpdateInfo terrain_work_item;
-    terrain_work_item.i = i32vec3(gl_GlobalInvocationID.xyz);
+    terrain_work_item.i = i32vec3(gl_GlobalInvocationID.xyz) & (chunk_n - 1);
+    terrain_work_item.lod_index = gl_GlobalInvocationID.z >> LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
+
+    i32vec3 offset = (VOXEL_WORLD.offset >> i32vec3(3 + terrain_work_item.lod_index));
+    i32vec3 prev_offset = (VOXEL_WORLD.prev_offset >> i32vec3(3 + terrain_work_item.lod_index));
+
     terrain_work_item.chunk_offset = offset;
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
 
     // (const) number of chunks in each axis
-    u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n);
+    u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n) + terrain_work_item.lod_index * TOTAL_CHUNKS_PER_LOD;
 
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
         try_elect(terrain_work_item);
@@ -120,7 +122,8 @@ void main() {
     // Brush flags
     u32 brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
     // Chunk u32 index in voxel_chunks buffer
-    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
+    u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
+    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     // Pointer to the previous chunk
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     // Pointer to the new chunk
@@ -138,7 +141,8 @@ void main() {
     // Voxel position in world space (voxels)
     world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
     // Voxel position in world space (meters)
-    voxel_pos = f32vec3(world_voxel) / VOXEL_SCL;
+    f32 voxel_scl = f32(VOXEL_SCL) / f32(1 << lod_index);
+    voxel_pos = f32vec3(world_voxel) / voxel_scl;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
@@ -274,7 +278,8 @@ void main() {
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
+    u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
+    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
@@ -483,7 +488,8 @@ void main() {
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
+    u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
+    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
@@ -545,7 +551,8 @@ void main() {
     if (chunk_i == INVALID_CHUNK_I) {
         return;
     }
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
+    u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
+    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     u32 inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
     u32 palette_region_voxel_index =
