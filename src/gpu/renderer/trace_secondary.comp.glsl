@@ -38,7 +38,7 @@ void main() {
 
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    f32vec3 col = SUN_COL * f32(trace_result.dist == MAX_DIST);
+    f32vec3 col = f32vec3(f32(trace_result.dist == MAX_DIST));
 
     imageStore(daxa_image2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(col, 0));
 }

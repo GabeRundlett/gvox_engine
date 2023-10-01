@@ -16,6 +16,7 @@ DAXA_DECL_TASK_USES_BEGIN(TracePrimaryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
+DAXA_TASK_USE_IMAGE(sky_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(debug_texture, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -127,7 +128,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers)
+    auto render(RecordContext &record_ctx, daxa::TaskImageView sky_lut, VoxelWorld::Buffers &voxel_buffers)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
@@ -186,6 +187,7 @@ struct GbufferRenderer {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
                     VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
+                    .sky_lut = sky_lut,
                     .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
                     .debug_texture = record_ctx.task_debug_texture,
                     .render_depth_prepass_image = depth_prepass_image,

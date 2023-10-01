@@ -88,12 +88,20 @@ void main() {
     f32vec3 vs_velocity = f32vec3(0);
 
     if (trace_result.dist == MAX_DIST) {
-        f32vec3 sky_col = sample_sky(ray_dir);
-        output_value.w = f32vec3_to_uint_urgb9e5(sky_col / 1.0);
+        f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
+        output_value.w = f32vec3_to_uint_urgb9e5(sky_col);
         output_value.y |= nrm_to_u16(f32vec3(0));
         depth = 0.0;
     } else {
         output_value.x = trace_result.voxel_data;
+        // f32vec3 o = abs(fract(ray_pos * 8 - 0.5) - 0.5);
+        // float z = 0.1;
+        // float f =
+        //     min(smoothstep(0.0, z, o.x), smoothstep(0.0, z, o.y)) +
+        //     min(smoothstep(0.0, z, o.x), smoothstep(0.0, z, o.z)) +
+        //     min(smoothstep(0.0, z, o.y), smoothstep(0.0, z, o.z));
+        // f32vec4 voxel_color = uint_rgba8_to_f32vec4(trace_result.voxel_data);
+        // output_value.x = f32vec4_to_uint_rgba8(f32vec4(mix(vec3(0.02), voxel_color.rgb, f), 1)); // trace_result.voxel_data;
         output_value.y |= nrm_to_u16(trace_result.nrm);
         vs_nrm = (deref(globals).player.cam.world_to_view * f32vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);

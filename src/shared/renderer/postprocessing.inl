@@ -6,6 +6,7 @@
 DAXA_DECL_TASK_USES_BEGIN(CompositingComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(sky_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 // DAXA_TASK_USE_IMAGE(particles_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(shading_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
@@ -132,7 +133,7 @@ struct Compositor {
         : compositing_compute_task_state{pipeline_manager} {
     }
 
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView ssao_image, daxa::TaskImageView shading_image) -> daxa::TaskImageView {
+    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shading_image) -> daxa::TaskImageView {
         auto output_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -144,6 +145,7 @@ struct Compositor {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,
+                    .sky_lut = sky_lut,
                     .ssao_image_id = ssao_image,
                     .shading_image_id = shading_image,
                     .dst_image_id = output_image,

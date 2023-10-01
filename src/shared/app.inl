@@ -19,6 +19,7 @@
 #include <shared/renderer/taa.inl>
 #include <shared/renderer/postprocessing.inl>
 #include <shared/renderer/voxel_particle_raster.inl>
+#include <shared/renderer/sky.inl>
 
 #if STARTUP_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_USES_BEGIN(StartupComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
@@ -171,6 +172,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     DiffuseGiRenderer diffuse_gi_renderer;
     Compositor compositor;
     TaaRenderer taa_renderer;
+    SkyRenderer sky_renderer;
 
     VoxelWorld voxel_world;
 
@@ -214,6 +216,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           diffuse_gi_renderer{pipeline_manager},
           compositor{pipeline_manager},
           taa_renderer{pipeline_manager},
+          sky_renderer{pipeline_manager},
 
           voxel_world{pipeline_manager},
           gpu_resources{},
@@ -457,6 +460,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
 
+        gpu_input.sky_settings = ui.settings.sky;
+
         auto now = Clock::now();
         if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
             gpu_input.flags |= GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
@@ -628,7 +633,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 #endif
 
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers);
+        auto sky_image = sky_renderer.render(record_ctx);
+
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_image, voxel_world.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
         auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
@@ -649,7 +656,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 ssao_image);
         }
 
-        auto composited_image = compositor.render(record_ctx, gbuffer_depth, irradiance, shading_image);
+        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_image, irradiance, shading_image);
         auto final_image = [&]() {
             if (ENABLE_TAA) {
                 return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);

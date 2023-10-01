@@ -32,7 +32,7 @@ struct AppUi {
         void add_log(std::string const &str);
         template <typename... Args>
         void add_log(fmt::format_string<Args...> format_string, Args &&...args) {
-            add_log(fmt::vformat(format_string, fmt::make_format_args(std::forward<Args>(args)...)));
+            // add_log(fmt::vformat(format_string, fmt::make_format_args(std::forward<Args>(args)...)));
         }
         void draw(const char *title, bool *p_open);
         void exec_command(const char *command_line);

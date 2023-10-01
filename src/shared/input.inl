@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/voxels/voxels.inl>
+#include <shared/settings.inl>
 
 // clang-format off
 #define GAME_ACTION_MOVE_FORWARD       0
@@ -54,6 +55,7 @@ struct GpuInput {
     daxa_SamplerId sampler_lnc;
     daxa_SamplerId sampler_llc;
     daxa_SamplerId sampler_llr;
+    SkySettings sky_settings;
     MouseInput mouse;
     u32 actions[GAME_ACTION_LAST + 1];
 };

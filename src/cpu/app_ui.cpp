@@ -498,6 +498,15 @@ void AppUi::settings_ui() {
                 settings.render_res_scl = resolution_scale_values[resolution_scale_id];
                 needs_saving = true;
             }
+            
+            if (ImGui::SliderFloat("Sun Angle X", &settings.sun_angle.x, 0.0f, 360.0f)) {
+                needs_saving = true;
+            }
+            if (ImGui::SliderFloat("Sun Angle Y", &settings.sun_angle.y, 0.0f, 180.0f)) {
+                needs_saving = true;
+            }
+            settings.recompute_sun_direction();
+            
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("UI")) {

@@ -1,17 +1,6 @@
 #pragma once
 
-#define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
-#define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
-#include <daxa/daxa.inl>
-#include <daxa/utils/task_graph.inl>
-#undef DAXA_ENABLE_SHADER_NO_NAMESPACE
-#undef DAXA_ENABLE_IMAGE_OVERLOADS_BASIC
-
-#define MAX_SIMULATED_VOXEL_PARTICLES 0 // (1 << 14)
-#define MAX_RENDERED_VOXEL_PARTICLES 0  // (1 << 14)
-
-#define PREPASS_SCL 2
-#define SHADING_SCL 2
+#include <shared/settings.inl>
 
 #if defined(__cplusplus)
 #include <cpu/core.hpp>
@@ -23,9 +12,6 @@
 #define CPU_ONLY(x)
 #define GPU_ONLY(x) x
 #endif
-
-#define ENABLE_DIFFUSE_GI false
-#define ENABLE_TAA true
 
 #define DECL_TASK_STATE(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z)                                                                                         \
     struct Name##ComputeTaskState {                                                                                                                                            \

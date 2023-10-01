@@ -5,7 +5,11 @@
     {
       "name": "daxa",
       "features": [
-        "utils-pipeline-manager-spirv-validation"
+        "utils-pipeline-manager-spirv-validation",
+        "utils-imgui",
+        "utils-mem",
+        "utils-pipeline-manager-glslang",
+        "utils-task-graph"
       ]
     },
     "gvox",
@@ -31,7 +35,7 @@
       ]
     }
   ],
-  "builtin-baseline": "0fa8459cf3a7caca7adc58f992bc32ff13630684",
+  "builtin-baseline": "78ba9711d30c64a6b40462c72f356c681e2255f3",
   "overrides": [
     {
       "name": "glfw3",
@@ -41,7 +45,6 @@
   "vcpkg-configuration": {
     "overlay-ports": [
       "../gvox/cmake/vcpkg-port",
-      "../Daxa/cmake/vcpkg-port",
       "../Daxa/cmake/vcpkg-overlay-ports/dxc",
       "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
       "../Daxa/cmake/vcpkg-overlay-ports/fsr2",

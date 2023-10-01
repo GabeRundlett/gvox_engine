@@ -197,7 +197,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
         const f32vec3 wo = (-outgoing_ray.Direction * tangent_to_world);
         // const LayeredBrdf brdf = LayeredBrdf::from_gbuffer_ndotv(gbuffer, wo.z);
 
-        f32vec3 sun_radiance = SUN_COL;
+        f32vec3 sun_radiance = f32vec3(1); // SUN_COL;
         {
             const f32vec3 to_light_norm = SUN_DIR;
             ray_pos += to_light_norm * 1.0e-4;
@@ -228,7 +228,7 @@ TraceResult do_the_thing(u32vec2 px, f32vec3 normal_ws, inout uint rng, RayDesc 
             // }
         }
     } else {
-        total_radiance += sample_sky_ambient(outgoing_ray.Direction);
+        // total_radiance += sample_sky_ambient(outgoing_ray.Direction);
     }
 
     f32vec3 out_value = total_radiance;
