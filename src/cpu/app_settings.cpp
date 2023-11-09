@@ -336,7 +336,7 @@ void AppSettings::reset_default() {
         .z = 0.029412623f,
     };
 
-    sun_angle = {0.0f, 45.0f};
+    sun_angle = {210.0f, 25.0f};
     recompute_sun_direction();
 }
 

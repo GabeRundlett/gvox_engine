@@ -9,6 +9,7 @@ add_executable(${PROJECT_NAME}
     "src/cpu/deps.cpp"
     "src/cpu/voxel_app.cpp"
     "src/cpu/app_ui.cpp"
+    "src/cpu/app_audio.cpp"
     "src/cpu/app_settings.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
@@ -25,6 +26,7 @@ find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-minizip CONFIG REQUIRED)
 find_package(fiber-tasking-lib CONFIG REQUIRED)
+find_package(soloud CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
@@ -36,6 +38,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     unofficial::nativefiledialog::nfd
     unofficial::minizip::minizip
     fiber-tasking-lib::ftl
+    soloud
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"

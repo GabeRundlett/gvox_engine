@@ -16,7 +16,6 @@ struct DensityProfileLayer {
 };
 
 struct SkySettings {
-    daxa_f32 sun_brightness;
     daxa_f32vec3 sun_direction;
 
     daxa_f32 atmosphere_bottom;

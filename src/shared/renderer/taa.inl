@@ -92,8 +92,8 @@ struct TaaPush {
 
 #if defined(__cplusplus)
 
-inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
-    auto compile_result = pipeline_manager.add_compute_pipeline({
+inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, AsyncManagedComputePipeline &pipeline) {
+    pipeline = pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"taa.comp.glsl"},
             .compile_options = {.defines = {{name, "1"}}},
@@ -101,25 +101,16 @@ inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager,
         .push_constant_size = sizeof(TaaPush),
         .name = std::string("taa_") + name,
     });
-    if (compile_result.is_err()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-        return;
-    }
-    pipeline = compile_result.value();
-    if (!compile_result.value()->is_valid()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-    }
 }
 
 #define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                                 \
     struct Name##ComputeTaskState {                                                                                                                     \
-        std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                \
+        AsyncManagedComputePipeline pipeline;                                                                                                \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { taa_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                   \
         void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, TaaPush const &push) {                                                  \
-            if (!pipeline_is_valid())                                                                                                                   \
+            if (!pipeline.is_valid())                                                                                                                   \
                 return;                                                                                                                                 \
-            cmd_list.set_pipeline(*pipeline);                                                                                                           \
+            cmd_list.set_pipeline(pipeline.get());                                                                                                           \
             cmd_list.push_constant(push);                                                                                                               \
             cmd_list.dispatch((thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y);          \
         }                                                                                                                                               \
@@ -167,9 +158,9 @@ struct TaaRenderer {
     }
 
     void next_frame() {
-        ping_pong_taa_col_image.task_resources.output_image.swap_images(ping_pong_taa_col_image.task_resources.history_image);
-        ping_pong_taa_vel_image.task_resources.output_image.swap_images(ping_pong_taa_vel_image.task_resources.history_image);
-        ping_pong_smooth_var_image.task_resources.output_image.swap_images(ping_pong_smooth_var_image.task_resources.history_image);
+        ping_pong_taa_col_image.task_resources.output_resource.swap_images(ping_pong_taa_col_image.task_resources.history_resource);
+        ping_pong_taa_vel_image.task_resources.output_resource.swap_images(ping_pong_taa_vel_image.task_resources.history_resource);
+        ping_pong_smooth_var_image.task_resources.output_resource.swap_images(ping_pong_smooth_var_image.task_resources.history_resource);
     }
 
     auto render(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa::TaskImageView depth_image, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {

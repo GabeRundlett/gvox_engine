@@ -44,7 +44,7 @@ VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {1280, 720}),
       daxa_instance{daxa::create_instance({})},
       device{daxa_instance.create_device({
-          .enable_buffer_device_address_capture_replay = !GVOX_ENGINE_INSTALL,
+          .enable_buffer_device_address_capture_replay = false,
           .name = "device",
       })},
       swapchain{device.create_swapchain({
@@ -106,8 +106,6 @@ VoxelApp::VoxelApp()
       }()},
       gvox_ctx(gvox_create_context()) {
 
-    start = Clock::now();
-
     // constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
     // if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
     //     ui.gvox_model_path = "C:/Users/gabe/AppData/Roaming/GabeVoxelGame/models/building.vox";
@@ -137,6 +135,7 @@ VoxelApp::VoxelApp()
     for (u32 i = 0; i < halton_offsets.size(); ++i) {
         halton_offsets[i] = f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
+    ui.console.add_log(std::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
 }
 VoxelApp::~VoxelApp() {
     gvox_destroy_context(gvox_ctx);
@@ -297,6 +296,8 @@ void VoxelApp::on_update() {
     gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
     gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
+
+    audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     if (ui.should_hotload_shaders) {
         auto reload_result = main_pipeline_manager.reload_all();
@@ -633,7 +634,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     });
 
     result_task_graph.use_persistent_image(task_swapchain_image);
-    task_swapchain_image.set_images({.images = std::array{swapchain_image}});
 
     auto record_ctx = RecordContext{
         .device = this->device,
@@ -642,6 +642,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .output_resolution = gpu_input.output_resolution,
         .task_swapchain_image = task_swapchain_image,
     };
+
+    // gpu_app.task_value_noise_image.view().view({});
 
     gpu_app.update(record_ctx);
 

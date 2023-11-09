@@ -20,6 +20,7 @@
     "nativefiledialog",
     "minizip",
     "fiber-tasking-lib",
+    "soloud",
     {
       "name": "glfw3",
       "features": [
@@ -49,6 +50,7 @@
       "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
       "../Daxa/cmake/vcpkg-overlay-ports/fsr2",
       "cmake/vcpkg-overlay-ports/fiber-tasking-lib",
+      "cmake/vcpkg-overlay-ports/soloud",
       "cmake/vcpkg-overlay-ports/imgui-node-editor"
     ]
   }

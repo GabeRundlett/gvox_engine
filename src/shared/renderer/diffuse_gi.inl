@@ -177,8 +177,8 @@ struct RtdgiRestirResolvePush {
 #include <shared/renderer/downscale.inl>
 
 template <typename PushT>
-inline void rtdgi_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
-    auto compile_result = pipeline_manager.add_compute_pipeline({
+inline void rtdgi_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, AsyncManagedComputePipeline &pipeline) {
+    pipeline = pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"diffuse_gi.comp.glsl"},
             .compile_options = {.defines = {{name, "1"}}},
@@ -186,25 +186,16 @@ inline void rtdgi_compile_compute_pipeline(AsyncPipelineManager &pipeline_manage
         .push_constant_size = sizeof(PushT),
         .name = std::string("rtdgi_") + name,
     });
-    if (compile_result.is_err()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-        return;
-    }
-    pipeline = compile_result.value();
-    if (!compile_result.value()->is_valid()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-    }
 }
 
 #define RTDGI_DECL_TASK_STATE(Name, NAME, PushType)                                                                                                                 \
     struct Name##ComputeTaskState {                                                                                                                                 \
-        std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                            \
+        AsyncManagedComputePipeline pipeline;                                                                                                            \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { rtdgi_compile_compute_pipeline<PushType>(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                               \
         void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, PushType const &push) {                                                             \
-            if (!pipeline_is_valid())                                                                                                                               \
+            if (!pipeline.is_valid())                                                                                                                               \
                 return;                                                                                                                                             \
-            cmd_list.set_pipeline(*pipeline);                                                                                                                       \
+            cmd_list.set_pipeline(pipeline.get());                                                                                                                       \
             cmd_list.push_constant(push);                                                                                                                           \
             cmd_list.dispatch((thread_count.x + 7) / 8, (thread_count.y + 7) / 8);                                                                                  \
         }                                                                                                                                                           \
@@ -272,17 +263,17 @@ struct DiffuseGiRenderer {
     }
 
     void next_frame() {
-        temporal_radiance_tex.task_resources.output_image.swap_images(temporal_radiance_tex.task_resources.history_image);
-        temporal_ray_orig_tex.task_resources.output_image.swap_images(temporal_ray_orig_tex.task_resources.history_image);
-        temporal_ray_tex.task_resources.output_image.swap_images(temporal_ray_tex.task_resources.history_image);
-        temporal_reservoir_tex.task_resources.output_image.swap_images(temporal_reservoir_tex.task_resources.history_image);
-        temporal_candidate_tex.task_resources.output_image.swap_images(temporal_candidate_tex.task_resources.history_image);
-        temporal_invalidity_tex.task_resources.output_image.swap_images(temporal_invalidity_tex.task_resources.history_image);
-        temporal2_tex.task_resources.output_image.swap_images(temporal2_tex.task_resources.history_image);
+        temporal_radiance_tex.task_resources.output_resource.swap_images(temporal_radiance_tex.task_resources.history_resource);
+        temporal_ray_orig_tex.task_resources.output_resource.swap_images(temporal_ray_orig_tex.task_resources.history_resource);
+        temporal_ray_tex.task_resources.output_resource.swap_images(temporal_ray_tex.task_resources.history_resource);
+        temporal_reservoir_tex.task_resources.output_resource.swap_images(temporal_reservoir_tex.task_resources.history_resource);
+        temporal_candidate_tex.task_resources.output_resource.swap_images(temporal_candidate_tex.task_resources.history_resource);
+        temporal_invalidity_tex.task_resources.output_resource.swap_images(temporal_invalidity_tex.task_resources.history_resource);
+        temporal2_tex.task_resources.output_resource.swap_images(temporal2_tex.task_resources.history_resource);
 #if ENABLE_RESTIR
-        temporal2_variance_tex.task_resources.output_image.swap_images(temporal2_variance_tex.task_resources.history_image);
+        temporal2_variance_tex.task_resources.output_resource.swap_images(temporal2_variance_tex.task_resources.history_resource);
 #endif
-        temporal_hit_normal_tex.task_resources.output_image.swap_images(temporal_hit_normal_tex.task_resources.history_image);
+        temporal_hit_normal_tex.task_resources.output_resource.swap_images(temporal_hit_normal_tex.task_resources.history_resource);
     }
 
     auto temporal(
@@ -357,7 +348,7 @@ struct DiffuseGiRenderer {
                     .globals = record_ctx.task_globals_buffer,
 
                     .input_tex = input_color,
-                    .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                    .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                     .ssao_tex = ssao_tex,
                     .geometric_normal_tex = gbuffer_depth.geometric_normal,
 
@@ -570,7 +561,7 @@ struct DiffuseGiRenderer {
                         VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
 
                         .half_view_normal_tex = half_view_normal_tex,
-                        .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                        .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                         .reprojected_gi_tex = reprojected_rtdgi.history_tex,
                         .reservoir_tex = reservoir_history_tex,
                         .reservoir_ray_history_tex = ray_history_tex,
@@ -608,7 +599,7 @@ struct DiffuseGiRenderer {
                         .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
 
                         .half_view_normal_tex = half_view_normal_tex,
-                        .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                        .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                         .reprojected_gi_tex = reprojected_rtdgi.history_tex,
                         .reprojection_tex = reprojection_map,
 
@@ -664,7 +655,7 @@ struct DiffuseGiRenderer {
                         .globals = record_ctx.task_globals_buffer,
 
                         .half_view_normal_tex = half_view_normal_tex,
-                        .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                        .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                         .candidate_radiance_tex = candidate_radiance_tex,
                         .candidate_normal_tex = candidate_normal_tex,
                         .candidate_hit_tex = candidate_hit_tex,
@@ -738,7 +729,7 @@ struct DiffuseGiRenderer {
                             .bounced_radiance_input_tex = bounced_radiance_input_tex,
                             .half_view_normal_tex = half_view_normal_tex,
                             .half_depth_tex = half_depth_tex,
-                            .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                            .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                             .half_ssao_tex = half_ssao_tex,
                             .temporal_reservoir_packed_tex = temporal_reservoir_packed_tex,
                             .reprojected_gi_tex = reprojected_rtdgi.history_tex,
@@ -785,7 +776,7 @@ struct DiffuseGiRenderer {
                         .radiance_tex = radiance_tex,
                         .reservoir_input_tex = reservoir_input_tex,
                         .gbuffer_tex = gbuffer_depth.gbuffer,
-                        .depth_tex = gbuffer_depth.depth.task_resources.output_image,
+                        .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                         .half_view_normal_tex = half_view_normal_tex,
                         .half_depth_tex = half_depth_tex,
                         .ssao_tex = ssao_tex,

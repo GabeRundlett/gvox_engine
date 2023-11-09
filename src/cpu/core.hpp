@@ -31,7 +31,47 @@ struct RecordContext {
     daxa::TaskBufferView task_globals_buffer;
 };
 
-struct PingPongImage {
+struct PingPongImage_impl {
+    using ResourceType = daxa::ImageId;
+    using ResourceInfoType = daxa::ImageInfo;
+    using TaskResourceType = daxa::TaskImage;
+    using TaskResourceInfoType = daxa::TaskImageInfo;
+
+    static auto create(daxa::Device &device, ResourceInfoType const &info) -> ResourceType {
+        return device.create_image(info);
+    }
+    static void destroy(daxa::Device &device, ResourceType rsrc_id) {
+        device.destroy_image(rsrc_id);
+    }
+    static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
+        return TaskResourceType(TaskResourceInfoType{.initial_images = {std::array{rsrc_id}}, .name = name});
+    }
+};
+
+struct PingPongBuffer_impl {
+    using ResourceType = daxa::BufferId;
+    using ResourceInfoType = daxa::BufferInfo;
+    using TaskResourceType = daxa::TaskBuffer;
+    using TaskResourceInfoType = daxa::TaskBufferInfo;
+
+    static auto create(daxa::Device &device, ResourceInfoType const &info) -> ResourceType {
+        return device.create_buffer(info);
+    }
+    static void destroy(daxa::Device &device, ResourceType rsrc_id) {
+        device.destroy_buffer(rsrc_id);
+    }
+    static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
+        return TaskResourceType(TaskResourceInfoType{.initial_buffers = {std::array{rsrc_id}}, .name = name});
+    }
+};
+
+template <typename Impl>
+struct PingPongResource {
+    using ResourceType = typename Impl::ResourceType;
+    using ResourceInfoType = typename Impl::ResourceInfoType;
+    using TaskResourceType = typename Impl::TaskResourceType;
+    using TaskResourceInfoType = typename Impl::TaskResourceInfoType;
+
     struct Resources {
         Resources() = default;
         Resources(Resources const &) = delete;
@@ -39,61 +79,59 @@ struct PingPongImage {
         Resources &operator=(Resources const &) = delete;
         Resources &operator=(Resources &&other) {
             std::swap(this->device, other.device);
-            std::swap(this->image_a, other.image_a);
-            std::swap(this->image_b, other.image_b);
+            std::swap(this->resource_a, other.resource_a);
+            std::swap(this->resource_b, other.resource_b);
             return *this;
         }
 
         daxa::Device device{};
-        daxa::ImageId image_a{};
-        daxa::ImageId image_b{};
+        ResourceType resource_a{};
+        ResourceType resource_b{};
 
         ~Resources() {
-            if (!image_a.is_empty()) {
-                device.destroy_image(image_a);
-                device.destroy_image(image_b);
+            if (!resource_a.is_empty()) {
+                Impl::destroy(device, resource_a);
+                Impl::destroy(device, resource_b);
             }
         }
     };
     struct TaskResources {
-        daxa::TaskImage output_image;
-        daxa::TaskImage history_image;
+        TaskResourceType output_resource;
+        TaskResourceType history_resource;
     };
     Resources resources;
     TaskResources task_resources;
 
-    auto get(daxa::Device a_device, daxa::ImageInfo const &a_info) -> std::pair<daxa::TaskImage &, daxa::TaskImage &> {
+    auto get(daxa::Device a_device, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
         if (!resources.device) {
             resources.device = a_device;
         }
         assert(resources.device == a_device);
-        if (resources.image_a.is_empty()) {
+        if (resources.resource_a.is_empty()) {
             auto info_a = a_info;
             auto info_b = a_info;
             info_a.name += "_a";
             info_b.name += "_b";
-            resources.image_a = a_device.create_image(info_a);
-            resources.image_b = a_device.create_image(info_b);
-            task_resources.output_image = daxa::TaskImage(daxa::TaskImageInfo{
-                .initial_images = {.images = std::array{resources.image_a}},
-                .name = a_info.name,
-            });
-            task_resources.history_image = daxa::TaskImage(daxa::TaskImageInfo{
-                .initial_images = {.images = std::array{resources.image_b}},
-                .name = a_info.name + "_history",
-            });
+            resources.resource_a = Impl::create(a_device, info_a);
+            resources.resource_b = Impl::create(a_device, info_b);
+            task_resources.output_resource = Impl::create_task_resource(resources.resource_a, a_info.name);
+            task_resources.history_resource = Impl::create_task_resource(resources.resource_b, a_info.name + "_history");
         }
-        return {task_resources.output_image, task_resources.history_image};
+        return {task_resources.output_resource, task_resources.history_resource};
     }
 };
 
-#define ENABLE_THREAD_POOL 0
+using PingPongImage = PingPongResource<PingPongImage_impl>;
+using PingPongBuffer = PingPongResource<PingPongBuffer_impl>;
+
+#define ENABLE_THREAD_POOL 1
 
 #if ENABLE_THREAD_POOL
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <future>
 #endif
 
 namespace {
@@ -174,6 +212,47 @@ namespace {
     };
 } // namespace
 
+struct AsyncManagedComputePipeline {
+    std::shared_ptr<daxa::ComputePipeline> pipeline;
+#if ENABLE_THREAD_POOL
+    std::shared_ptr<std::promise<std::shared_ptr<daxa::ComputePipeline>>> pipeline_promise;
+    std::future<std::shared_ptr<daxa::ComputePipeline>> pipeline_future;
+#endif
+
+    auto is_valid() -> bool {
+#if ENABLE_THREAD_POOL
+        if (pipeline_future.valid()) {
+            pipeline_future.wait();
+            pipeline = pipeline_future.get();
+        }
+#endif
+        return pipeline && pipeline->is_valid();
+    }
+    auto get() -> daxa::ComputePipeline & {
+        return *pipeline;
+    }
+};
+struct AsyncManagedRasterPipeline {
+    std::shared_ptr<daxa::RasterPipeline> pipeline;
+#if ENABLE_THREAD_POOL
+    std::shared_ptr<std::promise<std::shared_ptr<daxa::RasterPipeline>>> pipeline_promise;
+    std::future<std::shared_ptr<daxa::RasterPipeline>> pipeline_future;
+#endif
+
+    auto is_valid() -> bool {
+#if ENABLE_THREAD_POOL
+        if (pipeline_future.valid()) {
+            pipeline_future.wait();
+            pipeline = pipeline_future.get();
+        }
+#endif
+        return pipeline && pipeline->is_valid();
+    }
+    auto get() -> daxa::RasterPipeline & {
+        return *pipeline;
+    }
+};
+
 struct AsyncPipelineManager {
     std::array<daxa::PipelineManager, 8> pipeline_managers;
     struct Atomics {
@@ -208,13 +287,81 @@ struct AsyncPipelineManager {
     AsyncPipelineManager &operator=(AsyncPipelineManager const &) = delete;
     AsyncPipelineManager &operator=(AsyncPipelineManager &&) noexcept = default;
 
-    auto add_compute_pipeline(daxa::ComputePipelineCompileInfo const &info) -> daxa::Result<std::shared_ptr<daxa::ComputePipeline>> {
+    auto add_compute_pipeline(daxa::ComputePipelineCompileInfo const &info) -> AsyncManagedComputePipeline {
+#if ENABLE_THREAD_POOL
+        auto pipeline_promise = std::make_shared<std::promise<std::shared_ptr<daxa::ComputePipeline>>>();
+        auto result = AsyncManagedComputePipeline{};
+        result.pipeline_promise = pipeline_promise;
+        result.pipeline_future = pipeline_promise->get_future();
+        auto info_copy = info;
+
+        atomics->thread_pool.enqueue([this, pipeline_promise, info_copy]() {
+            auto [pipeline_manager, lock] = get_pipeline_manager();
+            auto compile_result = pipeline_manager.add_compute_pipeline(info_copy);
+            if (compile_result.is_err()) {
+                AppUi::Console::s_instance->add_log(compile_result.message());
+                return;
+            }
+            if (!compile_result.value()->is_valid()) {
+                AppUi::Console::s_instance->add_log(compile_result.message());
+                return;
+            }
+            pipeline_promise->set_value(compile_result.value());
+        });
+
+        return result;
+#else
         auto [pipeline_manager, lock] = get_pipeline_manager();
-        return pipeline_manager.add_compute_pipeline(info);
+        auto compile_result = pipeline_manager.add_compute_pipeline(info);
+        if (compile_result.is_err()) {
+            AppUi::Console::s_instance->add_log(compile_result.message());
+            return {};
+        }
+        auto result = AsyncManagedComputePipeline{};
+        result.pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            AppUi::Console::s_instance->add_log(compile_result.message());
+        }
+        return result;
+#endif
     }
-    auto add_raster_pipeline(daxa::RasterPipelineCompileInfo const &info) -> daxa::Result<std::shared_ptr<daxa::RasterPipeline>> {
+    auto add_raster_pipeline(daxa::RasterPipelineCompileInfo const &info) -> AsyncManagedRasterPipeline {
+#if ENABLE_THREAD_POOL
+        auto pipeline_promise = std::make_shared<std::promise<std::shared_ptr<daxa::RasterPipeline>>>();
+        auto result = AsyncManagedRasterPipeline{};
+        result.pipeline_promise = pipeline_promise;
+        result.pipeline_future = pipeline_promise->get_future();
+        auto info_copy = info;
+
+        atomics->thread_pool.enqueue([this, pipeline_promise, info_copy]() {
+            auto [pipeline_manager, lock] = get_pipeline_manager();
+            auto compile_result = pipeline_manager.add_raster_pipeline(info_copy);
+            if (compile_result.is_err()) {
+                AppUi::Console::s_instance->add_log(compile_result.message());
+                return;
+            }
+            if (!compile_result.value()->is_valid()) {
+                AppUi::Console::s_instance->add_log(compile_result.message());
+                return;
+            }
+            pipeline_promise->set_value(compile_result.value());
+        });
+
+        return result;
+#else
         auto [pipeline_manager, lock] = get_pipeline_manager();
-        return pipeline_manager.add_raster_pipeline(info);
+        auto compile_result = pipeline_manager.add_raster_pipeline(info);
+        if (compile_result.is_err()) {
+            AppUi::Console::s_instance->add_log(compile_result.message());
+            return {};
+        }
+        auto result = AsyncManagedRasterPipeline{};
+        result.pipeline = compile_result.value();
+        if (!compile_result.value()->is_valid()) {
+            AppUi::Console::s_instance->add_log(compile_result.message());
+        }
+        return result;
+#endif
     }
     void remove_compute_pipeline(std::shared_ptr<daxa::ComputePipeline> const &pipeline) {
         auto [pipeline_manager, lock] = get_pipeline_manager();
@@ -230,27 +377,24 @@ struct AsyncPipelineManager {
         }
     }
     auto reload_all() -> daxa::PipelineReloadResult {
-#if ENABLE_THREAD_POOL
-
-#endif
         std::array<daxa::PipelineReloadResult, 8> results;
         for (u32 i = 0; i < pipeline_managers.size(); ++i) {
-#if ENABLE_THREAD_POOL
-            atomics->thread_pool.enqueue([this, i, &results]() {
-                auto &pipeline_manager = this->pipeline_managers[i];
-                auto lock = std::lock_guard{this->atomics->mutexes[i]};
-                (results)[i] = pipeline_manager.reload_all();
-            });
-#else
+// #if ENABLE_THREAD_POOL
+//             atomics->thread_pool.enqueue([this, i, &results]() {
+//                 auto &pipeline_manager = this->pipeline_managers[i];
+//                 auto lock = std::lock_guard{this->atomics->mutexes[i]};
+//                 (results)[i] = pipeline_manager.reload_all();
+//             });
+// #else
             auto &pipeline_manager = pipeline_managers[i];
             auto lock = std::lock_guard{atomics->mutexes[i]};
             results[i] = pipeline_manager.reload_all();
-#endif
+// #endif
         }
-#if ENABLE_THREAD_POOL
-        while (atomics->thread_pool.busy()) {
-        }
-#endif
+// #if ENABLE_THREAD_POOL
+//         while (atomics->thread_pool.busy()) {
+//         }
+// #endif
         for (auto const &result : results) {
             if (std::holds_alternative<daxa::PipelineReloadError>(result)) {
                 return result;

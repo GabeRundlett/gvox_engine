@@ -602,7 +602,6 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         record_ctx.task_graph.add_task(VoxelParticleSimComputeTask{
             {
                 .uses = {
-                    .settings = task_settings_buffer,
                     .gpu_input = task_input_buffer,
                     .globals = task_globals_buffer,
                     VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
@@ -617,6 +616,17 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         voxel_world.update(record_ctx, task_gvox_model_buffer, task_value_noise_image);
 
+        auto raster_color_image = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R32G32B32A32_SFLOAT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "raster_color_image",
+        });
+        auto raster_depth_image = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::D32_SFLOAT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "raster_depth_image",
+        });
+
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
         record_ctx.task_graph.add_task(VoxelParticleRasterTask{
             {
@@ -625,20 +635,20 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                     .globals = task_globals_buffer,
                     .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
                     .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
-                    .render_image = task_render_raster_color_image,
-                    .depth_image_id = task_render_raster_depth_image,
+                    .render_image = raster_color_image,
+                    .depth_image_id = raster_depth_image,
                 },
             },
             &voxel_particle_raster_task_state,
         });
 #endif
 
-        auto sky_image = sky_renderer.render(record_ctx);
+        auto [sky_lut, transmittance_lut] = sky_renderer.render(record_ctx);
 
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_image, voxel_world.buffers);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shading_image = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
+        auto shadow_image_buffer = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
 
         auto irradiance = ssao_image;
         if (ENABLE_DIFFUSE_GI) {
@@ -656,10 +666,10 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 ssao_image);
         }
 
-        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_image, irradiance, shading_image);
+        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_image_buffer, raster_color_image);
         auto final_image = [&]() {
             if (ENABLE_TAA) {
-                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_image, reprojection_map);
+                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
             } else {
                 return composited_image;
             }

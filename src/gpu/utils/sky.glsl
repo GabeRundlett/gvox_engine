@@ -2,10 +2,30 @@
 
 #include <shared/core.inl>
 
-#define SKY_INTENSITY 10
 #define SUN_ANGULAR_DIAMETER 0.005
 #define SUN_DIR deref(gpu_input).sky_settings.sun_direction
-#define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIR) * 5.0)
+#define SUN_INTENSITY 1.0
+const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin blackbody
+#define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIR) * SUN_INTENSITY)
+
+daxa_f32vec3 get_sky_world_camera_position() {
+    // Because the atmosphere is using km as it's default units and we want one unit in world
+    // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
+    const f32vec3 camera_position = f32vec3(0.0, 0.0, 0.1);
+    daxa_f32vec3 world_camera_position = camera_position;
+    world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
+    return world_camera_position;
+}
+
+struct TransmittanceParams {
+    f32 height;
+    f32 zenith_cos_angle;
+};
+
+struct SkyviewParams {
+    f32 view_zenith_angle;
+    f32 light_view_angle;
+};
 
 /* Return sqrt clamped to 0 */
 f32 safe_sqrt(f32 x) { return sqrt(max(0, x)); }
@@ -46,10 +66,172 @@ f32 ray_sphere_intersect_nearest(f32vec3 r0, f32vec3 rd, f32vec3 s0, f32 sR) {
     return max(0.0, min(sol0, sol1));
 }
 
-struct SkyviewParams {
+
+const f32 PLANET_RADIUS_OFFSET = 0.01;
+
+///	Transmittance LUT uses not uniform mapping -> transfer from mapping to texture uv
+///	@param parameters
+/// @param atmosphere_bottom - bottom radius of the atmosphere in km
+/// @param atmosphere_top - top radius of the atmosphere in km
+///	@return - uv of the corresponding texel
+f32vec2 transmittance_lut_to_uv(TransmittanceParams parameters, f32 atmosphere_bottom, f32 atmosphere_top) {
+    f32 H = safe_sqrt(atmosphere_top * atmosphere_top - atmosphere_bottom * atmosphere_bottom);
+    f32 rho = safe_sqrt(parameters.height * parameters.height - atmosphere_bottom * atmosphere_bottom);
+
+    f32 discriminant = parameters.height * parameters.height *
+                           (parameters.zenith_cos_angle * parameters.zenith_cos_angle - 1.0) +
+                       atmosphere_top * atmosphere_top;
+    /* Distance to top atmosphere boundary */
+    f32 d = max(0.0, (-parameters.height * parameters.zenith_cos_angle + safe_sqrt(discriminant)));
+
+    f32 d_min = atmosphere_top - parameters.height;
+    f32 d_max = rho + H;
+    f32 mu = (d - d_min) / (d_max - d_min);
+    f32 r = rho / H;
+
+    return f32vec2(mu, r);
+}
+
+/// Transmittance LUT uses not uniform mapping -> transfer from uv to this mapping
+/// @param uv - uv in the range [0,1]
+/// @param atmosphere_bottom - bottom radius of the atmosphere in km
+/// @param atmosphere_top - top radius of the atmosphere in km
+/// @return - TransmittanceParams structure
+TransmittanceParams uv_to_transmittance_lut_params(f32vec2 uv, f32 atmosphere_bottom, f32 atmosphere_top) {
+    TransmittanceParams params;
+    f32 H = safe_sqrt(atmosphere_top * atmosphere_top - atmosphere_bottom * atmosphere_bottom.x);
+
+    f32 rho = H * uv.y;
+    params.height = safe_sqrt(rho * rho + atmosphere_bottom * atmosphere_bottom);
+
+    f32 d_min = atmosphere_top - params.height;
+    f32 d_max = rho + H;
+    f32 d = d_min + uv.x * (d_max - d_min);
+
+    params.zenith_cos_angle = d == 0.0 ? 1.0 : (H * H - rho * rho - d * d) / (2.0 * params.height * d);
+    params.zenith_cos_angle = clamp(params.zenith_cos_angle, -1.0, 1.0);
+
+    return params;
+}
+
+/// Get parameters used for skyview LUT computation from uv coords
+/// @param uv - texel uv in the range [0,1]
+/// @param atmosphere_bottom - bottom of the atmosphere in km
+/// @param atmosphere_top - top of the atmosphere in km
+/// @param skyview dimensions
+/// @param view_height - view_height in world coordinates -> distance from planet center
+/// @return - SkyviewParams structure
+SkyviewParams uv_to_skyview_lut_params(f32vec2 uv, f32 atmosphere_bottom,
+                                       f32 atmosphere_top, f32vec2 skyview_dimensions, f32 view_height) {
+    /* Constrain uvs to valid sub texel range
+    (avoid zenith derivative issue making LUT usage visible) */
+    uv = f32vec2(from_subuv_to_unit(uv.x, skyview_dimensions.x),
+                 from_subuv_to_unit(uv.y, skyview_dimensions.y));
+
+    f32 beta = asin(atmosphere_bottom / view_height);
+    f32 zenith_horizon_angle = PI - beta;
+
     f32 view_zenith_angle;
     f32 light_view_angle;
+    /* Nonuniform mapping near the horizon to avoid artefacts */
+    if (uv.y < 0.5) {
+        f32 coord = 1.0 - (1.0 - 2.0 * uv.y) * (1.0 - 2.0 * uv.y);
+        view_zenith_angle = zenith_horizon_angle * coord;
+    } else {
+        f32 coord = (uv.y * 2.0 - 1.0) * (uv.y * 2.0 - 1.0);
+        view_zenith_angle = zenith_horizon_angle + beta * coord;
+    }
+    light_view_angle = (uv.x * uv.x) * PI;
+    return SkyviewParams(view_zenith_angle, light_view_angle);
+}
+
+/// Moves to the nearest intersection with top of the atmosphere in the direction specified in
+/// world_direction
+/// @param world_position - current world position -> will be changed to new pos at the top of
+/// 		the atmosphere if there exists such intersection
+/// @param world_direction - the direction in which the shift will be done
+/// @param atmosphere_bottom - bottom of the atmosphere in km
+/// @param atmosphere_top - top of the atmosphere in km
+b32 move_to_top_atmosphere(inout f32vec3 world_position, f32vec3 world_direction,
+                           f32 atmosphere_bottom, f32 atmosphere_top) {
+    f32vec3 planet_origin = f32vec3(0.0, 0.0, 0.0);
+    /* Check if the world_position is outside of the atmosphere */
+    if (length(world_position) > atmosphere_top) {
+        f32 dist_to_top_atmo_intersection = ray_sphere_intersect_nearest(
+            world_position, world_direction, planet_origin, atmosphere_top);
+
+        /* No intersection with the atmosphere */
+        if (dist_to_top_atmo_intersection == -1.0) {
+            return false;
+        } else {
+            f32vec3 up_offset = normalize(world_position) * -PLANET_RADIUS_OFFSET;
+            world_position += world_direction * dist_to_top_atmo_intersection + up_offset;
+        }
+    }
+    /* Position is in or at the top of the atmosphere */
+    return true;
+}
+
+/// @param params - buffer reference to the atmosphere parameters buffer
+/// @param position - position in the world where the sample is to be taken
+/// @return atmosphere extinction at the desired point
+f32vec3 sample_medium_extinction(daxa_BufferPtr(GpuInput) gpu_input, f32vec3 position) {
+    const f32 height = length(position) - deref(gpu_input).sky_settings.atmosphere_bottom;
+
+    const f32 density_mie = exp(deref(gpu_input).sky_settings.mie_density[1].exp_scale * height);
+    const f32 density_ray = exp(deref(gpu_input).sky_settings.rayleigh_density[1].exp_scale * height);
+    // const f32 density_ozo = clamp(height < deref(gpu_input).sky_settings.absorption_density[0].layer_width ?
+    //     deref(gpu_input).sky_settings.absorption_density[0].lin_term * height + deref(gpu_input).sky_settings.absorption_density[0].const_term :
+    //     deref(gpu_input).sky_settings.absorption_density[1].lin_term * height + deref(gpu_input).sky_settings.absorption_density[1].const_term,
+    //     0.0, 1.0);
+    const f32 density_ozo = exp(-max(0.0, 35.0 - height) * (1.0 / 5.0)) * exp(-max(0.0, height - 35.0) * (1.0 / 15.0)) * 2;
+    f32vec3 mie_extinction = deref(gpu_input).sky_settings.mie_extinction * density_mie;
+    f32vec3 ray_extinction = deref(gpu_input).sky_settings.rayleigh_scattering * density_ray;
+    f32vec3 ozo_extinction = deref(gpu_input).sky_settings.absorption_extinction * density_ozo;
+
+    return mie_extinction + ray_extinction + ozo_extinction;
+}
+
+/// @param params - buffer reference to the atmosphere parameters buffer
+/// @param position - position in the world where the sample is to be taken
+/// @return atmosphere scattering at the desired point
+f32vec3 sample_medium_scattering(daxa_BufferPtr(GpuInput) gpu_input, f32vec3 position) {
+    const f32 height = length(position) - deref(gpu_input).sky_settings.atmosphere_bottom;
+
+    const f32 density_mie = exp(deref(gpu_input).sky_settings.mie_density[1].exp_scale * height);
+    const f32 density_ray = exp(deref(gpu_input).sky_settings.rayleigh_density[1].exp_scale * height);
+
+    f32vec3 mie_scattering = deref(gpu_input).sky_settings.mie_scattering * density_mie;
+    f32vec3 ray_scattering = deref(gpu_input).sky_settings.rayleigh_scattering * density_ray;
+    /* Not considering ozon scattering in current version of this model */
+    f32vec3 ozo_scattering = f32vec3(0.0, 0.0, 0.0);
+
+    return mie_scattering + ray_scattering + ozo_scattering;
+}
+
+struct ScatteringSample {
+    f32vec3 mie;
+    f32vec3 ray;
 };
+/// @param params - buffer reference to the atmosphere parameters buffer
+/// @param position - position in the world where the sample is to be taken
+/// @return Scattering sample struct
+// TODO(msakmary) Fix this!!
+ScatteringSample sample_medium_scattering_detailed(daxa_BufferPtr(GpuInput) gpu_input, f32vec3 position) {
+    const f32 height = length(position) - deref(gpu_input).sky_settings.atmosphere_bottom;
+
+    const f32 density_mie = exp(deref(gpu_input).sky_settings.mie_density[1].exp_scale * height);
+    const f32 density_ray = exp(deref(gpu_input).sky_settings.rayleigh_density[1].exp_scale * height);
+    const f32 density_ozo = clamp(height < deref(gpu_input).sky_settings.absorption_density[0].layer_width ? deref(gpu_input).sky_settings.absorption_density[0].lin_term * height + deref(gpu_input).sky_settings.absorption_density[0].const_term : deref(gpu_input).sky_settings.absorption_density[1].lin_term * height + deref(gpu_input).sky_settings.absorption_density[1].const_term,
+                                  0.0, 1.0);
+
+    f32vec3 mie_scattering = deref(gpu_input).sky_settings.mie_scattering * density_mie;
+    f32vec3 ray_scattering = deref(gpu_input).sky_settings.rayleigh_scattering * density_ray;
+    /* Not considering ozon scattering in current version of this model */
+    f32vec3 ozo_scattering = f32vec3(0.0, 0.0, 0.0);
+
+    return ScatteringSample(mie_scattering, ray_scattering);
+}
 
 /// Get skyview LUT uv from skyview parameters
 /// @param intersects_ground - true if ray intersects ground false otherwise
@@ -80,48 +262,102 @@ f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams params,
     return uv;
 }
 
-f32vec3 get_far_sky_color(daxa_ImageViewId a_sky_lut, f32vec3 world_direction) {
-    // Because the atmosphere is using km as it's default units and we want one unit in world
-    // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
-    const f32vec3 camera_position = f32vec3(0.0, 0.0, 0.1 + deref(gpu_input).sky_settings.atmosphere_bottom);
+daxa_f32vec3 get_sun_illuminance(
+    daxa_ImageViewId _transmittance,
+    daxa_f32vec3 view_direction,
+    daxa_f32 height,
+    daxa_f32 zenith_cos_angle) {
+    const daxa_f32 sun_solid_angle = 0.5 * PI / 180.0;
+    const daxa_f32 min_sun_cos_theta = cos(sun_solid_angle);
 
-    const f32vec3 world_up = normalize(camera_position);
+    const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+    daxa_f32 cos_theta = dot(view_direction, sun_direction);
 
-    const f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
-    const f32 view_zenith_angle = acos(dot(world_direction, world_up));
-    const f32 light_view_angle = acos(dot(
-        normalize(f32vec3(sun_direction.xy, 0.0)),
-        normalize(f32vec3(world_direction.xy, 0.0))));
+    if (cos_theta >= min_sun_cos_theta) {
+        TransmittanceParams transmittance_lut_params = TransmittanceParams(height, zenith_cos_angle);
+        daxa_f32vec2 transmittance_texture_uv = transmittance_lut_to_uv(
+            transmittance_lut_params,
+            deref(gpu_input).sky_settings.atmosphere_bottom,
+            deref(gpu_input).sky_settings.atmosphere_top);
+        daxa_f32vec3 transmittance_to_sun = texture(
+                                                daxa_sampler2D(_transmittance, deref(gpu_input).sampler_llc),
+                                                transmittance_texture_uv)
+                                                .rgb;
+        return transmittance_to_sun * sun_color.rgb * SUN_INTENSITY;
+    } else {
+        return daxa_f32vec3(0.0);
+    }
+}
 
-    const f32 atmosphere_intersection_distance = ray_sphere_intersect_nearest(
-        camera_position,
-        world_direction,
-        f32vec3(0.0, 0.0, 0.0),
+daxa_f32vec3 get_atmosphere_illuminance_along_ray(
+    daxa_ImageViewId _skyview,
+    daxa_f32vec3 ray,
+    daxa_f32vec3 world_camera_position,
+    daxa_f32vec3 sun_direction,
+    out bool intersects_ground) {
+    const daxa_f32vec3 world_up = normalize(world_camera_position);
+
+    const daxa_f32 view_zenith_angle = acos(dot(ray, world_up));
+    const daxa_f32 light_view_angle = acos(dot(
+        normalize(daxa_f32vec3(sun_direction.xy, 0.0)),
+        normalize(daxa_f32vec3(ray.xy, 0.0))));
+
+    const daxa_f32 atmosphere_intersection_distance = ray_sphere_intersect_nearest(
+        world_camera_position,
+        ray,
+        daxa_f32vec3(0.0, 0.0, 0.0),
         deref(gpu_input).sky_settings.atmosphere_bottom);
 
-    const bool intersects_ground = atmosphere_intersection_distance >= 0.0;
-    const f32 camera_height = length(camera_position);
+    intersects_ground = atmosphere_intersection_distance >= 0.0;
+    const daxa_f32 camera_height = length(world_camera_position);
 
-    f32vec2 skyview_uv = skyview_lut_params_to_uv(
+    daxa_f32vec2 skyview_uv = skyview_lut_params_to_uv(
         intersects_ground,
         SkyviewParams(view_zenith_angle, light_view_angle),
         deref(gpu_input).sky_settings.atmosphere_bottom,
         deref(gpu_input).sky_settings.atmosphere_top,
-        f32vec2(SKY_SKY_RES),
+        daxa_f32vec2(SKY_SKY_RES.xy),
         camera_height);
 
-    f32vec3 sky_color = texture(daxa_sampler2D(a_sky_lut, deref(gpu_input).sampler_llc), skyview_uv).rgb;
-    // if(!intersects_ground) { sky_color += add_sun_circle(world_direction, sun_direction); };
+    const daxa_f32vec3 unitless_atmosphere_illuminance = texture(daxa_sampler2D(_skyview, deref(gpu_input).sampler_llc), skyview_uv).rgb;
+    const daxa_f32vec3 sun_color_weighed_atmosphere_illuminance = sun_color.rgb * unitless_atmosphere_illuminance;
+    const daxa_f32vec3 atmosphere_scattering_illuminance = sun_color_weighed_atmosphere_illuminance * SUN_INTENSITY;
 
-    return sky_color * SKY_INTENSITY;
+    return atmosphere_scattering_illuminance;
 }
 
-f32vec3 get_far_sky_color_sun(daxa_ImageViewId a_sky_lut, f32vec3 nrm) {
-    f32vec3 light = get_far_sky_color(a_sky_lut, nrm);
-    f32 sun_val = dot(nrm, SUN_DIR) * 0.5 + 0.5;
-    float x = cos(SUN_ANGULAR_DIAMETER);
-    sun_val = (sun_val - x) / (1.0 - x);
-    sun_val = clamp(sun_val * 15.0, 0, 15);
-    light += sun_val * SUN_COL(a_sky_lut) * smoothstep(-0.0057, 0, dot(nrm, vec3(0, 0, 1)));
-    return light;
+struct AtmosphereLightingInfo {
+    // illuminance from atmosphere along normal vector
+    daxa_f32vec3 atmosphere_normal_illuminance;
+    // illuminance from atmosphere along view vector
+    daxa_f32vec3 atmosphere_direct_illuminance;
+    // direct sun illuminance
+    daxa_f32vec3 sun_direct_illuminance;
+};
+
+AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewId _skyview, daxa_ImageViewId _transmittance, daxa_f32vec3 view_direction, daxa_f32vec3 normal) {
+    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position();
+    const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+
+    bool normal_ray_intersects_ground;
+    bool view_ray_intersects_ground;
+    const daxa_f32vec3 atmosphere_normal_illuminance = get_atmosphere_illuminance_along_ray(
+        _skyview,
+        normal,
+        world_camera_position,
+        sun_direction,
+        normal_ray_intersects_ground);
+    const daxa_f32vec3 atmosphere_view_illuminance = get_atmosphere_illuminance_along_ray(
+        _skyview,
+        view_direction,
+        world_camera_position,
+        sun_direction,
+        view_ray_intersects_ground);
+
+    const daxa_f32vec3 direct_sun_illuminance = view_ray_intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(_transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)));
+
+    return AtmosphereLightingInfo(
+        atmosphere_normal_illuminance,
+        atmosphere_view_illuminance,
+        direct_sun_illuminance);
 }

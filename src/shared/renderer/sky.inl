@@ -26,33 +26,24 @@ DAXA_DECL_TASK_USES_END()
 
 #if defined(__cplusplus)
 
-inline void sky_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, std::shared_ptr<daxa::ComputePipeline> &pipeline) {
-    auto compile_result = pipeline_manager.add_compute_pipeline({
+inline void sky_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, AsyncManagedComputePipeline &pipeline) {
+    pipeline = pipeline_manager.add_compute_pipeline({
         .shader_info = {
             .source = daxa::ShaderFile{"sky.comp.glsl"},
             .compile_options = {.defines = {{name, "1"}}},
         },
         .name = std::string("sky_") + name,
     });
-    if (compile_result.is_err()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-        return;
-    }
-    pipeline = compile_result.value();
-    if (!compile_result.value()->is_valid()) {
-        AppUi::Console::s_instance->add_log(compile_result.message());
-    }
 }
 
 #define SKY_DECL_TASK_STATE(Name, NAME, WG_SIZE_X, WG_SIZE_Y)                                                                                          \
     struct Name##ComputeTaskState {                                                                                                                    \
-        std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                               \
+        AsyncManagedComputePipeline pipeline;                                                                                               \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { sky_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                  \
         void record_commands(daxa::CommandList &cmd_list) {                                                                                            \
-            if (!pipeline_is_valid())                                                                                                                  \
+            if (!pipeline.is_valid())                                                                                                                  \
                 return;                                                                                                                                \
-            cmd_list.set_pipeline(*pipeline);                                                                                                          \
+            cmd_list.set_pipeline(pipeline.get());                                                                                                          \
             cmd_list.dispatch((NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y);                                 \
         }                                                                                                                                              \
     };                                                                                                                                                 \
@@ -70,7 +61,6 @@ SKY_DECL_TASK_STATE(SkyMultiscattering, SKY_MULTISCATTERING, 1, 1);
 SKY_DECL_TASK_STATE(SkySky, SKY_SKY, 8, 4);
 
 struct SkyRenderer {
-
     SkyTransmittanceComputeTaskState sky_transmittance_task_state;
     SkyMultiscatteringComputeTaskState sky_multiscattering_task_state;
     SkySkyComputeTaskState sky_sky_task_state;
@@ -81,7 +71,7 @@ struct SkyRenderer {
           sky_sky_task_state{pipeline_manager} {
     }
 
-    auto render(RecordContext &record_ctx) -> daxa::TaskImageView {
+    auto render(RecordContext &record_ctx) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
         auto transmittance_lut = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
@@ -131,7 +121,7 @@ struct SkyRenderer {
             &sky_sky_task_state,
         });
 
-        return sky_lut;
+        return {sky_lut, transmittance_lut};
     }
 };
 

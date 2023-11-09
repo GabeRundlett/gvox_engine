@@ -16,7 +16,7 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct VoxelParticleSimComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     VoxelParticleSimComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
@@ -26,22 +26,13 @@ struct VoxelParticleSimComputeTaskState {
             },
             .name = "voxel_particle_sim",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         cmd_list.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),

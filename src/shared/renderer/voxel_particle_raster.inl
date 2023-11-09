@@ -16,10 +16,10 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct VoxelParticleRasterTaskState {
-    std::shared_ptr<daxa::RasterPipeline> pipeline;
+    AsyncManagedRasterPipeline pipeline;
 
     VoxelParticleRasterTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_raster_pipeline({
+        pipeline = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
             .color_attachments = {{
@@ -36,19 +36,10 @@ struct VoxelParticleRasterTaskState {
             },
             .name = "voxel_particle_sim",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, u32vec2 size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
         cmd_list.begin_renderpass({
@@ -56,7 +47,7 @@ struct VoxelParticleRasterTaskState {
             .depth_attachment = {{.image_view = depth_image_id.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         cmd_list.draw_indirect({
             .draw_command_buffer = globals_buffer_id,
             .draw_command_buffer_read_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),

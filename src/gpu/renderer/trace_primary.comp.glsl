@@ -88,8 +88,8 @@ void main() {
     f32vec3 vs_velocity = f32vec3(0);
 
     if (trace_result.dist == MAX_DIST) {
-        f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
-        output_value.w = f32vec3_to_uint_urgb9e5(sky_col);
+        // f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
+        // output_value.w = f32vec3_to_uint_urgb9e5(sky_col);
         output_value.y |= nrm_to_u16(f32vec3(0));
         depth = 0.0;
     } else {
@@ -106,6 +106,7 @@ void main() {
         vs_nrm = (deref(globals).player.cam.world_to_view * f32vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
     }
+    output_value.z = floatBitsToUint(depth);
 
     imageStore(daxa_uimage2D(g_buffer_image_id), i32vec2(gl_GlobalInvocationID.xy), output_value);
     imageStore(daxa_image2D(vs_normal_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(vs_nrm * 0.5 + 0.5, 0));

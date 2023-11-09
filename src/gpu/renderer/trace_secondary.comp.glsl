@@ -23,24 +23,25 @@ void main() {
     ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
     f32vec3 cam_dir = ray_dir_ws(vrc);
     f32vec3 cam_pos = ray_origin_ws(vrc);
-    f32vec3 ray_pos = ray_hit_ws(vrc);
+    f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 0.001;
 
     f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, INPUT.frame_index) & ivec3(127, 127, 63), 0).xy - 0.5;
-
-    if (depth == 0.0 || dot(nrm, nrm) == 0.0) {
-        imageStore(daxa_image2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(0, 0, 0, 0));
-        return;
-    }
 
     mat3 tbn = tbn_from_normal(SUN_DIR);
     f32vec3 ray_dir = tbn * normalize(vec3((rand_circle_pt(abs(blue_noise)) - 0.5) * tan(SUN_ANGULAR_DIAMETER), 1));
     // f32vec3 ray_dir = SUN_DIR;
 
+    if (depth == 0.0 || dot(ray_dir, nrm) <= 0.0) {
+        return;
+    }
+
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    f32vec3 col = f32vec3(f32(trace_result.dist == MAX_DIST));
-
-    imageStore(daxa_image2D(indirect_diffuse_image_id), i32vec2(gl_GlobalInvocationID.xy), f32vec4(col, 0));
+    uint out_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * uint(output_tex_size.x / SHADING_SCL);
+    uint hit = uint(trace_result.dist == MAX_DIST) << (out_index & 31);
+    if (hit != 0) {
+        atomicOr(deref(shadow_image_buffer[out_index / 32]), hit);
+    }
 }
 #undef INPUT
 

@@ -22,14 +22,14 @@ struct GbufferDepth {
     }
 
     void next_frame() {
-        depth.task_resources.output_image.swap_images(depth.task_resources.history_image);
+        depth.task_resources.output_resource.swap_images(depth.task_resources.history_resource);
         downscaled_depth = std::nullopt;
         downscaled_view_normal = std::nullopt;
     }
 
     auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
         if (!downscaled_depth) {
-            downscaled_depth = extract_downscaled_depth(ctx, downscale_depth_task_state, depth.task_resources.output_image);
+            downscaled_depth = extract_downscaled_depth(ctx, downscale_depth_task_state, depth.task_resources.output_resource);
         }
         return *downscaled_depth;
     }

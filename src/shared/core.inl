@@ -15,29 +15,20 @@
 
 #define DECL_TASK_STATE(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z)                                                                                         \
     struct Name##ComputeTaskState {                                                                                                                                            \
-        std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                                       \
-        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                      \
-            auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
+        AsyncManagedComputePipeline pipeline;                                                                                                                                  \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                       \
+            pipeline = pipeline_manager.add_compute_pipeline({                                                                                                                 \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \
                     .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}, .enable_debug_info = true},                                                                      \
                 },                                                                                                                                                             \
                 .name = #NAME "_COMPUTE",                                                                                                                                      \
             });                                                                                                                                                                \
-            if (compile_result.is_err()) {                                                                                                                                     \
-                AppUi::Console::s_instance->add_log(compile_result.message());                                                                                                 \
-                return;                                                                                                                                                        \
-            }                                                                                                                                                                  \
-            pipeline = compile_result.value();                                                                                                                                 \
-            if (!compile_result.value()->is_valid()) {                                                                                                                         \
-                AppUi::Console::s_instance->add_log(compile_result.message());                                                                                                 \
-            }                                                                                                                                                                  \
         }                                                                                                                                                                      \
-        auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                                          \
         void record_commands(daxa::CommandList &cmd_list, u32vec3 thread_count) {                                                                                              \
-            if (!pipeline_is_valid())                                                                                                                                          \
+            if (!pipeline.is_valid())                                                                                                                                          \
                 return;                                                                                                                                                        \
-            cmd_list.set_pipeline(*pipeline);                                                                                                                                  \
+            cmd_list.set_pipeline(pipeline.get());                                                                                                                                  \
             cmd_list.dispatch((thread_count.x + (wg_size_x - 1)) / wg_size_x, (thread_count.y + (wg_size_y - 1)) / wg_size_y, (thread_count.z + (wg_size_z - 1)) / wg_size_z); \
         }                                                                                                                                                                      \
     };                                                                                                                                                                         \
@@ -53,8 +44,8 @@
 
 #define DECL_TASK_STATE_WITH_PUSH(shader_file_path, Name, NAME, wg_size_x, wg_size_y, wg_size_z, PushType)                                                                     \
     struct Name##ComputeTaskState {                                                                                                                                            \
-        std::shared_ptr<daxa::ComputePipeline> pipeline;                                                                                                                       \
-        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                      \
+        AsyncManagedComputePipeline pipeline;                                                                                                                       \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                                                       \
             auto compile_result = pipeline_manager.add_compute_pipeline({                                                                                                      \
                 .shader_info = {                                                                                                                                               \
                     .source = daxa::ShaderFile{shader_file_path},                                                                                                              \
@@ -72,11 +63,10 @@
                 AppUi::Console::s_instance->add_log(compile_result.message());                                                                                                 \
             }                                                                                                                                                                  \
         }                                                                                                                                                                      \
-        auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }                                                                                          \
         void record_commands(daxa::CommandList &cmd_list, u32vec3 thread_count, PushType const &push) {                                                                        \
-            if (!pipeline_is_valid())                                                                                                                                          \
+            if (!pipeline.is_valid())                                                                                                                                          \
                 return;                                                                                                                                                        \
-            cmd_list.set_pipeline(*pipeline);                                                                                                                                  \
+            cmd_list.set_pipeline(pipeline.get());                                                                                                                                  \
             cmd_list.push_constant(push);                                                                                                                                      \
             cmd_list.dispatch((thread_count.x + (wg_size_x - 1)) / wg_size_x, (thread_count.y + (wg_size_y - 1)) / wg_size_y, (thread_count.z + (wg_size_z - 1)) / wg_size_z); \
         }                                                                                                                                                                      \

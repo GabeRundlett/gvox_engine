@@ -53,64 +53,46 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct PerChunkComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     PerChunkComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"PER_CHUNK_COMPUTE", "1"}}},
             },
             .name = "per_chunk",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
         cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS);
     }
 };
 
 struct ChunkEditComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     ChunkEditComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_EDIT_COMPUTE", "1"}}},
             },
             .name = "voxel_world",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         cmd_list.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
@@ -120,11 +102,11 @@ struct ChunkEditComputeTaskState {
 
 template <int PASS_INDEX>
 struct ChunkOptComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     ChunkOptComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         char const define_str[2] = {'0' + PASS_INDEX, '\0'};
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {
@@ -136,16 +118,7 @@ struct ChunkOptComputeTaskState {
             },
             .name = "chunk_op",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     auto get_pass_indirect_offset() {
         if constexpr (PASS_INDEX == 0) {
@@ -156,10 +129,10 @@ struct ChunkOptComputeTaskState {
     }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         cmd_list.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = get_pass_indirect_offset(),
@@ -168,32 +141,23 @@ struct ChunkOptComputeTaskState {
 };
 
 struct ChunkAllocComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     ChunkAllocComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
                 .compile_options = {.defines = {{"CHUNK_ALLOC_COMPUTE", "1"}}},
             },
             .name = "chunk_alloc",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         cmd_list.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here

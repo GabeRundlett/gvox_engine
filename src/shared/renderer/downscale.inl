@@ -14,36 +14,27 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct DownscaleComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     void compile_pipeline() {
     }
 
     DownscaleComputeTaskState(AsyncPipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
         extra_defines.push_back({"DOWNSCALE_COMPUTE", "1"});
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"downscale.comp.glsl"},
                 .compile_options = {.defines = extra_defines, .enable_debug_info = true},
             },
             .name = "downscale",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }

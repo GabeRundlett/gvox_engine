@@ -190,7 +190,7 @@ void brushgen_world_terrain(in out f32vec3 col, in out u32 id) {
         if (SHOULD_COLOR_WORLD) {
             f32 r = good_rand(-val);
             if (val > -0.002 && upwards > 0.65) {
-                col = f32vec3(0.05, 0.26, 0.03);
+                col = f32vec3(0.01, 0.20, 0.007);
                 if (r < 0.5) {
                     col *= 0.7;
                 }

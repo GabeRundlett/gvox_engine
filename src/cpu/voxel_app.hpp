@@ -2,6 +2,7 @@
 
 #include "app_window.hpp"
 #include "app_ui.hpp"
+#include "app_audio.hpp"
 
 #include <shared/app.inl>
 
@@ -15,6 +16,8 @@ struct GvoxModelData {
 
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
+    Clock::time_point start = Clock::now();
+    Clock::time_point prev_time;
 
     daxa::Instance daxa_instance;
     daxa::Device device;
@@ -26,14 +29,13 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AsyncPipelineManager main_pipeline_manager;
 
     AppUi ui;
+    AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
     GpuApp gpu_app;
 
     std::array<f32vec2, 128> halton_offsets{};
     GpuInput &gpu_input{gpu_app.gpu_input};
     GpuOutput &gpu_output{gpu_app.gpu_output};
-    Clock::time_point start;
-    Clock::time_point prev_time;
     f32 render_res_scl{1.0f};
     GvoxContext *gvox_ctx;
 

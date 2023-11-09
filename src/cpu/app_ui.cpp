@@ -142,11 +142,15 @@ AppUi::DebugDisplay::~DebugDisplay() {
 }
 
 void AppUi::Console::clear_log() {
+    auto lock = std::lock_guard{*items_mtx};
     items.clear();
 }
 
 void AppUi::Console::add_log(std::string const &str) {
-    items.push_back(str);
+    {
+        auto lock = std::lock_guard{*items_mtx};
+        items.push_back(str);
+    }
     std::cout << str << std::endl;
 }
 
@@ -190,25 +194,28 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
     if (copy_to_clipboard) {
         ImGui::LogToClipboard();
     }
-    for (auto const &item : items) {
-        if (!filter.PassFilter(item.c_str())) {
-            continue;
-        }
-        ImVec4 color;
-        bool has_color = false;
-        if (strstr(item.c_str(), "[error]") != nullptr) {
-            color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-            has_color = true;
-        } else if (strncmp(item.c_str(), "# ", 2) == 0) {
-            color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f);
-            has_color = true;
-        }
-        if (has_color) {
-            ImGui::PushStyleColor(ImGuiCol_Text, color);
-        }
-        ImGui::TextUnformatted(item.c_str());
-        if (has_color) {
-            ImGui::PopStyleColor();
+    {
+        auto lock = std::lock_guard{*items_mtx};
+        for (auto const &item : items) {
+            if (!filter.PassFilter(item.c_str())) {
+                continue;
+            }
+            ImVec4 color;
+            bool has_color = false;
+            if (strstr(item.c_str(), "[error]") != nullptr) {
+                color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+                has_color = true;
+            } else if (strncmp(item.c_str(), "# ", 2) == 0) {
+                color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f);
+                has_color = true;
+            }
+            if (has_color) {
+                ImGui::PushStyleColor(ImGuiCol_Text, color);
+            }
+            ImGui::TextUnformatted(item.c_str());
+            if (has_color) {
+                ImGui::PopStyleColor();
+            }
         }
     }
     if (copy_to_clipboard) {
@@ -451,6 +458,20 @@ void AppUi::rescale_ui() {
     style.FramePadding = {settings.ui_scl * 4.0f, settings.ui_scl * 3.0f};
 }
 
+namespace {
+    void sky_settings(SkySettings &sky, bool &needs_saving) {
+        if (ImGui::InputFloat3("mie scattering", &sky.mie_scattering.x, "%.6f")) {
+            needs_saving = true;
+        }
+        if (ImGui::InputFloat3("rayleigh scattering", &sky.rayleigh_scattering.x, "%.6f")) {
+            needs_saving = true;
+        }
+        if (ImGui::InputFloat3("absorption extinction", &sky.absorption_extinction.x, "%.6f")) {
+            needs_saving = true;
+        }
+    }
+} // namespace
+
 void AppUi::settings_ui() {
     ImGui::Begin("Settings");
     if (ImGui::BeginTabBar("##settings_tabs")) {
@@ -498,7 +519,7 @@ void AppUi::settings_ui() {
                 settings.render_res_scl = resolution_scale_values[resolution_scale_id];
                 needs_saving = true;
             }
-            
+
             if (ImGui::SliderFloat("Sun Angle X", &settings.sun_angle.x, 0.0f, 360.0f)) {
                 needs_saving = true;
             }
@@ -506,7 +527,10 @@ void AppUi::settings_ui() {
                 needs_saving = true;
             }
             settings.recompute_sun_direction();
-            
+            if (ImGui::TreeNode("Sky")) {
+                sky_settings(settings.sky, needs_saving);
+                ImGui::TreePop();
+            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("UI")) {
@@ -725,8 +749,8 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
 }
 
 void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
-    full_frametimes[frametime_rotation_index] = delta_time;
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
+    full_frametimes[frametime_rotation_index] = delta_time;
     frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
 
     ImGui_ImplGlfw_NewFrame();
@@ -772,7 +796,7 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
         pos.x += viewport->WorkSize.x - debug_menu_size;
         ImGui::SetNextWindowPos(pos);
         ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
-        auto frametime_graph = [&](auto &frametimes) {
+        auto frametime_graph = [](auto &frametimes, uint64_t frametime_rotation_index) {
             float average = 0.0f;
             for (auto frametime : frametimes) {
                 average += frametime;
@@ -789,11 +813,11 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
             ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
         };
         if (ImGui::TreeNode("Full frame-time")) {
-            frametime_graph(full_frametimes);
+            frametime_graph(full_frametimes, frametime_rotation_index);
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("CPU-only frame-time")) {
-            frametime_graph(cpu_frametimes);
+            frametime_graph(cpu_frametimes, frametime_rotation_index);
             ImGui::TreePop();
         }
         ImGui::Text("GPU: %s", debug_gpu_name);

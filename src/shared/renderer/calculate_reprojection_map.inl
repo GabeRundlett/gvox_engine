@@ -17,32 +17,23 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct CalculateReprojectionMapComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     CalculateReprojectionMapComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"calculate_reprojection_map.comp.glsl"},
                 .compile_options = {.defines = {{"CALCULATE_REPROJECTION_MAP_COMPUTE", "1"}}, .enable_debug_info = true},
             },
             .name = "calculate_reprojection_map",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }
@@ -78,8 +69,8 @@ struct ReprojectionRenderer {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
                     .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
-                    .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_image,
+                    .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
+                    .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_resource,
                     .velocity_image_id = velocity_image,
                     .dst_image_id = reprojection_map,
                 },

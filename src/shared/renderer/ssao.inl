@@ -45,128 +45,92 @@ DAXA_DECL_TASK_USES_END()
 #if defined(__cplusplus)
 
 struct SsaoComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     SsaoComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_COMPUTE", "1"}}},
             },
             .name = "ssao",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }
 };
 
 struct SsaoSpatialFilterComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     SsaoSpatialFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_SPATIAL_FILTER_COMPUTE", "1"}}},
             },
             .name = "spatial_filter",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }
 };
 
 struct SsaoUpscaleComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     SsaoUpscaleComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_UPSAMPLE_COMPUTE", "1"}}},
             },
             .name = "ssao_upscale",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        }
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }
 };
 
 struct SsaoTemporalFilterComputeTaskState {
-    std::shared_ptr<daxa::ComputePipeline> pipeline;
+    AsyncManagedComputePipeline pipeline;
 
     SsaoTemporalFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_TEMPORAL_FILTER_COMPUTE", "1"}}},
             },
             .name = "ssao_temporal_filter",
         });
-        if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-            return;
-        }
-        pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
-        };
     }
-    auto pipeline_is_valid() -> bool { return pipeline && pipeline->is_valid(); }
 
     void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
-        if (!pipeline_is_valid()) {
+        if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(*pipeline);
+        cmd_list.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
     }
@@ -227,7 +191,7 @@ struct SsaoRenderer {
     }
 
     void next_frame() {
-        ping_pong_ssao_image.task_resources.output_image.swap_images(ping_pong_ssao_image.task_resources.history_image);
+        ping_pong_ssao_image.task_resources.output_resource.swap_images(ping_pong_ssao_image.task_resources.history_resource);
     }
 
     auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
@@ -288,7 +252,7 @@ struct SsaoRenderer {
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_image,
+                    .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
                     .src_image_id = ssao_image1,
                     .dst_image_id = ssao_image2,
                 },

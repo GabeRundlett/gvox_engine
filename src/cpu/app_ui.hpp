@@ -23,6 +23,7 @@ struct AppUi {
         ImGuiTextFilter filter;
         bool auto_scroll{true};
         bool scroll_to_bottom{false};
+        std::shared_ptr<std::mutex> items_mtx = std::make_shared<std::mutex>();
         inline static Console *s_instance = nullptr;
 
         Console();
