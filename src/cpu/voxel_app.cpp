@@ -50,6 +50,13 @@ VoxelApp::VoxelApp()
       swapchain{device.create_swapchain({
           .native_window = AppWindow::get_native_handle(),
           .native_window_platform = AppWindow::get_native_platform(),
+          .surface_format_selector = [](daxa::Format format) -> i32 {
+              switch (format) {
+              case daxa::Format::B8G8R8A8_SRGB: return 90;
+              case daxa::Format::R8G8B8A8_SRGB: return 80;
+              default: return 0;
+              }
+          },
           .present_mode = daxa::PresentMode::IMMEDIATE,
           .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
           .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,

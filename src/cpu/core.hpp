@@ -124,7 +124,7 @@ struct PingPongResource {
 using PingPongImage = PingPongResource<PingPongImage_impl>;
 using PingPongBuffer = PingPongResource<PingPongBuffer_impl>;
 
-#define ENABLE_THREAD_POOL 1
+#define ENABLE_THREAD_POOL true
 
 #if ENABLE_THREAD_POOL
 #include <thread>
