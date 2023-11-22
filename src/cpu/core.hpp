@@ -4,9 +4,6 @@
 #include <thread>
 #include <functional>
 
-#include <ftl/task_counter.h>
-#include <ftl/task_scheduler.h>
-
 #include <daxa/daxa.hpp>
 #include <daxa/utils/pipeline_manager.hpp>
 #include <daxa/utils/imgui.hpp>

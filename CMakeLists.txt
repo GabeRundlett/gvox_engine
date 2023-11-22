@@ -26,7 +26,6 @@ find_package(platform_folders CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-minizip CONFIG REQUIRED)
-find_package(fiber-tasking-lib CONFIG REQUIRED)
 find_package(soloud CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -38,7 +37,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     sago::platform_folders
     unofficial::nativefiledialog::nfd
     unofficial::minizip::minizip
-    fiber-tasking-lib::ftl
     soloud
 )
 target_include_directories(${PROJECT_NAME} PRIVATE

@@ -19,7 +19,6 @@
     "platform-folders",
     "nativefiledialog",
     "minizip",
-    "fiber-tasking-lib",
     "soloud",
     {
       "name": "glfw3",
