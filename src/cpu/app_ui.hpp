@@ -7,6 +7,7 @@ struct ImFont;
 #include <imgui.h>
 #include <chrono>
 #include <filesystem>
+#include <thread>
 #include <fmt/format.h>
 
 #include <gvox/gvox.h>
