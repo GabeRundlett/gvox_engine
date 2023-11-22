@@ -7,7 +7,7 @@
 #define FUNC_NAME(Name) FUNC_NAME_HELPER(UserAllocatorType, Name)
 
 UserIndexType FUNC_NAME(malloc)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
-    const i32 index_in_avail_stack = atomicAdd(deref(allocator).available_element_stack_size, -1) - 1;
+    const daxa_i32 index_in_avail_stack = atomicAdd(deref(allocator).available_element_stack_size, -1) - 1;
     // If we get an index of smaller then zero, the size was 0. This means the stack was empty.
     // In that case we need to create new pages as the available stack is empty.
     if (index_in_avail_stack < 0) {
@@ -20,7 +20,7 @@ UserIndexType FUNC_NAME(malloc)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
 
 void FUNC_NAME(free)(daxa_RWBufferPtr(UserAllocatorType) allocator, UserIndexType element_ptr) {
     // Push a new element onto the released stack. This will be moved to the available stack for the next frame.
-    const u32 index_in_free_stack = atomicAdd(deref(allocator).released_element_stack_size, 1);
+    const daxa_u32 index_in_free_stack = atomicAdd(deref(allocator).released_element_stack_size, 1);
     deref(deref(allocator).released_element_stack[index_in_free_stack]) = element_ptr;
 }
 
@@ -36,8 +36,8 @@ void FUNC_NAME(perframe)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
     }
 }
 
-u32 FUNC_NAME(get_consumed_element_count)(daxa_BufferPtr(UserAllocatorType) allocator) {
-    return deref(allocator).element_count - u32(max(deref(allocator).available_element_stack_size, 0));
+daxa_u32 FUNC_NAME(get_consumed_element_count)(daxa_BufferPtr(UserAllocatorType) allocator) {
+    return deref(allocator).element_count - daxa_u32(max(deref(allocator).available_element_stack_size, 0));
 }
 
 #undef FUNC_NAME_HELPER_HELPER

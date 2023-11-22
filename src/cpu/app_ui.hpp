@@ -31,10 +31,6 @@ struct AppUi {
 
         void clear_log();
         void add_log(std::string const &str);
-        template <typename... Args>
-        void add_log(fmt::format_string<Args...> format_string, Args &&...args) {
-            // add_log(fmt::vformat(format_string, fmt::make_format_args(std::forward<Args>(args)...)));
-        }
         void draw(const char *title, bool *p_open);
         void exec_command(const char *command_line);
         int on_text_edit(ImGuiInputTextCallbackData *data);
@@ -49,7 +45,7 @@ struct AppUi {
         struct GpuResourceInfo {
             std::string type;
             std::string name;
-            usize size;
+            size_t size;
         };
         std::vector<GpuResourceInfo> gpu_resource_infos;
         std::vector<DebugDisplayProvider *> providers;
@@ -73,9 +69,9 @@ struct AppUi {
 
     std::array<float, 200> full_frametimes = {};
     std::array<float, 200> cpu_frametimes = {};
-    u64 frametime_rotation_index = 0;
+    daxa_u64 frametime_rotation_index = 0;
 
-    f32 debug_menu_size{};
+    daxa_f32 debug_menu_size{};
     char const *debug_gpu_name{};
 
     bool needs_saving = false;
@@ -83,10 +79,10 @@ struct AppUi {
     Console console{};
     DebugDisplay debug_display{};
 
-    u32 conflict_resolution_mode = 0;
-    i32 new_key_id{};
-    i32 limbo_action_index = INVALID_GAME_ACTION;
-    i32 limbo_key_index = GLFW_KEY_LAST + 1;
+    daxa_u32 conflict_resolution_mode = 0;
+    daxa_i32 new_key_id{};
+    daxa_i32 limbo_action_index = INVALID_GAME_ACTION;
+    daxa_i32 limbo_key_index = GLFW_KEY_LAST + 1;
     bool limbo_is_button = false;
 
     bool paused = true;
@@ -109,7 +105,7 @@ struct AppUi {
         0.75f,
         1.00f,
     };
-    i32 resolution_scale_id = 3;
+    daxa_i32 resolution_scale_id = 3;
 
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;
@@ -125,7 +121,7 @@ struct AppUi {
     std::filesystem::path data_directory;
 
     void rescale_ui();
-    void update(f32 delta_time, f32 cpu_delta_time);
+    void update(daxa_f32 delta_time, daxa_f32 cpu_delta_time);
 
     void toggle_pause();
     void toggle_debug();

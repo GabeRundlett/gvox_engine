@@ -9,12 +9,12 @@ void player_fix_chunk_offset(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
 #if ENABLE_CHUNK_WRAPPING
-    PLAYER.player_unit_offset += i32vec3(floor(PLAYER.pos));
+    PLAYER.player_unit_offset += daxa_i32vec3(floor(PLAYER.pos));
     PLAYER.pos = fract(PLAYER.pos);
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
-    PLAYER.pos += f32vec3(PLAYER.player_unit_offset);
-    PLAYER.player_unit_offset = i32vec3(0);
+    PLAYER.pos += daxa_f32vec3(PLAYER.player_unit_offset);
+    PLAYER.player_unit_offset = daxa_i32vec3(0);
 #endif
 }
 #undef PLAYER
@@ -23,13 +23,13 @@ void player_fix_chunk_offset(
 void player_startup(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    PLAYER.pos = f32vec3(0.01, 0.02, 0.03);
-    PLAYER.vel = f32vec3(0.0);
-    // PLAYER.pos = f32vec3(150.01, 150.02, 80.03);
-    // PLAYER.pos = f32vec3(66.01, 38.02, 14.01);
+    PLAYER.pos = daxa_f32vec3(0.01, 0.02, 0.03);
+    PLAYER.vel = daxa_f32vec3(0.0);
+    // PLAYER.pos = daxa_f32vec3(150.01, 150.02, 80.03);
+    // PLAYER.pos = daxa_f32vec3(66.01, 38.02, 14.01);
 
     // Inside beach hut
-    // PLAYER.pos = f32vec3(173.78, 113.72, 12.09);
+    // PLAYER.pos = daxa_f32vec3(173.78, 113.72, 12.09);
 
     PLAYER.pitch = PI * 0.349;
     PLAYER.yaw = PI * 0.25;
@@ -46,7 +46,7 @@ void player_startup(
 void player_perframe(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
-    const f32 mouse_sens = 1.0;
+    const daxa_f32 mouse_sens = 1.0;
 
     if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
         PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001;
@@ -60,17 +60,17 @@ void player_perframe(
     float sin_rot_x = sin(PLAYER.pitch), cos_rot_x = cos(PLAYER.pitch);
     float sin_rot_z = sin(PLAYER.yaw), cos_rot_z = cos(PLAYER.yaw);
 
-    f32vec3 move_vec = f32vec3(0, 0, 0);
-    PLAYER.forward = f32vec3(+sin_rot_z, +cos_rot_z, 0);
-    PLAYER.lateral = f32vec3(+cos_rot_z, -sin_rot_z, 0);
+    daxa_f32vec3 move_vec = daxa_f32vec3(0, 0, 0);
+    PLAYER.forward = daxa_f32vec3(+sin_rot_z, +cos_rot_z, 0);
+    PLAYER.lateral = daxa_f32vec3(+cos_rot_z, -sin_rot_z, 0);
 
     const bool is_flying = true;
 
-    const f32 accel_rate = 30.0;
-    const f32 speed = 2.5;
-    const f32 sprint_speed = is_flying ? 25.5 : 2.5;
+    const daxa_f32 accel_rate = 30.0;
+    const daxa_f32 speed = 2.5;
+    const daxa_f32 sprint_speed = is_flying ? 25.5 : 2.5;
 
-    const f32 MAX_SPEED = speed * sprint_speed;
+    const daxa_f32 MAX_SPEED = speed * sprint_speed;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
         move_vec += PLAYER.forward;
@@ -81,25 +81,25 @@ void player_perframe(
     if (INPUT.actions[GAME_ACTION_MOVE_RIGHT] != 0)
         move_vec += PLAYER.lateral;
 
-    f32 applied_speed = speed;
+    daxa_f32 applied_speed = speed;
     if ((INPUT.actions[GAME_ACTION_SPRINT] != 0) == is_flying)
         applied_speed *= sprint_speed;
 
     if (is_flying) {
         if (INPUT.actions[GAME_ACTION_JUMP] != 0)
-            move_vec += f32vec3(0, 0, 1);
+            move_vec += daxa_f32vec3(0, 0, 1);
         if (INPUT.actions[GAME_ACTION_CROUCH] != 0)
-            move_vec -= f32vec3(0, 0, 1);
+            move_vec -= daxa_f32vec3(0, 0, 1);
 
         PLAYER.vel = move_vec * applied_speed;
         PLAYER.pos += PLAYER.vel * INPUT.delta_time;
     } else {
-        vec3 pos = PLAYER.pos + f32vec3(PLAYER.player_unit_offset);
+        vec3 pos = PLAYER.pos + daxa_f32vec3(PLAYER.player_unit_offset);
         vec3 vel = PLAYER.vel;
 
-        f32vec3 nonvertical_vel = f32vec3(vel.xy, 0);
+        daxa_f32vec3 nonvertical_vel = daxa_f32vec3(vel.xy, 0);
 
-        vel += f32vec3(0, 0, -9.8) * INPUT.delta_time;
+        vel += daxa_f32vec3(0, 0, -9.8) * INPUT.delta_time;
         pos += vel * INPUT.delta_time;
 
         bool is_on_ground = pos.z < 0.0;
@@ -108,7 +108,7 @@ void player_perframe(
             pos.z = 0.0;
             vel.z = 0.0;
             if (INPUT.actions[GAME_ACTION_JUMP] != 0)
-                vel += f32vec3(0, 0, 3.0);
+                vel += daxa_f32vec3(0, 0, 3.0);
 
             apply_friction(input_ptr, vel, nonvertical_vel, 8.0);
 
@@ -123,7 +123,7 @@ void player_perframe(
             vel += move_vec * max(applied_speed - dot(nonvertical_vel, move_vec), 0.0);
         }
 
-        PLAYER.pos = pos - f32vec3(PLAYER.player_unit_offset);
+        PLAYER.pos = pos - daxa_f32vec3(PLAYER.player_unit_offset);
         PLAYER.vel = vel;
     }
 
@@ -140,37 +140,37 @@ void player_perframe(
 
     memoryBarrier();
 
-    PLAYER.cam.view_to_clip = f32mat4x4(0.0);
+    PLAYER.cam.view_to_clip = daxa_f32mat4x4(0.0);
     PLAYER.cam.view_to_clip[0][0] = +1.0 / tan_half_fov / aspect;
     PLAYER.cam.view_to_clip[1][1] = +1.0 / tan_half_fov;
     PLAYER.cam.view_to_clip[2][2] = +0.0;
     PLAYER.cam.view_to_clip[2][3] = -1.0;
     PLAYER.cam.view_to_clip[3][2] = near;
 
-    PLAYER.cam.clip_to_view = f32mat4x4(0.0);
+    PLAYER.cam.clip_to_view = daxa_f32mat4x4(0.0);
     PLAYER.cam.clip_to_view[0][0] = tan_half_fov * aspect;
     PLAYER.cam.clip_to_view[1][1] = tan_half_fov;
     PLAYER.cam.clip_to_view[2][2] = +0.0;
     PLAYER.cam.clip_to_view[2][3] = +1.0 / near;
     PLAYER.cam.clip_to_view[3][2] = -1.0;
 
-    f32vec2 sample_offset = f32vec2(
+    daxa_f32vec2 sample_offset = daxa_f32vec2(
         INPUT.halton_jitter.x / float(INPUT.frame_dim.x),
         INPUT.halton_jitter.y / float(INPUT.frame_dim.y));
 
-    f32vec4 output_tex_size = f32vec4(deref(input_ptr).frame_dim.xy, 0, 0);
+    daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(input_ptr).frame_dim.xy, 0, 0);
     output_tex_size.zw = 1.0 / output_tex_size.xy;
 
-    f32mat4x4 jitter_mat = f32mat4x4(
+    daxa_f32mat4x4 jitter_mat = daxa_f32mat4x4(
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        uv_to_ss(input_ptr, f32vec2(0.0), output_tex_size), 0, 1);
-    f32mat4x4 inv_jitter_mat = f32mat4x4(
+        uv_to_ss(input_ptr, daxa_f32vec2(0.0), output_tex_size), 0, 1);
+    daxa_f32mat4x4 inv_jitter_mat = daxa_f32mat4x4(
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        ss_to_uv(input_ptr, f32vec2(0.0), output_tex_size), 0, 1);
+        ss_to_uv(input_ptr, daxa_f32vec2(0.0), output_tex_size), 0, 1);
 
     PLAYER.cam.view_to_sample = jitter_mat * PLAYER.cam.view_to_clip;
     PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view * inv_jitter_mat;

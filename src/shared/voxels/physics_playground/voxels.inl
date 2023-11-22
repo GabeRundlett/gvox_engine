@@ -13,27 +13,27 @@
 #define RIGID_BODY_MAX_N 10
 
 struct RigidBody {
-    f32vec3 pos;
-    f32vec3 lin_vel;
+    daxa_f32vec3 pos;
+    daxa_f32vec3 lin_vel;
 
     // TODO: store as Rotor
-    f32vec3 rot;
-    f32vec3 rot_vel;
+    daxa_f32vec3 rot;
+    daxa_f32vec3 rot_vel;
 
-    f32vec3 size;
+    daxa_f32vec3 size;
 
     float density;
     float mass;
     float restitution;
 
-    u32 flags;
+    daxa_u32 flags;
 };
 
 struct VoxelWorldGlobals {
-    i32vec3 prev_offset;
-    i32vec3 offset;
+    daxa_i32vec3 prev_offset;
+    daxa_i32vec3 offset;
 
-    u32 rigid_body_n;
+    daxa_u32 rigid_body_n;
     RigidBody rigid_bodies[RIGID_BODY_MAX_N];
 };
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
@@ -45,7 +45,7 @@ DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
     .voxel_globals = voxel_buffers.task_voxel_globals
 
 struct VoxelWorldOutput {
-    u32 _dummy;
+    daxa_u32 _dummy;
 };
 
 struct VoxelBufferPtrs {

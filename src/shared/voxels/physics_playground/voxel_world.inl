@@ -19,7 +19,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
     void create(daxa::Device &device) {
         buffers.voxel_globals = device.create_buffer({
-            .size = static_cast<u32>(sizeof(u32)),
+            .size = static_cast<daxa_u32>(sizeof(daxa_u32)),
             .name = "voxel_globals",
         });
 

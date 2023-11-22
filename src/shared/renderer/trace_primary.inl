@@ -42,13 +42,13 @@ struct TraceDepthPrepassComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -65,33 +65,33 @@ struct TracePrimaryComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
 struct TraceDepthPrepassComputeTask : TraceDepthPrepassComputeUses {
     TraceDepthPrepassComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
 struct TracePrimaryComputeTask : TracePrimaryComputeUses {
     TracePrimaryComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 

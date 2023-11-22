@@ -20,9 +20,9 @@ DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
 DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(reprojection_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(scaled_shading_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
+DAXA_TASK_USE_BUFFER(scaled_shading_image, daxa_BufferPtr(daxa_u32), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(src_image_id, daxa_BufferPtr(daxa_u32), COMPUTE_SHADER_READ)
+DAXA_TASK_USE_BUFFER(dst_image_id, daxa_RWBufferPtr(daxa_u32), COMPUTE_SHADER_WRITE)
 DAXA_DECL_TASK_USES_END()
 #endif
 
@@ -41,13 +41,13 @@ struct TraceSecondaryComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -55,7 +55,7 @@ struct UpscaleReconstructComputeTaskState {
     AsyncManagedComputePipeline pipeline;
 
     UpscaleReconstructComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        auto compile_result = pipeline_manager.add_compute_pipeline({
+        pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
                 .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
                 .compile_options = {.defines = {{"UPSCALE_RECONSTRUCT_COMPUTE", "1"}}},
@@ -64,33 +64,33 @@ struct UpscaleReconstructComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
 struct TraceSecondaryComputeTask : TraceSecondaryComputeUses {
     TraceSecondaryComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image());
-        state->record_commands(cmd_list, {(image_info.size.x + (SHADING_SCL - 1)) / SHADING_SCL, (image_info.size.y + (SHADING_SCL - 1)) / SHADING_SCL});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
+        state->record_commands(recorder, {(image_info.size.x + (SHADING_SCL - 1)) / SHADING_SCL, (image_info.size.y + (SHADING_SCL - 1)) / SHADING_SCL});
     }
 };
 
 struct UpscaleReconstructComputeTask : UpscaleReconstructComputeUses {
     UpscaleReconstructComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.reprojection_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -112,29 +112,38 @@ struct ShadowRenderer {
         -> daxa::TaskBufferView {
         auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
         ping_pong_shading_image = PingPongBuffer{};
-        auto [shading_image, prev_shading_image] = ping_pong_shading_image.get(
+        auto base_size = (record_ctx.render_resolution.x + 31) / 32 * record_ctx.render_resolution.y * static_cast<uint32_t>(sizeof(uint32_t));
+        auto [shadow_bitmap, prev_shadow_bitmap] = ping_pong_shading_image.get(
             record_ctx.device,
             {
-                .size = (record_ctx.render_resolution.x * record_ctx.render_resolution.y + 31) / 32,
+                .size = base_size,
                 .name = "shading_image",
             });
-        auto scaled_size = ((record_ctx.render_resolution.x / SHADING_SCL * record_ctx.render_resolution.y / SHADING_SCL + 31) / 32) * 4;
+        auto scaled_size = ((record_ctx.render_resolution.x / SHADING_SCL + 31) / 32) * record_ctx.render_resolution.y / SHADING_SCL * static_cast<uint32_t>(sizeof(uint32_t));
         auto scaled_shading_image = record_ctx.task_graph.create_transient_buffer({
             .size = scaled_size,
             .name = "scaled_shading_image",
         });
-        record_ctx.task_graph.use_persistent_buffer(shading_image);
-        record_ctx.task_graph.use_persistent_buffer(prev_shading_image);
+
+        record_ctx.task_graph.use_persistent_buffer(shadow_bitmap);
+        record_ctx.task_graph.use_persistent_buffer(prev_shadow_bitmap);
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{scaled_shading_image},
+                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{shadow_bitmap},
             },
-            .task = [scaled_shading_image, scaled_size](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
-                cmd_list.clear_buffer({
-                    .buffer = task_runtime.uses[scaled_shading_image].buffer(),
+            .task = [scaled_shading_image, scaled_size, shadow_bitmap, base_size](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
+                recorder.clear_buffer({
+                    .buffer = ti.uses[scaled_shading_image].buffer(),
                     .offset = 0,
                     .size = scaled_size,
+                    .clear_value = 0,
+                });
+                recorder.clear_buffer({
+                    .buffer = ti.uses[shadow_bitmap].buffer(),
+                    .offset = 0,
+                    .size = base_size,
                     .clear_value = 0,
                 });
             },
@@ -156,22 +165,22 @@ struct ShadowRenderer {
             &trace_secondary_task_state,
         });
 
-        // record_ctx.task_graph.add_task(UpscaleReconstructComputeTask{
-        //     {
-        //         .uses = {
-        //             .gpu_input = record_ctx.task_input_buffer,
-        //             .globals = record_ctx.task_globals_buffer,
-        //             .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
-        //             .reprojection_image_id = reprojection_map,
-        //             .scaled_shading_image = scaled_shading_image,
-        //             .src_image_id = prev_shading_image,
-        //             .dst_image_id = shading_image,
-        //         },
-        //     },
-        //     &upscale_reconstruct_task_state,
-        // });
+        record_ctx.task_graph.add_task(UpscaleReconstructComputeTask{
+            {
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .globals = record_ctx.task_globals_buffer,
+                    .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
+                    .reprojection_image_id = reprojection_map,
+                    .scaled_shading_image = scaled_shading_image,
+                    .src_image_id = prev_shadow_bitmap,
+                    .dst_image_id = shadow_bitmap,
+                },
+            },
+            &upscale_reconstruct_task_state,
+        });
 
-        return daxa::TaskBufferView{scaled_shading_image};
+        return daxa::TaskBufferView{shadow_bitmap};
     }
 };
 

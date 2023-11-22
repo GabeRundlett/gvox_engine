@@ -57,13 +57,13 @@ struct SsaoComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -80,13 +80,13 @@ struct SsaoSpatialFilterComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -103,13 +103,13 @@ struct SsaoUpscaleComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -126,53 +126,53 @@ struct SsaoTemporalFilterComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
 struct SsaoComputeTask : SsaoComputeUses {
     SsaoComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.ssao_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.ssao_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
 struct SsaoSpatialFilterComputeTask : SsaoSpatialFilterComputeUses {
     SsaoSpatialFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
 struct SsaoUpscaleComputeTask : SsaoUpscaleComputeUses {
     SsaoUpscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
 struct SsaoTemporalFilterComputeTask : SsaoTemporalFilterComputeUses {
     SsaoTemporalFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 

@@ -28,12 +28,12 @@ struct VoxelParticleSimComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
-        cmd_list.dispatch_indirect({
+        recorder.set_pipeline(pipeline.get());
+        recorder.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),
         });
@@ -43,9 +43,9 @@ struct VoxelParticleSimComputeTaskState {
 struct VoxelParticleSimComputeTask : VoxelParticleSimComputeUses {
     VoxelParticleSimComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, uses.globals.buffer());
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        state->record_commands(recorder, uses.globals.buffer());
     }
 };
 

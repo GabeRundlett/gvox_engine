@@ -38,21 +38,21 @@ inline void sky_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager,
 
 #define SKY_DECL_TASK_STATE(Name, NAME, WG_SIZE_X, WG_SIZE_Y)                                                                                          \
     struct Name##ComputeTaskState {                                                                                                                    \
-        AsyncManagedComputePipeline pipeline;                                                                                               \
+        AsyncManagedComputePipeline pipeline;                                                                                                          \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { sky_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        void record_commands(daxa::CommandList &cmd_list) {                                                                                            \
+        void record_commands(daxa::CommandRecorder &recorder) {                                                                                        \
             if (!pipeline.is_valid())                                                                                                                  \
                 return;                                                                                                                                \
-            cmd_list.set_pipeline(pipeline.get());                                                                                                          \
-            cmd_list.dispatch((NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y);                                 \
+            recorder.set_pipeline(pipeline.get());                                                                                                     \
+            recorder.dispatch({(NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y});                           \
         }                                                                                                                                              \
     };                                                                                                                                                 \
     struct Name##ComputeTask : Name##ComputeUses {                                                                                                     \
         Name##ComputeTaskState *state;                                                                                                                 \
         void callback(daxa::TaskInterface const &ti) {                                                                                                 \
-            auto cmd_list = ti.get_command_list();                                                                                                     \
-            cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                            \
-            state->record_commands(cmd_list);                                                                                                          \
+            auto &recorder = ti.get_recorder();                                                                                                        \
+            recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                            \
+            state->record_commands(recorder);                                                                                                          \
         }                                                                                                                                              \
     }
 

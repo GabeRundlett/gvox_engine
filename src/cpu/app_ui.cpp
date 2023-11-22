@@ -36,7 +36,7 @@ static constexpr std::array conflict_resolution_strings = {
     "cancel",
 };
 
-inline auto get_key_string(i32 glfw_key_id) -> char const * {
+inline auto get_key_string(daxa_i32 glfw_key_id) -> char const * {
     const auto *result = glfwGetKeyName(glfw_key_id, 0);
     if (result == nullptr) {
         switch (glfw_key_id) {
@@ -69,7 +69,7 @@ inline auto get_key_string(i32 glfw_key_id) -> char const * {
     return result;
 }
 
-inline auto get_button_string(i32 glfw_key_id) -> char const * {
+inline auto get_button_string(daxa_i32 glfw_key_id) -> char const * {
     switch (glfw_key_id) {
     case GLFW_MOUSE_BUTTON_1: return "left mouse button";
     case GLFW_MOUSE_BUTTON_2: return "right mouse button";
@@ -252,17 +252,17 @@ void AppUi::Console::draw(const char *title, bool *p_open) {
 }
 
 void AppUi::Console::exec_command(const char *command_line) {
-    add_log("# {}\n", command_line);
+    add_log(fmt::format("# {}\n", command_line));
     history_pos = -1;
-    for (i32 i = static_cast<i32>(history.size()) - 1; i >= 0; i--) {
-        if (Stricmp(history[static_cast<usize>(i)], command_line) == 0) {
-            free(history[static_cast<usize>(i)]);
+    for (daxa_i32 i = static_cast<daxa_i32>(history.size()) - 1; i >= 0; i--) {
+        if (Stricmp(history[static_cast<size_t>(i)], command_line) == 0) {
+            free(history[static_cast<size_t>(i)]);
             history.erase(history.begin() + i);
             break;
         }
     }
     history.push_back(Strdup(command_line));
-    add_log("Unknown command: '{}'\n", command_line);
+    add_log(fmt::format("Unknown command: '{}'\n", command_line));
     scroll_to_bottom = true;
 }
 
@@ -280,18 +280,18 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
         }
         ImVector<const char *> candidates;
         for (auto &command : commands) {
-            if (Strnicmp(command, word_start, static_cast<i32>(word_end - word_start)) == 0) {
+            if (Strnicmp(command, word_start, static_cast<daxa_i32>(word_end - word_start)) == 0) {
                 candidates.push_back(command);
             }
         }
         if (candidates.empty()) {
-            add_log("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start);
+            add_log(fmt::format("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start));
         } else if (candidates.size() == 1) {
-            data->DeleteChars(static_cast<i32>(word_start - data->Buf), static_cast<i32>(word_end - word_start));
+            data->DeleteChars(static_cast<daxa_i32>(word_start - data->Buf), static_cast<daxa_i32>(word_end - word_start));
             data->InsertChars(data->CursorPos, candidates[0]);
             data->InsertChars(data->CursorPos, " ");
         } else {
-            int match_len = static_cast<i32>(word_end - word_start);
+            int match_len = static_cast<daxa_i32>(word_end - word_start);
             for (;;) {
                 int c = 0;
                 bool all_candidates_matches = true;
@@ -308,12 +308,12 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
                 match_len++;
             }
             if (match_len > 0) {
-                data->DeleteChars(static_cast<i32>(word_start - data->Buf), static_cast<i32>(word_end - word_start));
+                data->DeleteChars(static_cast<daxa_i32>(word_start - data->Buf), static_cast<daxa_i32>(word_end - word_start));
                 data->InsertChars(data->CursorPos, candidates[0], candidates[0] + match_len);
             }
             add_log("Possible matches:\n");
             for (auto &candidate : candidates) {
-                add_log("- {}\n", candidate);
+                add_log(fmt::format("- {}\n", candidate));
             }
         }
         break;
@@ -322,19 +322,19 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
         const int prev_history_pos = history_pos;
         if (data->EventKey == ImGuiKey_UpArrow) {
             if (history_pos == -1) {
-                history_pos = static_cast<i32>(history.size()) - 1;
+                history_pos = static_cast<daxa_i32>(history.size()) - 1;
             } else if (history_pos > 0) {
                 history_pos--;
             }
         } else if (data->EventKey == ImGuiKey_DownArrow) {
             if (history_pos != -1) {
-                if (static_cast<usize>(++history_pos) >= history.size()) {
+                if (static_cast<size_t>(++history_pos) >= history.size()) {
                     history_pos = -1;
                 }
             }
         }
         if (prev_history_pos != history_pos) {
-            const char *history_str = (history_pos >= 0) ? history[static_cast<usize>(history_pos)] : "";
+            const char *history_str = (history_pos >= 0) ? history[static_cast<size_t>(history_pos)] : "";
             data->DeleteChars(0, data->BufTextLen);
             data->InsertChars(0, history_str);
         }
@@ -358,8 +358,8 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
         mono_font = io.Fonts->AddFontDefault();
     }
 
-    constexpr auto ColorFromBytes = [](u8 r, u8 g, u8 b, u8 a = 255) {
-        return ImVec4(static_cast<f32>(r) / 255.0f, static_cast<f32>(g) / 255.0f, static_cast<f32>(b) / 255.0f, static_cast<f32>(a) / 255.0f);
+    constexpr auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) {
+        return ImVec4(static_cast<daxa_f32>(r) / 255.0f, static_cast<daxa_f32>(g) / 255.0f, static_cast<daxa_f32>(b) / 255.0f, static_cast<daxa_f32>(a) / 255.0f);
     };
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImVec4 *colors = style.Colors;
@@ -488,22 +488,22 @@ void AppUi::settings_ui() {
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
-                    console.add_log("Loaded {}", out_path);
+                    console.add_log(fmt::format("Loaded {}", out_path));
                     free(out_path);
                 } else if (result != NFD_CANCEL) {
-                    console.add_log("[error]: {}", NFD_GetError());
+                    console.add_log(fmt::format("[error]: {}", NFD_GetError()));
                 }
             }
             {
                 ImGui::InputInt3("Load Offset", &gvox_region_range.offset.x);
                 auto temp_i32vec3 = gvox_region_range.offset;
-                temp_i32vec3.x = static_cast<i32>(gvox_region_range.extent.x);
-                temp_i32vec3.y = static_cast<i32>(gvox_region_range.extent.y);
-                temp_i32vec3.z = static_cast<i32>(gvox_region_range.extent.z);
+                temp_i32vec3.x = static_cast<daxa_i32>(gvox_region_range.extent.x);
+                temp_i32vec3.y = static_cast<daxa_i32>(gvox_region_range.extent.y);
+                temp_i32vec3.z = static_cast<daxa_i32>(gvox_region_range.extent.z);
                 ImGui::InputInt3("Load Extent", &temp_i32vec3.x);
-                gvox_region_range.extent.x = static_cast<u32>(std::max(temp_i32vec3.x, 0));
-                gvox_region_range.extent.y = static_cast<u32>(std::max(temp_i32vec3.y, 0));
-                gvox_region_range.extent.z = static_cast<u32>(std::max(temp_i32vec3.z, 0));
+                gvox_region_range.extent.x = static_cast<daxa_u32>(std::max(temp_i32vec3.x, 0));
+                gvox_region_range.extent.y = static_cast<daxa_u32>(std::max(temp_i32vec3.y, 0));
+                gvox_region_range.extent.z = static_cast<daxa_u32>(std::max(temp_i32vec3.z, 0));
             }
             ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
             ImGui::EndTabItem();
@@ -590,7 +590,7 @@ void AppUi::settings_ui() {
 
 void AppUi::settings_controls_ui() {
     if (ImGui::BeginCombo("Conflict Resolution Mode", conflict_resolution_strings[conflict_resolution_mode])) {
-        for (u32 mode_i = 0; mode_i < conflict_resolution_strings.size(); ++mode_i) {
+        for (daxa_u32 mode_i = 0; mode_i < conflict_resolution_strings.size(); ++mode_i) {
             bool const is_selected = (mode_i == conflict_resolution_mode);
             if (ImGui::Selectable(conflict_resolution_strings[mode_i], is_selected)) {
                 conflict_resolution_mode = mode_i;
@@ -605,13 +605,13 @@ void AppUi::settings_controls_ui() {
         ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
         ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
         ImGui::TableHeadersRow();
-        for (usize i = 0; i < control_strings.size(); ++i) {
+        for (size_t i = 0; i < control_strings.size(); ++i) {
             ImGui::TableNextRow(ImGuiTableRowFlags_None);
             if (ImGui::TableSetColumnIndex(0)) {
                 ImGui::Text("%s", control_strings[i]);
             }
             if (ImGui::TableSetColumnIndex(1)) {
-                if (static_cast<i32>(i) == limbo_action_index) {
+                if (static_cast<daxa_i32>(i) == limbo_action_index) {
                     ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
                     if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
                         if (limbo_is_button) {
@@ -621,7 +621,7 @@ void AppUi::settings_controls_ui() {
                         }
                         limbo_action_index = INVALID_GAME_ACTION;
                     } else {
-                        auto resolve_action = [this](i32 key_i, std::map<i32, i32> &bindings, bool contains_override) {
+                        auto resolve_action = [this](daxa_i32 key_i, std::map<daxa_i32, daxa_i32> &bindings, bool contains_override) {
                             // set new key
                             new_key_id = key_i;
                             if (bindings.contains(key_i)) {
@@ -663,7 +663,7 @@ void AppUi::settings_controls_ui() {
                             }
                             limbo_action_index = INVALID_GAME_ACTION;
                         };
-                        for (i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
+                        for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
                             auto key_state = glfwGetKey(glfw_window_ptr, key_i);
                             if (key_state != GLFW_RELEASE) {
                                 resolve_action(key_i, settings.keybinds, limbo_is_button);
@@ -671,7 +671,7 @@ void AppUi::settings_controls_ui() {
                             }
                         }
                         if (limbo_action_index != INVALID_GAME_ACTION) {
-                            for (i32 button_i = 0; button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++button_i) {
+                            for (daxa_i32 button_i = 0; button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++button_i) {
                                 auto key_state = glfwGetMouseButton(glfw_window_ptr, button_i);
                                 if (key_state != GLFW_RELEASE) {
                                     resolve_action(button_i, settings.mouse_button_binds, !limbo_is_button);
@@ -688,7 +688,7 @@ void AppUi::settings_controls_ui() {
                         auto action_key_iter = std::find_if(
                             settings.keybinds.begin(),
                             settings.keybinds.end(),
-                            [i](const auto &mo) { return mo.second == static_cast<i32>(i); });
+                            [i](const auto &mo) { return mo.second == static_cast<daxa_i32>(i); });
                         if (action_key_iter != settings.keybinds.end()) {
                             key_name = get_key_string(action_key_iter->first);
                             temp_limbo_key_index = action_key_iter->first;
@@ -699,7 +699,7 @@ void AppUi::settings_controls_ui() {
                         auto action_button_iter = std::find_if(
                             settings.mouse_button_binds.begin(),
                             settings.mouse_button_binds.end(),
-                            [i](const auto &mo) { return mo.second == static_cast<i32>(i); });
+                            [i](const auto &mo) { return mo.second == static_cast<daxa_i32>(i); });
                         if (action_button_iter != settings.mouse_button_binds.end()) {
                             key_name = get_button_string(action_button_iter->first);
                             temp_limbo_key_index = action_button_iter->first;
@@ -712,7 +712,7 @@ void AppUi::settings_controls_ui() {
                     auto key_str = std::string{key_name} + "##" + std::to_string(i);
                     if (ImGui::Button(key_str.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
                         if (limbo_action_index == INVALID_GAME_ACTION) {
-                            limbo_action_index = static_cast<i32>(i);
+                            limbo_action_index = static_cast<daxa_i32>(i);
                             limbo_key_index = temp_limbo_key_index;
                             limbo_is_button = temp_limbo_is_button;
                         }
@@ -735,7 +735,7 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
         switch (sort_spec->ColumnUserID) {
         case 0: delta = a->type.compare(b->type); break;
         case 1: delta = a->name.compare(b->name); break;
-        case 2: delta = static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size)); break;
+        case 2: delta = static_cast<daxa_i32>(static_cast<daxa_i64>(a->size) - static_cast<daxa_i64>(b->size)); break;
         default: break;
         }
         if (delta > 0) {
@@ -745,10 +745,10 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
             return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? -1 : +1;
         }
     }
-    return static_cast<i32>(static_cast<i64>(a->size) - static_cast<i64>(b->size));
+    return static_cast<daxa_i32>(static_cast<daxa_i64>(a->size) - static_cast<daxa_i64>(b->size));
 }
 
-void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
+void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
     full_frametimes[frametime_rotation_index] = delta_time;
     frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
@@ -796,7 +796,7 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
         pos.x += viewport->WorkSize.x - debug_menu_size;
         ImGui::SetNextWindowPos(pos);
         ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
-        auto frametime_graph = [](auto &frametimes, uint64_t frametime_rotation_index) {
+        auto frametime_graph = [](auto &frametimes, uint64_t frametime_rot_index) {
             float average = 0.0f;
             for (auto frametime : frametimes) {
                 average += frametime;
@@ -809,7 +809,7 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
             auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
             auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
             fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
-            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rotation_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
+            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rot_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
             ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
         };
         if (ImGui::TreeNode("Full frame-time")) {
@@ -857,10 +857,10 @@ void AppUi::update(f32 delta_time, f32 cpu_delta_time) {
                 }
 
                 ImGuiListClipper clipper;
-                clipper.Begin(static_cast<i32>(debug_display.gpu_resource_infos.size()));
+                clipper.Begin(static_cast<daxa_i32>(debug_display.gpu_resource_infos.size()));
                 while (clipper.Step()) {
                     for (int row_i = clipper.DisplayStart; row_i < clipper.DisplayEnd; row_i++) {
-                        auto const &res_info = debug_display.gpu_resource_infos[static_cast<usize>(row_i)];
+                        auto const &res_info = debug_display.gpu_resource_infos[static_cast<size_t>(row_i)];
                         ImGui::PushID(&res_info);
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();

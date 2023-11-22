@@ -16,10 +16,10 @@ using namespace std::chrono_literals;
 
 #include <iostream>
 
-constexpr auto round_frame_dim(u32vec2 size) {
-    constexpr auto over_estimation = u32vec2{32, 32};
+constexpr auto round_frame_dim(daxa_u32vec2 size) {
     auto result = size;
-    // auto result = (size + u32vec2{over_estimation.x - 1u, over_estimation.y - 1u}) / over_estimation * over_estimation;
+    // constexpr auto over_estimation = daxa_u32vec2{32, 32};
+    // auto result = (size + daxa_u32vec2{over_estimation.x - 1u, over_estimation.y - 1u}) / over_estimation * over_estimation;
     // not necessary, since it rounds up!
     // result = {std::max(result.x, over_estimation.x), std::max(result.y, over_estimation.y)};
     return result;
@@ -44,13 +44,13 @@ VoxelApp::VoxelApp()
     : AppWindow(APPNAME, {1280, 720}),
       daxa_instance{daxa::create_instance({})},
       device{daxa_instance.create_device({
-          .enable_buffer_device_address_capture_replay = false,
+          //   .enable_buffer_device_address_capture_replay = false,
           .name = "device",
       })},
       swapchain{device.create_swapchain({
           .native_window = AppWindow::get_native_handle(),
           .native_window_platform = AppWindow::get_native_platform(),
-          .surface_format_selector = [](daxa::Format format) -> i32 {
+          .surface_format_selector = [](daxa::Format format) -> daxa_i32 {
               switch (format) {
               case daxa::Format::B8G8R8A8_SRGB: return 90;
               case daxa::Format::R8G8B8A8_SRGB: return 80;
@@ -104,14 +104,15 @@ VoxelApp::VoxelApp()
           return daxa::ImGuiRenderer({
               .device = device,
               .format = swapchain.get_format(),
+              .context = ImGui::GetCurrentContext(),
               .use_custom_config = false,
           });
       }()},
       gpu_app{device, main_pipeline_manager, swapchain.get_format()},
+      gvox_ctx(gvox_create_context()),
       main_task_graph{[this]() {
           return record_main_task_graph();
-      }()},
-      gvox_ctx(gvox_create_context()) {
+      }()} {
 
     // constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
     // if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
@@ -120,27 +121,27 @@ VoxelApp::VoxelApp()
     //     model_is_ready = true;
     //     prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
     //     gpu_resources.gvox_model_buffer = device.create_buffer({
-    //         .size = static_cast<u32>(gvox_model_data.size),
+    //         .size = static_cast<daxa_u32>(gvox_model_data.size),
     //         .name = "gvox_model_buffer",
     //     });
     //     task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
     // }
 
-    auto radical_inverse = [](u32 n, u32 base) -> f32 {
+    auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
         auto val = 0.0f;
-        auto inv_base = 1.0f / static_cast<f32>(base);
+        auto inv_base = 1.0f / static_cast<daxa_f32>(base);
         auto inv_bi = inv_base;
         while (n > 0) {
             auto d_i = n % base;
-            val += static_cast<f32>(d_i) * inv_bi;
-            n = static_cast<u32>(static_cast<f32>(n) * inv_base);
+            val += static_cast<daxa_f32>(d_i) * inv_bi;
+            n = static_cast<daxa_u32>(static_cast<daxa_f32>(n) * inv_base);
             inv_bi *= inv_base;
         }
         return val;
     };
 
-    for (u32 i = 0; i < halton_offsets.size(); ++i) {
-        halton_offsets[i] = f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
+    for (daxa_u32 i = 0; i < halton_offsets.size(); ++i) {
+        halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
     ui.console.add_log(std::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
 }
@@ -187,7 +188,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
         return result;
     }
     file.seekg(0, std::ios_base::end);
-    auto temp_gvox_model_size = static_cast<u32>(file.tellg());
+    auto temp_gvox_model_size = static_cast<daxa_u32>(file.tellg());
     auto temp_gvox_model = std::vector<uint8_t>{};
     temp_gvox_model.resize(temp_gvox_model_size);
     {
@@ -267,7 +268,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
             char *str = new char[size + 1];
             gvox_get_result_message(gvox_ctx, str, nullptr);
             str[size] = '\0';
-            AppUi::Console::s_instance->add_log("ERROR loading model: {}", str);
+            AppUi::Console::s_instance->add_log(fmt::format("ERROR loading model: {}", str));
             gvox_pop_result(gvox_ctx);
             delete[] str;
             res = gvox_get_result(gvox_ctx);
@@ -296,19 +297,19 @@ void VoxelApp::on_update() {
     swapchain_image = swapchain.acquire_next_image();
 
     auto t0 = Clock::now();
-    gpu_input.time = std::chrono::duration<f32>(now - start).count();
-    gpu_input.delta_time = std::chrono::duration<f32>(now - prev_time).count();
+    gpu_input.time = std::chrono::duration<daxa_f32>(now - start).count();
+    gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
     gpu_input.render_res_scl = ui.settings.render_res_scl;
     gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
-    gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<f32> / 180.0f);
+    gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<daxa_f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
 
     audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     if (ui.should_hotload_shaders) {
         auto reload_result = main_pipeline_manager.reload_all();
-        if (auto *reload_err = std::get_if<daxa::PipelineReloadError>(&reload_result)) {
+        if (auto *reload_err = daxa::get_if<daxa::PipelineReloadError>(&reload_result)) {
             AppUi::Console::s_instance->add_log(reload_err->message);
         }
     }
@@ -334,7 +335,7 @@ void VoxelApp::on_update() {
             gvox_model_data = gvox_model_data_future.get();
             gpu_app.prev_gvox_model_buffer = gpu_app.gpu_resources.gvox_model_buffer;
             gpu_app.gpu_resources.gvox_model_buffer = device.create_buffer({
-                .size = static_cast<u32>(gvox_model_data.size),
+                .size = static_cast<daxa_u32>(gvox_model_data.size),
                 .name = "gvox_model_buffer",
             });
             gpu_app.task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_app.gpu_resources.gvox_model_buffer}});
@@ -351,7 +352,7 @@ void VoxelApp::on_update() {
     }
 
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
-    // condition_values[static_cast<usize>(Conditions::DYNAMIC_BUFFERS_REALLOC)] = should_realloc;
+    // condition_values[static_cast<size_t>(Conditions::DYNAMIC_BUFFERS_REALLOC)] = should_realloc;
     // main_task_graph.execute({.permutation_condition_values = condition_values});
     main_task_graph.execute({});
     model_is_ready = false;
@@ -363,29 +364,33 @@ void VoxelApp::on_update() {
     gpu_app.end_frame();
 
     auto t1 = Clock::now();
-    ui.update(gpu_input.delta_time, std::chrono::duration<f32>(t1 - t0).count());
+    ui.update(gpu_input.delta_time, std::chrono::duration<daxa_f32>(t1 - t0).count());
 
     ++gpu_input.frame_index;
+    device.collect_garbage();
 }
-void VoxelApp::on_mouse_move(f32 x, f32 y) {
-    f32vec2 const center = {static_cast<f32>(window_size.x / 2), static_cast<f32>(window_size.y / 2)};
-    gpu_input.mouse.pos = f32vec2{x, y};
-    auto offset = gpu_input.mouse.pos - center;
-    gpu_input.mouse.pos = gpu_input.mouse.pos * f32vec2{static_cast<f32>(gpu_input.frame_dim.x), static_cast<f32>(gpu_input.frame_dim.y)} / f32vec2{static_cast<f32>(window_size.x), static_cast<f32>(window_size.y)};
+void VoxelApp::on_mouse_move(daxa_f32 x, daxa_f32 y) {
+    daxa_f32vec2 const center = {static_cast<daxa_f32>(window_size.x / 2), static_cast<daxa_f32>(window_size.y / 2)};
+    gpu_input.mouse.pos = daxa_f32vec2{x, y};
+    auto offset = daxa_f32vec2{gpu_input.mouse.pos.x - center.x, gpu_input.mouse.pos.y - center.y};
+    gpu_input.mouse.pos = daxa_f32vec2{
+        gpu_input.mouse.pos.x * static_cast<daxa_f32>(gpu_input.frame_dim.x) / static_cast<daxa_f32>(window_size.x),
+        gpu_input.mouse.pos.y * static_cast<daxa_f32>(gpu_input.frame_dim.y) / static_cast<daxa_f32>(window_size.y),
+    };
     if (!ui.paused) {
-        gpu_input.mouse.pos_delta = gpu_input.mouse.pos_delta + offset;
+        gpu_input.mouse.pos_delta = daxa_f32vec2{gpu_input.mouse.pos_delta.x + offset.x, gpu_input.mouse.pos_delta.y + offset.y};
         set_mouse_pos(center.x, center.y);
     }
 }
-void VoxelApp::on_mouse_scroll(f32 dx, f32 dy) {
+void VoxelApp::on_mouse_scroll(daxa_f32 dx, daxa_f32 dy) {
     auto &io = ImGui::GetIO();
     if (io.WantCaptureMouse) {
         return;
     }
 
-    gpu_input.mouse.scroll_delta = gpu_input.mouse.scroll_delta + f32vec2{dx, dy};
+    gpu_input.mouse.scroll_delta = daxa_f32vec2{gpu_input.mouse.scroll_delta.x + dx, gpu_input.mouse.scroll_delta.y + dy};
 }
-void VoxelApp::on_mouse_button(i32 button_id, i32 action) {
+void VoxelApp::on_mouse_button(daxa_i32 button_id, daxa_i32 action) {
     auto &io = ImGui::GetIO();
     if (io.WantCaptureMouse) {
         return;
@@ -395,10 +400,10 @@ void VoxelApp::on_mouse_button(i32 button_id, i32 action) {
     }
 
     if (ui.settings.mouse_button_binds.contains(button_id)) {
-        gpu_input.actions[ui.settings.mouse_button_binds.at(button_id)] = static_cast<u32>(action);
+        gpu_input.actions[ui.settings.mouse_button_binds.at(button_id)] = static_cast<daxa_u32>(action);
     }
 }
-void VoxelApp::on_key(i32 key_id, i32 action) {
+void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     auto &io = ImGui::GetIO();
     if (io.WantCaptureKeyboard) {
         return;
@@ -432,10 +437,10 @@ void VoxelApp::on_key(i32 key_id, i32 action) {
     }
 
     if (ui.settings.keybinds.contains(key_id)) {
-        gpu_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<u32>(action);
+        gpu_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
     }
 }
-void VoxelApp::on_resize(u32 sx, u32 sy) {
+void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
     minimized = (sx == 0 || sy == 0);
     auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != ui.settings.render_res_scl;
     if (!minimized && resized) {
@@ -445,8 +450,8 @@ void VoxelApp::on_resize(u32 sx, u32 sy) {
         render_res_scl = ui.settings.render_res_scl;
         {
             // resize render images
-            // gpu_resources.render_images.size.x = static_cast<u32>(static_cast<f32>(window_size.x) * render_res_scl);
-            // gpu_resources.render_images.size.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
+            // gpu_resources.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
+            // gpu_resources.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
             device.wait_idle();
             gpu_app.needs_vram_calc = true;
         }
@@ -461,8 +466,8 @@ void VoxelApp::on_drop(std::span<char const *> filepaths) {
 }
 
 void VoxelApp::compute_image_sizes() {
-    gpu_input.frame_dim.x = static_cast<u32>(static_cast<f32>(window_size.x) * render_res_scl);
-    gpu_input.frame_dim.y = static_cast<u32>(static_cast<f32>(window_size.y) * render_res_scl);
+    gpu_input.frame_dim.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
+    gpu_input.frame_dim.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
     gpu_input.rounded_frame_dim = round_frame_dim(gpu_input.frame_dim);
     gpu_input.output_resolution = window_size;
 }
@@ -477,25 +482,25 @@ void VoxelApp::update_seeded_value_noise() {
         .uses = {
             daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{gpu_app.task_value_noise_image.view().view({.layer_count = 256})},
         },
-        .task = [this](daxa::TaskInterface task_runtime) {
+        .task = [this](daxa::TaskInterface ti) {
             auto staging_buffer = device.create_buffer({
-                .size = static_cast<u32>(256 * 256 * 256 * 1),
+                .size = static_cast<daxa_u32>(256 * 256 * 256 * 1),
                 .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .name = "staging_buffer",
             });
-            auto *buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
+            auto *buffer_ptr = device.get_host_address_as<uint8_t>(staging_buffer).value();
             std::mt19937_64 rng(std::hash<std::string>{}(ui.settings.world_seed_str));
             std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
-            for (u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
+            for (daxa_u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
                 buffer_ptr[i] = dist(rng) & 0xff;
             }
-            auto cmd_list = task_runtime.get_command_list();
-            cmd_list.pipeline_barrier({
+            auto &recorder = ti.get_recorder();
+            recorder.pipeline_barrier({
                 .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
             });
-            cmd_list.destroy_buffer_deferred(staging_buffer);
-            for (u32 i = 0; i < 256; ++i) {
-                cmd_list.copy_buffer_to_image({
+            recorder.destroy_buffer_deferred(staging_buffer);
+            for (daxa_u32 i = 0; i < 256; ++i) {
+                recorder.copy_buffer_to_image({
                     .buffer = staging_buffer,
                     .buffer_offset = 256 * 256 * i,
                     .image = gpu_app.task_value_noise_image.get_state().images[0],
@@ -559,29 +564,29 @@ void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
         .uses = {
             daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{gpu_app.task_gvox_model_buffer},
         },
-        .task = [this](daxa::TaskInterface task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
+        .task = [this](daxa::TaskInterface ti) {
+            auto &recorder = ti.get_recorder();
             if (!gpu_app.prev_gvox_model_buffer.is_empty()) {
-                cmd_list.destroy_buffer_deferred(gpu_app.prev_gvox_model_buffer);
+                recorder.destroy_buffer_deferred(gpu_app.prev_gvox_model_buffer);
             }
-            cmd_list.pipeline_barrier({
+            recorder.pipeline_barrier({
                 .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
             });
             auto staging_gvox_model_buffer = device.create_buffer({
-                .size = static_cast<u32>(gvox_model_data.size),
+                .size = static_cast<daxa_u32>(gvox_model_data.size),
                 .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .name = "staging_gvox_model_buffer",
             });
-            cmd_list.destroy_buffer_deferred(staging_gvox_model_buffer);
-            char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer);
+            recorder.destroy_buffer_deferred(staging_gvox_model_buffer);
+            char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer).value();
             std::copy(gvox_model_data.ptr, gvox_model_data.ptr + gvox_model_data.size, buffer_ptr);
             if (gvox_model_data.ptr != nullptr) {
                 free(gvox_model_data.ptr);
             }
-            cmd_list.copy_buffer_to_buffer({
+            recorder.copy_buffer_to_buffer({
                 .src_buffer = staging_gvox_model_buffer,
                 .dst_buffer = gpu_app.gpu_resources.gvox_model_buffer,
-                .size = static_cast<u32>(gvox_model_data.size),
+                .size = static_cast<daxa_u32>(gvox_model_data.size),
             });
             ui.should_upload_gvox_model = false;
             has_model = true;
@@ -636,7 +641,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .device = device,
         .swapchain = swapchain,
         .alias_transients = GVOX_ENGINE_INSTALL,
-        .permutation_condition_count = static_cast<usize>(Conditions::COUNT),
+        .permutation_condition_count = static_cast<size_t>(Conditions::COUNT),
         .name = "main_task_graph",
     });
 
@@ -658,9 +663,9 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .uses = {
             daxa::TaskImageUse<daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D>{task_swapchain_image},
         },
-        .task = [this](daxa::TaskInterface task_runtime) {
-            auto cmd_list = task_runtime.get_command_list();
-            imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, window_size.x, window_size.y);
+        .task = [this](daxa::TaskInterface ti) {
+            auto &recorder = ti.get_recorder();
+            imgui_renderer.record_commands(ImGui::GetDrawData(), recorder, swapchain_image, window_size.x, window_size.y);
         },
         .name = "ImGui draw",
     });

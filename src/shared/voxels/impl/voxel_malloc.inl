@@ -23,9 +23,9 @@
 #define MAX_CHUNK_UPDATES_PER_FRAME 64
 
 #define PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S 3
-// Minimum size allocation is 76 bytes, aka 19 u32s
+// Minimum size allocation is 76 bytes, aka 19 daxa_u32s
 // This is because a palette of size 2 has 1 bit per
-// voxel, and 2 u32s. This counts to 512 bits, plus
+// voxel, and 2 daxa_u32s. This counts to 512 bits, plus
 // 2 * 32 bits for the 2 palette entries, plus 32 bits
 // for the allocation meta-data.
 #define VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT (512 / 32 + 2 + 1 + PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S)
@@ -74,7 +74,7 @@
 #define VoxelMalloc_PageInfo daxa_u64
 
 #if (VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD + VOXEL_MALLOC_LOG2_MAX_GLOBAL_PAGE_COUNT) > 64
-#error There are not enough bits in a u64 to represent the desired allocation amount, as well as the global page index.
+#error There are not enough bits in a daxa_u64 to represent the desired allocation amount, as well as the global page index.
 #endif
 
 struct VoxelMalloc_ChunkLocalPageSubAllocatorState {

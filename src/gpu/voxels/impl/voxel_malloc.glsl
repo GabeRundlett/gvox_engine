@@ -9,39 +9,39 @@
 #include <utils/allocator.glsl>
 
 // See 'VoxelMalloc_PageInfo' in shared/voxel_malloc.inl
-u32 VoxelMalloc_PageInfo_extract_local_consumption_bitmask(VoxelMalloc_PageInfo page_info_bits) {
+daxa_u32 VoxelMalloc_PageInfo_extract_local_consumption_bitmask(VoxelMalloc_PageInfo page_info_bits) {
 #if VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD == 32
-    return u32(page_info_bits);
+    return daxa_u32(page_info_bits);
 #else
-    return u32(page_info_bits >> 0) & ((1 << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) - 1);
+    return daxa_u32(page_info_bits >> 0) & ((1 << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) - 1);
 #endif
 }
-u32 VoxelMalloc_PageInfo_extract_global_page_index(VoxelMalloc_PageInfo page_info_bits) {
-    return u32(page_info_bits >> VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) & ((1 << VOXEL_MALLOC_LOG2_MAX_GLOBAL_PAGE_COUNT) - 1);
+daxa_u32 VoxelMalloc_PageInfo_extract_global_page_index(VoxelMalloc_PageInfo page_info_bits) {
+    return daxa_u32(page_info_bits >> VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD) & ((1 << VOXEL_MALLOC_LOG2_MAX_GLOBAL_PAGE_COUNT) - 1);
 }
-VoxelMalloc_PageInfo VoxelMalloc_PageInfo_pack(u32 page_local_consumption_bitmask, u32 global_page_index) {
-    return (u64(page_local_consumption_bitmask) << 0) | (u64(global_page_index) << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD);
+VoxelMalloc_PageInfo VoxelMalloc_PageInfo_pack(daxa_u32 page_local_consumption_bitmask, daxa_u32 global_page_index) {
+    return (daxa_u64(page_local_consumption_bitmask) << 0) | (daxa_u64(global_page_index) << VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD);
 }
 
 // See 'VoxelMalloc_AllocationMetadata' in shared/voxel_malloc.inl
-u32 VoxelMalloc_AllocationMetadata_extract_chunk_local_allocator_page_index(VoxelMalloc_AllocationMetadata metadata) {
+daxa_u32 VoxelMalloc_AllocationMetadata_extract_chunk_local_allocator_page_index(VoxelMalloc_AllocationMetadata metadata) {
     return (metadata >> 0) & 0x1ff;
 }
-u32 VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(VoxelMalloc_AllocationMetadata metadata) {
+daxa_u32 VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(VoxelMalloc_AllocationMetadata metadata) {
     return (metadata >> 9);
 }
-VoxelMalloc_AllocationMetadata VoxelMalloc_AllocationMetadata_pack(u32 chunk_local_allocator_page_index, u32 page_bits_consumed) {
+VoxelMalloc_AllocationMetadata VoxelMalloc_AllocationMetadata_pack(daxa_u32 chunk_local_allocator_page_index, daxa_u32 page_bits_consumed) {
     return (chunk_local_allocator_page_index << 0) | (page_bits_consumed << 9);
 }
 
 // See 'VoxelMalloc_Pointer' in shared/voxel_malloc.inl
-u32 VoxelMalloc_Pointer_extract_local_page_alloc_offset(VoxelMalloc_Pointer ptr) {
+daxa_u32 VoxelMalloc_Pointer_extract_local_page_alloc_offset(VoxelMalloc_Pointer ptr) {
     return (ptr >> 0) & 0x1f;
 }
-u32 VoxelMalloc_Pointer_extract_global_page_index(VoxelMalloc_Pointer ptr) {
+daxa_u32 VoxelMalloc_Pointer_extract_global_page_index(VoxelMalloc_Pointer ptr) {
     return (ptr >> 5);
 }
-VoxelMalloc_Pointer VoxelMalloc_Pointer_pack(u32 global_page_index, u32 local_page_alloc_offset) {
+VoxelMalloc_Pointer VoxelMalloc_Pointer_pack(daxa_u32 global_page_index, daxa_u32 local_page_alloc_offset) {
     return (local_page_alloc_offset << 0) | (global_page_index << 5);
 }
 
@@ -57,22 +57,22 @@ void voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator) al
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
 // Must enter with 512 thread work group with all threads active.
-shared i32 VoxelMalloc_malloc_elected_fallback_thread;
-shared i32 VoxelMalloc_malloc_elected_fallback_page_local_consumption_bitmask;
+shared daxa_i32 VoxelMalloc_malloc_elected_fallback_thread;
+shared daxa_i32 VoxelMalloc_malloc_elected_fallback_page_local_consumption_bitmask;
 shared bool VoxelMalloc_malloc_allocation_success;
-shared u32 VoxelMalloc_malloc_global_page_index;
-shared u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
+shared daxa_u32 VoxelMalloc_malloc_global_page_index;
+shared daxa_u32 VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit;
 // We need three of these variables.
 // We read from the last iteration's variable, we write to the current iteration's variable and we reset the next iteration's variable.
 // To perform all these actions with just one barrier, we must use three distinct variables for each action to avoid race conditions.
 // As all threads run asynchronously between barriers, we can only ever do one of these things
 // at a time as this would cause race conditions.
-shared i32 VoxelMalloc_malloc_elected_thread[3];
+shared daxa_i32 VoxelMalloc_malloc_elected_thread[3];
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
-VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, u32 size) {
-    u32 local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
-    u32 local_allocation_bitmask_no_offset = (1 << local_allocation_bit_n) - 1;
-    i32 group_local_thread_index = i32(gl_LocalInvocationIndex);
+VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32 size) {
+    daxa_u32 local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+    daxa_u32 local_allocation_bitmask_no_offset = (1 << local_allocation_bit_n) - 1;
+    daxa_i32 group_local_thread_index = daxa_i32(gl_LocalInvocationIndex);
     if (group_local_thread_index == 0) {
         VoxelMalloc_malloc_elected_thread[0] = -1;
         VoxelMalloc_malloc_elected_thread[1] = -1;
@@ -87,22 +87,22 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
     bool did_it_already1 = false;
     barrier();
     memoryBarrierShared();
-    const u32 chunk_local_allocator_page_index = group_local_thread_index;
-    for (u32 iteration = 0; true; ++iteration) {
+    const daxa_u32 chunk_local_allocator_page_index = group_local_thread_index;
+    for (daxa_u32 iteration = 0; true; ++iteration) {
         const uint current_election_variable = iteration % 3;
         const uint prev_iteration_election_variable = (iteration + 2) % 3;
         const VoxelMalloc_PageInfo const_page_info_copy = atomicAdd(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), 0);
-        const u32 page_local_consumption_bitmask_before = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(const_page_info_copy);
-        const u32 global_page_index = VoxelMalloc_PageInfo_extract_global_page_index(const_page_info_copy);
+        const daxa_u32 page_local_consumption_bitmask_before = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(const_page_info_copy);
+        const daxa_u32 global_page_index = VoxelMalloc_PageInfo_extract_global_page_index(const_page_info_copy);
         page_unallocated = page_local_consumption_bitmask_before == 0;
         bool can_allocate = false;
-        u32 page_local_consumption_bitmask_first_used_bit;
-        u32 page_local_consumption_bitmask_with_new_allocation = 0;
+        daxa_u32 page_local_consumption_bitmask_first_used_bit;
+        daxa_u32 page_local_consumption_bitmask_with_new_allocation = 0;
         if (!page_unallocated) {
-            const u32 bit_count_before = bitCount(page_local_consumption_bitmask_before);
-            const u32 first_zero_bit_offset = findLSB(~page_local_consumption_bitmask_before);
-            for (u32 offset = first_zero_bit_offset; offset < (VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD - local_allocation_bit_n) + 1; ++offset) {
-                const u32 potential_local_allocation_bitmask = page_local_consumption_bitmask_before | (local_allocation_bitmask_no_offset << offset);
+            const daxa_u32 bit_count_before = bitCount(page_local_consumption_bitmask_before);
+            const daxa_u32 first_zero_bit_offset = findLSB(~page_local_consumption_bitmask_before);
+            for (daxa_u32 offset = first_zero_bit_offset; offset < (VOXEL_MALLOC_MAX_ALLOCATIONS_IN_PAGE_BITFIELD - local_allocation_bit_n) + 1; ++offset) {
+                const daxa_u32 potential_local_allocation_bitmask = page_local_consumption_bitmask_before | (local_allocation_bitmask_no_offset << offset);
                 if (bitCount(potential_local_allocation_bitmask) == bit_count_before + local_allocation_bit_n) {
                     page_local_consumption_bitmask_first_used_bit = offset;
                     page_local_consumption_bitmask_with_new_allocation = potential_local_allocation_bitmask;
@@ -112,16 +112,16 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
             }
         }
         if (can_allocate) {
-            i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
+            daxa_i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
             if (election_fetch == -1) {
                 // Thread won election.
                 // Try to publish the allocation into the local page.
                 // Construct new page info blob.
-                const u64 new_page_info = VoxelMalloc_PageInfo_pack(page_local_consumption_bitmask_with_new_allocation, global_page_index);
+                const daxa_u64 new_page_info = VoxelMalloc_PageInfo_pack(page_local_consumption_bitmask_with_new_allocation, global_page_index);
                 // Try to finalize the allocation. The allocation succeses, when the fetched page
                 // info we got in the beginning did not change up until this atomic operation.
                 // If the page info changed, we need to start over as we worked on outdated information for this attempt.
-                const u64 fetched_page_info = atomicCompSwap(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), const_page_info_copy, new_page_info);
+                const daxa_u64 fetched_page_info = atomicCompSwap(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), const_page_info_copy, new_page_info);
                 VoxelMalloc_malloc_allocation_success = (fetched_page_info == const_page_info_copy);
                 if (VoxelMalloc_malloc_allocation_success) {
                     VoxelMalloc_malloc_page_local_consumption_bitmask_first_used_bit = page_local_consumption_bitmask_first_used_bit;
@@ -159,7 +159,7 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
         // When one is found, write the metadata to it.
         barrier();
         memoryBarrierShared();
-        for (u32 iteration = 0; !VoxelMalloc_malloc_allocation_success; ++iteration) {
+        for (daxa_u32 iteration = 0; !VoxelMalloc_malloc_allocation_success; ++iteration) {
             const uint current_election_variable = iteration % 2;
             const uint next_iteration_election_variable = (iteration + 1) % 2;
             if (group_local_thread_index == 0) {
@@ -167,18 +167,18 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
             }
             if (page_unallocated) {
                 // Elect ONE of the threads that map to an empty page.
-                i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
+                daxa_i32 election_fetch = atomicCompSwap(VoxelMalloc_malloc_elected_thread[current_election_variable], -1, group_local_thread_index);
                 if (election_fetch == -1) {
                     // Pack metadata.
-                    const u64 new_page_info = VoxelMalloc_PageInfo_pack(local_allocation_bitmask_no_offset, VoxelMalloc_malloc_global_page_index);
+                    const daxa_u64 new_page_info = VoxelMalloc_PageInfo_pack(local_allocation_bitmask_no_offset, VoxelMalloc_malloc_global_page_index);
                     // Try to write metadata to the elected page meta info.
-                    const u64 fetched_page_info = atomicCompSwap(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), u64(0), new_page_info);
+                    const daxa_u64 fetched_page_info = atomicCompSwap(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), daxa_u64(0), new_page_info);
                     // We succeed, when the page meta info was 0 (meaning it was empty) in the atomic comp swap.
                     // If we get back a 0, we have successfully written the page meta info.
-                    VoxelMalloc_malloc_allocation_success = fetched_page_info == u64(0);
+                    VoxelMalloc_malloc_allocation_success = fetched_page_info == daxa_u64(0);
                     // It can happen that another workgroup changes the metadata of our empty page, as everything is parallel here.
                     // If that happenes we need to update the boolean determining if we can update the meta data of the page the thread maps to.
-                    page_unallocated = fetched_page_info == u64(0);
+                    page_unallocated = fetched_page_info == daxa_u64(0);
                     if (VoxelMalloc_malloc_allocation_success) {
                         daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[VoxelMalloc_malloc_global_page_index * VOXEL_MALLOC_PAGE_SIZE_U32S];
                         deref(page[0]) = VoxelMalloc_AllocationMetadata_pack(chunk_local_allocator_page_index, local_allocation_bit_n);
@@ -201,15 +201,15 @@ VoxelMalloc_Pointer VoxelMalloc_malloc(daxa_RWBufferPtr(VoxelMallocPageAllocator
 // Can enter with any workgroup and warp configuration.
 #define PAGE_ALLOC_INFOS(i) deref(voxel_chunk_ptr).sub_allocator_state.page_allocation_infos[i]
 void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, VoxelMalloc_Pointer address) {
-    const u32 global_page_index = VoxelMalloc_Pointer_extract_global_page_index(address);
-    u32 local_page_alloc_offset = VoxelMalloc_Pointer_extract_local_page_alloc_offset(address);
+    const daxa_u32 global_page_index = VoxelMalloc_Pointer_extract_global_page_index(address);
+    daxa_u32 local_page_alloc_offset = VoxelMalloc_Pointer_extract_local_page_alloc_offset(address);
 
     // Only ONE thread should ever enter this!
     daxa_RWBufferPtr(daxa_u32) page = deref(allocator).heap[global_page_index * VOXEL_MALLOC_PAGE_SIZE_U32S];
 
     const VoxelMalloc_AllocationMetadata allocation_metadata = deref(page[local_page_alloc_offset * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT]);
-    const u32 chunk_local_allocator_page_index = VoxelMalloc_AllocationMetadata_extract_chunk_local_allocator_page_index(allocation_metadata);
-    const u32 page_bits_consumed = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(allocation_metadata);
+    const daxa_u32 chunk_local_allocator_page_index = VoxelMalloc_AllocationMetadata_extract_chunk_local_allocator_page_index(allocation_metadata);
+    const daxa_u32 page_bits_consumed = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(allocation_metadata);
 
     // The idea behind the synchronization here:
     // We fetch the page info with a single atomic operation.
@@ -219,14 +219,14 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa
     // If the values are the same this means that out changes are valid as the effect would have been as if this whole thing would have happened atomically.
     // If the values are NOT the same, another thread modified the data in a way that makes our changes INVALID.
 
-    const u32 allocation_bits = ((1 << page_bits_consumed) - 1) << local_page_alloc_offset;
+    const daxa_u32 allocation_bits = ((1 << page_bits_consumed) - 1) << local_page_alloc_offset;
 
     bool deallocate_page = false;
     while (true) {
         const VoxelMalloc_PageInfo const_page_info_copy = atomicAdd(PAGE_ALLOC_INFOS(chunk_local_allocator_page_index), 0);
-        const u32 page_local_consumption_bitmask = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(const_page_info_copy);
+        const daxa_u32 page_local_consumption_bitmask = VoxelMalloc_PageInfo_extract_local_consumption_bitmask(const_page_info_copy);
 
-        const u32 page_local_consumption_bitmask_deallocated = page_local_consumption_bitmask & ~(allocation_bits);
+        const daxa_u32 page_local_consumption_bitmask_deallocated = page_local_consumption_bitmask & ~(allocation_bits);
         deallocate_page = page_local_consumption_bitmask_deallocated == 0;
 
         VoxelMalloc_PageInfo our_page_info = 0;
@@ -249,12 +249,12 @@ void VoxelMalloc_free(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa
 #undef PAGE_ALLOC_INFOS
 
 // Must enter with 512 thread work group with all threads active.
-void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, u32 size) {
-    u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
+void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in out VoxelMalloc_Pointer prev_address, daxa_u32 size) {
+    daxa_u32 new_local_allocation_bit_n = (size + 1 + VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT - 1) / VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT;
     daxa_RWBufferPtr(daxa_u32) temp_ptr;
     voxel_malloc_address_to_base_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(allocator), prev_address, temp_ptr);
     VoxelMalloc_AllocationMetadata prev_alloc_metadata = deref(temp_ptr);
-    u32 prev_local_allocation_bit_n = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(prev_alloc_metadata);
+    daxa_u32 prev_local_allocation_bit_n = VoxelMalloc_AllocationMetadata_extract_page_bits_consumed(prev_alloc_metadata);
     if (prev_local_allocation_bit_n == new_local_allocation_bit_n) {
         return;
     }

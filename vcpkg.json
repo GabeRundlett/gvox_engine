@@ -45,10 +45,11 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "../gvox/cmake/vcpkg-port",
-      "../Daxa/cmake/vcpkg-overlay-ports/dxc",
-      "../Daxa/cmake/vcpkg-overlay-ports/glfw3",
-      "../Daxa/cmake/vcpkg-overlay-ports/fsr2",
+      "deps/gvox/cmake/vcpkg-port",
+      "deps/Daxa",
+      "deps/Daxa/cmake/vcpkg-overlay-ports/dxc",
+      "deps/Daxa/cmake/vcpkg-overlay-ports/glfw3",
+      "deps/Daxa/cmake/vcpkg-overlay-ports/fsr2",
       "cmake/vcpkg-overlay-ports/fiber-tasking-lib",
       "cmake/vcpkg-overlay-ports/soloud",
       "cmake/vcpkg-overlay-ports/imgui-node-editor"

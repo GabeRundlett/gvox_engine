@@ -33,10 +33,10 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImGuiRenderer imgui_renderer;
     GpuApp gpu_app;
 
-    std::array<f32vec2, 128> halton_offsets{};
+    std::array<daxa_f32vec2, 128> halton_offsets{};
     GpuInput &gpu_input{gpu_app.gpu_input};
     GpuOutput &gpu_output{gpu_app.gpu_output};
-    f32 render_res_scl{1.0f};
+    daxa_f32 render_res_scl{1.0f};
     GvoxContext *gvox_ctx;
 
     bool has_model = false;
@@ -48,7 +48,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     enum class Conditions {
         COUNT,
     };
-    std::array<bool, static_cast<usize>(Conditions::COUNT)> condition_values{};
+    std::array<bool, static_cast<size_t>(Conditions::COUNT)> condition_values{};
     daxa::TaskGraph main_task_graph;
 
     VoxelApp();
@@ -63,11 +63,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     auto load_gvox_data() -> GvoxModelData;
 
     void on_update();
-    void on_mouse_move(f32 x, f32 y);
-    void on_mouse_scroll(f32 dx, f32 dy);
-    void on_mouse_button(i32 button_id, i32 action);
-    void on_key(i32 key_id, i32 action);
-    void on_resize(u32 sx, u32 sy);
+    void on_mouse_move(daxa_f32 x, daxa_f32 y);
+    void on_mouse_scroll(daxa_f32 dx, daxa_f32 dy);
+    void on_mouse_button(daxa_i32 button_id, daxa_i32 action);
+    void on_key(daxa_i32 key_id, daxa_i32 action);
+    void on_resize(daxa_u32 sx, daxa_u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
     void compute_image_sizes();

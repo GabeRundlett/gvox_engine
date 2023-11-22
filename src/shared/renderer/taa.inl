@@ -86,8 +86,8 @@ DAXA_DECL_TASK_USES_END()
 #endif
 
 struct TaaPush {
-    f32vec4 input_tex_size;
-    f32vec4 output_tex_size;
+    daxa_f32vec4 input_tex_size;
+    daxa_f32vec4 output_tex_size;
 };
 
 #if defined(__cplusplus)
@@ -103,27 +103,27 @@ inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager,
     });
 }
 
-#define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                                 \
-    struct Name##ComputeTaskState {                                                                                                                     \
-        AsyncManagedComputePipeline pipeline;                                                                                                \
+#define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                                \
+    struct Name##ComputeTaskState {                                                                                                                    \
+        AsyncManagedComputePipeline pipeline;                                                                                                          \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { taa_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, TaaPush const &push) {                                                  \
-            if (!pipeline.is_valid())                                                                                                                   \
-                return;                                                                                                                                 \
-            cmd_list.set_pipeline(pipeline.get());                                                                                                           \
-            cmd_list.push_constant(push);                                                                                                               \
-            cmd_list.dispatch((thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y);          \
-        }                                                                                                                                               \
-    };                                                                                                                                                  \
-    struct Name##ComputeTask : Name##ComputeUses {                                                                                                      \
-        Name##ComputeTaskState *state;                                                                                                                  \
-        u32vec2 thread_count;                                                                                                                           \
-        TaaPush push;                                                                                                                                   \
-        void callback(daxa::TaskInterface const &ti) {                                                                                                  \
-            auto cmd_list = ti.get_command_list();                                                                                                      \
-            cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                             \
-            state->record_commands(cmd_list, thread_count, push);                                                                                       \
-        }                                                                                                                                               \
+        void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 thread_count, TaaPush const &push) {                                        \
+            if (!pipeline.is_valid())                                                                                                                  \
+                return;                                                                                                                                \
+            recorder.set_pipeline(pipeline.get());                                                                                                     \
+            recorder.push_constant(push);                                                                                                              \
+            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});       \
+        }                                                                                                                                              \
+    };                                                                                                                                                 \
+    struct Name##ComputeTask : Name##ComputeUses {                                                                                                     \
+        Name##ComputeTaskState *state;                                                                                                                 \
+        daxa_u32vec2 thread_count;                                                                                                                     \
+        TaaPush push;                                                                                                                                  \
+        void callback(daxa::TaskInterface const &ti) {                                                                                                 \
+            auto &recorder = ti.get_recorder();                                                                                                        \
+            recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                            \
+            state->record_commands(recorder, thread_count, push);                                                                                      \
+        }                                                                                                                                              \
     }
 
 TAA_DECL_TASK_STATE(TaaReproject, TAA_REPROJECT);
@@ -209,11 +209,11 @@ struct TaaRenderer {
             .name = "closest_velocity_img",
         });
 
-        auto i_extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.render_resolution.x), static_cast<f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
+        auto i_extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(record_ctx.render_resolution.x), static_cast<daxa_f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
         i_extent_inv_extent.z = 1.0f / i_extent_inv_extent.x;
         i_extent_inv_extent.w = 1.0f / i_extent_inv_extent.y;
 
-        auto o_extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.output_resolution.x), static_cast<f32>(record_ctx.output_resolution.y), 0.0f, 0.0f);
+        auto o_extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(record_ctx.output_resolution.x), static_cast<daxa_f32>(record_ctx.output_resolution.y), 0.0f, 0.0f);
         o_extent_inv_extent.z = 1.0f / o_extent_inv_extent.x;
         o_extent_inv_extent.w = 1.0f / o_extent_inv_extent.y;
 

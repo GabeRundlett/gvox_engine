@@ -149,26 +149,26 @@ DAXA_DECL_TASK_USES_END()
 #endif
 
 struct RtdgiPush {
-    f32vec4 output_tex_size;
+    daxa_f32vec4 output_tex_size;
 };
 struct RtdgiTemporalPush {
-    f32vec4 output_tex_size;
-    f32vec4 gbuffer_tex_size;
+    daxa_f32vec4 output_tex_size;
+    daxa_f32vec4 gbuffer_tex_size;
 };
 struct RtdgiRestirTemporalPush {
-    f32vec4 gbuffer_tex_size;
+    daxa_f32vec4 gbuffer_tex_size;
 };
 struct RtdgiRestirSpatialPush {
-    f32vec4 gbuffer_tex_size;
-    f32vec4 output_tex_size;
-    u32 spatial_reuse_pass_idx;
+    daxa_f32vec4 gbuffer_tex_size;
+    daxa_f32vec4 output_tex_size;
+    daxa_u32 spatial_reuse_pass_idx;
     // Only done in the last spatial resampling pass
-    u32 perform_occlusion_raymarch;
-    u32 occlusion_raymarch_importance_only;
+    daxa_u32 perform_occlusion_raymarch;
+    daxa_u32 occlusion_raymarch_importance_only;
 };
 struct RtdgiRestirResolvePush {
-    f32vec4 gbuffer_tex_size;
-    f32vec4 output_tex_size;
+    daxa_f32vec4 gbuffer_tex_size;
+    daxa_f32vec4 output_tex_size;
 };
 
 #define ENABLE_RESTIR 0
@@ -188,27 +188,27 @@ inline void rtdgi_compile_compute_pipeline(AsyncPipelineManager &pipeline_manage
     });
 }
 
-#define RTDGI_DECL_TASK_STATE(Name, NAME, PushType)                                                                                                                 \
-    struct Name##ComputeTaskState {                                                                                                                                 \
-        AsyncManagedComputePipeline pipeline;                                                                                                            \
+#define RTDGI_DECL_TASK_STATE(Name, NAME, PushType)                                                                                                                \
+    struct Name##ComputeTaskState {                                                                                                                                \
+        AsyncManagedComputePipeline pipeline;                                                                                                                      \
         Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { rtdgi_compile_compute_pipeline<PushType>(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        void record_commands(daxa::CommandList &cmd_list, u32vec2 thread_count, PushType const &push) {                                                             \
-            if (!pipeline.is_valid())                                                                                                                               \
-                return;                                                                                                                                             \
-            cmd_list.set_pipeline(pipeline.get());                                                                                                                       \
-            cmd_list.push_constant(push);                                                                                                                           \
-            cmd_list.dispatch((thread_count.x + 7) / 8, (thread_count.y + 7) / 8);                                                                                  \
-        }                                                                                                                                                           \
-    };                                                                                                                                                              \
-    struct Name##ComputeTask : Name##ComputeUses {                                                                                                                  \
-        Name##ComputeTaskState *state;                                                                                                                              \
-        u32vec2 thread_count;                                                                                                                                       \
-        PushType push;                                                                                                                                              \
-        void callback(daxa::TaskInterface const &ti) {                                                                                                              \
-            auto cmd_list = ti.get_command_list();                                                                                                                  \
-            cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                                         \
-            state->record_commands(cmd_list, thread_count, push);                                                                                                   \
-        }                                                                                                                                                           \
+        void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 thread_count, PushType const &push) {                                                   \
+            if (!pipeline.is_valid())                                                                                                                              \
+                return;                                                                                                                                            \
+            recorder.set_pipeline(pipeline.get());                                                                                                                 \
+            recorder.push_constant(push);                                                                                                                          \
+            recorder.dispatch({(thread_count.x + 7) / 8, (thread_count.y + 7) / 8});                                                                               \
+        }                                                                                                                                                          \
+    };                                                                                                                                                             \
+    struct Name##ComputeTask : Name##ComputeUses {                                                                                                                 \
+        Name##ComputeTaskState *state;                                                                                                                             \
+        daxa_u32vec2 thread_count;                                                                                                                                 \
+        PushType push;                                                                                                                                             \
+        void callback(daxa::TaskInterface const &ti) {                                                                                                             \
+            auto &recorder = ti.get_recorder();                                                                                                                    \
+            recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                                        \
+            state->record_commands(recorder, thread_count, push);                                                                                                  \
+        }                                                                                                                                                          \
     }
 
 RTDGI_DECL_TASK_STATE(RtdgiTemporal, RTDGI_TEMPORAL, RtdgiTemporalPush);
@@ -221,7 +221,7 @@ RTDGI_DECL_TASK_STATE(RtdgiRestirTemporal, RTDGI_RESTIR_TEMPORAL, RtdgiRestirTem
 RTDGI_DECL_TASK_STATE(RtdgiRestirSpatial, RTDGI_RESTIR_SPATIAL, RtdgiRestirSpatialPush);
 RTDGI_DECL_TASK_STATE(RtdgiRestirResolve, RTDGI_RESTIR_RESOLVE, RtdgiRestirResolvePush);
 
-static inline constexpr u32 SPATIAL_REUSE_PASS_COUNT = 2;
+static inline constexpr daxa_u32 SPATIAL_REUSE_PASS_COUNT = 2;
 
 struct DiffuseGiRenderer {
     PingPongImage temporal_radiance_tex;
@@ -245,9 +245,9 @@ struct DiffuseGiRenderer {
     RtdgiRestirSpatialComputeTaskState rtdgi_restir_spatial_task_state;
     RtdgiRestirResolveComputeTaskState rtdgi_restir_resolve_task_state;
 
-    f32vec4 scaled_extent_inv_extent;
-    f32vec4 extent_inv_extent;
-    u32vec2 shading_resolution;
+    daxa_f32vec4 scaled_extent_inv_extent;
+    daxa_f32vec4 extent_inv_extent;
+    daxa_u32vec2 shading_resolution;
 
     DiffuseGiRenderer(AsyncPipelineManager &pipeline_manager)
         : downscale_ssao_task_state{pipeline_manager, {{"DOWNSCALE_SSAO", "1"}}},
@@ -374,13 +374,13 @@ struct DiffuseGiRenderer {
         RecordContext &record_ctx,
         daxa::TaskImageView reprojection_map)
         -> ReprojectedRtdgi {
-        shading_resolution = u32vec2{record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL};
+        shading_resolution = daxa_u32vec2{record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL};
 
-        extent_inv_extent = f32vec4(static_cast<f32>(record_ctx.render_resolution.x), static_cast<f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
+        extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(record_ctx.render_resolution.x), static_cast<daxa_f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
         extent_inv_extent.z = 1.0f / extent_inv_extent.x;
         extent_inv_extent.w = 1.0f / extent_inv_extent.y;
 
-        scaled_extent_inv_extent = f32vec4(static_cast<f32>(shading_resolution.x), static_cast<f32>(shading_resolution.y), 0.0f, 0.0f);
+        scaled_extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(shading_resolution.x), static_cast<daxa_f32>(shading_resolution.y), 0.0f, 0.0f);
         scaled_extent_inv_extent.z = 1.0f / scaled_extent_inv_extent.x;
         scaled_extent_inv_extent.w = 1.0f / scaled_extent_inv_extent.y;
 
@@ -715,7 +715,7 @@ struct DiffuseGiRenderer {
             auto reservoir_input_tex = local_temporal_reservoir_tex;
             auto bounced_radiance_input_tex = radiance_tex;
 
-            for (u32 spatial_reuse_pass_idx = 0; spatial_reuse_pass_idx < SPATIAL_REUSE_PASS_COUNT; ++spatial_reuse_pass_idx) {
+            for (daxa_u32 spatial_reuse_pass_idx = 0; spatial_reuse_pass_idx < SPATIAL_REUSE_PASS_COUNT; ++spatial_reuse_pass_idx) {
                 bool perform_occlusion_raymarch = (spatial_reuse_pass_idx + 1 == SPATIAL_REUSE_PASS_COUNT);
                 bool occlusion_raymarch_importance_only = false; // self.use_raytraced_reservoir_visibility
 

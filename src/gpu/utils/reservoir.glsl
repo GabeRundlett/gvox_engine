@@ -30,18 +30,18 @@ Reservoir1spp Reservoir1spp_create() {
     return res;
 }
 
-Reservoir1spp Reservoir1spp_from_raw(u32vec2 raw) {
+Reservoir1spp Reservoir1spp_from_raw(daxa_u32vec2 raw) {
     Reservoir1spp res;
     res.w_sum = 0;
     res.payload = raw.x;
-    const f32vec2 MW = unpackHalf2x16(raw.y);
+    const daxa_f32vec2 MW = unpackHalf2x16(raw.y);
     res.M = MW[0];
     res.W = MW[1];
     return res;
 }
 
-u32vec2 Reservoir1spp_as_raw(inout Reservoir1spp self) {
-    return u32vec2(self.payload, packHalf2x16(f32vec2(self.M, self.W)));
+daxa_u32vec2 Reservoir1spp_as_raw(inout Reservoir1spp self) {
+    return daxa_u32vec2(self.payload, packHalf2x16(daxa_f32vec2(self.M, self.W)));
 }
 
 bool Reservoir1spp_update(inout Reservoir1spp self, float w, uint sample_payload, inout uint rng) {

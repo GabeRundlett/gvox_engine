@@ -20,12 +20,13 @@ DAXA_DECL_TASK_USES_END()
 DAXA_DECL_TASK_USES_BEGIN(PostprocessingRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
 DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
 DAXA_TASK_USE_IMAGE(composited_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
+DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
 DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
 DAXA_DECL_TASK_USES_END()
 #endif
 
 struct PostprocessingRasterPush {
-    u32vec2 final_size;
+    daxa_u32vec2 final_size;
 };
 
 #if defined(__cplusplus)
@@ -43,13 +44,13 @@ struct CompositingComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, u32vec2 render_size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        cmd_list.dispatch((render_size.x + 7) / 8, (render_size.y + 7) / 8);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -74,40 +75,40 @@ struct PostprocessingRasterTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::ImageId render_image, u32vec2 size) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa::ImageId render_image, daxa_u32vec2 size) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+        auto renderpass_recorder = std::move(recorder).begin_renderpass({
+            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
-        cmd_list.set_pipeline(pipeline.get());
-        cmd_list.push_constant(PostprocessingRasterPush{
+        renderpass_recorder.set_pipeline(pipeline.get());
+        renderpass_recorder.push_constant(PostprocessingRasterPush{
             .final_size = size,
         });
-        cmd_list.draw({.vertex_count = 3});
-        cmd_list.end_renderpass();
+        renderpass_recorder.draw({.vertex_count = 3});
+        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
 struct CompositingComputeTask : CompositingComputeUses {
     CompositingComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image());
-        state->record_commands(cmd_list, {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
 struct PostprocessingRasterTask : PostprocessingRasterUses {
     PostprocessingRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        auto const &image_info = ti.get_device().info_image(uses.render_image.image());
-        state->record_commands(cmd_list, uses.render_image.image(), {image_info.size.x, image_info.size.y});
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
+        state->record_commands(recorder, uses.render_image.image(), {image_info.size.x, image_info.size.y});
     }
 };
 

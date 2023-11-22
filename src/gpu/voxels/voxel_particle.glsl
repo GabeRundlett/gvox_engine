@@ -10,13 +10,13 @@
 #define PARTICLE_SLEEP_TIMER_OFFSET (8)
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
-void particle_spawn(in out SimulatedVoxelParticle self, u32 index) {
+void particle_spawn(in out SimulatedVoxelParticle self, daxa_u32 index) {
     rand_seed(index);
 
     self.duration_alive = 0.0 + rand() * 0;
     self.flags = PARTICLE_ALIVE_FLAG;
 
-    self.pos = f32vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
+    self.pos = daxa_f32vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
     self.vel = deref(globals).player.forward * 0 + vec3(0, 0, -10);
     // self.pos = deref(globals).player.pos + deref(globals).player.forward * 1 + vec3(0, 0, -2.5) + deref(globals).player.lateral * 3.5;
     // self.vel = deref(globals).player.forward * 3 + rand_dir() * 2 + deref(globals).player.vel;
@@ -34,9 +34,9 @@ void particle_update(in out SimulatedVoxelParticle self, daxa_BufferPtr(GpuInput
     self.duration_alive += dt;
 
     if ((self.flags & PARTICLE_SMOKE_FLAG) != 0) {
-        self.vel += (f32vec3(0.0, 0.0, 1.0) + rand_dir() * 5.1) * dt;
+        self.vel += (daxa_f32vec3(0.0, 0.0, 1.0) + rand_dir() * 5.1) * dt;
     } else {
-        self.vel += f32vec3(0.0, 0.0, -9.8) * dt;
+        self.vel += daxa_f32vec3(0.0, 0.0, -9.8) * dt;
     }
 
     float curr_speed = length(self.vel);

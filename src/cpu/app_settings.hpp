@@ -7,16 +7,16 @@
 #include <shared/settings.inl>
 
 struct AppSettings {
-    std::map<i32, i32> keybinds;
-    std::map<i32, i32> mouse_button_binds;
-    f32 ui_scl;
-    f32 camera_fov;
-    f32 mouse_sensitivity;
-    f32 render_res_scl;
+    std::map<daxa_i32, daxa_i32> keybinds;
+    std::map<daxa_i32, daxa_i32> mouse_button_binds;
+    daxa_f32 ui_scl;
+    daxa_f32 camera_fov;
+    daxa_f32 mouse_sensitivity;
+    daxa_f32 render_res_scl;
     std::string world_seed_str;
 
     SkySettings sky;
-    f32vec2 sun_angle;
+    daxa_f32vec2 sun_angle;
 
     bool show_debug_info;
     bool show_console;

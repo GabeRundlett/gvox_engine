@@ -32,39 +32,39 @@
 // clang-format on
 
 struct MouseInput {
-    f32vec2 pos;
-    f32vec2 pos_delta;
-    f32vec2 scroll_delta;
+    daxa_f32vec2 pos;
+    daxa_f32vec2 pos_delta;
+    daxa_f32vec2 scroll_delta;
 };
 
 struct GpuInput {
-    u32vec2 frame_dim;
-    u32vec2 rounded_frame_dim;
-    u32vec2 output_resolution;
-    f32vec2 halton_jitter;
-    f32 render_res_scl;
-    f32 resize_factor;
-    f32 fov;
-    f32 sensitivity;
-    u32 frame_index;
-    u32 fif_index;
-    u32 flags;
-    f32 time;
-    f32 delta_time;
+    daxa_u32vec2 frame_dim;
+    daxa_u32vec2 rounded_frame_dim;
+    daxa_u32vec2 output_resolution;
+    daxa_f32vec2 halton_jitter;
+    daxa_f32 render_res_scl;
+    daxa_f32 resize_factor;
+    daxa_f32 fov;
+    daxa_f32 sensitivity;
+    daxa_u32 frame_index;
+    daxa_u32 fif_index;
+    daxa_u32 flags;
+    daxa_f32 time;
+    daxa_f32 delta_time;
     daxa_SamplerId sampler_nnc;
     daxa_SamplerId sampler_lnc;
     daxa_SamplerId sampler_llc;
     daxa_SamplerId sampler_llr;
     SkySettings sky_settings;
     MouseInput mouse;
-    u32 actions[GAME_ACTION_LAST + 1];
+    daxa_u32 actions[GAME_ACTION_LAST + 1];
 };
 DAXA_DECL_BUFFER_PTR(GpuInput)
 
 struct GpuOutput {
-    f32vec3 player_pos;
-    f32vec3 player_rot;
-    f32vec3 player_unit_offset;
+    daxa_f32vec3 player_pos;
+    daxa_f32vec3 player_rot;
+    daxa_f32vec3 player_unit_offset;
 
     VoxelWorldOutput voxel_world;
 };

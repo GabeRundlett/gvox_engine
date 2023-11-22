@@ -209,13 +209,13 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("sun_angle_y", sun_angle.y);
     recompute_sun_direction();
 
-    for (i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
+    for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
         auto str = fmt::format("key_{}", key_i);
         if (json.contains(str)) {
             keybinds[key_i] = json[str];
         }
     }
-    for (i32 mouse_button_i = 0; mouse_button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++mouse_button_i) {
+    for (daxa_i32 mouse_button_i = 0; mouse_button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++mouse_button_i) {
         auto str = fmt::format("mouse_button_{}", mouse_button_i);
         if (json.contains(str)) {
             mouse_button_binds[mouse_button_i] = json[str];
@@ -345,8 +345,8 @@ void AppSettings::recompute_sun_direction() {
         return x * std::numbers::pi_v<float> / 180.0f;
     };
     sky.sun_direction = {
-        f32(std::cos(radians(sun_angle.x)) * std::sin(radians(sun_angle.y))),
-        f32(std::sin(radians(sun_angle.x)) * std::sin(radians(sun_angle.y))),
-        f32(std::cos(radians(sun_angle.y))),
+        daxa_f32(std::cos(radians(sun_angle.x)) * std::sin(radians(sun_angle.y))),
+        daxa_f32(std::sin(radians(sun_angle.x)) * std::sin(radians(sun_angle.y))),
+        daxa_f32(std::cos(radians(sun_angle.y))),
     };
 }

@@ -102,19 +102,19 @@ struct GpuResources {
             .name = "globals_buffer",
         });
         gvox_model_buffer = device.create_buffer({
-            .size = static_cast<u32>(offsetof(GpuGvoxModel, data)),
+            .size = static_cast<daxa_u32>(offsetof(GpuGvoxModel, data)),
             .name = "gvox_model_buffer",
         });
         simulated_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(SimulatedVoxelParticle) * std::max<u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
+            .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "simulated_voxel_particles_buffer",
         });
         rendered_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(u32) * std::max<u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
+            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
             .name = "rendered_voxel_particles_buffer",
         });
         placed_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(u32) * std::max<u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
+            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "placed_voxel_particles_buffer",
         });
         sampler_nnc = device.create_sampler({
@@ -256,20 +256,20 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 .uses = {
                     daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec2_image},
                 },
-                .task = [this](daxa::TaskInterface task_runtime) {
-                    auto staging_buffer = task_runtime.get_device().create_buffer({
-                        .size = static_cast<u32>(128 * 128 * 4 * 64 * 1),
+                .task = [this](daxa::TaskInterface ti) {
+                    auto staging_buffer = ti.get_device().create_buffer({
+                        .size = static_cast<daxa_u32>(128 * 128 * 4 * 64 * 1),
                         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = task_runtime.get_device().get_host_address_as<u8>(staging_buffer);
+                    auto *buffer_ptr = ti.get_device().get_host_address_as<uint8_t>(staging_buffer).value();
                     auto *stbn_zip = unzOpen("assets/STBN.zip");
                     for (auto i = 0; i < 64; ++i) {
                         [[maybe_unused]] int err = 0;
-                        i32 size_x = 0;
-                        i32 size_y = 0;
-                        i32 channel_n = 0;
-                        auto load_image = [&](char const *path, u8 *buffer_out_ptr) {
+                        daxa_i32 size_x = 0;
+                        daxa_i32 size_y = 0;
+                        daxa_i32 channel_n = 0;
+                        auto load_image = [&](char const *path, uint8_t *buffer_out_ptr) {
                             err = unzLocateFile(stbn_zip, path, 1);
                             assert(err == UNZ_OK);
                             auto file_info = unz_file_info{};
@@ -291,14 +291,14 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                         load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
                     }
 
-                    auto cmd_list = task_runtime.get_command_list();
-                    cmd_list.pipeline_barrier({
+                    auto &recorder = ti.get_recorder();
+                    recorder.pipeline_barrier({
                         .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                     });
-                    cmd_list.destroy_buffer_deferred(staging_buffer);
-                    cmd_list.copy_buffer_to_image({
+                    recorder.destroy_buffer_deferred(staging_buffer);
+                    recorder.copy_buffer_to_image({
                         .buffer = staging_buffer,
-                        .buffer_offset = (usize{128} * 128 * 4 * 64) * 0,
+                        .buffer_offset = (size_t{128} * 128 * 4 * 64) * 0,
                         .image = task_blue_noise_vec2_image.get_state().images[0],
                         .image_extent = {128, 128, 64},
                     });
@@ -317,16 +317,16 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 .name = "temp_task_graph",
             });
 
-            i32 size_x = 0;
-            i32 size_y = 0;
-            i32 channel_n = 0;
+            daxa_i32 size_x = 0;
+            daxa_i32 size_y = 0;
+            daxa_i32 channel_n = 0;
             auto *temp_data = stbi_load("assets/debug.png", &size_x, &size_y, &channel_n, 4);
-            auto size = static_cast<u32>(size_x) * static_cast<u32>(size_y) * 4 * 1;
+            auto size = static_cast<daxa_u32>(size_x) * static_cast<daxa_u32>(size_y) * 4 * 1;
 
             gpu_resources.debug_texture = device.create_image({
                 .dimensions = 2,
                 .format = daxa::Format::R8G8B8A8_UNORM,
-                .size = {static_cast<u32>(size_x), static_cast<u32>(size_y), 1},
+                .size = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
                 .name = "debug_texture",
             });
@@ -337,23 +337,23 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 .uses = {
                     daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_debug_texture},
                 },
-                .task = [&, this](daxa::TaskInterface task_runtime) {
-                    auto staging_buffer = task_runtime.get_device().create_buffer({
+                .task = [&, this](daxa::TaskInterface ti) {
+                    auto staging_buffer = ti.get_device().create_buffer({
                         .size = size,
                         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = task_runtime.get_device().get_host_address_as<u8>(staging_buffer);
+                    auto *buffer_ptr = ti.get_device().get_host_address_as<uint8_t>(staging_buffer).value();
                     std::copy(temp_data + 0, temp_data + size, buffer_ptr);
-                    auto cmd_list = task_runtime.get_command_list();
-                    cmd_list.pipeline_barrier({
+                    auto &recorder = ti.get_recorder();
+                    recorder.pipeline_barrier({
                         .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                     });
-                    cmd_list.destroy_buffer_deferred(staging_buffer);
-                    cmd_list.copy_buffer_to_image({
+                    recorder.destroy_buffer_deferred(staging_buffer);
+                    recorder.copy_buffer_to_image({
                         .buffer = staging_buffer,
                         .image = task_debug_texture.get_state().images[0],
-                        .image_extent = {static_cast<u32>(size_x), static_cast<u32>(size_y), 1},
+                        .image_extent = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
                     });
                     needs_vram_calc = true;
                 },
@@ -368,7 +368,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
     virtual void add_ui() override {
         for (auto const &str : ui_strings) {
-            ImGui::Text(str.c_str());
+            ImGui::Text("%s", str.c_str());
         }
         ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_pos.x), static_cast<double>(gpu_output.player_pos.y), static_cast<double>(gpu_output.player_pos.z));
         ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_rot.x), static_cast<double>(gpu_output.player_rot.y), static_cast<double>(gpu_output.player_rot.z));
@@ -386,39 +386,39 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         debug_gpu_resource_infos.clear();
         ui_strings.clear();
 
-        usize result_size = 0;
+        size_t result_size = 0;
 
-        auto format_to_pixel_size = [](daxa::Format format) -> u32 {
-            switch (format) {
-            case daxa::Format::R16G16B16_SFLOAT: return 3 * 2;
-            case daxa::Format::R16G16B16A16_SFLOAT: return 4 * 2;
-            case daxa::Format::R32G32B32_SFLOAT: return 3 * 4;
-            default:
-            case daxa::Format::R32G32B32A32_SFLOAT: return 4 * 4;
-            }
-        };
+        // auto format_to_pixel_size = [](daxa::Format format) -> daxa_u32 {
+        //     switch (format) {
+        //     case daxa::Format::R16G16B16_SFLOAT: return 3 * 2;
+        //     case daxa::Format::R16G16B16A16_SFLOAT: return 4 * 2;
+        //     case daxa::Format::R32G32B32_SFLOAT: return 3 * 4;
+        //     default:
+        //     case daxa::Format::R32G32B32A32_SFLOAT: return 4 * 4;
+        //     }
+        // };
 
-        auto image_size = [this, &device, &format_to_pixel_size, &result_size, &debug_gpu_resource_infos](daxa::ImageId image) {
-            if (image.is_empty()) {
-                return;
-            }
-            auto image_info = device.info_image(image);
-            auto size = format_to_pixel_size(image_info.format) * image_info.size.x * image_info.size.y * image_info.size.z;
-            debug_gpu_resource_infos.push_back({
-                .type = "image",
-                .name = image_info.name,
-                .size = size,
-            });
-            result_size += size;
-        };
-        auto buffer_size = [this, &device, &result_size, &debug_gpu_resource_infos](daxa::BufferId buffer) {
+        // auto image_size = [&device, &format_to_pixel_size, &result_size, &debug_gpu_resource_infos](daxa::ImageId image) {
+        //     if (image.is_empty()) {
+        //         return;
+        //     }
+        //     auto image_info = device.info_image(image).value();
+        //     auto size = format_to_pixel_size(image_info.format) * image_info.size.x * image_info.size.y * image_info.size.z;
+        //     debug_gpu_resource_infos.push_back({
+        //         .type = "image",
+        //         .name = image_info.name.data(),
+        //         .size = size,
+        //     });
+        //     result_size += size;
+        // };
+        auto buffer_size = [&device, &result_size, &debug_gpu_resource_infos](daxa::BufferId buffer) {
             if (buffer.is_empty()) {
                 return;
             }
-            auto buffer_info = device.info_buffer(buffer);
+            auto buffer_info = device.info_buffer(buffer).value();
             debug_gpu_resource_infos.push_back({
                 .type = "buffer",
-                .name = buffer_info.name,
+                .name = buffer_info.name.data(),
                 .size = buffer_info.size,
             });
             result_size += buffer_info.size;
@@ -456,7 +456,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.sampler_llr = gpu_resources.sampler_llr;
 
         gpu_input.flags &= ~GAME_FLAG_BITS_PAUSED;
-        gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<u32>(ui.paused);
+        gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<daxa_u32>(ui.paused);
 
         gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
 
@@ -515,9 +515,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_globals_buffer},
             },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
-                cmd_list.clear_buffer({
+            .task = [this](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
+                recorder.clear_buffer({
                     .buffer = task_globals_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(GpuGlobals),
@@ -565,17 +565,17 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_input_buffer},
             },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
-                auto staging_input_buffer = task_runtime.get_device().create_buffer({
+            .task = [this](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
+                auto staging_input_buffer = ti.get_device().create_buffer({
                     .size = sizeof(GpuInput),
                     .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_input_buffer",
                 });
-                cmd_list.destroy_buffer_deferred(staging_input_buffer);
-                auto *buffer_ptr = task_runtime.get_device().get_host_address_as<GpuInput>(staging_input_buffer);
+                recorder.destroy_buffer_deferred(staging_input_buffer);
+                auto *buffer_ptr = ti.get_device().get_host_address_as<GpuInput>(staging_input_buffer).value();
                 *buffer_ptr = gpu_input;
-                cmd_list.copy_buffer_to_buffer({
+                recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_input_buffer,
                     .dst_buffer = task_input_buffer.get_state().buffers[0],
                     .size = sizeof(GpuInput),
@@ -621,13 +621,13 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
             .name = "raster_color_image",
         });
+
+#if MAX_RENDERED_VOXEL_PARTICLES > 0
         auto raster_depth_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::D32_SFLOAT,
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
             .name = "raster_depth_image",
         });
-
-#if MAX_RENDERED_VOXEL_PARTICLES > 0
         record_ctx.task_graph.add_task(VoxelParticleRasterTask{
             {
                 .uses = {
@@ -680,6 +680,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 .uses = {
                     .gpu_input = task_input_buffer,
                     .composited_image_id = final_image,
+                    .g_buffer_image_id = gbuffer_depth.gbuffer,
                     .render_image = record_ctx.task_swapchain_image,
                 },
             },
@@ -691,15 +692,15 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{task_output_buffer},
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::HOST_TRANSFER_WRITE>{task_staging_output_buffer},
             },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
+            .task = [this](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
                 auto output_buffer = task_output_buffer.get_state().buffers[0];
                 auto staging_output_buffer = gpu_resources.staging_output_buffer;
                 auto frame_index = gpu_input.frame_index + 1;
-                auto *buffer_ptr = task_runtime.get_device().get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer);
-                u32 const offset = frame_index % (FRAMES_IN_FLIGHT + 1);
+                auto *buffer_ptr = ti.get_device().get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer).value();
+                daxa_u32 const offset = frame_index % (FRAMES_IN_FLIGHT + 1);
                 gpu_output = (*buffer_ptr)[offset];
-                cmd_list.copy_buffer_to_buffer({
+                recorder.copy_buffer_to_buffer({
                     .src_buffer = output_buffer,
                     .dst_buffer = staging_output_buffer,
                     .size = sizeof(GpuOutput) * (FRAMES_IN_FLIGHT + 1),

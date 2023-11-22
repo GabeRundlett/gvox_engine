@@ -3,8 +3,8 @@
 #include <shared/core.inl>
 
 struct VoxelWorldGlobals {
-    i32vec3 prev_offset;
-    i32vec3 offset;
+    daxa_i32vec3 prev_offset;
+    daxa_i32vec3 offset;
 };
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
@@ -15,7 +15,7 @@ DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
     .voxel_globals = voxel_buffers.task_voxel_globals
 
 struct VoxelWorldOutput {
-    u32 _dummy;
+    daxa_u32 _dummy;
 };
 
 struct VoxelBufferPtrs {

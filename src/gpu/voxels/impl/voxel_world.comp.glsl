@@ -11,7 +11,7 @@
 #define INDIRECT deref(globals).indirect_dispatch
 
 void try_elect(in out VoxelChunkUpdateInfo work_item) {
-    u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
+    daxa_u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
     // Check if the work item can be added
     if (prev_update_n < MAX_CHUNK_UPDATES_PER_FRAME) {
@@ -26,29 +26,29 @@ void try_elect(in out VoxelChunkUpdateInfo work_item) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
-    i32vec3 chunk_n = i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    daxa_i32vec3 chunk_n = daxa_i32vec3(1 << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
 
     VoxelChunkUpdateInfo terrain_work_item;
-    terrain_work_item.i = i32vec3(gl_GlobalInvocationID.xyz) & (chunk_n - 1);
+    terrain_work_item.i = daxa_i32vec3(gl_GlobalInvocationID.xyz) & (chunk_n - 1);
     terrain_work_item.lod_index = gl_GlobalInvocationID.z >> LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
 
-    i32vec3 offset = (VOXEL_WORLD.offset >> i32vec3(3 + terrain_work_item.lod_index));
-    i32vec3 prev_offset = (VOXEL_WORLD.prev_offset >> i32vec3(3 + terrain_work_item.lod_index));
+    daxa_i32vec3 offset = (VOXEL_WORLD.offset >> daxa_i32vec3(3 + terrain_work_item.lod_index));
+    daxa_i32vec3 prev_offset = (VOXEL_WORLD.prev_offset >> daxa_i32vec3(3 + terrain_work_item.lod_index));
 
     terrain_work_item.chunk_offset = offset;
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
 
     // (const) number of chunks in each axis
-    u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n) + terrain_work_item.lod_index * TOTAL_CHUNKS_PER_LOD;
+    daxa_u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n) + terrain_work_item.lod_index * TOTAL_CHUNKS_PER_LOD;
 
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
         try_elect(terrain_work_item);
     } else if (offset != prev_offset) {
         // invalidate chunks outside the chunk_offset
-        i32vec3 diff = clamp(i32vec3(offset - prev_offset), -chunk_n, chunk_n);
+        daxa_i32vec3 diff = clamp(daxa_i32vec3(offset - prev_offset), -chunk_n, chunk_n);
 
-        i32vec3 start;
-        i32vec3 end;
+        daxa_i32vec3 start;
+        daxa_i32vec3 end;
 
         start.x = diff.x < 0 ? 0 : chunk_n.x - diff.x;
         end.x = diff.x < 0 ? -diff.x : chunk_n.x;
@@ -59,7 +59,7 @@ void main() {
         start.z = diff.z < 0 ? 0 : chunk_n.z - diff.z;
         end.z = diff.z < 0 ? -diff.z : chunk_n.z;
 
-        u32vec3 temp_chunk_i = u32vec3((i32vec3(terrain_work_item.i) - offset) % i32vec3(chunk_n));
+        daxa_u32vec3 temp_chunk_i = daxa_u32vec3((daxa_i32vec3(terrain_work_item.i) - offset) % daxa_i32vec3(chunk_n));
 
         if ((temp_chunk_i.x >= start.x && temp_chunk_i.x < end.x) ||
             (temp_chunk_i.y >= start.y && temp_chunk_i.y < end.y) ||
@@ -83,16 +83,16 @@ void main() {
 #include <utils/noise.glsl>
 #include <voxels/impl/voxels.glsl>
 
-u32vec3 chunk_n;
-u32 temp_chunk_index;
-i32vec3 chunk_i;
-u32 chunk_index;
+daxa_u32vec3 chunk_n;
+daxa_u32 temp_chunk_index;
+daxa_i32vec3 chunk_i;
+daxa_u32 chunk_index;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
-u32vec3 inchunk_voxel_i;
-i32vec3 voxel_i;
-i32vec3 world_voxel;
-f32vec3 voxel_pos;
+daxa_u32vec3 inchunk_voxel_i;
+daxa_i32vec3 voxel_i;
+daxa_i32vec3 world_voxel;
+daxa_f32vec3 voxel_pos;
 BrushInput brush_input;
 
 #include "../brushes.glsl"
@@ -101,7 +101,7 @@ BrushInput brush_input;
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main() {
     // (const) number of chunks in each axis
-    chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     // Index in chunk_update_infos buffer
     temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
     // Chunk 3D index in leaf chunk space (0^3 - 31^3)
@@ -116,38 +116,38 @@ void main() {
     }
 
     // Player chunk offset
-    i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
+    daxa_i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
     // Brush informations
     brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
     // Brush flags
-    u32 brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
-    // Chunk u32 index in voxel_chunks buffer
-    u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
+    daxa_u32 brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
+    // Chunk daxa_u32 index in voxel_chunks buffer
+    daxa_u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     // Pointer to the previous chunk
     temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     // Pointer to the new chunk
     voxel_chunk_ptr = voxel_chunks + chunk_index;
     // Voxel offset in chunk
-    inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
+    inchunk_voxel_i = gl_GlobalInvocationID.xyz - daxa_u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     // Voxel 3D position (in voxel buffer)
-    voxel_i = chunk_i * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
+    voxel_i = chunk_i * CHUNK_SIZE + daxa_i32vec3(inchunk_voxel_i);
 
     // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
-    i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset - i32vec3(chunk_n), i32vec3(chunk_n)), i32vec3(chunk_n));
+    daxa_i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset - daxa_i32vec3(chunk_n), daxa_i32vec3(chunk_n)), daxa_i32vec3(chunk_n));
     // Leaf chunk position in world space
-    i32vec3 world_chunk = chunk_offset + wrapped_chunk_i - i32vec3(chunk_n / 2);
+    daxa_i32vec3 world_chunk = chunk_offset + wrapped_chunk_i - daxa_i32vec3(chunk_n / 2);
 
     // Voxel position in world space (voxels)
-    world_voxel = world_chunk * CHUNK_SIZE + i32vec3(inchunk_voxel_i);
+    world_voxel = world_chunk * CHUNK_SIZE + daxa_i32vec3(inchunk_voxel_i);
     // Voxel position in world space (meters)
-    f32 voxel_scl = f32(VOXEL_SCL) / f32(1 << lod_index);
-    voxel_pos = f32vec3(world_voxel) / voxel_scl;
+    daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL) / daxa_f32(1 << lod_index);
+    voxel_pos = daxa_f32vec3(world_voxel) / voxel_scl;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
-    f32vec3 col = f32vec3(0.0);
-    u32 id = 0;
+    daxa_f32vec3 col = daxa_f32vec3(0.0);
+    daxa_u32 id = 0;
 
     if ((brush_flags & BRUSH_FLAGS_WORLD_BRUSH) != 0) {
         brushgen_world(col, id);
@@ -163,7 +163,7 @@ void main() {
     // }
 
     TempVoxel result;
-    result.col_and_id = f32vec4_to_uint_rgba8(f32vec4(col, 0.0)) | (id << 0x18);
+    result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
 }
 #undef VOXEL_WORLD
@@ -177,13 +177,13 @@ void main() {
 #define WAVE_SIZE gl_SubgroupSize
 #define WAVE_SIZE_MUL (WAVE_SIZE / 32)
 
-u32 sample_temp_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in u32vec3 in_chunk_i) {
-    u32 in_chunk_index = in_chunk_i.x + in_chunk_i.y * CHUNK_SIZE + in_chunk_i.z * CHUNK_SIZE * CHUNK_SIZE;
+daxa_u32 sample_temp_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in daxa_u32vec3 in_chunk_i) {
+    daxa_u32 in_chunk_index = in_chunk_i.x + in_chunk_i.y * CHUNK_SIZE + in_chunk_i.z * CHUNK_SIZE * CHUNK_SIZE;
     return deref(temp_voxel_chunk_ptr).voxels[in_chunk_index].col_and_id >> 24;
 }
 
 // For now, I'm testing with using non-zero as the accel structure, instead of uniformity.
-u32 sample_base_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in u32vec3 in_chunk_i) {
+daxa_u32 sample_base_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in daxa_u32vec3 in_chunk_i) {
 #if VOXEL_ACCEL_UNIFORMITY
     return sample_temp_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
 #else
@@ -193,38 +193,38 @@ u32 sample_base_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, 
 
 #if CHUNK_OPT_STAGE == 0
 
-shared u32 local_x2_copy[4][4];
+shared daxa_u32 local_x2_copy[4][4];
 
 #define VOXEL_CHUNK deref(temp_voxel_chunk_ptr)
-void chunk_opt_x2x4(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in u32 chunk_local_workgroup) {
-    u32vec2 x2_in_group_location = u32vec2(
+void chunk_opt_x2x4(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr, in daxa_u32 chunk_local_workgroup) {
+    daxa_u32vec2 x2_in_group_location = daxa_u32vec2(
         (gl_LocalInvocationID.x >> 5) & 0x3,
         (gl_LocalInvocationID.x >> 7) & 0x3);
-    u32vec3 x2_i = u32vec3(
+    daxa_u32vec3 x2_i = daxa_u32vec3(
         (gl_LocalInvocationID.x >> 5) & 0x3,
         (gl_LocalInvocationID.x >> 7) & 0x3,
         (gl_LocalInvocationID.x & 0x1F));
-    x2_i += 4 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
-    u32vec3 in_chunk_i = x2_i * 2;
-    b32 at_least_one_occluding = false;
-    u32 base_id_x1 = sample_base_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = in_chunk_i + u32vec3(x, y, z); // in x1 space
+    x2_i += 4 * daxa_u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
+    daxa_u32vec3 in_chunk_i = x2_i * 2;
+    daxa_b32 at_least_one_occluding = false;
+    daxa_u32 base_id_x1 = sample_base_voxel_id(temp_voxel_chunk_ptr, in_chunk_i);
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = in_chunk_i + daxa_u32vec3(x, y, z); // in x1 space
                 at_least_one_occluding = at_least_one_occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i) != base_id_x1);
             }
-    u32 result = 0;
+    daxa_u32 result = 0;
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(2)(x2_i);
     }
-    for (u32 i = 0; i < 1 * WAVE_SIZE_MUL; i++) {
+    for (daxa_u32 i = 0; i < 1 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 5) == i) {
             result = subgroupOr(result);
         }
     }
     if ((gl_SubgroupInvocationID & 0x1F /* = %32 */) == 0) {
-        u32 index = uniformity_lod_index(2)(x2_i);
+        daxa_u32 index = uniformity_lod_index(2)(x2_i);
         VOXEL_CHUNK.uniformity.lod_x2[index] = result;
         local_x2_copy[x2_in_group_location.x][x2_in_group_location.y] = result;
     }
@@ -232,36 +232,36 @@ void chunk_opt_x2x4(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
     if (gl_LocalInvocationID.x >= 64) {
         return;
     }
-    u32vec3 x4_i = u32vec3(
+    daxa_u32vec3 x4_i = daxa_u32vec3(
         (gl_LocalInvocationID.x >> 4) & 0x1,
         (gl_LocalInvocationID.x >> 5) & 0x1,
         gl_LocalInvocationID.x & 0xF);
-    x4_i += 2 * u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
+    x4_i += 2 * daxa_u32vec3(chunk_local_workgroup & 0x7, (chunk_local_workgroup >> 3) & 0x7, 0);
     x2_i = x4_i * 2;
-    u32 base_id_x2 = sample_base_voxel_id(temp_voxel_chunk_ptr, x2_i * 2);
+    daxa_u32 base_id_x2 = sample_base_voxel_id(temp_voxel_chunk_ptr, x2_i * 2);
     at_least_one_occluding = false;
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = x2_i + u32vec3(x, y, z); // in x2 space
-                u32 mask = uniformity_lod_mask(2)(local_i);
-                u32vec2 x2_in_group_index = u32vec2(
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = x2_i + daxa_u32vec3(x, y, z); // in x2 space
+                daxa_u32 mask = uniformity_lod_mask(2)(local_i);
+                daxa_u32vec2 x2_in_group_index = daxa_u32vec2(
                     local_i.x & 0x3,
                     local_i.y & 0x3);
-                b32 is_occluding = (local_x2_copy[x2_in_group_index.x][x2_in_group_index.y] & mask) != 0;
+                daxa_b32 is_occluding = (local_x2_copy[x2_in_group_index.x][x2_in_group_index.y] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || is_occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i * 2) != base_id_x2);
             }
     result = 0;
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(4)(x4_i);
     }
-    for (u32 i = 0; i < 2 * WAVE_SIZE_MUL; i++) {
+    for (daxa_u32 i = 0; i < 2 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 4) == i) {
             result = subgroupOr(result);
         }
     }
     if ((gl_SubgroupInvocationID & 0xF /* = %16 */) == 0) {
-        u32 index = uniformity_lod_index(4)(x4_i);
+        daxa_u32 index = uniformity_lod_index(4)(x4_i);
         VOXEL_CHUNK.uniformity.lod_x4[index] = result;
     }
 }
@@ -270,16 +270,16 @@ void chunk_opt_x2x4(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
 #define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
+    daxa_i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     if (chunk_i == INVALID_CHUNK_I) {
         return;
     }
-    u32vec3 chunk_n;
+    daxa_u32vec3 chunk_n;
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    daxa_u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
+    daxa_u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
@@ -290,42 +290,42 @@ void main() {
 
 #if CHUNK_OPT_STAGE == 1
 
-shared u32 local_x8_copy[64];
-shared u32 local_x16_copy[16];
-shared u32 local_x32_copy[4];
+shared daxa_u32 local_x8_copy[64];
+shared daxa_u32 local_x16_copy[16];
+shared daxa_u32 local_x32_copy[4];
 
 #define VOXEL_CHUNK deref(temp_voxel_chunk_ptr)
 void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr) {
-    u32vec3 x8_i = u32vec3(
+    daxa_u32vec3 x8_i = daxa_u32vec3(
         (gl_LocalInvocationID.x >> 3) & 0x7,
         (gl_LocalInvocationID.x >> 6) & 0x7,
         gl_LocalInvocationID.x & 0x7);
-    u32vec3 x4_i = x8_i * 2;
+    daxa_u32vec3 x4_i = x8_i * 2;
 
-    u32 base_id_x4 = sample_base_voxel_id(temp_voxel_chunk_ptr, x4_i * 4);
+    daxa_u32 base_id_x4 = sample_base_voxel_id(temp_voxel_chunk_ptr, x4_i * 4);
 
-    b32 at_least_one_occluding = false;
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = x4_i + u32vec3(x, y, z); // x4 space
-                u32 index = uniformity_lod_index(4)(local_i);
-                u32 mask = uniformity_lod_mask(4)(local_i);
-                b32 occluding = (VOXEL_CHUNK.uniformity.lod_x4[index] & mask) != 0;
+    daxa_b32 at_least_one_occluding = false;
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = x4_i + daxa_u32vec3(x, y, z); // x4 space
+                daxa_u32 index = uniformity_lod_index(4)(local_i);
+                daxa_u32 mask = uniformity_lod_mask(4)(local_i);
+                daxa_b32 occluding = (VOXEL_CHUNK.uniformity.lod_x4[index] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i * 4) != base_id_x4);
             }
 
-    u32 result = 0;
+    daxa_u32 result = 0;
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(8)(x8_i);
     }
-    for (i32 i = 0; i < 4 * WAVE_SIZE_MUL; i++) {
+    for (daxa_i32 i = 0; i < 4 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 3) == i) {
             result = subgroupOr(result);
         }
     }
     if ((gl_SubgroupInvocationID & 0x7 /* == % 8*/) == 0) {
-        u32 index = uniformity_lod_index(8)(x8_i);
+        daxa_u32 index = uniformity_lod_index(8)(x8_i);
         VOXEL_CHUNK.uniformity.lod_x8[index] = result;
         local_x8_copy[index] = result;
     }
@@ -336,21 +336,21 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
         return;
     }
 
-    u32vec3 x16_i = u32vec3(
+    daxa_u32vec3 x16_i = daxa_u32vec3(
         (gl_LocalInvocationID.x >> 2) & 0x3,
         (gl_LocalInvocationID.x >> 4) & 0x3,
         gl_LocalInvocationID.x & 0x3);
     x8_i = x16_i * 2;
-    u32 base_id_x8 = sample_base_voxel_id(temp_voxel_chunk_ptr, x8_i * 8);
+    daxa_u32 base_id_x8 = sample_base_voxel_id(temp_voxel_chunk_ptr, x8_i * 8);
 
     at_least_one_occluding = false;
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = x8_i + u32vec3(x, y, z); // x8 space
-                u32 mask = uniformity_lod_mask(8)(local_i);
-                u32 index = uniformity_lod_index(8)(local_i);
-                b32 is_occluding = (local_x8_copy[index] & mask) != 0;
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = x8_i + daxa_u32vec3(x, y, z); // x8 space
+                daxa_u32 mask = uniformity_lod_mask(8)(local_i);
+                daxa_u32 index = uniformity_lod_index(8)(local_i);
+                daxa_b32 is_occluding = (local_x8_copy[index] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || is_occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i * 8) != base_id_x8);
             }
 
@@ -358,13 +358,13 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(16)(x16_i);
     }
-    for (i32 i = 0; i < 8 * WAVE_SIZE_MUL; i++) {
+    for (daxa_i32 i = 0; i < 8 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 2) == i) {
             result = subgroupOr(result);
         }
     }
     if ((gl_SubgroupInvocationID & 0x3) == 0) {
-        u32 index = uniformity_lod_index(16)(x16_i);
+        daxa_u32 index = uniformity_lod_index(16)(x16_i);
         VOXEL_CHUNK.uniformity.lod_x16[index] = result;
         local_x16_copy[index] = result;
     }
@@ -375,21 +375,21 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
         return;
     }
 
-    u32vec3 x32_i = u32vec3(
+    daxa_u32vec3 x32_i = daxa_u32vec3(
         (gl_LocalInvocationID.x >> 1) & 0x1,
         (gl_LocalInvocationID.x >> 2) & 0x1,
         gl_LocalInvocationID.x & 0x1);
     x16_i = x32_i * 2;
-    u32 base_id_x16 = sample_base_voxel_id(temp_voxel_chunk_ptr, x16_i * 16);
+    daxa_u32 base_id_x16 = sample_base_voxel_id(temp_voxel_chunk_ptr, x16_i * 16);
 
     at_least_one_occluding = false;
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = x16_i + u32vec3(x, y, z); // x16 space
-                u32 mask = uniformity_lod_mask(16)(local_i);
-                u32 index = uniformity_lod_index(16)(local_i);
-                b32 is_occluding = (local_x16_copy[index] & mask) != 0;
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = x16_i + daxa_u32vec3(x, y, z); // x16 space
+                daxa_u32 mask = uniformity_lod_mask(16)(local_i);
+                daxa_u32 index = uniformity_lod_index(16)(local_i);
+                daxa_b32 is_occluding = (local_x16_copy[index] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || is_occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i * 16) != base_id_x16);
             }
 
@@ -397,13 +397,13 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
     if (at_least_one_occluding) {
         result = uniformity_lod_mask(32)(x32_i);
     }
-    for (i32 i = 0; i < 16 * WAVE_SIZE_MUL; i++) {
+    for (daxa_i32 i = 0; i < 16 * WAVE_SIZE_MUL; i++) {
         if ((gl_SubgroupInvocationID >> 1) == i) {
             result = subgroupOr(result);
         }
     }
     if ((gl_SubgroupInvocationID & 0x1) == 0) {
-        u32 index = uniformity_lod_index(32)(x32_i);
+        daxa_u32 index = uniformity_lod_index(32)(x32_i);
         VOXEL_CHUNK.uniformity.lod_x32[index] = result;
         local_x32_copy[index] = result;
     }
@@ -414,58 +414,58 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
         return;
     }
 
-    u32vec3 x64_i = u32vec3(0);
+    daxa_u32vec3 x64_i = daxa_u32vec3(0);
     x32_i = x64_i * 2;
-    u32 base_id_x32 = sample_base_voxel_id(temp_voxel_chunk_ptr, x32_i * 32);
+    daxa_u32 base_id_x32 = sample_base_voxel_id(temp_voxel_chunk_ptr, x32_i * 32);
 
     at_least_one_occluding = false;
-    for (u32 x = 0; x < 2; ++x)
-        for (u32 y = 0; y < 2; ++y)
-            for (u32 z = 0; z < 2; ++z) {
-                u32vec3 local_i = x32_i + u32vec3(x, y, z); // x32 space
-                u32 mask = uniformity_lod_mask(32)(local_i);
-                u32 index = uniformity_lod_index(32)(local_i);
-                b32 is_occluding = (local_x32_copy[index] & mask) != 0;
+    for (daxa_u32 x = 0; x < 2; ++x)
+        for (daxa_u32 y = 0; y < 2; ++y)
+            for (daxa_u32 z = 0; z < 2; ++z) {
+                daxa_u32vec3 local_i = x32_i + daxa_u32vec3(x, y, z); // x32 space
+                daxa_u32 mask = uniformity_lod_mask(32)(local_i);
+                daxa_u32 index = uniformity_lod_index(32)(local_i);
+                daxa_b32 is_occluding = (local_x32_copy[index] & mask) != 0;
                 at_least_one_occluding = at_least_one_occluding || is_occluding || (sample_temp_voxel_id(temp_voxel_chunk_ptr, local_i * 32) != base_id_x32);
             }
 
     // TODO, remove for a parallel option above instead
 
-    u32 uniformity_bits[3];
+    daxa_u32 uniformity_bits[3];
     uniformity_bits[0] = 0x0;
     uniformity_bits[1] = 0x0;
     uniformity_bits[2] = 0x0;
 
-    for (i32 x = 0; x < 1; ++x)
-        for (i32 y = 0; y < 1; ++y)
-            for (i32 z = 0; z < 1; ++z) {
+    for (daxa_i32 x = 0; x < 1; ++x)
+        for (daxa_i32 y = 0; y < 1; ++y)
+            for (daxa_i32 z = 0; z < 1; ++z) {
                 bool has_occluding = at_least_one_occluding;
-                u32 new_index = new_uniformity_lod_index(64)(u32vec3(x, y, z));
-                u32 new_mask = new_uniformity_lod_mask(64)(u32vec3(x, y, z));
+                daxa_u32 new_index = new_uniformity_lod_index(64)(daxa_u32vec3(x, y, z));
+                daxa_u32 new_mask = new_uniformity_lod_mask(64)(daxa_u32vec3(x, y, z));
                 if (has_occluding) {
                     uniformity_bits[new_index] |= new_mask;
                 }
             }
-    for (i32 x = 0; x < 2; ++x)
-        for (i32 y = 0; y < 2; ++y)
-            for (i32 z = 0; z < 2; ++z) {
-                u32 index = uniformity_lod_index(32)(u32vec3(x, y, z));
-                u32 mask = uniformity_lod_mask(32)(u32vec3(x, y, z));
+    for (daxa_i32 x = 0; x < 2; ++x)
+        for (daxa_i32 y = 0; y < 2; ++y)
+            for (daxa_i32 z = 0; z < 2; ++z) {
+                daxa_u32 index = uniformity_lod_index(32)(daxa_u32vec3(x, y, z));
+                daxa_u32 mask = uniformity_lod_mask(32)(daxa_u32vec3(x, y, z));
                 bool has_occluding = (local_x32_copy[index] & mask) != 0;
-                u32 new_index = new_uniformity_lod_index(32)(u32vec3(x, y, z));
-                u32 new_mask = new_uniformity_lod_mask(32)(u32vec3(x, y, z));
+                daxa_u32 new_index = new_uniformity_lod_index(32)(daxa_u32vec3(x, y, z));
+                daxa_u32 new_mask = new_uniformity_lod_mask(32)(daxa_u32vec3(x, y, z));
                 if (has_occluding) {
                     uniformity_bits[new_index] |= new_mask;
                 }
             }
-    for (i32 x = 0; x < 4; ++x)
-        for (i32 y = 0; y < 4; ++y)
-            for (i32 z = 0; z < 4; ++z) {
-                u32 index = uniformity_lod_index(16)(u32vec3(x, y, z));
-                u32 mask = uniformity_lod_mask(16)(u32vec3(x, y, z));
+    for (daxa_i32 x = 0; x < 4; ++x)
+        for (daxa_i32 y = 0; y < 4; ++y)
+            for (daxa_i32 z = 0; z < 4; ++z) {
+                daxa_u32 index = uniformity_lod_index(16)(daxa_u32vec3(x, y, z));
+                daxa_u32 mask = uniformity_lod_mask(16)(daxa_u32vec3(x, y, z));
                 bool has_occluding = (local_x16_copy[index] & mask) != 0;
-                u32 new_index = new_uniformity_lod_index(16)(u32vec3(x, y, z));
-                u32 new_mask = new_uniformity_lod_mask(16)(u32vec3(x, y, z));
+                daxa_u32 new_index = new_uniformity_lod_index(16)(daxa_u32vec3(x, y, z));
+                daxa_u32 new_mask = new_uniformity_lod_mask(16)(daxa_u32vec3(x, y, z));
                 if (has_occluding) {
                     uniformity_bits[new_index] |= new_mask;
                 }
@@ -480,16 +480,16 @@ void chunk_opt_x8up(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, daxa_
 #define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
+    daxa_i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].i;
     if (chunk_i == INVALID_CHUNK_I) {
         return;
     }
-    u32vec3 chunk_n;
+    daxa_u32vec3 chunk_n;
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    daxa_u32 lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
+    daxa_u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
@@ -513,24 +513,24 @@ void main() {
 #include <voxels/impl/voxel_malloc.glsl>
 #include <voxels/impl/voxels.glsl>
 
-shared u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
-shared u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
-shared u32 palette_size;
+shared daxa_u32 compression_result[PALETTE_REGION_TOTAL_SIZE];
+shared daxa_u64 voted_results[PALETTE_REGION_TOTAL_SIZE];
+shared daxa_u32 palette_size;
 
-void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out u32 my_palette_index) {
+void process_palette_region(daxa_u32 palette_region_voxel_index, daxa_u32 my_voxel, in out daxa_u32 my_palette_index) {
     if (palette_region_voxel_index == 0) {
         palette_size = 0;
     }
     voted_results[palette_region_voxel_index] = 0;
     barrier();
-    for (u32 algo_i = 0; algo_i < PALETTE_MAX_COMPRESSED_VARIANT_N + 1; ++algo_i) {
+    for (daxa_u32 algo_i = 0; algo_i < PALETTE_MAX_COMPRESSED_VARIANT_N + 1; ++algo_i) {
         if (my_palette_index == 0) {
-            u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, u64(my_voxel) | (u64(1) << u64(32)));
+            daxa_u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, daxa_u64(my_voxel) | (daxa_u64(1) << daxa_u64(32)));
             if (vote_result == 0) {
                 my_palette_index = algo_i + 1;
                 compression_result[palette_size] = my_voxel;
                 palette_size++;
-            } else if (my_voxel == u32(vote_result)) {
+            } else if (my_voxel == daxa_u32(vote_result)) {
                 my_palette_index = algo_i + 1;
             }
         }
@@ -545,22 +545,22 @@ void process_palette_region(u32 palette_region_voxel_index, u32 my_voxel, in out
 #define VOXEL_WORLD deref(voxel_globals)
 layout(local_size_x = PALETTE_REGION_SIZE, local_size_y = PALETTE_REGION_SIZE, local_size_z = PALETTE_REGION_SIZE) in;
 void main() {
-    u32vec3 chunk_n = u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-    u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
-    i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+    daxa_u32vec3 chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    daxa_u32 temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
+    daxa_i32vec3 chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
     if (chunk_i == INVALID_CHUNK_I) {
         return;
     }
-    u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
-    u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
-    u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
-    u32 inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
-    u32 palette_region_voxel_index =
+    daxa_u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
+    daxa_u32 chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    daxa_u32vec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - daxa_u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
+    daxa_u32 inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
+    daxa_u32 palette_region_voxel_index =
         gl_LocalInvocationID.x +
         gl_LocalInvocationID.y * PALETTE_REGION_SIZE +
         gl_LocalInvocationID.z * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE;
-    u32vec3 palette_i = u32vec3(gl_WorkGroupID.xy, gl_WorkGroupID.z - temp_chunk_index * PALETTES_PER_CHUNK_AXIS);
-    u32 palette_region_index =
+    daxa_u32vec3 palette_i = daxa_u32vec3(gl_WorkGroupID.xy, gl_WorkGroupID.z - temp_chunk_index * PALETTES_PER_CHUNK_AXIS);
+    daxa_u32 palette_region_index =
         palette_i.x +
         palette_i.y * PALETTES_PER_CHUNK_AXIS +
         palette_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
@@ -568,17 +568,17 @@ void main() {
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
 
-    u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
-    u32 my_palette_index = 0;
+    daxa_u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
+    daxa_u32 my_palette_index = 0;
 
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);
 
-    u32 prev_variant_n = deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n;
+    daxa_u32 prev_variant_n = deref(voxel_chunk_ptr).palette_headers[palette_region_index].variant_n;
     VoxelMalloc_Pointer prev_blob_ptr = deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr;
 
-    u32 bits_per_variant = ceil_log2(palette_size);
+    daxa_u32 bits_per_variant = ceil_log2(palette_size);
 
-    u32 compressed_size = 0;
+    daxa_u32 compressed_size = 0;
     VoxelMalloc_Pointer blob_ptr = my_voxel;
 
     if (palette_size > PALETTE_MAX_COMPRESSED_VARIANT_N) {
@@ -608,17 +608,17 @@ void main() {
             deref(voxel_chunk_ptr).palette_headers[palette_region_index].blob_ptr = blob_ptr;
         }
 
-        u32 mask = (~0u) >> (32 - bits_per_variant);
-        u32 bit_index = palette_region_voxel_index * bits_per_variant;
-        u32 data_index = bit_index / 32;
-        u32 data_offset = bit_index - data_index * 32;
-        u32 data = (my_palette_index - 1) & mask;
-        u32 address = palette_size + data_index;
+        daxa_u32 mask = (~0u) >> (32 - bits_per_variant);
+        daxa_u32 bit_index = palette_region_voxel_index * bits_per_variant;
+        daxa_u32 data_index = bit_index / 32;
+        daxa_u32 data_offset = bit_index - data_index * 32;
+        daxa_u32 data = (my_palette_index - 1) & mask;
+        daxa_u32 address = palette_size + data_index;
         // clang-format off
         atomicAnd(compression_result[address + 0], ~(mask << data_offset));
         atomicOr (compression_result[address + 0],   data << data_offset);
         if (data_offset + bits_per_variant > 32) {
-            u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
+            daxa_u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
             atomicAnd(compression_result[address + 1], ~(mask >> shift));
             atomicOr (compression_result[address + 1],   data >> shift);
         }
@@ -647,36 +647,36 @@ void main() {
         // TODO: remove for a parallel option instead
         daxa_RWBufferPtr(daxa_u32) blob_u32s;
         voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), blob_ptr, blob_u32s);
-        u32 i = palette_region_voxel_index;
+        daxa_u32 i = palette_region_voxel_index;
 
         deref(blob_u32s[0]) = 0x0;
         deref(blob_u32s[1]) = 0x0;
         deref(blob_u32s[2]) = 0x0;
 
-        u32vec3 x8_i = palette_i;
+        daxa_u32vec3 x8_i = palette_i;
 
-        for (u32 x = 0; x < 2; ++x)
-            for (u32 y = 0; y < 2; ++y)
-                for (u32 z = 0; z < 2; ++z) {
-                    u32vec3 local_i = x8_i * 2 + u32vec3(x, y, z);
-                    u32 index = uniformity_lod_index(4)(local_i);
-                    u32 mask = uniformity_lod_mask(4)(local_i);
+        for (daxa_u32 x = 0; x < 2; ++x)
+            for (daxa_u32 y = 0; y < 2; ++y)
+                for (daxa_u32 z = 0; z < 2; ++z) {
+                    daxa_u32vec3 local_i = x8_i * 2 + daxa_u32vec3(x, y, z);
+                    daxa_u32 index = uniformity_lod_index(4)(local_i);
+                    daxa_u32 mask = uniformity_lod_mask(4)(local_i);
                     bool has_occluding = (deref(temp_voxel_chunk_ptr).uniformity.lod_x4[index] & mask) != 0;
-                    u32 new_index = new_uniformity_lod_index(4)(local_i);
-                    u32 new_mask = new_uniformity_lod_mask(4)(local_i);
+                    daxa_u32 new_index = new_uniformity_lod_index(4)(local_i);
+                    daxa_u32 new_mask = new_uniformity_lod_mask(4)(local_i);
                     if (has_occluding) {
                         deref(blob_u32s[new_index]) |= new_mask;
                     }
                 }
-        for (u32 x = 0; x < 4; ++x)
-            for (u32 y = 0; y < 4; ++y)
-                for (u32 z = 0; z < 4; ++z) {
-                    u32vec3 local_i = x8_i * 4 + u32vec3(x, y, z);
-                    u32 index = uniformity_lod_index(2)(local_i);
-                    u32 mask = uniformity_lod_mask(2)(local_i);
+        for (daxa_u32 x = 0; x < 4; ++x)
+            for (daxa_u32 y = 0; y < 4; ++y)
+                for (daxa_u32 z = 0; z < 4; ++z) {
+                    daxa_u32vec3 local_i = x8_i * 4 + daxa_u32vec3(x, y, z);
+                    daxa_u32 index = uniformity_lod_index(2)(local_i);
+                    daxa_u32 mask = uniformity_lod_mask(2)(local_i);
                     bool has_occluding = (deref(temp_voxel_chunk_ptr).uniformity.lod_x2[index] & mask) != 0;
-                    u32 new_index = new_uniformity_lod_index(2)(local_i);
-                    u32 new_mask = new_uniformity_lod_mask(2)(local_i);
+                    daxa_u32 new_index = new_uniformity_lod_index(2)(local_i);
+                    daxa_u32 new_mask = new_uniformity_lod_mask(2)(local_i);
                     if (has_occluding) {
                         deref(blob_u32s[new_index]) |= new_mask;
                     }

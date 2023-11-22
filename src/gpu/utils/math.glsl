@@ -13,62 +13,62 @@ const float SQRT_2 = 1.41421356237;
 // Objects
 
 struct Sphere {
-    f32vec3 o;
-    f32 r;
+    daxa_f32vec3 o;
+    daxa_f32 r;
 };
 struct BoundingBox {
-    f32vec3 bound_min, bound_max;
+    daxa_f32vec3 bound_min, bound_max;
 };
 struct CapsulePoints {
-    f32vec3 p0, p1;
-    f32 r;
+    daxa_f32vec3 p0, p1;
+    daxa_f32 r;
 };
 
 // Common Functions
 
-f32 saturate(f32 x) { return clamp(x, 0.0, 1.0); }
-f32vec2 saturate(f32vec2 x) { return clamp(x, f32vec2(0.0), f32vec2(1.0)); }
-f32vec3 saturate(f32vec3 x) { return clamp(x, f32vec3(0.0), f32vec3(1.0)); }
-f32vec4 saturate(f32vec4 x) { return clamp(x, f32vec4(0.0), f32vec4(1.0)); }
-f32 nonzero_sign(f32 x) {
+daxa_f32 saturate(daxa_f32 x) { return clamp(x, 0.0, 1.0); }
+daxa_f32vec2 saturate(daxa_f32vec2 x) { return clamp(x, daxa_f32vec2(0.0), daxa_f32vec2(1.0)); }
+daxa_f32vec3 saturate(daxa_f32vec3 x) { return clamp(x, daxa_f32vec3(0.0), daxa_f32vec3(1.0)); }
+daxa_f32vec4 saturate(daxa_f32vec4 x) { return clamp(x, daxa_f32vec4(0.0), daxa_f32vec4(1.0)); }
+daxa_f32 nonzero_sign(daxa_f32 x) {
     if (x < 0.0)
         return -1.0;
     return 1.0;
 }
-f32vec2 nonzero_sign(f32vec2 x) {
-    return f32vec2(nonzero_sign(x.x), nonzero_sign(x.y));
+daxa_f32vec2 nonzero_sign(daxa_f32vec2 x) {
+    return daxa_f32vec2(nonzero_sign(x.x), nonzero_sign(x.y));
 }
-f32vec3 nonzero_sign(f32vec3 x) {
-    return f32vec3(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z));
+daxa_f32vec3 nonzero_sign(daxa_f32vec3 x) {
+    return daxa_f32vec3(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z));
 }
-f32vec4 nonzero_sign(f32vec4 x) {
-    return f32vec4(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z), nonzero_sign(x.w));
+daxa_f32vec4 nonzero_sign(daxa_f32vec4 x) {
+    return daxa_f32vec4(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z), nonzero_sign(x.w));
 }
-f32 deg2rad(f32 d) {
+daxa_f32 deg2rad(daxa_f32 d) {
     return d * PI / 180.0;
 }
-f32 rad2deg(f32 r) {
+daxa_f32 rad2deg(daxa_f32 r) {
     return r * 180.0 / PI;
 }
-f32vec3 rotate_x(f32vec3 v, f32 angle) {
+daxa_f32vec3 rotate_x(daxa_f32vec3 v, daxa_f32 angle) {
     float sin_rot_x = sin(angle), cos_rot_x = cos(angle);
-    f32mat3x3 rot_mat = f32mat3x3(
+    daxa_f32mat3x3 rot_mat = daxa_f32mat3x3(
         1, 0, 0,
         0, cos_rot_x, sin_rot_x,
         0, -sin_rot_x, cos_rot_x);
     return rot_mat * v;
 }
-f32vec3 rotate_y(f32vec3 v, f32 angle) {
+daxa_f32vec3 rotate_y(daxa_f32vec3 v, daxa_f32 angle) {
     float sin_rot_y = sin(angle), cos_rot_y = cos(angle);
-    f32mat3x3 rot_mat = f32mat3x3(
+    daxa_f32mat3x3 rot_mat = daxa_f32mat3x3(
         cos_rot_y, 0, sin_rot_y,
         0, 1, 0,
         -sin_rot_y, 0, cos_rot_y);
     return rot_mat * v;
 }
-f32vec3 rotate_z(f32vec3 v, f32 angle) {
+daxa_f32vec3 rotate_z(daxa_f32vec3 v, daxa_f32 angle) {
     float sin_rot_z = sin(angle), cos_rot_z = cos(angle);
-    f32mat3x3 rot_mat = f32mat3x3(
+    daxa_f32mat3x3 rot_mat = daxa_f32mat3x3(
         cos_rot_z, -sin_rot_z, 0,
         sin_rot_z, cos_rot_z, 0,
         0, 0, 1);
@@ -76,55 +76,55 @@ f32vec3 rotate_z(f32vec3 v, f32 angle) {
 }
 
 // Color functions
-f32vec3 rgb2hsv(f32vec3 c) {
-    f32vec4 K = f32vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    f32vec4 p = mix(f32vec4(c.bg, K.wz), f32vec4(c.gb, K.xy), step(c.b, c.g));
-    f32vec4 q = mix(f32vec4(p.xyw, c.r), f32vec4(c.r, p.yzx), step(p.x, c.r));
-    f32 d = q.x - min(q.w, q.y);
-    f32 e = 1.0e-10;
-    return f32vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+daxa_f32vec3 rgb2hsv(daxa_f32vec3 c) {
+    daxa_f32vec4 K = daxa_f32vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    daxa_f32vec4 p = mix(daxa_f32vec4(c.bg, K.wz), daxa_f32vec4(c.gb, K.xy), step(c.b, c.g));
+    daxa_f32vec4 q = mix(daxa_f32vec4(p.xyw, c.r), daxa_f32vec4(c.r, p.yzx), step(p.x, c.r));
+    daxa_f32 d = q.x - min(q.w, q.y);
+    daxa_f32 e = 1.0e-10;
+    return daxa_f32vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
-f32vec3 hsv2rgb(f32vec3 c) {
-    f32vec4 k = f32vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    f32vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
+daxa_f32vec3 hsv2rgb(daxa_f32vec3 c) {
+    daxa_f32vec4 k = daxa_f32vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    daxa_f32vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
     return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
 }
-f32vec4 uint_rgba8_to_f32vec4(u32 u) {
-    f32vec4 result;
-    result.r = f32((u >> 0x00) & 0xff) / 255.0;
-    result.g = f32((u >> 0x08) & 0xff) / 255.0;
-    result.b = f32((u >> 0x10) & 0xff) / 255.0;
-    result.a = f32((u >> 0x18) & 0xff) / 255.0;
+daxa_f32vec4 uint_rgba8_to_f32vec4(daxa_u32 u) {
+    daxa_f32vec4 result;
+    result.r = daxa_f32((u >> 0x00) & 0xff) / 255.0;
+    result.g = daxa_f32((u >> 0x08) & 0xff) / 255.0;
+    result.b = daxa_f32((u >> 0x10) & 0xff) / 255.0;
+    result.a = daxa_f32((u >> 0x18) & 0xff) / 255.0;
 
-    result = pow(result, f32vec4(2.2));
+    result = pow(result, daxa_f32vec4(2.2));
     return result;
 }
-u32 f32vec4_to_uint_rgba8(f32vec4 f) {
-    f = clamp(f, f32vec4(0), f32vec4(1));
-    f = pow(f, f32vec4(1.0 / 2.2));
+daxa_u32 daxa_f32vec4_to_uint_rgba8(daxa_f32vec4 f) {
+    f = clamp(f, daxa_f32vec4(0), daxa_f32vec4(1));
+    f = pow(f, daxa_f32vec4(1.0 / 2.2));
 
-    u32 result = 0;
-    result |= u32(clamp(f.r, 0, 1) * 255) << 0x00;
-    result |= u32(clamp(f.g, 0, 1) * 255) << 0x08;
-    result |= u32(clamp(f.b, 0, 1) * 255) << 0x10;
-    result |= u32(clamp(f.a, 0, 1) * 255) << 0x18;
+    daxa_u32 result = 0;
+    result |= daxa_u32(clamp(f.r, 0, 1) * 255) << 0x00;
+    result |= daxa_u32(clamp(f.g, 0, 1) * 255) << 0x08;
+    result |= daxa_u32(clamp(f.b, 0, 1) * 255) << 0x10;
+    result |= daxa_u32(clamp(f.a, 0, 1) * 255) << 0x18;
     return result;
 }
-f32vec3 sRGB_to_YCbCr(f32vec3 col) {
-    return f32mat3x3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+daxa_f32vec3 sRGB_to_YCbCr(daxa_f32vec3 col) {
+    return daxa_f32mat3x3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
 }
-f32vec3 YCbCr_to_sRGB(f32vec3 col) {
-    return max(f32vec3(0.0), f32mat3x3(1.0, 0.0, 1.5748, 1.0, -0.1873, -.4681, 1.0, 1.8556, 0.0) * col);
+daxa_f32vec3 YCbCr_to_sRGB(daxa_f32vec3 col) {
+    return max(daxa_f32vec3(0.0), daxa_f32mat3x3(1.0, 0.0, 1.5748, 1.0, -0.1873, -.4681, 1.0, 1.8556, 0.0) * col);
 }
-float sRGB_to_luminance(f32vec3 col) {
-    return dot(col, f32vec3(0.2126, 0.7152, 0.0722));
+float sRGB_to_luminance(daxa_f32vec3 col) {
+    return dot(col, daxa_f32vec3(0.2126, 0.7152, 0.0722));
 }
-f32vec4 linear_rgb_to_crunched_luma_chroma(f32vec4 v) {
+daxa_f32vec4 linear_rgb_to_crunched_luma_chroma(daxa_f32vec4 v) {
     v.rgb = sRGB_to_YCbCr(v.rgb);
     float k = sqrt(v.x) / max(1e-8, v.x);
-    return f32vec4(v.rgb * k, v.a);
+    return daxa_f32vec4(v.rgb * k, v.a);
 }
-f32vec4 crunched_luma_chroma_to_linear_rgb(f32vec4 v) {
+daxa_f32vec4 crunched_luma_chroma_to_linear_rgb(daxa_f32vec4 v) {
     v.rgb *= v.x;
     v.rgb = YCbCr_to_sRGB(v.rgb);
     return v;
@@ -168,25 +168,25 @@ float exponential_unsquish(float len, float squish_scale) {
 
 #define URGB9E5_CONCENTRATION 4.0
 #define URGB9E5_MIN_EXPONENT -8.0
-f32 urgb9e5_scale_exp_inv(f32 x) { return (exp((x + URGB9E5_MIN_EXPONENT) / URGB9E5_CONCENTRATION)); }
-f32vec3 uint_urgb9e5_to_f32vec3(u32 u) {
-    f32vec3 result;
-    result.r = f32((u >> 0x00) & 0x1ff);
-    result.g = f32((u >> 0x09) & 0x1ff);
-    result.b = f32((u >> 0x12) & 0x1ff);
-    f32 scale = urgb9e5_scale_exp_inv((u >> 0x1b) & 0x1f) / 511.0;
+daxa_f32 urgb9e5_scale_exp_inv(daxa_f32 x) { return (exp((x + URGB9E5_MIN_EXPONENT) / URGB9E5_CONCENTRATION)); }
+daxa_f32vec3 uint_urgb9e5_to_f32vec3(daxa_u32 u) {
+    daxa_f32vec3 result;
+    result.r = daxa_f32((u >> 0x00) & 0x1ff);
+    result.g = daxa_f32((u >> 0x09) & 0x1ff);
+    result.b = daxa_f32((u >> 0x12) & 0x1ff);
+    daxa_f32 scale = urgb9e5_scale_exp_inv((u >> 0x1b) & 0x1f) / 511.0;
     return result * scale;
 }
-f32 urgb9e5_scale_exp(f32 x) { return URGB9E5_CONCENTRATION * log(x) - URGB9E5_MIN_EXPONENT; }
-u32 f32vec3_to_uint_urgb9e5(f32vec3 f) {
-    f32 scale = max(max(f.x, 0.0), max(f.y, f.z));
-    f32 exponent = ceil(clamp(urgb9e5_scale_exp(scale), 0, 31));
-    f32 fac = 511.0 / urgb9e5_scale_exp_inv(exponent);
-    u32 result = 0;
-    result |= u32(clamp(f.r * fac, 0.0, 511.0)) << 0x00;
-    result |= u32(clamp(f.g * fac, 0.0, 511.0)) << 0x09;
-    result |= u32(clamp(f.b * fac, 0.0, 511.0)) << 0x12;
-    result |= u32(exponent) << 0x1b;
+daxa_f32 urgb9e5_scale_exp(daxa_f32 x) { return URGB9E5_CONCENTRATION * log(x) - URGB9E5_MIN_EXPONENT; }
+daxa_u32 daxa_f32vec3_to_uint_urgb9e5(daxa_f32vec3 f) {
+    daxa_f32 scale = max(max(f.x, 0.0), max(f.y, f.z));
+    daxa_f32 exponent = ceil(clamp(urgb9e5_scale_exp(scale), 0, 31));
+    daxa_f32 fac = 511.0 / urgb9e5_scale_exp_inv(exponent);
+    daxa_u32 result = 0;
+    result |= daxa_u32(clamp(f.r * fac, 0.0, 511.0)) << 0x00;
+    result |= daxa_u32(clamp(f.g * fac, 0.0, 511.0)) << 0x09;
+    result |= daxa_u32(clamp(f.b * fac, 0.0, 511.0)) << 0x12;
+    result |= daxa_u32(exponent) << 0x1b;
     return result;
 }
 
@@ -228,15 +228,15 @@ vec3 i_spheremap_16(uint data) {
 }
 // ----------------------------------------
 
-f32vec3 u16_to_nrm(u32 x) {
+daxa_f32vec3 u16_to_nrm(daxa_u32 x) {
     return normalize(i_octahedral_16(x));
     // return i_spheremap_16(x);
 }
-f32vec3 u16_to_nrm_unnormalized(u32 x) {
+daxa_f32vec3 u16_to_nrm_unnormalized(daxa_u32 x) {
     return i_octahedral_16(x);
     // return i_spheremap_16(x);
 }
-u32 nrm_to_u16(f32vec3 nrm) {
+daxa_u32 nrm_to_u16(daxa_f32vec3 nrm) {
     return octahedral_16(nrm);
     // return spheremap_16(nrm);
 }
@@ -251,7 +251,7 @@ uint pack_unorm(float val, uint bitCount) {
     return uint(clamp(val, 0.0, 1.0) * maxVal + 0.5);
 }
 
-float pack_normal_11_10_11(f32vec3 n) {
+float pack_normal_11_10_11(daxa_f32vec3 n) {
     uint pckd = 0;
     pckd += pack_unorm(n.x * 0.5 + 0.5, 11);
     pckd += pack_unorm(n.y * 0.5 + 0.5, 10) << 11;
@@ -259,9 +259,9 @@ float pack_normal_11_10_11(f32vec3 n) {
     return uintBitsToFloat(pckd);
 }
 
-f32vec3 unpack_normal_11_10_11(float pckd) {
+daxa_f32vec3 unpack_normal_11_10_11(float pckd) {
     uint p = floatBitsToUint(pckd);
-    return normalize(f32vec3(
+    return normalize(daxa_f32vec3(
                          unpack_unorm(p, 11),
                          unpack_unorm(p >> 11, 10),
                          unpack_unorm(p >> 21, 11)) *
@@ -269,58 +269,58 @@ f32vec3 unpack_normal_11_10_11(float pckd) {
                      1.0);
 }
 
-u32 ceil_log2(u32 x) {
-    return findMSB(x) + u32(bitCount(x) > 1);
+daxa_u32 ceil_log2(daxa_u32 x) {
+    return findMSB(x) + daxa_u32(bitCount(x) > 1);
 }
 
 // Bit Functions
 
-void flag_set(in out u32 bitfield, u32 index, bool value) {
+void flag_set(in out daxa_u32 bitfield, daxa_u32 index, bool value) {
     if (value) {
         bitfield |= 1u << index;
     } else {
         bitfield &= ~(1u << index);
     }
 }
-bool flag_get(u32 bitfield, u32 index) {
+bool flag_get(daxa_u32 bitfield, daxa_u32 index) {
     return ((bitfield >> index) & 1u) == 1u;
 }
 
 // Shape Functions
 
-b32 inside(f32vec3 p, Sphere s) {
+daxa_b32 inside(daxa_f32vec3 p, Sphere s) {
     return dot(p - s.o, p - s.o) < s.r * s.r;
 }
-b32 inside(f32vec3 p, BoundingBox b) {
+daxa_b32 inside(daxa_f32vec3 p, BoundingBox b) {
     return (p.x >= b.bound_min.x && p.x < b.bound_max.x &&
             p.y >= b.bound_min.y && p.y < b.bound_max.y &&
             p.z >= b.bound_min.z && p.z < b.bound_max.z);
 }
-b32 overlaps(BoundingBox a, BoundingBox b) {
-    b32 x_overlap = a.bound_max.x >= b.bound_min.x && b.bound_max.x >= a.bound_min.x;
-    b32 y_overlap = a.bound_max.y >= b.bound_min.y && b.bound_max.y >= a.bound_min.y;
-    b32 z_overlap = a.bound_max.z >= b.bound_min.z && b.bound_max.z >= a.bound_min.z;
+daxa_b32 overlaps(BoundingBox a, BoundingBox b) {
+    daxa_b32 x_overlap = a.bound_max.x >= b.bound_min.x && b.bound_max.x >= a.bound_min.x;
+    daxa_b32 y_overlap = a.bound_max.y >= b.bound_min.y && b.bound_max.y >= a.bound_min.y;
+    daxa_b32 z_overlap = a.bound_max.z >= b.bound_min.z && b.bound_max.z >= a.bound_min.z;
     return x_overlap && y_overlap && z_overlap;
 }
-void intersect(in out f32vec3 ray_pos, f32vec3 ray_dir, f32vec3 inv_dir, BoundingBox b) {
+void intersect(in out daxa_f32vec3 ray_pos, daxa_f32vec3 ray_dir, daxa_f32vec3 inv_dir, BoundingBox b) {
     if (inside(ray_pos, b)) {
         return;
     }
-    f32 tx1 = (b.bound_min.x - ray_pos.x) * inv_dir.x;
-    f32 tx2 = (b.bound_max.x - ray_pos.x) * inv_dir.x;
-    f32 tmin = min(tx1, tx2);
-    f32 tmax = max(tx1, tx2);
-    f32 ty1 = (b.bound_min.y - ray_pos.y) * inv_dir.y;
-    f32 ty2 = (b.bound_max.y - ray_pos.y) * inv_dir.y;
+    daxa_f32 tx1 = (b.bound_min.x - ray_pos.x) * inv_dir.x;
+    daxa_f32 tx2 = (b.bound_max.x - ray_pos.x) * inv_dir.x;
+    daxa_f32 tmin = min(tx1, tx2);
+    daxa_f32 tmax = max(tx1, tx2);
+    daxa_f32 ty1 = (b.bound_min.y - ray_pos.y) * inv_dir.y;
+    daxa_f32 ty2 = (b.bound_max.y - ray_pos.y) * inv_dir.y;
     tmin = max(tmin, min(ty1, ty2));
     tmax = min(tmax, max(ty1, ty2));
-    f32 tz1 = (b.bound_min.z - ray_pos.z) * inv_dir.z;
-    f32 tz2 = (b.bound_max.z - ray_pos.z) * inv_dir.z;
+    daxa_f32 tz1 = (b.bound_min.z - ray_pos.z) * inv_dir.z;
+    daxa_f32 tz2 = (b.bound_max.z - ray_pos.z) * inv_dir.z;
     tmin = max(tmin, min(tz1, tz2));
     tmax = min(tmax, max(tz1, tz2));
 
-    // f32 dist = max(min(tmax, tmin), 0);
-    f32 dist = MAX_DIST;
+    // daxa_f32 dist = max(min(tmax, tmin), 0);
+    daxa_f32 dist = MAX_DIST;
     if (tmax >= tmin) {
         if (tmin > 0) {
             dist = tmin;
@@ -332,44 +332,44 @@ void intersect(in out f32vec3 ray_pos, f32vec3 ray_dir, f32vec3 inv_dir, Boundin
 
 /// SIGNED DISTANCE FUNCTIONS
 
-f32 sd_shapes_dot2(in f32vec2 v) { return dot(v, v); }
-f32 sd_shapes_dot2(in f32vec3 v) { return dot(v, v); }
-f32 sd_shapes_ndot(in f32vec2 a, in f32vec2 b) { return a.x * b.x - a.y * b.y; }
+daxa_f32 sd_shapes_dot2(in daxa_f32vec2 v) { return dot(v, v); }
+daxa_f32 sd_shapes_dot2(in daxa_f32vec3 v) { return dot(v, v); }
+daxa_f32 sd_shapes_ndot(in daxa_f32vec2 a, in daxa_f32vec2 b) { return a.x * b.x - a.y * b.y; }
 
 // Operators
 
 // These are safe for min/max operations!
-f32 sd_set(f32 a, f32 b) {
+daxa_f32 sd_set(daxa_f32 a, daxa_f32 b) {
     return b;
 }
-f32vec4 sd_set(f32vec4 a, f32vec4 b) {
+daxa_f32vec4 sd_set(daxa_f32vec4 a, daxa_f32vec4 b) {
     return b;
 }
-f32 sd_add(f32 a, f32 b) {
+daxa_f32 sd_add(daxa_f32 a, daxa_f32 b) {
     return (a + b);
 }
-f32 sd_union(in f32 a, in f32 b) {
+daxa_f32 sd_union(in daxa_f32 a, in daxa_f32 b) {
     return min(a, b);
 }
 
 // These are either unsafe or unknown for min/max operations
-f32 sd_smooth_union(in f32 a, in f32 b, in f32 k) {
-    f32 h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
+daxa_f32 sd_smooth_union(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k) {
+    daxa_f32 h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
     return mix(a, b, h) - k * h * (1.0 - h);
 }
-f32 sd_intersection(in f32 a, in f32 b) {
+daxa_f32 sd_intersection(in daxa_f32 a, in daxa_f32 b) {
     return max(a, b);
 }
-f32 sd_smooth_intersection(in f32 a, in f32 b, in f32 k) {
+daxa_f32 sd_smooth_intersection(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k) {
     return sd_smooth_union(a, b, -k);
 }
-f32 sd_difference(in f32 a, in f32 b) {
+daxa_f32 sd_difference(in daxa_f32 a, in daxa_f32 b) {
     return sd_intersection(a, -b);
 }
-f32 sd_smooth_difference(in f32 a, in f32 b, in f32 k) {
+daxa_f32 sd_smooth_difference(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k) {
     return sd_smooth_intersection(a, -b, k);
 }
-f32 sd_mul(f32 a, f32 b) {
+daxa_f32 sd_mul(daxa_f32 a, daxa_f32 b) {
     return (a * b);
 }
 
@@ -399,166 +399,166 @@ vec2 minmax_sd_sphere_in_region(vec3 region_center, vec3 region_size, float r) {
     return vec2(min_d, max_d) - r;
 }
 
-f32 sd_plane_x(in f32vec3 p) {
+daxa_f32 sd_plane_x(in daxa_f32vec3 p) {
     return p.x;
 }
-f32 sd_plane_y(in f32vec3 p) {
+daxa_f32 sd_plane_y(in daxa_f32vec3 p) {
     return p.y;
 }
-f32 sd_plane_z(in f32vec3 p) {
+daxa_f32 sd_plane_z(in daxa_f32vec3 p) {
     return p.z;
 }
-f32 sd_sphere(in f32vec3 p, in f32 r) {
+daxa_f32 sd_sphere(in daxa_f32vec3 p, in daxa_f32 r) {
     return length(p) - r;
 }
-f32 sd_ellipsoid(in f32vec3 p, in f32vec3 r) {
-    f32 k0 = length(p / r);
-    f32 k1 = length(p / (r * r));
+daxa_f32 sd_ellipsoid(in daxa_f32vec3 p, in daxa_f32vec3 r) {
+    daxa_f32 k0 = length(p / r);
+    daxa_f32 k1 = length(p / (r * r));
     return k0 * (k0 - 1.0) / k1;
 }
-f32 sd_box(in f32vec3 p, in f32vec3 size) {
-    f32vec3 d = abs(p) - size;
+daxa_f32 sd_box(in daxa_f32vec3 p, in daxa_f32vec3 size) {
+    daxa_f32vec3 d = abs(p) - size;
     return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
 }
-f32 sd_box(in f32vec3 p, in BoundingBox box) {
+daxa_f32 sd_box(in daxa_f32vec3 p, in BoundingBox box) {
     return sd_box(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5);
 }
-f32 sd_box_frame(in f32vec3 p, in f32vec3 b, in f32 e) {
+daxa_f32 sd_box_frame(in daxa_f32vec3 p, in daxa_f32vec3 b, in daxa_f32 e) {
     p = abs(p) - b;
-    f32vec3 q = abs(p + e) - e;
+    daxa_f32vec3 q = abs(p + e) - e;
     return min(
-        min(length(max(f32vec3(p.x, q.y, q.z), 0.0)) + min(max(p.x, max(q.y, q.z)), 0.0),
-            length(max(f32vec3(q.x, p.y, q.z), 0.0)) + min(max(q.x, max(p.y, q.z)), 0.0)),
-        length(max(f32vec3(q.x, q.y, p.z), 0.0)) + min(max(q.x, max(q.y, p.z)), 0.0));
+        min(length(max(daxa_f32vec3(p.x, q.y, q.z), 0.0)) + min(max(p.x, max(q.y, q.z)), 0.0),
+            length(max(daxa_f32vec3(q.x, p.y, q.z), 0.0)) + min(max(q.x, max(p.y, q.z)), 0.0)),
+        length(max(daxa_f32vec3(q.x, q.y, p.z), 0.0)) + min(max(q.x, max(q.y, p.z)), 0.0));
 }
-f32 sd_box_frame(in f32vec3 p, in BoundingBox box, in f32 e) {
+daxa_f32 sd_box_frame(in daxa_f32vec3 p, in BoundingBox box, in daxa_f32 e) {
     return sd_box_frame(p - (box.bound_max + box.bound_min) * 0.5, (box.bound_max - box.bound_min) * 0.5, e);
 }
-f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h) {
-    f32vec2 d = abs(f32vec2(length(p.xy), p.z)) - f32vec2(r, h);
+daxa_f32 sd_cylinder(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h) {
+    daxa_f32vec2 d = abs(daxa_f32vec2(length(p.xy), p.z)) - daxa_f32vec2(r, h);
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
-f32 sd_cylinder(f32vec3 p, f32vec3 a, f32vec3 b, f32 r) {
-    f32vec3 ba = b - a;
-    f32vec3 pa = p - a;
-    f32 baba = dot(ba, ba);
-    f32 paba = dot(pa, ba);
-    f32 x = length(pa * baba - ba * paba) - r * baba;
-    f32 y = abs(paba - baba * 0.5) - baba * 0.5;
-    f32 x2 = x * x;
-    f32 y2 = y * y * baba;
-    f32 d = (max(x, y) < 0.0) ? -min(x2, y2) : (((x > 0.0) ? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));
+daxa_f32 sd_cylinder(daxa_f32vec3 p, daxa_f32vec3 a, daxa_f32vec3 b, daxa_f32 r) {
+    daxa_f32vec3 ba = b - a;
+    daxa_f32vec3 pa = p - a;
+    daxa_f32 baba = dot(ba, ba);
+    daxa_f32 paba = dot(pa, ba);
+    daxa_f32 x = length(pa * baba - ba * paba) - r * baba;
+    daxa_f32 y = abs(paba - baba * 0.5) - baba * 0.5;
+    daxa_f32 x2 = x * x;
+    daxa_f32 y2 = y * y * baba;
+    daxa_f32 d = (max(x, y) < 0.0) ? -min(x2, y2) : (((x > 0.0) ? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));
     return sign(d) * sqrt(abs(d)) / baba;
 }
-f32 sd_triangular_prism(in f32vec3 p, in f32 r, in f32 h) {
-    const f32 k = sqrt(3.0);
+daxa_f32 sd_triangular_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h) {
+    const daxa_f32 k = sqrt(3.0);
     h *= 0.5 * k;
     p.xy /= h;
     p.x = abs(p.x) - 1.0;
     p.y = p.y + 1.0 / k;
     if (p.x + k * p.y > 0.0)
-        p.xy = f32vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+        p.xy = daxa_f32vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
     p.x -= clamp(p.x, -2.0, 0.0);
-    f32 d1 = length(p.xy) * sign(-p.y) * h;
-    f32 d2 = abs(p.z) - r;
-    return length(max(f32vec2(d1, d2), 0.0)) + min(max(d1, d2), 0.);
+    daxa_f32 d1 = length(p.xy) * sign(-p.y) * h;
+    daxa_f32 d2 = abs(p.z) - r;
+    return length(max(daxa_f32vec2(d1, d2), 0.0)) + min(max(d1, d2), 0.);
 }
-f32 sd_hexagonal_prism(in f32vec3 p, in f32 r, in f32 h) {
-    f32vec3 q = abs(p);
-    const f32vec3 k = f32vec3(-0.8660254, 0.5, 0.57735);
+daxa_f32 sd_hexagonal_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h) {
+    daxa_f32vec3 q = abs(p);
+    const daxa_f32vec3 k = daxa_f32vec3(-0.8660254, 0.5, 0.57735);
     p = abs(p);
     p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
-    f32vec2 d = f32vec2(
-        length(p.xy - f32vec2(clamp(p.x, -k.z * h, k.z * h), h)) * sign(p.y - h),
+    daxa_f32vec2 d = daxa_f32vec2(
+        length(p.xy - daxa_f32vec2(clamp(p.x, -k.z * h, k.z * h), h)) * sign(p.y - h),
         p.z - r);
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
-f32 sd_octagonal_prism(in f32vec3 p, in f32 r, in f32 h) {
-    const f32vec3 k = f32vec3(-0.9238795325, 0.3826834323, 0.4142135623);
+daxa_f32 sd_octagonal_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h) {
+    const daxa_f32vec3 k = daxa_f32vec3(-0.9238795325, 0.3826834323, 0.4142135623);
     p = abs(p);
-    p.xy -= 2.0 * min(dot(f32vec2(k.x, k.y), p.xy), 0.0) * f32vec2(k.x, k.y);
-    p.xy -= 2.0 * min(dot(f32vec2(-k.x, k.y), p.xy), 0.0) * f32vec2(-k.x, k.y);
-    p.xy -= f32vec2(clamp(p.x, -k.z * r, k.z * r), r);
-    f32vec2 d = f32vec2(length(p.xy) * sign(p.y), p.z - h);
+    p.xy -= 2.0 * min(dot(daxa_f32vec2(k.x, k.y), p.xy), 0.0) * daxa_f32vec2(k.x, k.y);
+    p.xy -= 2.0 * min(dot(daxa_f32vec2(-k.x, k.y), p.xy), 0.0) * daxa_f32vec2(-k.x, k.y);
+    p.xy -= daxa_f32vec2(clamp(p.x, -k.z * r, k.z * r), r);
+    daxa_f32vec2 d = daxa_f32vec2(length(p.xy) * sign(p.y), p.z - h);
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
-f32 sd_capsule(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r) {
-    f32vec3 pa = p - a, ba = b - a;
-    f32 h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+daxa_f32 sd_capsule(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 r) {
+    daxa_f32vec3 pa = p - a, ba = b - a;
+    daxa_f32 h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
     return length(pa - ba * h) - r;
 }
-f32 sd_cone(in f32vec3 p, in f32 c, in f32 h) {
-    f32vec2 q = h * f32vec2(c, -1);
-    f32vec2 w = f32vec2(length(p.xy), p.z);
-    f32vec2 a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0);
-    f32vec2 b = w - q * f32vec2(clamp(w.x / q.x, 0.0, 1.0), 1.0);
-    f32 k = sign(q.y);
-    f32 d = min(dot(a, a), dot(b, b));
-    f32 s = max(k * (w.x * q.y - w.y * q.x), k * (w.y - q.y));
+daxa_f32 sd_cone(in daxa_f32vec3 p, in daxa_f32 c, in daxa_f32 h) {
+    daxa_f32vec2 q = h * daxa_f32vec2(c, -1);
+    daxa_f32vec2 w = daxa_f32vec2(length(p.xy), p.z);
+    daxa_f32vec2 a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0);
+    daxa_f32vec2 b = w - q * daxa_f32vec2(clamp(w.x / q.x, 0.0, 1.0), 1.0);
+    daxa_f32 k = sign(q.y);
+    daxa_f32 d = min(dot(a, a), dot(b, b));
+    daxa_f32 s = max(k * (w.x * q.y - w.y * q.x), k * (w.y - q.y));
     return sqrt(d) * sign(s);
 }
-f32 sd_round_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h) {
-    f32vec2 q = f32vec2(length(p.xy), p.z);
-    f32 b = (r1 - r2) / h;
-    f32 a = sqrt(1.0 - b * b);
-    f32 k = dot(q, f32vec2(-b, a));
+daxa_f32 sd_round_cone(in daxa_f32vec3 p, in daxa_f32 r1, in daxa_f32 r2, in daxa_f32 h) {
+    daxa_f32vec2 q = daxa_f32vec2(length(p.xy), p.z);
+    daxa_f32 b = (r1 - r2) / h;
+    daxa_f32 a = sqrt(1.0 - b * b);
+    daxa_f32 k = dot(q, daxa_f32vec2(-b, a));
     if (k < 0.0)
         return length(q) - r1;
     if (k > a * h)
-        return length(q - f32vec2(0.0, h)) - r2;
-    return dot(q, f32vec2(a, b)) - r1;
+        return length(q - daxa_f32vec2(0.0, h)) - r2;
+    return dot(q, daxa_f32vec2(a, b)) - r1;
 }
-f32 sd_round_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r1, in f32 r2) {
-    f32vec3 ba = b - a;
-    f32 l2 = dot(ba, ba);
-    f32 rr = r1 - r2;
-    f32 a2 = l2 - rr * rr;
-    f32 il2 = 1.0 / l2;
-    f32vec3 pa = p - a;
-    f32 y = dot(pa, ba);
-    f32 z = y - l2;
-    f32vec3 xp = pa * l2 - ba * y;
-    f32 x2 = dot(xp, xp);
-    f32 y2 = y * y * l2;
-    f32 z2 = z * z * l2;
-    f32 k = sign(rr) * rr * rr * x2;
+daxa_f32 sd_round_cone(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 r1, in daxa_f32 r2) {
+    daxa_f32vec3 ba = b - a;
+    daxa_f32 l2 = dot(ba, ba);
+    daxa_f32 rr = r1 - r2;
+    daxa_f32 a2 = l2 - rr * rr;
+    daxa_f32 il2 = 1.0 / l2;
+    daxa_f32vec3 pa = p - a;
+    daxa_f32 y = dot(pa, ba);
+    daxa_f32 z = y - l2;
+    daxa_f32vec3 xp = pa * l2 - ba * y;
+    daxa_f32 x2 = dot(xp, xp);
+    daxa_f32 y2 = y * y * l2;
+    daxa_f32 z2 = z * z * l2;
+    daxa_f32 k = sign(rr) * rr * rr * x2;
     if (sign(z) * a2 * z2 > k)
         return sqrt(x2 + z2) * il2 - r2;
     if (sign(y) * a2 * y2 < k)
         return sqrt(x2 + y2) * il2 - r1;
     return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
 }
-f32 sd_capped_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h) {
-    f32vec2 q = f32vec2(length(p.xy), p.z);
-    f32vec2 k1 = f32vec2(r2, h);
-    f32vec2 k2 = f32vec2(r2 - r1, 2.0 * h);
-    f32vec2 ca = f32vec2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - h);
-    f32vec2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / sd_shapes_dot2(k2), 0.0, 1.0);
-    f32 s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+daxa_f32 sd_capped_cone(in daxa_f32vec3 p, in daxa_f32 r1, in daxa_f32 r2, in daxa_f32 h) {
+    daxa_f32vec2 q = daxa_f32vec2(length(p.xy), p.z);
+    daxa_f32vec2 k1 = daxa_f32vec2(r2, h);
+    daxa_f32vec2 k2 = daxa_f32vec2(r2 - r1, 2.0 * h);
+    daxa_f32vec2 ca = daxa_f32vec2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - h);
+    daxa_f32vec2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / sd_shapes_dot2(k2), 0.0, 1.0);
+    daxa_f32 s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
     return s * sqrt(min(sd_shapes_dot2(ca), sd_shapes_dot2(cb)));
 }
-f32 sd_capped_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 ra, in f32 rb) {
-    f32 rba = rb - ra;
-    f32 baba = dot(b - a, b - a);
-    f32 papa = dot(p - a, p - a);
-    f32 paba = dot(p - a, b - a) / baba;
-    f32 x = sqrt(papa - paba * paba * baba);
-    f32 cax = max(0.0, x - ((paba < 0.5) ? ra : rb));
-    f32 cay = abs(paba - 0.5) - 0.5;
-    f32 k = rba * rba + baba;
-    f32 f = clamp((rba * (x - ra) + paba * baba) / k, 0.0, 1.0);
-    f32 cbx = x - ra - f * rba;
-    f32 cby = paba - f;
-    f32 s = (cbx < 0.0 && cay < 0.0) ? -1.0 : 1.0;
+daxa_f32 sd_capped_cone(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 ra, in daxa_f32 rb) {
+    daxa_f32 rba = rb - ra;
+    daxa_f32 baba = dot(b - a, b - a);
+    daxa_f32 papa = dot(p - a, p - a);
+    daxa_f32 paba = dot(p - a, b - a) / baba;
+    daxa_f32 x = sqrt(papa - paba * paba * baba);
+    daxa_f32 cax = max(0.0, x - ((paba < 0.5) ? ra : rb));
+    daxa_f32 cay = abs(paba - 0.5) - 0.5;
+    daxa_f32 k = rba * rba + baba;
+    daxa_f32 f = clamp((rba * (x - ra) + paba * baba) / k, 0.0, 1.0);
+    daxa_f32 cbx = x - ra - f * rba;
+    daxa_f32 cby = paba - f;
+    daxa_f32 s = (cbx < 0.0 && cay < 0.0) ? -1.0 : 1.0;
     return s * sqrt(min(cax * cax + cay * cay * baba, cbx * cbx + cby * cby * baba));
 }
-f32 sd_torus(in f32vec3 p, in f32vec2 t) {
-    return length(f32vec2(length(p.xy) - t.x, p.z)) - t.y;
+daxa_f32 sd_torus(in daxa_f32vec3 p, in daxa_f32vec2 t) {
+    return length(daxa_f32vec2(length(p.xy) - t.x, p.z)) - t.y;
 }
-f32 sd_octahedron(in f32vec3 p, in f32 s) {
+daxa_f32 sd_octahedron(in daxa_f32vec3 p, in daxa_f32 s) {
     p = abs(p);
-    f32 m = p.x + p.y + p.z - s;
-    f32vec3 q;
+    daxa_f32 m = p.x + p.y + p.z - s;
+    daxa_f32vec3 q;
     if (3.0 * p.x < m)
         q = p.xyz;
     else if (3.0 * p.y < m)
@@ -567,33 +567,33 @@ f32 sd_octahedron(in f32vec3 p, in f32 s) {
         q = p.zxy;
     else
         return m * 0.57735027;
-    f32 k = clamp(0.5 * (q.z - q.y + s), 0.0, s);
-    return length(f32vec3(q.x, q.y - s + k, q.z - k));
+    daxa_f32 k = clamp(0.5 * (q.z - q.y + s), 0.0, s);
+    return length(daxa_f32vec3(q.x, q.y - s + k, q.z - k));
 }
-f32 sd_pyramid(in f32vec3 p, in f32 r, in f32 h) {
+daxa_f32 sd_pyramid(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h) {
     h = h / r;
     p = p / r;
-    f32 m2 = h * h + 0.25;
+    daxa_f32 m2 = h * h + 0.25;
     p.xy = abs(p.xy);
     p.xy = (p.y > p.x) ? p.yx : p.xy;
     p.xy -= 0.5;
-    f32vec3 q = f32vec3(p.y, h * p.z - 0.5 * p.x, h * p.x + 0.5 * p.z);
-    f32 s = max(-q.x, 0.0);
-    f32 t = clamp((q.y - 0.5 * p.y) / (m2 + 0.25), 0.0, 1.0);
-    f32 a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;
-    f32 b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
-    f32 d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
+    daxa_f32vec3 q = daxa_f32vec3(p.y, h * p.z - 0.5 * p.x, h * p.x + 0.5 * p.z);
+    daxa_f32 s = max(-q.x, 0.0);
+    daxa_f32 t = clamp((q.y - 0.5 * p.y) / (m2 + 0.25), 0.0, 1.0);
+    daxa_f32 a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;
+    daxa_f32 b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
+    daxa_f32 d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
     return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.z)) * r;
 }
 
 // Random functions
 
-float interleaved_gradient_noise(u32vec2 px) {
+float interleaved_gradient_noise(daxa_u32vec2 px) {
     return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
 }
 
 // Jenkins hash function
-u32 good_rand_hash(u32 x) {
+daxa_u32 good_rand_hash(daxa_u32 x) {
     x += (x << 10u);
     x ^= (x >> 6u);
     x += (x << 3u);
@@ -601,25 +601,25 @@ u32 good_rand_hash(u32 x) {
     x += (x << 15u);
     return x;
 }
-u32 good_rand_hash(u32vec2 v) { return good_rand_hash(v.x ^ good_rand_hash(v.y)); }
-u32 good_rand_hash(u32vec3 v) {
+daxa_u32 good_rand_hash(daxa_u32vec2 v) { return good_rand_hash(v.x ^ good_rand_hash(v.y)); }
+daxa_u32 good_rand_hash(daxa_u32vec3 v) {
     return good_rand_hash(v.x ^ good_rand_hash(v.y) ^ good_rand_hash(v.z));
 }
-u32 good_rand_hash(u32vec4 v) {
+daxa_u32 good_rand_hash(daxa_u32vec4 v) {
     return good_rand_hash(v.x ^ good_rand_hash(v.y) ^ good_rand_hash(v.z) ^ good_rand_hash(v.w));
 }
-f32 good_rand_float_construct(u32 m) {
-    const u32 ieee_mantissa = 0x007FFFFFu;
-    const u32 ieee_one = 0x3F800000u;
+daxa_f32 good_rand_float_construct(daxa_u32 m) {
+    const daxa_u32 ieee_mantissa = 0x007FFFFFu;
+    const daxa_u32 ieee_one = 0x3F800000u;
     m &= ieee_mantissa;
     m |= ieee_one;
-    f32 f = uintBitsToFloat(m);
+    daxa_f32 f = uintBitsToFloat(m);
     return f - 1.0;
 }
-f32 good_rand(f32 x) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(x))); }
-f32 good_rand(f32vec2 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
-f32 good_rand(f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
-f32 good_rand(f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+daxa_f32 good_rand(daxa_f32 x) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(x))); }
+daxa_f32 good_rand(daxa_f32vec2 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+daxa_f32 good_rand(daxa_f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
+daxa_f32 good_rand(daxa_f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 
 // TODO: check if we need a better hash function
 uint hash1(uint x) { return good_rand_hash(x); }
@@ -638,66 +638,66 @@ uint hash_combine2(uint x, uint y) {
     seed ^= (seed >> 18u);
     return seed;
 }
-uint hash2(u32vec2 v) { return hash_combine2(v.x, hash1(v.y)); }
-uint hash3(u32vec3 v) { return hash_combine2(v.x, hash2(v.yz)); }
-uint hash4(u32vec4 v) { return hash_combine2(v.x, hash3(v.yzw)); }
+uint hash2(daxa_u32vec2 v) { return hash_combine2(v.x, hash1(v.y)); }
+uint hash3(daxa_u32vec3 v) { return hash_combine2(v.x, hash2(v.yz)); }
+uint hash4(daxa_u32vec4 v) { return hash_combine2(v.x, hash3(v.yzw)); }
 
-u32 _rand_state;
-void rand_seed(u32 seed) {
+daxa_u32 _rand_state;
+void rand_seed(daxa_u32 seed) {
     _rand_state = seed;
 }
 
-f32 rand() {
+daxa_f32 rand() {
     // https://www.pcg-random.org/
     _rand_state = _rand_state * 747796405u + 2891336453u;
-    u32 result = ((_rand_state >> ((_rand_state >> 28u) + 4u)) ^ _rand_state) * 277803737u;
+    daxa_u32 result = ((_rand_state >> ((_rand_state >> 28u) + 4u)) ^ _rand_state) * 277803737u;
     result = (result >> 22u) ^ result;
     return result / 4294967295.0;
 }
 
-f32 rand_normal_dist() {
-    f32 theta = 2.0 * PI * rand();
-    f32 rho = sqrt(-2.0 * log(rand()));
+daxa_f32 rand_normal_dist() {
+    daxa_f32 theta = 2.0 * PI * rand();
+    daxa_f32 rho = sqrt(-2.0 * log(rand()));
     return rho * cos(theta);
 }
 
-f32vec3 rand_dir() {
-    return normalize(f32vec3(
+daxa_f32vec3 rand_dir() {
+    return normalize(daxa_f32vec3(
         rand_normal_dist(),
         rand_normal_dist(),
         rand_normal_dist()));
 }
 
-f32vec3 rand_hemi_dir(f32vec3 nrm) {
-    f32vec3 result = rand_dir();
+daxa_f32vec3 rand_hemi_dir(daxa_f32vec3 nrm) {
+    daxa_f32vec3 result = rand_dir();
     return result * sign(dot(nrm, result));
 }
 
-f32vec3 rand_lambertian_nrm(f32vec3 nrm) {
+daxa_f32vec3 rand_lambertian_nrm(daxa_f32vec3 nrm) {
     return normalize(nrm + rand_dir());
 }
 
-f32vec2 rand_circle_pt(f32vec2 random_input) {
-    f32 theta = 2.0 * PI * random_input.x;
-    f32 mag = sqrt(random_input.y);
-    return f32vec2(cos(theta), sin(theta)) * mag;
+daxa_f32vec2 rand_circle_pt(daxa_f32vec2 random_input) {
+    daxa_f32 theta = 2.0 * PI * random_input.x;
+    daxa_f32 mag = sqrt(random_input.y);
+    return daxa_f32vec2(cos(theta), sin(theta)) * mag;
 }
 
-f32vec2 rand_circle_pt() {
-    return rand_circle_pt(f32vec2(rand(), rand()));
+daxa_f32vec2 rand_circle_pt() {
+    return rand_circle_pt(daxa_f32vec2(rand(), rand()));
 }
 
-f32mat3x3 tbn_from_normal(f32vec3 nrm) {
-    f32vec3 tangent = normalize(cross(nrm, -nrm.zxy));
-    f32vec3 bi_tangent = cross(nrm, tangent);
-    return f32mat3x3(tangent, bi_tangent, nrm);
+daxa_f32mat3x3 tbn_from_normal(daxa_f32vec3 nrm) {
+    daxa_f32vec3 tangent = normalize(cross(nrm, -nrm.zxy));
+    daxa_f32vec3 bi_tangent = cross(nrm, tangent);
+    return daxa_f32mat3x3(tangent, bi_tangent, nrm);
 }
 
-f32vec3 uniform_sample_hemisphere(f32vec2 urand) {
+daxa_f32vec3 uniform_sample_hemisphere(daxa_f32vec2 urand) {
     float phi = urand.y * 2.0 * PI;
     float cos_theta = 1.0 - urand.x;
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-    return f32vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+    return daxa_f32vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
 float rtr_encode_cos_theta_for_fp16(float x) {
@@ -724,7 +724,7 @@ vec2 rsi(vec3 r0, vec3 rd, float sr) {
 }
 
 vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
-    // return f32vec3(0, 0, 0);
+    // return daxa_f32vec3(0, 0, 0);
     const int iSteps = 16;
     const int jSteps = 2;
     // Normalize the sun and view directions.
@@ -823,58 +823,58 @@ bool rectangles_overlap(vec3 a_min, vec3 a_max, vec3 b_min, vec3 b_max) {
 }
 
 // https://www.shadertoy.com/view/cdSBRG
-i32 imod(i32 x, i32 m) {
+daxa_i32 imod(daxa_i32 x, daxa_i32 m) {
     return x >= 0 ? x % m : m - 1 - (-x - 1) % m;
 }
-i32vec3 imod3(i32vec3 p, i32 m) {
-    return i32vec3(imod(p.x, m), imod(p.y, m), imod(p.z, m));
+daxa_i32vec3 imod3(daxa_i32vec3 p, daxa_i32 m) {
+    return daxa_i32vec3(imod(p.x, m), imod(p.y, m), imod(p.z, m));
 }
-i32vec3 imod3(i32vec3 p, i32vec3 m) {
-    return i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
+daxa_i32vec3 imod3(daxa_i32vec3 p, daxa_i32vec3 m) {
+    return daxa_i32vec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
 
-f32mat4x4 rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
+daxa_f32mat4x4 rotation_matrix(daxa_f32 yaw, daxa_f32 pitch, daxa_f32 roll) {
     float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
     float sin_rot_y = sin(roll), cos_rot_y = cos(roll);
     float sin_rot_z = sin(yaw), cos_rot_z = cos(yaw);
-    return f32mat4x4(
+    return daxa_f32mat4x4(
                cos_rot_z, -sin_rot_z, 0, 0,
                sin_rot_z, cos_rot_z, 0, 0,
                0, 0, 1, 0,
                0, 0, 0, 1) *
-           f32mat4x4(
+           daxa_f32mat4x4(
                1, 0, 0, 0,
                0, cos_rot_x, sin_rot_x, 0,
                0, -sin_rot_x, cos_rot_x, 0,
                0, 0, 0, 1) *
-           f32mat4x4(
+           daxa_f32mat4x4(
                cos_rot_y, -sin_rot_y, 0, 0,
                sin_rot_y, cos_rot_y, 0, 0,
                0, 0, 1, 0,
                0, 0, 0, 1);
 }
-f32mat4x4 inv_rotation_matrix(f32 yaw, f32 pitch, f32 roll) {
+daxa_f32mat4x4 inv_rotation_matrix(daxa_f32 yaw, daxa_f32 pitch, daxa_f32 roll) {
     float sin_rot_x = sin(-pitch), cos_rot_x = cos(-pitch);
     float sin_rot_y = sin(-roll), cos_rot_y = cos(-roll);
     float sin_rot_z = sin(-yaw), cos_rot_z = cos(-yaw);
-    return f32mat4x4(
+    return daxa_f32mat4x4(
                cos_rot_y, -sin_rot_y, 0, 0,
                sin_rot_y, cos_rot_y, 0, 0,
                0, 0, 1, 0,
                0, 0, 0, 1) *
-           f32mat4x4(
+           daxa_f32mat4x4(
                1, 0, 0, 0,
                0, cos_rot_x, sin_rot_x, 0,
                0, -sin_rot_x, cos_rot_x, 0,
                0, 0, 0, 1) *
-           f32mat4x4(
+           daxa_f32mat4x4(
                cos_rot_z, -sin_rot_z, 0, 0,
                sin_rot_z, cos_rot_z, 0, 0,
                0, 0, 1, 0,
                0, 0, 0, 1);
 }
-f32mat4x4 translation_matrix(f32vec3 pos) {
-    return f32mat4x4(
+daxa_f32mat4x4 translation_matrix(daxa_f32vec3 pos) {
+    return daxa_f32mat4x4(
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
@@ -888,111 +888,111 @@ vec3 apply_inv_rotation(vec3 pt, vec3 ypr) {
     return (inv_rotation_matrix(ypr[0], ypr[1], ypr[2]) * vec4(pt, 0.0)).xyz;
 }
 
-f32vec3 position_world_to_clip(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    f32vec4 p = (deref(globals).player.cam.world_to_view * f32vec4(v, 1));
+daxa_f32vec3 position_world_to_clip(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    daxa_f32vec4 p = (deref(globals).player.cam.world_to_view * daxa_f32vec4(v, 1));
     p = (deref(globals).player.cam.view_to_clip * p);
     return p.xyz / p.w;
 }
 
-f32vec2 get_uv(i32vec2 pix, f32vec4 tex_size) { return (f32vec2(pix) + 0.5) * tex_size.zw; }
-f32vec2 get_uv(f32vec2 pix, f32vec4 tex_size) { return (pix + 0.5) * tex_size.zw; }
-f32vec2 cs_to_uv(f32vec2 cs) { return cs * f32vec2(0.5, -0.5) + f32vec2(0.5, 0.5); }
-f32vec2 uv_to_cs(f32vec2 uv) { return (uv - 0.5) * f32vec2(2, -2); }
-f32vec2 uv_to_ss(daxa_BufferPtr(GpuInput) gpu_input, f32vec2 uv, f32vec4 tex_size) { return uv - deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
-f32vec2 ss_to_uv(daxa_BufferPtr(GpuInput) gpu_input, f32vec2 ss, f32vec4 tex_size) { return ss + deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
+daxa_f32vec2 get_uv(daxa_i32vec2 pix, daxa_f32vec4 tex_size) { return (daxa_f32vec2(pix) + 0.5) * tex_size.zw; }
+daxa_f32vec2 get_uv(daxa_f32vec2 pix, daxa_f32vec4 tex_size) { return (pix + 0.5) * tex_size.zw; }
+daxa_f32vec2 cs_to_uv(daxa_f32vec2 cs) { return cs * daxa_f32vec2(0.5, -0.5) + daxa_f32vec2(0.5, 0.5); }
+daxa_f32vec2 uv_to_cs(daxa_f32vec2 uv) { return (uv - 0.5) * daxa_f32vec2(2, -2); }
+daxa_f32vec2 uv_to_ss(daxa_BufferPtr(GpuInput) gpu_input, daxa_f32vec2 uv, daxa_f32vec4 tex_size) { return uv - deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
+daxa_f32vec2 ss_to_uv(daxa_BufferPtr(GpuInput) gpu_input, daxa_f32vec2 ss, daxa_f32vec4 tex_size) { return ss + deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
 
 struct ViewRayContext {
-    f32vec4 ray_dir_cs;
-    f32vec4 ray_dir_vs_h;
-    f32vec4 ray_dir_ws_h;
-    f32vec4 ray_origin_cs;
-    f32vec4 ray_origin_vs_h;
-    f32vec4 ray_origin_ws_h;
-    f32vec4 ray_hit_cs;
-    f32vec4 ray_hit_vs_h;
-    f32vec4 ray_hit_ws_h;
+    daxa_f32vec4 ray_dir_cs;
+    daxa_f32vec4 ray_dir_vs_h;
+    daxa_f32vec4 ray_dir_ws_h;
+    daxa_f32vec4 ray_origin_cs;
+    daxa_f32vec4 ray_origin_vs_h;
+    daxa_f32vec4 ray_origin_ws_h;
+    daxa_f32vec4 ray_hit_cs;
+    daxa_f32vec4 ray_hit_vs_h;
+    daxa_f32vec4 ray_hit_ws_h;
 };
 
-f32vec3 ray_dir_vs(in ViewRayContext vrc) { return normalize(vrc.ray_dir_vs_h.xyz); }
-f32vec3 ray_dir_ws(in ViewRayContext vrc) { return normalize(vrc.ray_dir_ws_h.xyz); }
-f32vec3 ray_origin_vs(in ViewRayContext vrc) { return vrc.ray_origin_vs_h.xyz / vrc.ray_origin_vs_h.w; }
-f32vec3 ray_origin_ws(in ViewRayContext vrc) { return vrc.ray_origin_ws_h.xyz / vrc.ray_origin_ws_h.w; }
-f32vec3 ray_hit_vs(in ViewRayContext vrc) { return vrc.ray_hit_vs_h.xyz / vrc.ray_hit_vs_h.w; }
-f32vec3 ray_hit_ws(in ViewRayContext vrc) { return vrc.ray_hit_ws_h.xyz / vrc.ray_hit_ws_h.w; }
-f32vec3 biased_secondary_ray_origin_ws(in ViewRayContext vrc) {
+daxa_f32vec3 ray_dir_vs(in ViewRayContext vrc) { return normalize(vrc.ray_dir_vs_h.xyz); }
+daxa_f32vec3 ray_dir_ws(in ViewRayContext vrc) { return normalize(vrc.ray_dir_ws_h.xyz); }
+daxa_f32vec3 ray_origin_vs(in ViewRayContext vrc) { return vrc.ray_origin_vs_h.xyz / vrc.ray_origin_vs_h.w; }
+daxa_f32vec3 ray_origin_ws(in ViewRayContext vrc) { return vrc.ray_origin_ws_h.xyz / vrc.ray_origin_ws_h.w; }
+daxa_f32vec3 ray_hit_vs(in ViewRayContext vrc) { return vrc.ray_hit_vs_h.xyz / vrc.ray_hit_vs_h.w; }
+daxa_f32vec3 ray_hit_ws(in ViewRayContext vrc) { return vrc.ray_hit_ws_h.xyz / vrc.ray_hit_ws_h.w; }
+daxa_f32vec3 biased_secondary_ray_origin_ws(in ViewRayContext vrc) {
     return ray_hit_ws(vrc) - ray_dir_ws(vrc) * (length(ray_hit_vs(vrc)) + length(ray_hit_ws(vrc))) * 1e-4;
 }
-f32vec3 biased_secondary_ray_origin_ws_with_normal(in ViewRayContext vrc, f32vec3 normal) {
-    f32vec3 ws_abs = abs(ray_hit_ws(vrc));
+daxa_f32vec3 biased_secondary_ray_origin_ws_with_normal(in ViewRayContext vrc, daxa_f32vec3 normal) {
+    daxa_f32vec3 ws_abs = abs(ray_hit_ws(vrc));
     float max_comp = max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, -ray_hit_vs(vrc).z));
     return ray_hit_ws(vrc) + (normal - ray_dir_ws(vrc)) * max(1e-4, max_comp * 1e-6);
 }
-ViewRayContext vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv) {
+ViewRayContext vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv) {
     ViewRayContext res;
-    res.ray_dir_cs = f32vec4(uv_to_cs(uv), 0.0, 1.0);
+    res.ray_dir_cs = daxa_f32vec4(uv_to_cs(uv), 0.0, 1.0);
     res.ray_dir_vs_h = deref(globals).player.cam.sample_to_view * res.ray_dir_cs;
     res.ray_dir_ws_h = deref(globals).player.cam.view_to_world * res.ray_dir_vs_h;
-    res.ray_origin_cs = f32vec4(uv_to_cs(uv), 1.0, 1.0);
+    res.ray_origin_cs = daxa_f32vec4(uv_to_cs(uv), 1.0, 1.0);
     res.ray_origin_vs_h = deref(globals).player.cam.sample_to_view * res.ray_origin_cs;
     res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
     return res;
 }
-ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv, float depth) {
+ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv, float depth) {
     ViewRayContext res;
-    res.ray_dir_cs = f32vec4(uv_to_cs(uv), 0.0, 1.0);
+    res.ray_dir_cs = daxa_f32vec4(uv_to_cs(uv), 0.0, 1.0);
     res.ray_dir_vs_h = deref(globals).player.cam.sample_to_view * res.ray_dir_cs;
     res.ray_dir_ws_h = deref(globals).player.cam.view_to_world * res.ray_dir_vs_h;
-    res.ray_origin_cs = f32vec4(uv_to_cs(uv), 1.0, 1.0);
+    res.ray_origin_cs = daxa_f32vec4(uv_to_cs(uv), 1.0, 1.0);
     res.ray_origin_vs_h = deref(globals).player.cam.sample_to_view * res.ray_origin_cs;
     res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
-    res.ray_hit_cs = f32vec4(uv_to_cs(uv), depth, 1.0);
+    res.ray_hit_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
     res.ray_hit_vs_h = deref(globals).player.cam.sample_to_view * res.ray_hit_cs;
     res.ray_hit_ws_h = deref(globals).player.cam.view_to_world * res.ray_hit_vs_h;
     return res;
 }
 #define BIAS uintBitsToFloat(0x3f800040) // uintBitsToFloat(0x3f800040) == 1.00000762939453125
-ViewRayContext vrc_from_uv_and_biased_depth(daxa_RWBufferPtr(GpuGlobals) globals, f32vec2 uv, float depth) {
+ViewRayContext vrc_from_uv_and_biased_depth(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv, float depth) {
     return vrc_from_uv_and_depth(globals, uv, min(1.0, depth * BIAS));
 }
 
-f32vec3 direction_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    return (deref(globals).player.cam.view_to_world * f32vec4(v, 0)).xyz;
+daxa_f32vec3 direction_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    return (deref(globals).player.cam.view_to_world * daxa_f32vec4(v, 0)).xyz;
 }
-f32vec3 direction_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    return (deref(globals).player.cam.world_to_view * f32vec4(v, 0)).xyz;
+daxa_f32vec3 direction_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    return (deref(globals).player.cam.world_to_view * daxa_f32vec4(v, 0)).xyz;
 }
-f32vec3 position_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    return (deref(globals).player.cam.world_to_view, f32vec4(v, 1)).xyz;
+daxa_f32vec3 position_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    return (deref(globals).player.cam.world_to_view, daxa_f32vec4(v, 1)).xyz;
 }
-f32vec3 position_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    return (deref(globals).player.cam.view_to_world, f32vec4(v, 1)).xyz;
+daxa_f32vec3 position_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    return (deref(globals).player.cam.view_to_world, daxa_f32vec4(v, 1)).xyz;
 }
 
-f32vec3 position_world_to_sample(daxa_RWBufferPtr(GpuGlobals) globals, f32vec3 v) {
-    f32vec4 p = deref(globals).player.cam.world_to_view * f32vec4(v, 1);
+daxa_f32vec3 position_world_to_sample(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
+    daxa_f32vec4 p = deref(globals).player.cam.world_to_view * daxa_f32vec4(v, 1);
     p = deref(globals).player.cam.view_to_sample * p;
     return p.xyz / p.w;
 }
 
 struct Bilinear {
-    f32vec2 origin;
-    f32vec2 weights;
+    daxa_f32vec2 origin;
+    daxa_f32vec2 weights;
 };
 
-i32vec2 px0(in Bilinear b) { return i32vec2(b.origin); }
-i32vec2 px1(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 0); }
-i32vec2 px2(in Bilinear b) { return i32vec2(b.origin) + i32vec2(0, 1); }
-i32vec2 px3(in Bilinear b) { return i32vec2(b.origin) + i32vec2(1, 1); }
+daxa_i32vec2 px0(in Bilinear b) { return daxa_i32vec2(b.origin); }
+daxa_i32vec2 px1(in Bilinear b) { return daxa_i32vec2(b.origin) + daxa_i32vec2(1, 0); }
+daxa_i32vec2 px2(in Bilinear b) { return daxa_i32vec2(b.origin) + daxa_i32vec2(0, 1); }
+daxa_i32vec2 px3(in Bilinear b) { return daxa_i32vec2(b.origin) + daxa_i32vec2(1, 1); }
 
-Bilinear get_bilinear_filter(f32vec2 uv, f32vec2 tex_size) {
+Bilinear get_bilinear_filter(daxa_f32vec2 uv, daxa_f32vec2 tex_size) {
     Bilinear result;
     result.origin = trunc(uv * tex_size - 0.5);
     result.weights = fract(uv * tex_size - 0.5);
     return result;
 }
 
-f32vec4 get_bilinear_custom_weights(Bilinear f, f32vec4 custom_weights) {
-    f32vec4 weights;
+daxa_f32vec4 get_bilinear_custom_weights(Bilinear f, daxa_f32vec4 custom_weights) {
+    daxa_f32vec4 weights;
     weights.x = (1.0 - f.weights.x) * (1.0 - f.weights.y);
     weights.y = f.weights.x * (1.0 - f.weights.y);
     weights.z = (1.0 - f.weights.x) * f.weights.y;
@@ -1000,9 +1000,9 @@ f32vec4 get_bilinear_custom_weights(Bilinear f, f32vec4 custom_weights) {
     return weights * custom_weights;
 }
 
-f32vec4 apply_bilinear_custom_weights(f32vec4 s00, f32vec4 s10, f32vec4 s01, f32vec4 s11, f32vec4 w, bool should_normalize) {
-	f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
-	return r * (should_normalize ? (1.0 / dot(w, f32vec4(1.0))) : 1.0);
+daxa_f32vec4 apply_bilinear_custom_weights(daxa_f32vec4 s00, daxa_f32vec4 s10, daxa_f32vec4 s01, daxa_f32vec4 s11, daxa_f32vec4 w, bool should_normalize) {
+	daxa_f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
+	return r * (should_normalize ? (1.0 / dot(w, daxa_f32vec4(1.0))) : 1.0);
 }
 
 void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 friction_vec, float friction_coeff) {

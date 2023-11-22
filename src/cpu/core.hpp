@@ -11,18 +11,18 @@
 #include <daxa/utils/pipeline_manager.hpp>
 #include <daxa/utils/imgui.hpp>
 #include <daxa/utils/task_graph.hpp>
-#include <daxa/utils/math_operators.hpp>
-using namespace daxa::math_operators;
+// #include <daxa/utils/math_operators.hpp>
+// using namespace daxa::math_operators;
 
 using BDA = daxa::BufferDeviceAddress;
 
-static inline constexpr usize FRAMES_IN_FLIGHT = 1;
+static inline constexpr size_t FRAMES_IN_FLIGHT = 1;
 
 struct RecordContext {
     daxa::Device device;
     daxa::TaskGraph task_graph;
-    u32vec2 render_resolution;
-    u32vec2 output_resolution;
+    daxa_u32vec2 render_resolution;
+    daxa_u32vec2 output_resolution;
 
     daxa::TaskImageView task_swapchain_image;
     daxa::TaskImageView task_blue_noise_vec2_image;
@@ -103,19 +103,19 @@ struct PingPongResource {
     TaskResources task_resources;
 
     auto get(daxa::Device a_device, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
-        if (!resources.device) {
+        if (!resources.device.is_valid()) {
             resources.device = a_device;
         }
-        assert(resources.device == a_device);
+        // assert(resources.device == a_device);
         if (resources.resource_a.is_empty()) {
             auto info_a = a_info;
             auto info_b = a_info;
-            info_a.name += "_a";
-            info_b.name += "_b";
+            info_a.name = std::string(info_a.name.view()) + "_a";
+            info_b.name = std::string(info_b.name.view()) + "_b";
             resources.resource_a = Impl::create(a_device, info_a);
             resources.resource_b = Impl::create(a_device, info_b);
-            task_resources.output_resource = Impl::create_task_resource(resources.resource_a, a_info.name);
-            task_resources.history_resource = Impl::create_task_resource(resources.resource_b, a_info.name + "_history");
+            task_resources.output_resource = Impl::create_task_resource(resources.resource_a, std::string(a_info.name.view()));
+            task_resources.history_resource = Impl::create_task_resource(resources.resource_b, std::string(a_info.name.view()) + "_hist");
         }
         return {task_resources.output_resource, task_resources.history_resource};
     }
@@ -254,9 +254,9 @@ struct AsyncManagedRasterPipeline {
 };
 
 struct AsyncPipelineManager {
-    std::array<daxa::PipelineManager, 8> pipeline_managers;
+    std::array<daxa::PipelineManager, 16> pipeline_managers;
     struct Atomics {
-        std::array<std::mutex, 8> mutexes{};
+        std::array<std::mutex, 16> mutexes{};
         std::atomic_uint64_t current_index = 0;
         ThreadPool thread_pool{};
     };
@@ -264,6 +264,15 @@ struct AsyncPipelineManager {
 
     AsyncPipelineManager(daxa::PipelineManagerInfo info) {
         pipeline_managers = {
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+            daxa::PipelineManager(info),
+
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
@@ -377,8 +386,8 @@ struct AsyncPipelineManager {
         }
     }
     auto reload_all() -> daxa::PipelineReloadResult {
-        std::array<daxa::PipelineReloadResult, 8> results;
-        for (u32 i = 0; i < pipeline_managers.size(); ++i) {
+        std::array<daxa::PipelineReloadResult, 16> results;
+        for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
 // #if ENABLE_THREAD_POOL
 //             atomics->thread_pool.enqueue([this, i, &results]() {
 //                 auto &pipeline_manager = this->pipeline_managers[i];
@@ -396,7 +405,7 @@ struct AsyncPipelineManager {
 //         }
 // #endif
         for (auto const &result : results) {
-            if (std::holds_alternative<daxa::PipelineReloadError>(result)) {
+            if (daxa::holds_alternative<daxa::PipelineReloadError>(result)) {
                 return result;
             }
         }

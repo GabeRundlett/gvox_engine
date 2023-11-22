@@ -1,0 +1,6 @@
+[submodule "deps/gvox"]
+	path = deps/gvox
+	url = https://github.com/GabeRundlett/gvox
+[submodule "deps/Daxa"]
+	path = deps/Daxa
+	url = https://github.com/Ipotrick/Daxa

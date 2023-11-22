@@ -13,22 +13,22 @@ const float floor_z = -1.0;
 vec2 map(in vec3 pos) {
     vec2 res = vec2(pos.z - floor_z, 0.0);
     res = opU(res, vec2(sd_sphere(pos - vec3(+1.0, +1.0, 0.25 + floor_z), 0.25), 1.0));
-    res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), f32vec3(0.1, 0.2, 0.25)), 1.0));
-    res = opU(res, vec2(sd_box(pos - vec3(+2.0, +1.0, 0.25 + floor_z), f32vec3(0.1, 0.2, 0.25)), 1.0));
-    res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
+    res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
+    res = opU(res, vec2(sd_box(pos - vec3(+2.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
+    res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
     res = opU(res, vec2(sd_cylinder(pos - vec3(+2.0, +2.0, 0.25 + floor_z), 0.25, 0.25), 1.0));
-    res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), f32vec2(0.18, 0.07)), 1.0));
+    res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), daxa_f32vec2(0.18, 0.07)), 1.0));
     return res;
 }
 
 vec3 map_col(vec3 pos, int id) {
     switch (id) {
     case 0:
-        return f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
+        return daxa_f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
     case 1:
-        return f32vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
+        return daxa_f32vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
     default:
-        return f32vec3(0.0);
+        return daxa_f32vec3(0.0);
     }
 }
 
@@ -41,16 +41,16 @@ vec3 map_nrm(in vec3 pos) {
     return normalize(n);
 }
 
-VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
+VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {
     VoxelTraceResult result;
 
     result.dist = 0;
     result.nrm = -info.ray_dir;
     result.step_n = 0;
     result.voxel_data = 0;
-    result.vel = f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
+    result.vel = daxa_f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
 
-    f32vec3 offset = f32vec3(deref(info.ptrs.globals).offset);
+    daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
     ray_pos += offset;
 
 #if TRACE_DEPTH_PREPASS_COMPUTE
@@ -95,10 +95,10 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out f32vec3 ray_pos) {
         ray_pos += rd * result.dist;
 
         result.nrm = map_nrm(ro + rd * t);
-        f32vec3 col = map_col(ray_pos, int(res.y));
-        u32 id = 1;
+        daxa_f32vec3 col = map_col(ray_pos, int(res.y));
+        daxa_u32 id = 1;
 
-        result.voxel_data = f32vec4_to_uint_rgba8(f32vec4(col, 0.0)) | (id << 0x18);
+        result.voxel_data = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
     }
 
     ray_pos -= offset;

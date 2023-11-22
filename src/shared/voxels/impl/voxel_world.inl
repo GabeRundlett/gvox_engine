@@ -65,13 +65,13 @@ struct PerChunkComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list) {
+    void record_commands(daxa::CommandRecorder &recorder) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
+        recorder.set_pipeline(pipeline.get());
         auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
-        cmd_list.dispatch(dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS);
+        recorder.dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
     }
 };
 
@@ -88,12 +88,12 @@ struct ChunkEditComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
-        cmd_list.dispatch_indirect({
+        recorder.set_pipeline(pipeline.get());
+        recorder.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
         });
@@ -128,12 +128,12 @@ struct ChunkOptComputeTaskState {
         }
     }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
-        cmd_list.dispatch_indirect({
+        recorder.set_pipeline(pipeline.get());
+        recorder.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             .offset = get_pass_indirect_offset(),
         });
@@ -153,12 +153,12 @@ struct ChunkAllocComputeTaskState {
         });
     }
 
-    void record_commands(daxa::CommandList &cmd_list, daxa::BufferId globals_buffer_id) {
+    void record_commands(daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
         if (!pipeline.is_valid()) {
             return;
         }
-        cmd_list.set_pipeline(pipeline.get());
-        cmd_list.dispatch_indirect({
+        recorder.set_pipeline(pipeline.get());
+        recorder.dispatch_indirect({
             .indirect_buffer = globals_buffer_id,
             // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
             .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
@@ -169,18 +169,18 @@ struct ChunkAllocComputeTaskState {
 struct PerChunkComputeTask : PerChunkComputeUses {
     PerChunkComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list);
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        state->record_commands(recorder);
     }
 };
 
 struct ChunkEditComputeTask : ChunkEditComputeUses {
     ChunkEditComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, uses.globals.buffer());
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        state->record_commands(recorder, uses.globals.buffer());
     }
 };
 
@@ -188,9 +188,9 @@ template <int PASS_INDEX>
 struct ChunkOptComputeTask : ChunkOptComputeUses {
     ChunkOptComputeTaskState<PASS_INDEX> *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, uses.globals.buffer());
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        state->record_commands(recorder, uses.globals.buffer());
     }
 };
 
@@ -202,9 +202,9 @@ using ChunkOpt_x8up_ComputeTask = ChunkOptComputeTask<1>;
 struct ChunkAllocComputeTask : ChunkAllocComputeUses {
     ChunkAllocComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
-        auto cmd_list = ti.get_command_list();
-        cmd_list.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-        state->record_commands(cmd_list, uses.globals.buffer());
+        auto &recorder = ti.get_recorder();
+        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
+        state->record_commands(recorder, uses.globals.buffer());
     }
 };
 
@@ -220,8 +220,8 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
     };
 
     Buffers buffers;
-    u32 debug_page_count{};
-    u32 debug_gpu_heap_usage{};
+    daxa_u32 debug_page_count{};
+    daxa_u32 debug_gpu_heap_usage{};
 
     PerChunkComputeTaskState per_chunk_task_state;
     ChunkEditComputeTaskState chunk_edit_task_state;
@@ -248,7 +248,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
     void create(daxa::Device &device) {
         buffers.voxel_globals_buffer = device.create_buffer({
-            .size = static_cast<u32>(sizeof(VoxelWorldGlobals)),
+            .size = static_cast<daxa_u32>(sizeof(VoxelWorldGlobals)),
             .name = "voxel_globals_buffer",
         });
         buffers.task_voxel_globals_buffer.set_buffers({.buffers = std::array{buffers.voxel_globals_buffer}});
@@ -256,7 +256,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
         chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
         buffers.voxel_chunks_buffer = device.create_buffer({
-            .size = static_cast<u32>(sizeof(VoxelLeafChunk)) * chunk_n,
+            .size = static_cast<daxa_u32>(sizeof(VoxelLeafChunk)) * chunk_n,
             .name = "voxel_chunks_buffer",
         });
         buffers.task_voxel_chunks_buffer.set_buffers({.buffers = std::array{buffers.voxel_chunks_buffer}});
@@ -290,10 +290,10 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
             },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
+            .task = [this](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
 
-                cmd_list.clear_buffer({
+                recorder.clear_buffer({
                     .buffer = buffers.task_voxel_globals_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(VoxelWorldGlobals),
@@ -302,16 +302,16 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
                 auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
                 chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
-                cmd_list.clear_buffer({
+                recorder.clear_buffer({
                     .buffer = buffers.task_voxel_chunks_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(VoxelLeafChunk) * chunk_n,
                     .clear_value = 0,
                 });
 
-                buffers.voxel_malloc.clear_buffers(cmd_list);
-                // buffers.voxel_leaf_chunk_malloc.clear_buffers(cmd_list);
-                // buffers.voxel_parent_chunk_malloc.clear_buffers(cmd_list);
+                buffers.voxel_malloc.clear_buffers(recorder);
+                // buffers.voxel_leaf_chunk_malloc.clear_buffers(recorder);
+                // buffers.voxel_parent_chunk_malloc.clear_buffers(recorder);
             },
             .name = "clear chunk editor",
         });
@@ -322,11 +322,11 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_allocator_buffer},
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_allocator_buffer},
             },
-            .task = [this](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
-                buffers.voxel_malloc.init(task_runtime.get_device(), cmd_list);
-                // buffers.voxel_leaf_chunk_malloc.init(task_runtime.get_device(), cmd_list);
-                // buffers.voxel_parent_chunk_malloc.init(task_runtime.get_device(), cmd_list);
+            .task = [this](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
+                buffers.voxel_malloc.init(ti.get_device(), recorder);
+                // buffers.voxel_leaf_chunk_malloc.init(ti.get_device(), recorder);
+                // buffers.voxel_parent_chunk_malloc.init(ti.get_device(), recorder);
             },
             .name = "Initialize",
         });
@@ -361,18 +361,18 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_parent_chunk_malloc.task_old_element_buffer},
                 // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
             },
-            .task = [this, &needs_vram_calc](daxa::TaskInterface task_runtime) {
-                auto cmd_list = task_runtime.get_command_list();
+            .task = [this, &needs_vram_calc](daxa::TaskInterface ti) {
+                auto &recorder = ti.get_recorder();
                 if (buffers.voxel_malloc.needs_realloc()) {
-                    buffers.voxel_malloc.realloc(task_runtime.get_device(), cmd_list);
+                    buffers.voxel_malloc.realloc(ti.get_device(), recorder);
                     needs_vram_calc = true;
                 }
                 // if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_leaf_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
+                //     buffers.voxel_leaf_chunk_malloc.realloc(ti.get_device(), recorder);
                 //     needs_vram_calc = true;
                 // }
                 // if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_parent_chunk_malloc.realloc(task_runtime.get_device(), cmd_list);
+                //     buffers.voxel_parent_chunk_malloc.realloc(ti.get_device(), recorder);
                 //     needs_vram_calc = true;
                 // }
             },

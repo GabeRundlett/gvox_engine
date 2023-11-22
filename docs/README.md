@@ -40,9 +40,9 @@ Brushes define how voxels should generate
 The `BrushInput` type has the following declaration
 ```cpp
 struct BrushInput {
-    f32vec3 p;
-    f32vec3 origin;
-    f32vec3 begin_p;
+    daxa_f32vec3 p;
+    daxa_f32vec3 origin;
+    daxa_f32vec3 begin_p;
     Voxel prev_voxel;
 };
 ```
@@ -53,8 +53,8 @@ struct BrushInput {
  
  ### INPUT
  The `INPUT` variable has the following "public" members
-  - `frame_dim` is a `u32vec2` that is the size of the rendered viewport
-  - `time` is a `f32` holding the current time in seconds
+  - `frame_dim` is a `daxa_u32vec2` that is the size of the rendered viewport
+  - `time` is a `daxa_f32` holding the current time in seconds
 
 <!-- ## Walkthrough
 
@@ -67,15 +67,15 @@ struct BrushInput {
 
 usage:
 
-`f32 sd_union(in f32 a, in f32 b);`
+`daxa_f32 sd_union(in daxa_f32 a, in daxa_f32 b);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_union(value, sd_sphere(brush.p - center, r));
 ```
 
@@ -84,15 +84,15 @@ value = sd_union(value, sd_sphere(brush.p - center, r));
 
 usage:
 
-`f32 sd_intersection(in f32 a, in f32 b);`
+`daxa_f32 sd_intersection(in daxa_f32 a, in daxa_f32 b);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_intersection(value, sd_sphere(brush.p - center, r));
 ```
 
@@ -102,31 +102,31 @@ value = sd_intersection(value, sd_sphere(brush.p - center, r));
 usage:
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_difference(value, sd_sphere(brush.p - center, r));
 ```
 
-`f32 sd_difference(in f32 a, in f32 b);`
+`daxa_f32 sd_difference(in daxa_f32 a, in daxa_f32 b);`
 
 ### Smooth Union
 <img src="images/smooth_union.png" alt="Visual Representation" width="240"/>
 
 usage:
 
-`f32 sd_smooth_union(in f32 a, in f32 b, in f32 k);`
+`daxa_f32 sd_smooth_union(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_smooth_union(value, sd_sphere(brush.p - center, r), 2.0);
 ```
 
@@ -135,15 +135,15 @@ value = sd_smooth_union(value, sd_sphere(brush.p - center, r), 2.0);
 
 usage:
 
-`f32 sd_smooth_intersection(in f32 a, in f32 b, in f32 k);`
+`daxa_f32 sd_smooth_intersection(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_smooth_intersection(value, sd_sphere(brush.p - center, r), 2.0);
 ```
 
@@ -152,15 +152,15 @@ value = sd_smooth_intersection(value, sd_sphere(brush.p - center, r), 2.0);
 
 usage:
 
-`f32 sd_smooth_difference(in f32 a, in f32 b, in f32 k);`
+`daxa_f32 sd_smooth_difference(in daxa_f32 a, in daxa_f32 b, in daxa_f32 k);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 3 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 3 * 2);
 value = sd_box(brush.p, box);
 
-f32 r = 4;
-f32vec3 center = f32vec3(3 + 1) + f32vec3(3, 0, 0);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(3 + 1) + daxa_f32vec3(3, 0, 0);
 value = sd_smooth_difference(value, sd_sphere(brush.p - center, r), 2.0);
 ```
 
@@ -173,9 +173,9 @@ value = sd_smooth_difference(value, sd_sphere(brush.p - center, r), 2.0);
 
 usage:
 
-`f32 sd_plane(in f32vec3 p);`
+`daxa_f32 sd_plane(in daxa_f32vec3 p);`
 ```glsl
-f32vec3 center = f32vec3(0, 0, 1);
+daxa_f32vec3 center = daxa_f32vec3(0, 0, 1);
 value = sd_plane(brush.p - center);
 ```
 
@@ -184,10 +184,10 @@ value = sd_plane(brush.p - center);
 
 usage:
 
-`f32 sd_sphere(in f32vec3 p, in f32 r);`
+`daxa_f32 sd_sphere(in daxa_f32vec3 p, in daxa_f32 r);`
 ```glsl
-f32 r = 4;
-f32vec3 center = f32vec3(r + 1);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(r + 1);
 value = sd_sphere(brush.p - center, r);
 ```
 
@@ -196,10 +196,10 @@ value = sd_sphere(brush.p - center, r);
 
 usage:
 
-`f32 sd_ellipsoid(in f32vec3 p, in f32vec3 r);`
+`daxa_f32 sd_ellipsoid(in daxa_f32vec3 p, in daxa_f32vec3 r);`
 ```glsl
-f32vec3 r = f32vec3(2, 3, 4);
-f32vec3 center = f32vec3(r + 1);
+daxa_f32vec3 r = daxa_f32vec3(2, 3, 4);
+daxa_f32vec3 center = daxa_f32vec3(r + 1);
 value = sd_ellipsoid(brush.p - center, r);
 ```
 
@@ -208,18 +208,18 @@ value = sd_ellipsoid(brush.p - center, r);
 
 usage:
 
-`f32 sd_box(in f32vec3 p, in f32vec3 size);`
+`daxa_f32 sd_box(in daxa_f32vec3 p, in daxa_f32vec3 size);`
 ```glsl
-f32vec3 r = f32vec3(4);
-f32vec3 center = r + 1;
+daxa_f32vec3 r = daxa_f32vec3(4);
+daxa_f32vec3 center = r + 1;
 value = sd_box(brush.p - center, r);
 ```
 
-`f32 sd_box(in f32vec3 p, in BoundingBox box);`
+`daxa_f32 sd_box(in daxa_f32vec3 p, in BoundingBox box);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 4 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 4 * 2);
 value = sd_box(brush.p, box);
 ```
 
@@ -228,20 +228,20 @@ value = sd_box(brush.p, box);
 
 usage:
 
-`f32 sd_box_frame(in f32vec3 p, in f32vec3 b, in f32 e);`
+`daxa_f32 sd_box_frame(in daxa_f32vec3 p, in daxa_f32vec3 b, in daxa_f32 e);`
 ```glsl
-f32vec3 r = f32vec3(4);
-f32vec3 center = r + 1;
+daxa_f32vec3 r = daxa_f32vec3(4);
+daxa_f32vec3 center = r + 1;
 value = sd_box_frame(brush.p - center, r, 1);
 ```
 
 or
 
-`f32 sd_box_frame(in f32vec3 p, in BoundingBox box, in f32 e);`
+`daxa_f32 sd_box_frame(in daxa_f32vec3 p, in BoundingBox box, in daxa_f32 e);`
 ```glsl
 BoundingBox box;
-box.bound_min = f32vec3(1);
-box.bound_max = f32vec3(1 + 4 * 2);
+box.bound_min = daxa_f32vec3(1);
+box.bound_max = daxa_f32vec3(1 + 4 * 2);
 value = sd_box_frame(brush.p, box, 1);
 ```
 
@@ -250,11 +250,11 @@ value = sd_box_frame(brush.p, box, 1);
 
 usage:
 
-`f32 sd_cylinder(in f32vec3 p, in f32 r, in f32 h);`
+`daxa_f32 sd_cylinder(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h);`
 ```glsl
-f32 r = 4;
-f32 h = 3;
-f32vec3 center = f32vec3(r + 1, r + 1, h + 1);
+daxa_f32 r = 4;
+daxa_f32 h = 3;
+daxa_f32vec3 center = daxa_f32vec3(r + 1, r + 1, h + 1);
 value = sd_cylinder(brush.p - center, r, h);
 ```
 
@@ -262,11 +262,11 @@ or, in an arbitrary orientation:
 
 <img src="images/shapes/cylinder_arb.png" alt="Visual Representation" width="240"/>
 
-`f32 sd_cylinder(f32vec3 p, f32vec3 a, f32vec3 b, f32 r)`
+`daxa_f32 sd_cylinder(daxa_f32vec3 p, daxa_f32vec3 a, daxa_f32vec3 b, daxa_f32 r)`
 ```glsl
-f32 r = 2;
-f32vec3 p0 = f32vec3(r + 1) + f32vec3(0, 2, 0);
-f32vec3 p1 = p0 + f32vec3(1, -2, 8);
+daxa_f32 r = 2;
+daxa_f32vec3 p0 = daxa_f32vec3(r + 1) + daxa_f32vec3(0, 2, 0);
+daxa_f32vec3 p1 = p0 + daxa_f32vec3(1, -2, 8);
 value = sd_cylinder(brush.p, p0, p1, r);
 ```
 
@@ -275,11 +275,11 @@ value = sd_cylinder(brush.p, p0, p1, r);
 
 usage:
 
-`f32 sd_triangular_prism(in f32vec3 p, in f32 r, in f32 h);`
+`daxa_f32 sd_triangular_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h);`
 ```glsl
-f32 r = 4;
-f32 h = 3;
-f32vec3 center = f32vec3(r + 1, r + 1, h + 1);
+daxa_f32 r = 4;
+daxa_f32 h = 3;
+daxa_f32vec3 center = daxa_f32vec3(r + 1, r + 1, h + 1);
 value = sd_triangular_prism(brush.p - center, r, h);
 ```
 
@@ -288,11 +288,11 @@ value = sd_triangular_prism(brush.p - center, r, h);
 
 usage:
 
-`f32 sd_hexagonal_prism(in f32vec3 p, in f32 r, in f32 h);`
+`daxa_f32 sd_hexagonal_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h);`
 ```glsl
-f32 r = 4;
-f32 h = 3;
-f32vec3 center = f32vec3(r + 1, r + 1, h + 1);
+daxa_f32 r = 4;
+daxa_f32 h = 3;
+daxa_f32vec3 center = daxa_f32vec3(r + 1, r + 1, h + 1);
 value = sd_hexagonal_prism(brush.p - center, r, h);
 ```
 
@@ -301,11 +301,11 @@ value = sd_hexagonal_prism(brush.p - center, r, h);
 
 usage:
 
-`f32 sd_octagonal_prism(in f32vec3 p, in f32 r, in f32 h);`
+`daxa_f32 sd_octagonal_prism(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h);`
 ```glsl
-f32 r = 4;
-f32 h = 3;
-f32vec3 center = f32vec3(r + 1, r + 1, h + 1);
+daxa_f32 r = 4;
+daxa_f32 h = 3;
+daxa_f32vec3 center = daxa_f32vec3(r + 1, r + 1, h + 1);
 value = sd_octagonal_prism(brush.p - center, r, h);
 ```
 
@@ -314,11 +314,11 @@ value = sd_octagonal_prism(brush.p - center, r, h);
 
 usage:
 
-`f32 sd_capsule(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r);`
+`daxa_f32 sd_capsule(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 r);`
 ```glsl
-f32 r = 2;
-f32vec3 p0 = f32vec3(r + 1) + f32vec3(0, 2, 0);
-f32vec3 p1 = p0 + f32vec3(1, -2, 8);
+daxa_f32 r = 2;
+daxa_f32vec3 p0 = daxa_f32vec3(r + 1) + daxa_f32vec3(0, 2, 0);
+daxa_f32vec3 p1 = p0 + daxa_f32vec3(1, -2, 8);
 value = sd_capsule(brush.p, p0, p1, r);
 ```
 
@@ -327,11 +327,11 @@ value = sd_capsule(brush.p, p0, p1, r);
 
 usage:
 
-`f32 sd_cone(in f32vec3 p, in f32 c, in f32 h);`
+`daxa_f32 sd_cone(in daxa_f32vec3 p, in daxa_f32 c, in daxa_f32 h);`
 ```glsl
-f32 slope = 5.0 / 8.0;
-f32 h = 8;
-f32vec3 center = f32vec3(h + 1);
+daxa_f32 slope = 5.0 / 8.0;
+daxa_f32 h = 8;
+daxa_f32vec3 center = daxa_f32vec3(h + 1);
 value = sd_cone(brush.p - center, slope, h);
 ```
 
@@ -340,12 +340,12 @@ value = sd_cone(brush.p - center, slope, h);
 
 usage:
 
-`f32 sd_round_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h);`
+`daxa_f32 sd_round_cone(in daxa_f32vec3 p, in daxa_f32 r1, in daxa_f32 r2, in daxa_f32 h);`
 ```glsl
-f32 r0 = 3;
-f32 r1 = 1;
-f32 h = 8;
-f32vec3 p = f32vec3(r0 + 1);
+daxa_f32 r0 = 3;
+daxa_f32 r1 = 1;
+daxa_f32 h = 8;
+daxa_f32vec3 p = daxa_f32vec3(r0 + 1);
 value = sd_round_cone(brush.p - p, r0, r1, h);
 ```
 
@@ -353,12 +353,12 @@ or, in an arbitrary orientation:
 
 <img src="images/shapes/round_cone_arb.png" alt="Visual Representation" width="240"/>
 
-`f32 sd_round_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 r1, in f32 r2);`
+`daxa_f32 sd_round_cone(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 r1, in daxa_f32 r2);`
 ```glsl
-f32 r0 = 3;
-f32 r1 = 1;
-f32vec3 p0 = f32vec3(r0 + 1) + f32vec3(0, 2, 0);
-f32vec3 p1 = p0 + f32vec3(1, -2, 8);
+daxa_f32 r0 = 3;
+daxa_f32 r1 = 1;
+daxa_f32vec3 p0 = daxa_f32vec3(r0 + 1) + daxa_f32vec3(0, 2, 0);
+daxa_f32vec3 p1 = p0 + daxa_f32vec3(1, -2, 8);
 value = sd_round_cone(brush.p, p0, p1, r0, r1);
 ```
 
@@ -367,12 +367,12 @@ value = sd_round_cone(brush.p, p0, p1, r0, r1);
 
 usage:
 
-`f32 sd_capped_cone(in f32vec3 p, in f32 r1, in f32 r2, in f32 h);`
+`daxa_f32 sd_capped_cone(in daxa_f32vec3 p, in daxa_f32 r1, in daxa_f32 r2, in daxa_f32 h);`
 ```glsl
-f32 r0 = 3;
-f32 r1 = 1;
-f32 h = 4;
-f32vec3 center = f32vec3(0, 0, h) + r0 + 1;
+daxa_f32 r0 = 3;
+daxa_f32 r1 = 1;
+daxa_f32 h = 4;
+daxa_f32vec3 center = daxa_f32vec3(0, 0, h) + r0 + 1;
 value = sd_capped_cone(brush.p - center, r0, r1, h);
 ```
 
@@ -380,12 +380,12 @@ or, in an arbitrary orientation:
 
 <img src="images/shapes/capped_cone_arb.png" alt="Visual Representation" width="240"/>
 
-`f32 sd_capped_cone(in f32vec3 p, in f32vec3 a, in f32vec3 b, in f32 ra, in f32 rb);`
+`daxa_f32 sd_capped_cone(in daxa_f32vec3 p, in daxa_f32vec3 a, in daxa_f32vec3 b, in daxa_f32 ra, in daxa_f32 rb);`
 ```glsl
-f32 r0 = 3;
-f32 r1 = 1;
-f32vec3 p0 = f32vec3(r0 + 1) + f32vec3(0, 2, 0);
-f32vec3 p1 = p0 + f32vec3(1, -2, 8);
+daxa_f32 r0 = 3;
+daxa_f32 r1 = 1;
+daxa_f32vec3 p0 = daxa_f32vec3(r0 + 1) + daxa_f32vec3(0, 2, 0);
+daxa_f32vec3 p1 = p0 + daxa_f32vec3(1, -2, 8);
 value = sd_capped_cone(brush.p, p0, p1, r0, r1);
 ```
 
@@ -394,10 +394,10 @@ value = sd_capped_cone(brush.p, p0, p1, r0, r1);
 
 usage:
 
-`f32 sd_torus(in f32vec3 p, in f32vec2 t);`
+`daxa_f32 sd_torus(in daxa_f32vec3 p, in daxa_f32vec2 t);`
 ```glsl
-f32vec2 r = f32vec2(4, 2);
-value = sd_torus(brush.p - (f32vec3(r.x + r.y, r.x + r.y, r.y) + 1), r);
+daxa_f32vec2 r = daxa_f32vec2(4, 2);
+value = sd_torus(brush.p - (daxa_f32vec3(r.x + r.y, r.x + r.y, r.y) + 1), r);
 ```
 
 ### Octahedron
@@ -405,10 +405,10 @@ value = sd_torus(brush.p - (f32vec3(r.x + r.y, r.x + r.y, r.y) + 1), r);
 
 usage:
 
-`f32 sd_octahedron(in f32vec3 p, in f32 s);`
+`daxa_f32 sd_octahedron(in daxa_f32vec3 p, in daxa_f32 s);`
 ```glsl
-f32 r = 4;
-f32vec3 center = f32vec3(r + 1);
+daxa_f32 r = 4;
+daxa_f32vec3 center = daxa_f32vec3(r + 1);
 value = sd_octahedron(brush.p - center, r);
 ```
 
@@ -417,10 +417,10 @@ value = sd_octahedron(brush.p - center, r);
 
 usage:
 
-`f32 sd_pyramid(in f32vec3 p, in f32 r, in f32 h);`
+`daxa_f32 sd_pyramid(in daxa_f32vec3 p, in daxa_f32 r, in daxa_f32 h);`
 ```glsl
-f32 r = 8;
-f32 h = 10;
-f32vec3 center = f32vec3(r + 1, r + 1, 1);
+daxa_f32 r = 8;
+daxa_f32 h = 10;
+daxa_f32vec3 center = daxa_f32vec3(r + 1, r + 1, 1);
 value = sd_pyramid(brush.p - center, r, h);
 ```

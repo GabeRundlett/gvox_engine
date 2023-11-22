@@ -35,9 +35,9 @@ struct SkySettings {
     DensityProfileLayer absorption_density[2];
 };
 
-#define SKY_TRANSMITTANCE_RES u32vec2(256, 64)
-#define SKY_MULTISCATTERING_RES u32vec2(32, 32)
-#define SKY_SKY_RES u32vec2(192, 128)
+#define SKY_TRANSMITTANCE_RES daxa_u32vec2(256, 64)
+#define SKY_MULTISCATTERING_RES daxa_u32vec2(32, 32)
+#define SKY_SKY_RES daxa_u32vec2(192, 128)
 
 #define MAX_SIMULATED_VOXEL_PARTICLES 0 // (1 << 14)
 #define MAX_RENDERED_VOXEL_PARTICLES 0  // (1 << 14)
