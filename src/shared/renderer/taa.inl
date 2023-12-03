@@ -6,125 +6,234 @@
 #define TAA_WG_SIZE_Y 8
 
 #if TAA_REPROJECT_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaReprojectComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(history_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojection_map, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojected_history_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(closest_velocity_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaReprojectCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, closest_velocity_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaReprojectComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaReprojectCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaReprojectComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId history_tex = push.uses.history_tex;
+daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewId depth_image = push.uses.depth_image;
+daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewId closest_velocity_img = push.uses.closest_velocity_img;
+#endif
 #endif
 #if TAA_FILTER_INPUT_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaFilterInputComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(input_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(filtered_input_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(filtered_input_deviation_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterInputCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_deviation_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaFilterInputComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaFilterInputCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaFilterInputComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId input_image = push.uses.input_image;
+daxa_ImageViewId depth_image = push.uses.depth_image;
+daxa_ImageViewId filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewId filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+#endif
 #endif
 #if TAA_FILTER_HISTORY_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaFilterHistoryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(reprojected_history_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(filtered_history_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterHistoryCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_history_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaFilterHistoryComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaFilterHistoryCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaFilterHistoryComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewId filtered_history_img = push.uses.filtered_history_img;
+#endif
 #endif
 #if TAA_INPUT_PROB_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaInputProbComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(input_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(filtered_input_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(filtered_input_deviation_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojected_history_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(filtered_history_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojection_map, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(smooth_var_history_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(velocity_history_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(input_prob_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaInputProbCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_deviation_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_history_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, input_prob_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaInputProbComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaInputProbCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaInputProbComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId input_image = push.uses.input_image;
+daxa_ImageViewId filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewId filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewId filtered_history_img = push.uses.filtered_history_img;
+daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewId depth_image = push.uses.depth_image;
+daxa_ImageViewId smooth_var_history_tex = push.uses.smooth_var_history_tex;
+daxa_ImageViewId velocity_history_tex = push.uses.velocity_history_tex;
+daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
+#endif
 #endif
 #if TAA_PROB_FILTER_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaProbFilterComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(input_prob_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(prob_filtered1_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilterCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered1_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaProbFilterComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaProbFilterCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaProbFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
+daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
+#endif
 #endif
 #if TAA_PROB_FILTER2_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaProbFilter2ComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(prob_filtered1_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(prob_filtered2_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilter2Compute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prob_filtered1_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered2_img)
+DAXA_DECL_TASK_HEAD_END
+struct TaaProbFilter2ComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaProbFilter2Compute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaProbFilter2ComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
+daxa_ImageViewId prob_filtered2_img = push.uses.prob_filtered2_img;
+#endif
 #endif
 #if TAA_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TaaComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(input_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojected_history_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(reprojection_map, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(closest_velocity_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(velocity_history_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(smooth_var_history_tex, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(input_prob_img, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(temporal_output_tex, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(this_frame_output_img, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(smooth_var_output_tex, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(temporal_velocity_output_tex, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(TaaCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, closest_velocity_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, this_frame_output_img)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, smooth_var_output_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_velocity_output_tex)
+DAXA_DECL_TASK_HEAD_END
+struct TaaComputePush {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
+    TaaCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TaaComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId input_image = push.uses.input_image;
+daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewId closest_velocity_img = push.uses.closest_velocity_img;
+daxa_ImageViewId velocity_history_tex = push.uses.velocity_history_tex;
+daxa_ImageViewId depth_image = push.uses.depth_image;
+daxa_ImageViewId smooth_var_history_tex = push.uses.smooth_var_history_tex;
+daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
+daxa_ImageViewId temporal_output_tex = push.uses.temporal_output_tex;
+daxa_ImageViewId this_frame_output_img = push.uses.this_frame_output_img;
+daxa_ImageViewId smooth_var_output_tex = push.uses.smooth_var_output_tex;
+daxa_ImageViewId temporal_velocity_output_tex = push.uses.temporal_velocity_output_tex;
+#endif
 #endif
 
-struct TaaPush {
-    daxa_f32vec4 input_tex_size;
-    daxa_f32vec4 output_tex_size;
+struct TaaPushCommon {
+    daxa_f32vec2 input_tex_size;
+    daxa_f32vec2 output_tex_size;
 };
 
 #if defined(__cplusplus)
 
-inline void taa_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, AsyncManagedComputePipeline &pipeline) {
-    pipeline = pipeline_manager.add_compute_pipeline({
-        .shader_info = {
-            .source = daxa::ShaderFile{"taa.comp.glsl"},
-            .compile_options = {.defines = {{name, "1"}}},
-        },
-        .push_constant_size = sizeof(TaaPush),
-        .name = std::string("taa_") + name,
-    });
-}
-
-#define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                                \
-    struct Name##ComputeTaskState {                                                                                                                    \
-        AsyncManagedComputePipeline pipeline;                                                                                                          \
-        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { taa_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 thread_count, TaaPush const &push) {                                        \
-            if (!pipeline.is_valid())                                                                                                                  \
-                return;                                                                                                                                \
-            recorder.set_pipeline(pipeline.get());                                                                                                     \
-            recorder.push_constant(push);                                                                                                              \
-            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});       \
-        }                                                                                                                                              \
-    };                                                                                                                                                 \
-    struct Name##ComputeTask : Name##ComputeUses {                                                                                                     \
-        Name##ComputeTaskState *state;                                                                                                                 \
-        daxa_u32vec2 thread_count;                                                                                                                     \
-        TaaPush push;                                                                                                                                  \
-        void callback(daxa::TaskInterface const &ti) {                                                                                                 \
-            auto &recorder = ti.get_recorder();                                                                                                        \
-            recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                            \
-            state->record_commands(recorder, thread_count, push);                                                                                      \
-        }                                                                                                                                              \
+#define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                          \
+    struct Name##ComputeTaskState {                                                                                                              \
+        AsyncManagedComputePipeline pipeline;                                                                                                    \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                         \
+            pipeline = pipeline_manager.add_compute_pipeline({                                                                                   \
+                .shader_info = {                                                                                                                 \
+                    .source = daxa::ShaderFile{"taa.comp.glsl"},                                                                                 \
+                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}},                                                                   \
+                },                                                                                                                               \
+                .push_constant_size = sizeof(Name##ComputePush),                                                                                 \
+                .name = "taa_" #NAME,                                                                                                            \
+            });                                                                                                                                  \
+        }                                                                                                                                        \
+        void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 thread_count, Name##ComputePush const &push) {                        \
+            if (!pipeline.is_valid())                                                                                                            \
+                return;                                                                                                                          \
+            recorder.set_pipeline(pipeline.get());                                                                                               \
+            recorder.push_constant(push);                                                                                                        \
+            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y}); \
+        }                                                                                                                                        \
+    };                                                                                                                                           \
+    struct Name##ComputeTask {                                                                                                                   \
+        Name##Compute::Uses uses;                                                                                                                \
+        Name##ComputeTaskState *state;                                                                                                           \
+        daxa_u32vec2 thread_count;                                                                                                               \
+        TaaPushCommon push_common;                                                                                                               \
+        void callback(daxa::TaskInterface const &ti) {                                                                                           \
+            auto &recorder = ti.get_recorder();                                                                                                  \
+            auto push = Name##ComputePush{.input_tex_size = push_common.input_tex_size, .output_tex_size = push_common.output_tex_size};         \
+            ti.copy_task_head_to(&push.uses);                                                                                                    \
+            state->record_commands(recorder, thread_count, push);                                                                                \
+        }                                                                                                                                        \
     }
+
+// recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
 
 TAA_DECL_TASK_STATE(TaaReproject, TAA_REPROJECT);
 TAA_DECL_TASK_STATE(TaaFilterInput, TAA_FILTER_INPUT);
@@ -209,33 +318,26 @@ struct TaaRenderer {
             .name = "closest_velocity_img",
         });
 
-        auto i_extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(record_ctx.render_resolution.x), static_cast<daxa_f32>(record_ctx.render_resolution.y), 0.0f, 0.0f);
-        i_extent_inv_extent.z = 1.0f / i_extent_inv_extent.x;
-        i_extent_inv_extent.w = 1.0f / i_extent_inv_extent.y;
-
-        auto o_extent_inv_extent = daxa_f32vec4(static_cast<daxa_f32>(record_ctx.output_resolution.x), static_cast<daxa_f32>(record_ctx.output_resolution.y), 0.0f, 0.0f);
-        o_extent_inv_extent.z = 1.0f / o_extent_inv_extent.x;
-        o_extent_inv_extent.w = 1.0f / o_extent_inv_extent.y;
+        auto i_extent = daxa_f32vec2(static_cast<daxa_f32>(record_ctx.render_resolution.x), static_cast<daxa_f32>(record_ctx.render_resolution.y));
+        auto o_extent = daxa_f32vec2(static_cast<daxa_f32>(record_ctx.output_resolution.x), static_cast<daxa_f32>(record_ctx.output_resolution.y));
 
         record_ctx.task_graph.add_task(TaaReprojectComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
 
-                    .history_tex = history_tex,
-                    .reprojection_map = reprojection_map,
-                    .depth_image = depth_image,
+                .history_tex = history_tex,
+                .reprojection_map = reprojection_map,
+                .depth_image = depth_image,
 
-                    .reprojected_history_img = reprojected_history_img,
-                    .closest_velocity_img = closest_velocity_img,
-                },
+                .reprojected_history_img = reprojected_history_img,
+                .closest_velocity_img = closest_velocity_img,
             },
-            &taa_reproject_task_state,
-            record_ctx.output_resolution,
-            TaaPush{
-                i_extent_inv_extent,
-                o_extent_inv_extent,
+            .state = &taa_reproject_task_state,
+            .thread_count = record_ctx.output_resolution,
+            .push_common = TaaPushCommon{
+                i_extent,
+                o_extent,
             },
         });
 
@@ -251,23 +353,21 @@ struct TaaRenderer {
         });
 
         record_ctx.task_graph.add_task(TaaFilterInputComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
 
-                    .input_image = input_image,
-                    .depth_image = depth_image,
+                .input_image = input_image,
+                .depth_image = depth_image,
 
-                    .filtered_input_img = filtered_input_img,
-                    .filtered_input_deviation_img = filtered_input_deviation_img,
-                },
+                .filtered_input_img = filtered_input_img,
+                .filtered_input_deviation_img = filtered_input_deviation_img,
             },
-            &taa_filter_input_task_state,
-            record_ctx.render_resolution,
-            TaaPush{
-                i_extent_inv_extent,
-                o_extent_inv_extent,
+            .state = &taa_filter_input_task_state,
+            .thread_count = record_ctx.render_resolution,
+            .push_common = TaaPushCommon{
+                i_extent,
+                o_extent,
             },
         });
 
@@ -278,21 +378,19 @@ struct TaaRenderer {
         });
 
         record_ctx.task_graph.add_task(TaaFilterHistoryComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
 
-                    .reprojected_history_img = reprojected_history_img,
+                .reprojected_history_img = reprojected_history_img,
 
-                    .filtered_history_img = filtered_history_img,
-                },
+                .filtered_history_img = filtered_history_img,
             },
-            &taa_filter_history_task_state,
-            record_ctx.render_resolution,
-            TaaPush{
-                o_extent_inv_extent,
-                i_extent_inv_extent,
+            .state = &taa_filter_history_task_state,
+            .thread_count = record_ctx.render_resolution,
+            .push_common = TaaPushCommon{
+                o_extent,
+                i_extent,
             },
         });
 
@@ -303,29 +401,27 @@ struct TaaRenderer {
                 .name = "input_prob_img",
             });
             record_ctx.task_graph.add_task(TaaInputProbComputeTask{
-                {
-                    .uses = {
-                        .gpu_input = record_ctx.task_input_buffer,
-                        .globals = record_ctx.task_globals_buffer,
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .globals = record_ctx.task_globals_buffer,
 
-                        .input_image = input_image,
-                        .filtered_input_img = filtered_input_img,
-                        .filtered_input_deviation_img = filtered_input_deviation_img,
-                        .reprojected_history_img = reprojected_history_img,
-                        .filtered_history_img = filtered_history_img,
-                        .reprojection_map = reprojection_map,
-                        .depth_image = depth_image,
-                        .smooth_var_history_tex = smooth_var_history_tex,
-                        .velocity_history_tex = velocity_history_tex,
+                    .input_image = input_image,
+                    .filtered_input_img = filtered_input_img,
+                    .filtered_input_deviation_img = filtered_input_deviation_img,
+                    .reprojected_history_img = reprojected_history_img,
+                    .filtered_history_img = filtered_history_img,
+                    .reprojection_map = reprojection_map,
+                    .depth_image = depth_image,
+                    .smooth_var_history_tex = smooth_var_history_tex,
+                    .velocity_history_tex = velocity_history_tex,
 
-                        .input_prob_img = input_prob_img,
-                    },
+                    .input_prob_img = input_prob_img,
                 },
-                &taa_input_prob_task_state,
-                record_ctx.render_resolution,
-                TaaPush{
-                    i_extent_inv_extent,
-                    o_extent_inv_extent,
+                .state = &taa_input_prob_task_state,
+                .thread_count = record_ctx.render_resolution,
+                .push_common = TaaPushCommon{
+                    i_extent,
+                    o_extent,
                 },
             });
 
@@ -335,21 +431,19 @@ struct TaaRenderer {
                 .name = "prob_filtered1_img",
             });
             record_ctx.task_graph.add_task(TaaProbFilterComputeTask{
-                {
-                    .uses = {
-                        .gpu_input = record_ctx.task_input_buffer,
-                        .globals = record_ctx.task_globals_buffer,
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .globals = record_ctx.task_globals_buffer,
 
-                        .input_prob_img = input_prob_img,
+                    .input_prob_img = input_prob_img,
 
-                        .prob_filtered1_img = prob_filtered1_img,
-                    },
+                    .prob_filtered1_img = prob_filtered1_img,
                 },
-                &taa_prob_filter_task_state,
-                record_ctx.render_resolution,
-                TaaPush{
-                    i_extent_inv_extent,
-                    o_extent_inv_extent,
+                .state = &taa_prob_filter_task_state,
+                .thread_count = record_ctx.render_resolution,
+                .push_common = TaaPushCommon{
+                    i_extent,
+                    o_extent,
                 },
             });
 
@@ -359,21 +453,19 @@ struct TaaRenderer {
                 .name = "prob_filtered2_img",
             });
             record_ctx.task_graph.add_task(TaaProbFilter2ComputeTask{
-                {
-                    .uses = {
-                        .gpu_input = record_ctx.task_input_buffer,
-                        .globals = record_ctx.task_globals_buffer,
+                .uses = {
+                    .gpu_input = record_ctx.task_input_buffer,
+                    .globals = record_ctx.task_globals_buffer,
 
-                        .prob_filtered1_img = prob_filtered1_img,
+                    .prob_filtered1_img = prob_filtered1_img,
 
-                        .prob_filtered2_img = prob_filtered2_img,
-                    },
+                    .prob_filtered2_img = prob_filtered2_img,
                 },
-                &taa_prob_filter2_task_state,
-                record_ctx.render_resolution,
-                TaaPush{
-                    i_extent_inv_extent,
-                    o_extent_inv_extent,
+                .state = &taa_prob_filter2_task_state,
+                .thread_count = record_ctx.render_resolution,
+                .push_common = TaaPushCommon{
+                    i_extent,
+                    o_extent,
                 },
             });
 
@@ -387,31 +479,29 @@ struct TaaRenderer {
         });
 
         record_ctx.task_graph.add_task(TaaComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
 
-                    .input_image = input_image,
-                    .reprojected_history_img = reprojected_history_img,
-                    .reprojection_map = reprojection_map,
-                    .closest_velocity_img = closest_velocity_img,
-                    .velocity_history_tex = velocity_history_tex,
-                    .depth_image = depth_image,
-                    .smooth_var_history_tex = smooth_var_history_tex,
-                    .input_prob_img = input_prob_img,
+                .input_image = input_image,
+                .reprojected_history_img = reprojected_history_img,
+                .reprojection_map = reprojection_map,
+                .closest_velocity_img = closest_velocity_img,
+                .velocity_history_tex = velocity_history_tex,
+                .depth_image = depth_image,
+                .smooth_var_history_tex = smooth_var_history_tex,
+                .input_prob_img = input_prob_img,
 
-                    .temporal_output_tex = temporal_output_tex,
-                    .this_frame_output_img = this_frame_output_img,
-                    .smooth_var_output_tex = smooth_var_output_tex,
-                    .temporal_velocity_output_tex = temporal_velocity_output_tex,
-                },
+                .temporal_output_tex = temporal_output_tex,
+                .this_frame_output_img = this_frame_output_img,
+                .smooth_var_output_tex = smooth_var_output_tex,
+                .temporal_velocity_output_tex = temporal_velocity_output_tex,
             },
-            &taa_task_state,
-            record_ctx.output_resolution,
-            TaaPush{
-                i_extent_inv_extent,
-                o_extent_inv_extent,
+            .state = &taa_task_state,
+            .thread_count = record_ctx.output_resolution,
+            .push_common = TaaPushCommon{
+                i_extent,
+                o_extent,
             },
         });
 

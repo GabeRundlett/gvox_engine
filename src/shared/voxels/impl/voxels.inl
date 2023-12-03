@@ -66,10 +66,15 @@ struct VoxelWorldGlobals {
 };
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
-#define VOXELS_USE_BUFFERS(ptr_type, mode)                                 \
-    DAXA_TASK_USE_BUFFER(voxel_globals, ptr_type(VoxelWorldGlobals), mode) \
-    DAXA_TASK_USE_BUFFER(voxel_chunks, ptr_type(VoxelLeafChunk), mode)     \
-    DAXA_TASK_USE_BUFFER(voxel_malloc_page_allocator, ptr_type(VoxelMallocPageAllocator), mode)
+#define VOXELS_USE_BUFFERS(ptr_type, mode)                               \
+    DAXA_TH_BUFFER_PTR(mode, ptr_type(VoxelWorldGlobals), voxel_globals) \
+    DAXA_TH_BUFFER_PTR(mode, ptr_type(VoxelLeafChunk), voxel_chunks)     \
+    DAXA_TH_BUFFER_PTR(mode, ptr_type(VoxelMallocPageAllocator), voxel_malloc_page_allocator)
+
+#define VOXELS_USE_BUFFERS_PUSH_USES(ptr_type)                           \
+    ptr_type(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals; \
+    ptr_type(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;      \
+    ptr_type(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
 
 #define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers)              \
     .voxel_globals = voxel_buffers.task_voxel_globals_buffer, \

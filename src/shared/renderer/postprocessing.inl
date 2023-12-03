@@ -3,31 +3,52 @@
 #include <shared/core.inl>
 
 #if COMPOSITING_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(CompositingComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(shadow_image_buffer, daxa_RWBufferPtr(daxa_u32), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(transmittance_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(sky_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(particles_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_READ_WRITE)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(CompositingCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), shadow_image_buffer)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ssao_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct CompositingComputePush {
+    CompositingCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(CompositingComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_RWBufferPtr(daxa_u32) shadow_image_buffer = push.uses.shadow_image_buffer;
+daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewId sky_lut = push.uses.sky_lut;
+daxa_ImageViewId particles_image_id = push.uses.particles_image_id;
+daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if POSTPROCESSING_RASTER || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(PostprocessingRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(composited_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, FRAGMENT_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
-DAXA_DECL_TASK_USES_END()
-#endif
-
+DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, composited_image_id)
+DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
+DAXA_DECL_TASK_HEAD_END
 struct PostprocessingRasterPush {
-    daxa_u32vec2 final_size;
+    PostprocessingRaster uses;
 };
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId composited_image_id = push.uses.composited_image_id;
+daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewId render_image = push.uses.render_image;
+#endif
+#endif
 
 #if defined(__cplusplus)
 
@@ -40,15 +61,17 @@ struct CompositingComputeTaskState {
                 .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
                 .compile_options = {.defines = {{"COMPOSITING_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(CompositingComputePush),
             .name = "compositing",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(CompositingComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
@@ -75,7 +98,7 @@ struct PostprocessingRasterTaskState {
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa::ImageId render_image, daxa_u32vec2 size) {
+    void record_commands(PostprocessingRasterPush const &push, daxa::CommandRecorder &recorder, daxa::ImageId render_image, daxa_u32vec2 size) {
         if (!pipeline.is_valid()) {
             return;
         }
@@ -84,31 +107,33 @@ struct PostprocessingRasterTaskState {
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
         renderpass_recorder.set_pipeline(pipeline.get());
-        renderpass_recorder.push_constant(PostprocessingRasterPush{
-            .final_size = size,
-        });
+        renderpass_recorder.push_constant(push);
         renderpass_recorder.draw({.vertex_count = 3});
         recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
-struct CompositingComputeTask : CompositingComputeUses {
+struct CompositingComputeTask {
+    CompositingCompute::Uses uses;
     CompositingComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = CompositingComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
-struct PostprocessingRasterTask : PostprocessingRasterUses {
+struct PostprocessingRasterTask {
+    PostprocessingRaster::Uses uses;
     PostprocessingRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
-        state->record_commands(recorder, uses.render_image.image(), {image_info.size.x, image_info.size.y});
+        auto push = PostprocessingRasterPush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, uses.render_image.image(), {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -126,20 +151,18 @@ struct Compositor {
         });
 
         record_ctx.task_graph.add_task(CompositingComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
-                    .shadow_image_buffer = shadow_image_buffer,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .transmittance_lut = transmittance_lut,
-                    .sky_lut = sky_lut,
-                    .particles_image_id = particles_image,
-                    .ssao_image_id = ssao_image,
-                    .dst_image_id = output_image,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
+                .shadow_image_buffer = shadow_image_buffer,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .transmittance_lut = transmittance_lut,
+                .sky_lut = sky_lut,
+                .particles_image_id = particles_image,
+                .ssao_image_id = ssao_image,
+                .dst_image_id = output_image,
             },
-            &compositing_compute_task_state,
+            .state = &compositing_compute_task_state,
         });
 
         return output_image;

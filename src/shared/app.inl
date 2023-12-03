@@ -15,28 +15,47 @@
 #include <shared/renderer/calculate_reprojection_map.inl>
 #include <shared/renderer/ssao.inl>
 #include <shared/renderer/trace_secondary.inl>
-#include <shared/renderer/diffuse_gi.inl>
 #include <shared/renderer/taa.inl>
 #include <shared/renderer/postprocessing.inl>
 #include <shared/renderer/voxel_particle_raster.inl>
 #include <shared/renderer/sky.inl>
 
 #if STARTUP_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(StartupComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_END
+struct StartupComputePush {
+    StartupCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(StartupComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
+#endif
 #endif
 
 #if PERFRAME_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(PerframeComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(gpu_output, daxa_RWBufferPtr(GpuOutput), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ_WRITE)
-DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_RWBufferPtr(SimulatedVoxelParticle), COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_BEGIN(PerframeCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_END
+struct PerframeComputePush {
+    PerframeCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(PerframeComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -169,9 +188,10 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     ReprojectionRenderer reprojection_renderer;
     SsaoRenderer ssao_renderer;
     ShadowRenderer shadow_renderer;
-    DiffuseGiRenderer diffuse_gi_renderer;
     Compositor compositor;
+#if ENABLE_TAA
     TaaRenderer taa_renderer;
+#endif
     SkyRenderer sky_renderer;
 
     VoxelWorld voxel_world;
@@ -213,9 +233,10 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           reprojection_renderer{pipeline_manager},
           ssao_renderer{pipeline_manager},
           shadow_renderer{pipeline_manager},
-          diffuse_gi_renderer{pipeline_manager},
           compositor{pipeline_manager},
+#if ENABLE_TAA
           taa_renderer{pipeline_manager},
+#endif
           sky_renderer{pipeline_manager},
 
           voxel_world{pipeline_manager},
@@ -483,12 +504,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
         shadow_renderer.next_frame();
-        if (ENABLE_DIFFUSE_GI) {
-            diffuse_gi_renderer.next_frame();
-        }
-        if (ENABLE_TAA) {
-            taa_renderer.next_frame();
-        }
+#if ENABLE_TAA
+        taa_renderer.next_frame();
+#endif
     }
 
     void dynamic_buffers_realloc(daxa::Device &device) {
@@ -527,15 +545,13 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .name = "StartupTask (Globals Clear)",
         });
         record_ctx.task_graph.add_task(StartupComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
-                },
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
             },
-            &startup_task_state,
-            {1, 1, 1},
+            .state = &startup_task_state,
+            .thread_count = {1, 1, 1},
         });
     }
 
@@ -585,32 +601,28 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 
         record_ctx.task_graph.add_task(PerframeComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .gpu_output = task_output_buffer,
-                    .globals = task_globals_buffer,
-                    .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
-                },
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .gpu_output = task_output_buffer,
+                .globals = task_globals_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
             },
-            &perframe_task_state,
-            {1, 1, 1},
+            .state = &perframe_task_state,
+            .thread_count = {1, 1, 1},
         });
 
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
         record_ctx.task_graph.add_task(VoxelParticleSimComputeTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
-                    .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                    .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
-                    .placed_voxel_particles = task_placed_voxel_particles_buffer,
-                },
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
+                .placed_voxel_particles = task_placed_voxel_particles_buffer,
             },
-            &voxel_particle_sim_task_state,
+            .state = &voxel_particle_sim_task_state,
         });
 #endif
 
@@ -629,17 +641,15 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .name = "raster_depth_image",
         });
         record_ctx.task_graph.add_task(VoxelParticleRasterTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .globals = task_globals_buffer,
-                    .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                    .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
-                    .render_image = raster_color_image,
-                    .depth_image_id = raster_depth_image,
-                },
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .globals = task_globals_buffer,
+                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
+                .render_image = raster_color_image,
+                .depth_image_id = raster_depth_image,
             },
-            &voxel_particle_raster_task_state,
+            .state = &voxel_particle_raster_task_state,
         });
 #endif
 
@@ -651,40 +661,24 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto shadow_image_buffer = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
 
         auto irradiance = ssao_image;
-        if (ENABLE_DIFFUSE_GI) {
-            auto reprojected_rtdgi = diffuse_gi_renderer.reproject(record_ctx, reprojection_map);
-            irradiance = diffuse_gi_renderer.render(
-                record_ctx,
-                gbuffer_depth,
-                reprojected_rtdgi,
-                reprojection_map,
-                // &convolved_sky_cube,
-                // &mut ircache_state,
-                // &wrc,
-                // tlas,
-                voxel_world.buffers,
-                ssao_image);
-        }
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_image_buffer, raster_color_image);
         auto final_image = [&]() {
-            if (ENABLE_TAA) {
+            #if ENABLE_TAA
                 return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
-            } else {
+            #else
                 return composited_image;
-            }
+            #endif
         }();
 
         record_ctx.task_graph.add_task(PostprocessingRasterTask{
-            {
-                .uses = {
-                    .gpu_input = task_input_buffer,
-                    .composited_image_id = final_image,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .render_image = record_ctx.task_swapchain_image,
-                },
+            .uses = {
+                .gpu_input = task_input_buffer,
+                .composited_image_id = final_image,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .render_image = record_ctx.task_swapchain_image,
             },
-            &postprocessing_task_state,
+            .state = &postprocessing_task_state,
         });
 
         record_ctx.task_graph.add_task({

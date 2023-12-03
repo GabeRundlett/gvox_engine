@@ -3,15 +3,28 @@
 #include <shared/core.inl>
 
 #if CALCULATE_REPROJECTION_MAP_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(CalculateReprojectionMapComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(prev_depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(velocity_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prev_depth_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct CalculateReprojectionMapComputePush {
+    CalculateReprojectionMapCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewId prev_depth_image_id = push.uses.prev_depth_image_id;
+daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -25,27 +38,30 @@ struct CalculateReprojectionMapComputeTaskState {
                 .source = daxa::ShaderFile{"calculate_reprojection_map.comp.glsl"},
                 .compile_options = {.defines = {{"CALCULATE_REPROJECTION_MAP_COMPUTE", "1"}}, .enable_debug_info = true},
             },
+            .push_constant_size = sizeof(CalculateReprojectionMapComputePush),
             .name = "calculate_reprojection_map",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(CalculateReprojectionMapComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.push_constant(push);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
-struct CalculateReprojectionMapComputeTask : CalculateReprojectionMapComputeUses {
+struct CalculateReprojectionMapComputeTask {
+    CalculateReprojectionMapCompute::Uses uses;
     CalculateReprojectionMapComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = CalculateReprojectionMapComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -63,18 +79,16 @@ struct ReprojectionRenderer {
             .name = "reprojection_image",
         });
         record_ctx.task_graph.add_task(CalculateReprojectionMapComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
-                    .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
-                    .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_resource,
-                    .velocity_image_id = velocity_image,
-                    .dst_image_id = reprojection_map,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
+                .prev_depth_image_id = gbuffer_depth.depth.task_resources.history_resource,
+                .velocity_image_id = velocity_image,
+                .dst_image_id = reprojection_map,
             },
-            &calculate_reprojection_map_task_state,
+            .state = &calculate_reprojection_map_task_state,
         });
         return reprojection_map;
     }

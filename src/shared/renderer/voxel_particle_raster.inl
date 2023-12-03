@@ -3,14 +3,26 @@
 #include <shared/core.inl>
 
 #if VOXEL_PARTICLE_RASTER || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(VoxelParticleRasterUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_BUFFER(simulated_voxel_particles, daxa_BufferPtr(SimulatedVoxelParticle), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_BUFFER(rendered_voxel_particles, daxa_BufferPtr(daxa_u32), FRAGMENT_SHADER_READ)
-DAXA_TASK_USE_IMAGE(render_image, REGULAR_2D, COLOR_ATTACHMENT)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, DEPTH_ATTACHMENT)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleRaster)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(daxa_u32), rendered_voxel_particles)
+DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
+DAXA_TH_IMAGE_ID(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct VoxelParticleRasterPush {
+    VoxelParticleRaster uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(VoxelParticleRasterPush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+daxa_BufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
+daxa_ImageViewId render_image = push.uses.render_image;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -34,11 +46,12 @@ struct VoxelParticleRasterTaskState {
             .raster = {
                 .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
             },
+            .push_constant_size = sizeof(VoxelParticleRasterPush),
             .name = "voxel_particle_sim",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, daxa_u32vec2 size) {
+    void record_commands(VoxelParticleRasterPush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, daxa_u32vec2 size) {
         if (!pipeline.is_valid()) {
             return;
         }
@@ -48,6 +61,7 @@ struct VoxelParticleRasterTaskState {
             .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
         });
         renderpass_recorder.set_pipeline(pipeline.get());
+        renderpass_recorder.push_constant(push);
         renderpass_recorder.draw_indirect({
             .draw_command_buffer = globals_buffer_id,
             .indirect_buffer_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),
@@ -57,13 +71,15 @@ struct VoxelParticleRasterTaskState {
     }
 };
 
-struct VoxelParticleRasterTask : VoxelParticleRasterUses {
+struct VoxelParticleRasterTask {
+    VoxelParticleRaster::Uses uses;
     VoxelParticleRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
-        state->record_commands(recorder, uses.globals.buffer(), uses.render_image.image(), uses.depth_image_id.image(), {image_info.size.x, image_info.size.y});
+        auto push = VoxelParticleRasterPush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, uses.globals.buffer(), uses.render_image.image(), uses.depth_image_id.image(), {image_info.size.x, image_info.size.y});
     }
 };
 

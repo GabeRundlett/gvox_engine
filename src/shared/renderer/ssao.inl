@@ -3,43 +3,87 @@
 #include <shared/core.inl>
 
 #if SSAO_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SsaoComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(ssao_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, ssao_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct SsaoComputePush {
+    SsaoCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SsaoComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
+#endif
 #endif
 
 #if SSAO_SPATIAL_FILTER_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SsaoSpatialFilterComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoSpatialFilterCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct SsaoSpatialFilterComputePush {
+    SsaoSpatialFilterCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SsaoSpatialFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewId src_image_id = push.uses.src_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if SSAO_UPSAMPLE_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SsaoUpscaleComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoUpscaleCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct SsaoUpscaleComputePush {
+    SsaoUpscaleCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SsaoUpscaleComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewId src_image_id = push.uses.src_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if SSAO_TEMPORAL_FILTER_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SsaoTemporalFilterComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(reprojection_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(history_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoTemporalFilterCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct SsaoTemporalFilterComputePush {
+    SsaoTemporalFilterCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId reprojection_image_id = push.uses.reprojection_image_id;
+daxa_ImageViewId history_image_id = push.uses.history_image_id;
+daxa_ImageViewId src_image_id = push.uses.src_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -53,15 +97,17 @@ struct SsaoComputeTaskState {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(SsaoComputePush),
             .name = "ssao",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(SsaoComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
@@ -76,15 +122,17 @@ struct SsaoSpatialFilterComputeTaskState {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_SPATIAL_FILTER_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(SsaoSpatialFilterComputePush),
             .name = "spatial_filter",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(SsaoSpatialFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
@@ -99,15 +147,17 @@ struct SsaoUpscaleComputeTaskState {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_UPSAMPLE_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(SsaoUpscaleComputePush),
             .name = "ssao_upscale",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(SsaoUpscaleComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
@@ -122,57 +172,67 @@ struct SsaoTemporalFilterComputeTaskState {
                 .source = daxa::ShaderFile{"ssao.comp.glsl"},
                 .compile_options = {.defines = {{"SSAO_TEMPORAL_FILTER_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(SsaoTemporalFilterComputePush),
             .name = "ssao_temporal_filter",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(SsaoTemporalFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
-struct SsaoComputeTask : SsaoComputeUses {
+struct SsaoComputeTask {
+    SsaoCompute::Uses uses;
     SsaoComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.ssao_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = SsaoComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
-struct SsaoSpatialFilterComputeTask : SsaoSpatialFilterComputeUses {
+struct SsaoSpatialFilterComputeTask {
+    SsaoSpatialFilterCompute::Uses uses;
     SsaoSpatialFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = SsaoSpatialFilterComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
-struct SsaoUpscaleComputeTask : SsaoUpscaleComputeUses {
+struct SsaoUpscaleComputeTask {
+    SsaoUpscaleCompute::Uses uses;
     SsaoUpscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = SsaoUpscaleComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
-struct SsaoTemporalFilterComputeTask : SsaoTemporalFilterComputeUses {
+struct SsaoTemporalFilterComputeTask {
+    SsaoTemporalFilterCompute::Uses uses;
     SsaoTemporalFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = SsaoTemporalFilterComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -224,52 +284,44 @@ struct SsaoRenderer {
             .name = "ssao_image2",
         });
         record_ctx.task_graph.add_task(SsaoComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
-                    .vs_normal_image_id = scaled_view_normal_image,
-                    .depth_image_id = scaled_depth_image,
-                    .ssao_image_id = ssao_image0,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
+                .vs_normal_image_id = scaled_view_normal_image,
+                .depth_image_id = scaled_depth_image,
+                .ssao_image_id = ssao_image0,
             },
-            &ssao_task_state,
+            .state = &ssao_task_state,
         });
         record_ctx.task_graph.add_task(SsaoSpatialFilterComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .vs_normal_image_id = scaled_view_normal_image,
-                    .depth_image_id = scaled_depth_image,
-                    .src_image_id = ssao_image0,
-                    .dst_image_id = ssao_image1,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .vs_normal_image_id = scaled_view_normal_image,
+                .depth_image_id = scaled_depth_image,
+                .src_image_id = ssao_image0,
+                .dst_image_id = ssao_image1,
             },
-            &ssao_spatial_filter_task_state,
+            .state = &ssao_spatial_filter_task_state,
         });
         record_ctx.task_graph.add_task(SsaoUpscaleComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
-                    .src_image_id = ssao_image1,
-                    .dst_image_id = ssao_image2,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
+                .src_image_id = ssao_image1,
+                .dst_image_id = ssao_image2,
             },
-            &ssao_upscale_task_state,
+            .state = &ssao_upscale_task_state,
         });
         record_ctx.task_graph.add_task(SsaoTemporalFilterComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .reprojection_image_id = reprojection_map,
-                    .history_image_id = prev_ssao_image,
-                    .src_image_id = ssao_image2,
-                    .dst_image_id = ssao_image,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .reprojection_image_id = reprojection_map,
+                .history_image_id = prev_ssao_image,
+                .src_image_id = ssao_image2,
+                .dst_image_id = ssao_image,
             },
-            &ssao_temporal_filter_task_state,
+            .state = &ssao_temporal_filter_task_state,
         });
         return daxa::TaskImageView{ssao_image};
     }

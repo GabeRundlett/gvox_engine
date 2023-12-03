@@ -45,11 +45,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_link_options(${PROJECT_NAME} PRIVATE "-Wl,/ENTRY:mainCRTStartup,/SUBSYSTEM:WINDOWS")
-    else()
-        target_link_options(${PROJECT_NAME} PRIVATE /ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS)
-    endif()
+    # if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    #     target_link_options(${PROJECT_NAME} PRIVATE "-Wl,/ENTRY:mainCRTStartup,/SUBSYSTEM:WINDOWS")
+    # else()
+    #     target_link_options(${PROJECT_NAME} PRIVATE /ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS)
+    # endif()
     target_link_libraries(${PROJECT_NAME} PRIVATE Dwmapi)
 endif()
 

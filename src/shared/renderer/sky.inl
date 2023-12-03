@@ -3,57 +3,86 @@
 #include <shared/core.inl>
 
 #if SKY_TRANSMITTANCE_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SkyTransmittanceComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(transmittance_lut, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
+DAXA_DECL_TASK_HEAD_END
+struct SkyTransmittanceComputePush {
+    SkyTransmittanceCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SkyTransmittanceComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+#endif
 #endif
 #if SKY_MULTISCATTERING_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SkyMultiscatteringComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(transmittance_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(multiscattering_lut, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, multiscattering_lut)
+DAXA_DECL_TASK_HEAD_END
+struct SkyMultiscatteringComputePush {
+    SkyMultiscatteringCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SkyMultiscatteringComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewId multiscattering_lut = push.uses.multiscattering_lut;
+#endif
 #endif
 #if SKY_SKY_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(SkySkyComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(transmittance_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(multiscattering_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(sky_lut, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, sky_lut)
+DAXA_DECL_TASK_HEAD_END
+struct SkySkyComputePush {
+    SkySkyCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(SkySkyComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewId multiscattering_lut = push.uses.multiscattering_lut;
+daxa_ImageViewId sky_lut = push.uses.sky_lut;
+#endif
 #endif
 
 #if defined(__cplusplus)
 
-inline void sky_compile_compute_pipeline(AsyncPipelineManager &pipeline_manager, char const *const name, AsyncManagedComputePipeline &pipeline) {
-    pipeline = pipeline_manager.add_compute_pipeline({
-        .shader_info = {
-            .source = daxa::ShaderFile{"sky.comp.glsl"},
-            .compile_options = {.defines = {{name, "1"}}},
-        },
-        .name = std::string("sky_") + name,
-    });
-}
-
-#define SKY_DECL_TASK_STATE(Name, NAME, WG_SIZE_X, WG_SIZE_Y)                                                                                          \
-    struct Name##ComputeTaskState {                                                                                                                    \
-        AsyncManagedComputePipeline pipeline;                                                                                                          \
-        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) { sky_compile_compute_pipeline(pipeline_manager, #NAME "_COMPUTE", pipeline); } \
-        void record_commands(daxa::CommandRecorder &recorder) {                                                                                        \
-            if (!pipeline.is_valid())                                                                                                                  \
-                return;                                                                                                                                \
-            recorder.set_pipeline(pipeline.get());                                                                                                     \
-            recorder.dispatch({(NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y});                           \
-        }                                                                                                                                              \
-    };                                                                                                                                                 \
-    struct Name##ComputeTask : Name##ComputeUses {                                                                                                     \
-        Name##ComputeTaskState *state;                                                                                                                 \
-        void callback(daxa::TaskInterface const &ti) {                                                                                                 \
-            auto &recorder = ti.get_recorder();                                                                                                        \
-            recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());                                                                            \
-            state->record_commands(recorder);                                                                                                          \
-        }                                                                                                                                              \
+#define SKY_DECL_TASK_STATE(Name, NAME, WG_SIZE_X, WG_SIZE_Y)                                                                \
+    struct Name##ComputeTaskState {                                                                                          \
+        AsyncManagedComputePipeline pipeline;                                                                                \
+        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                     \
+            pipeline = pipeline_manager.add_compute_pipeline({                                                               \
+                .shader_info = {                                                                                             \
+                    .source = daxa::ShaderFile{"sky.comp.glsl"},                                                             \
+                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}},                                               \
+                },                                                                                                           \
+                .push_constant_size = sizeof(Name##ComputePush),                                                             \
+                .name = "sky_" #NAME,                                                                                        \
+            });                                                                                                              \
+        }                                                                                                                    \
+        void record_commands(Name##ComputePush const &push, daxa::CommandRecorder &recorder) {                               \
+            if (!pipeline.is_valid())                                                                                        \
+                return;                                                                                                      \
+            recorder.set_pipeline(pipeline.get());                                                                           \
+            recorder.push_constant(push);                                                                                    \
+            recorder.dispatch({(NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y}); \
+        }                                                                                                                    \
+    };                                                                                                                       \
+    struct Name##ComputeTask {                                                                                               \
+        Name##Compute::Uses uses;                                                                                            \
+        Name##ComputeTaskState *state;                                                                                       \
+        void callback(daxa::TaskInterface const &ti) {                                                                       \
+            auto &recorder = ti.get_recorder();                                                                              \
+            auto push = Name##ComputePush{};                                                                                 \
+            ti.copy_task_head_to(&push.uses);                                                                                \
+            state->record_commands(push, recorder);                                                                          \
+        }                                                                                                                    \
     }
 
 SKY_DECL_TASK_STATE(SkyTransmittance, SKY_TRANSMITTANCE, 8, 4);
@@ -89,36 +118,30 @@ struct SkyRenderer {
         });
 
         record_ctx.task_graph.add_task(SkyTransmittanceComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .transmittance_lut = transmittance_lut,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .transmittance_lut = transmittance_lut,
             },
-            &sky_transmittance_task_state,
+            .state = &sky_transmittance_task_state,
         });
 
         record_ctx.task_graph.add_task(SkyMultiscatteringComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .transmittance_lut = transmittance_lut,
-                    .multiscattering_lut = multiscattering_lut,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .transmittance_lut = transmittance_lut,
+                .multiscattering_lut = multiscattering_lut,
             },
-            &sky_multiscattering_task_state,
+            .state = &sky_multiscattering_task_state,
         });
 
         record_ctx.task_graph.add_task(SkySkyComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .transmittance_lut = transmittance_lut,
-                    .multiscattering_lut = multiscattering_lut,
-                    .sky_lut = sky_lut,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .transmittance_lut = transmittance_lut,
+                .multiscattering_lut = multiscattering_lut,
+                .sky_lut = sky_lut,
             },
-            &sky_sky_task_state,
+            .state = &sky_sky_task_state,
         });
 
         return {sky_lut, transmittance_lut};

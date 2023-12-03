@@ -268,6 +268,10 @@ daxa_f32 cornette_shanks_mie_phase_function(daxa_f32 g, daxa_f32 cos_theta) {
     return k * (1.0 + cos_theta * cos_theta) / pow(1.0 + g * g - 2.0 * g * -cos_theta, 1.5);
 }
 
+float kleinNishinaPhase(float cosTheta, float e) {
+    return e / (2.0 * PI * (e * (1.0 - cosTheta) + 1.0) * log(2.0 * e + 1.0));
+}
+
 daxa_f32 rayleigh_phase(daxa_f32 cos_theta) {
     daxa_f32 factor = 3.0 / (16.0 * PI);
     return factor * (1.0 + cos_theta * cos_theta);
@@ -311,7 +315,7 @@ daxa_f32vec3 integrate_scattered_luminance(daxa_f32vec3 world_position,
     }
 
     daxa_f32 cos_theta = dot(sun_direction, world_direction);
-    daxa_f32 mie_phase_value = cornette_shanks_mie_phase_function(deref(gpu_input).sky_settings.mie_phase_function_g, -cos_theta);
+    daxa_f32 mie_phase_value = kleinNishinaPhase(cos_theta, 2800.0);
     daxa_f32 rayleigh_phase_value = rayleigh_phase(cos_theta);
 
     daxa_f32vec3 accum_transmittance = daxa_f32vec3(1.0, 1.0, 1.0);

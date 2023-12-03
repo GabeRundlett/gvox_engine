@@ -9,7 +9,7 @@ struct VoxelWorldGlobals {
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
 #define VOXELS_USE_BUFFERS(ptr_type, mode) \
-    DAXA_TASK_USE_BUFFER(voxel_globals, ptr_type(VoxelWorldGlobals), mode)
+    DAXA_TH_BUFFER_PTR(mode, ptr_type(VoxelWorldGlobals), voxel_globals)
 
 #define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers) \
     .voxel_globals = voxel_buffers.task_voxel_globals

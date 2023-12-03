@@ -8,8 +8,6 @@
 #define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA 1.0
 #define SAMPLE_OFFSET_PIXELS daxa_f32vec2(deref(gpu_input).halton_jitter)
 
-DAXA_DECL_PUSH_CONSTANT(TaaPush, push)
-
 float linear_to_perceptual(float a) {
 #if 0 == TAA_NONLINEARITY_TYPE
         return a;
@@ -213,7 +211,7 @@ void main() {
         vel_max = max(vel_max, v);
     }
 
-    bool should_dilate = any((vel_max - vel_min) > 0.1 * max(input_tex_size.zw, abs(vel_max + vel_min)));
+    bool should_dilate = any((vel_max - vel_min) > 0.1 * max(1.0 / input_tex_size.xy, abs(vel_max + vel_min)));
 
     // Since we're only checking a few pixels, there's a chance we'll miss something.
     // Dilate in the wave to reduce the chance of that happening.
@@ -397,7 +395,7 @@ daxa_f32vec3 filter_input(daxa_f32vec2 uv, float luma_cutoff, int kernel_radius)
 }
 
 void filter_history(daxa_u32vec2 px, int kernel_radius) {
-    daxa_f32vec2 uv = get_uv(px, push.output_tex_size);
+    daxa_f32vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
     float filtered_luma = filter_input(uv, 1e10, kernel_radius).x;
     imageStore(daxa_image2D(filtered_history_img), daxa_i32vec2(px), daxa_f32vec4(filter_input(uv, filtered_luma * 1.001, kernel_radius), 0.0));
 }
@@ -473,7 +471,7 @@ void main() {
             ivar = square(ivar);
         }
 
-        const daxa_f32vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) * push.input_tex_size.zw;
+        const daxa_f32vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) / push.input_tex_size.xy;
 
         const daxa_f32vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, deref(gpu_input).sampler_nnc), input_uv, 0);
         const daxa_f32vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
@@ -755,7 +753,7 @@ void main() {
     return;
 #endif
 
-    daxa_f32vec2 uv = get_uv(px, push.output_tex_size);
+    daxa_f32vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
 
     daxa_f32vec4 history_packed = fetch_history(px);
     daxa_f32vec3 history = history_packed.rgb;

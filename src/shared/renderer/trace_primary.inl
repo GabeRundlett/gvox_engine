@@ -3,28 +3,55 @@
 #include <shared/core.inl>
 
 #if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TraceDepthPrepassComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, render_depth_prepass_image)
+DAXA_DECL_TASK_HEAD_END
+struct TraceDepthPrepassComputePush {
+    TraceDepthPrepassCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId render_depth_prepass_image = push.uses.render_depth_prepass_image;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+#endif
 #endif
 
 #if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(TracePrimaryComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
+DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(sky_lut, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(blue_noise_vec2, REGULAR_3D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(debug_texture, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(render_depth_prepass_image, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(g_buffer_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(vs_normal_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(velocity_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_TASK_USE_IMAGE(depth_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, debug_texture)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, render_depth_prepass_image)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, depth_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct TracePrimaryComputePush {
+    TracePrimaryCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+daxa_ImageViewId sky_lut = push.uses.sky_lut;
+daxa_ImageViewId blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewId debug_texture = push.uses.debug_texture;
+daxa_ImageViewId render_depth_prepass_image = push.uses.render_depth_prepass_image;
+daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -38,15 +65,17 @@ struct TraceDepthPrepassComputeTaskState {
                 .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
                 .compile_options = {.defines = {{"TRACE_DEPTH_PREPASS_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(TraceDepthPrepassComputePush),
             .name = "trace_depth_prepass",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(TraceDepthPrepassComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
@@ -61,37 +90,43 @@ struct TracePrimaryComputeTaskState {
                 .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
                 .compile_options = {.defines = {{"TRACE_PRIMARY_COMPUTE", "1"}}},
             },
+            .push_constant_size = sizeof(TracePrimaryComputePush),
             .name = "trace_primary",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(TracePrimaryComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
-struct TraceDepthPrepassComputeTask : TraceDepthPrepassComputeUses {
+struct TraceDepthPrepassComputeTask {
+    TraceDepthPrepassCompute::Uses uses;
     TraceDepthPrepassComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = TraceDepthPrepassComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
-struct TracePrimaryComputeTask : TracePrimaryComputeUses {
+struct TracePrimaryComputeTask {
+    TracePrimaryCompute::Uses uses;
     TracePrimaryComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = TracePrimaryComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -152,34 +187,30 @@ struct GbufferRenderer {
         });
 
         record_ctx.task_graph.add_task(TraceDepthPrepassComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                    .render_depth_prepass_image = depth_prepass_image,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
+                VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
+                .render_depth_prepass_image = depth_prepass_image,
             },
-            &trace_depth_prepass_task_state,
+            .state = &trace_depth_prepass_task_state,
         });
 
         record_ctx.task_graph.add_task(TracePrimaryComputeTask{
-            {
-                .uses = {
-                    .gpu_input = record_ctx.task_input_buffer,
-                    .globals = record_ctx.task_globals_buffer,
-                    VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                    .sky_lut = sky_lut,
-                    .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
-                    .debug_texture = record_ctx.task_debug_texture,
-                    .render_depth_prepass_image = depth_prepass_image,
-                    .g_buffer_image_id = gbuffer_depth.gbuffer,
-                    .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                    .velocity_image_id = velocity_image,
-                    .depth_image_id = depth_image,
-                },
+            .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
+                .globals = record_ctx.task_globals_buffer,
+                VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
+                .sky_lut = sky_lut,
+                .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
+                .debug_texture = record_ctx.task_debug_texture,
+                .render_depth_prepass_image = depth_prepass_image,
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .velocity_image_id = velocity_image,
+                .depth_image_id = depth_image,
             },
-            &trace_primary_task_state,
+            .state = &trace_primary_task_state,
         });
 
         return {gbuffer_depth, velocity_image};

@@ -11,7 +11,7 @@
 // #include <daxa/utils/math_operators.hpp>
 // using namespace daxa::math_operators;
 
-using BDA = daxa::BufferDeviceAddress;
+using BDA = daxa::DeviceAddress;
 
 static inline constexpr size_t FRAMES_IN_FLIGHT = 1;
 

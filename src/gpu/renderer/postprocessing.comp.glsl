@@ -38,9 +38,7 @@ void main() {
     AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, ray_dir, nrm);
 
     daxa_f32vec3 ssao_value;
-    if (ENABLE_DIFFUSE_GI) {
-        ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy / 2), 0).rgb;
-    } else {
+    {
         ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
         ssao_value = pow(ssao_value, vec3(2)) * 2.0;
         ssao_value *= sky_lighting.atmosphere_normal_illuminance * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5);
@@ -72,8 +70,6 @@ void main() {
 #endif
 
 #if POSTPROCESSING_RASTER
-
-DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
 
 const mat3 SRGB_2_XYZ_MAT = mat3(
     0.4124564, 0.3575761, 0.1804375,

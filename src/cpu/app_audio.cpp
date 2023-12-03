@@ -32,7 +32,7 @@ AppAudio::~AppAudio() {
     // ma_device_uninit(&device);
 }
 
-void AppAudio::set_frequency(float frequency) {
+void AppAudio::set_frequency(float) {
     // ma_device_stop(&device);
     // ma_waveform_uninit(&waveform);
     // auto waveform_config = ma_waveform_config_init(
@@ -42,7 +42,7 @@ void AppAudio::set_frequency(float frequency) {
     // ma_device_start(&device);
 }
 
-void AppAudio::callback(void *output, const void *, uint32_t frame_count) {
+void AppAudio::callback(void *, const void *, uint32_t) {
     // ma_waveform_read_pcm_frames(&waveform, output, frame_count, NULL);
 
     // for (uint32_t i = 0; i < frame_count; ++i) {

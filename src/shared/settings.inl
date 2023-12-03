@@ -45,5 +45,4 @@ struct SkySettings {
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
 
-#define ENABLE_DIFFUSE_GI false
 #define ENABLE_TAA true

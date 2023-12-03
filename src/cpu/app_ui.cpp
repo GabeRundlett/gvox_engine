@@ -516,7 +516,7 @@ void AppUi::settings_ui() {
                 needs_saving = true;
             }
             if (ImGui::Combo("Resolution Scale", &resolution_scale_id, resolution_scale_options, 4)) {
-                settings.render_res_scl = resolution_scale_values[resolution_scale_id];
+                settings.render_res_scl = resolution_scale_values[static_cast<size_t>(resolution_scale_id)];
                 needs_saving = true;
             }
 

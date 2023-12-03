@@ -3,12 +3,22 @@
 #include <shared/core.inl>
 
 #if DOWNSCALE_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_USES_BEGIN(DownscaleComputeUses, DAXA_UNIFORM_BUFFER_SLOT0)
-DAXA_TASK_USE_BUFFER(gpu_input, daxa_BufferPtr(GpuInput), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_BUFFER(globals, daxa_RWBufferPtr(GpuGlobals), COMPUTE_SHADER_READ)
-DAXA_TASK_USE_IMAGE(src_image_id, REGULAR_2D, COMPUTE_SHADER_SAMPLED)
-DAXA_TASK_USE_IMAGE(dst_image_id, REGULAR_2D, COMPUTE_SHADER_STORAGE_WRITE_ONLY)
-DAXA_DECL_TASK_USES_END()
+DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct DownscaleComputePush {
+    DownscaleCompute uses;
+};
+#if DAXA_SHADER
+DAXA_DECL_PUSH_CONSTANT(DownscaleComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewId src_image_id = push.uses.src_image_id;
+daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+#endif
 #endif
 
 #if defined(__cplusplus)
@@ -26,27 +36,31 @@ struct DownscaleComputeTaskState {
                 .source = daxa::ShaderFile{"downscale.comp.glsl"},
                 .compile_options = {.defines = extra_defines, .enable_debug_info = true},
             },
+            .push_constant_size = sizeof(DownscaleComputePush),
             .name = "downscale",
         });
     }
 
-    void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
+    void record_commands(DownscaleComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
         if (!pipeline.is_valid()) {
             return;
         }
         recorder.set_pipeline(pipeline.get());
+        recorder.push_constant(push);
         // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
         recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
-struct DownscaleComputeTask : DownscaleComputeUses {
+struct DownscaleComputeTask {
+    DownscaleCompute::Uses uses;
     DownscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        state->record_commands(recorder, {image_info.size.x, image_info.size.y});
+        auto push = DownscaleComputePush{};
+        ti.copy_task_head_to(&push.uses);
+        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
     }
 };
 
@@ -60,15 +74,13 @@ inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskSta
     });
 
     ctx.task_graph.add_task(DownscaleComputeTask{
-        {
-            .uses = {
-                .gpu_input = ctx.task_input_buffer,
-                .globals = ctx.task_globals_buffer,
-                .src_image_id = depth,
-                .dst_image_id = output_tex,
-            },
+        .uses = {
+            .gpu_input = ctx.task_input_buffer,
+            .globals = ctx.task_globals_buffer,
+            .src_image_id = depth,
+            .dst_image_id = output_tex,
         },
-        &task_state,
+        .state = &task_state,
     });
 
     return output_tex;
@@ -84,15 +96,13 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &ctx, Dow
     });
 
     ctx.task_graph.add_task(DownscaleComputeTask{
-        {
-            .uses = {
-                .gpu_input = ctx.task_input_buffer,
-                .globals = ctx.task_globals_buffer,
-                .src_image_id = gbuffer,
-                .dst_image_id = output_tex,
-            },
+        .uses = {
+            .gpu_input = ctx.task_input_buffer,
+            .globals = ctx.task_globals_buffer,
+            .src_image_id = gbuffer,
+            .dst_image_id = output_tex,
         },
-        &task_state,
+        .state = &task_state,
     });
 
     return output_tex;
@@ -108,15 +118,13 @@ inline auto extract_downscaled_ssao(RecordContext &ctx, DownscaleComputeTaskStat
     });
 
     ctx.task_graph.add_task(DownscaleComputeTask{
-        {
             .uses = {
                 .gpu_input = ctx.task_input_buffer,
                 .globals = ctx.task_globals_buffer,
                 .src_image_id = ssao_image,
                 .dst_image_id = output_tex,
             },
-        },
-        &task_state,
+        .state = &task_state,
     });
 
     return output_tex;
