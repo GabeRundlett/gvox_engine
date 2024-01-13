@@ -35,7 +35,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         func(buffers.voxel_globals);
     }
 
-    void startup(RecordContext &) {
+    void record_startup(RecordContext &) {
     }
 
     auto check_for_realloc(daxa::Device &, VoxelWorldOutput const &) -> bool {
@@ -49,7 +49,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_globals);
     }
 
-    void update(RecordContext &, daxa::TaskBufferView, daxa::TaskImageView) {
+    void record_frame(RecordContext &, daxa::TaskBufferView, daxa::TaskImageView) {
     }
 };
 

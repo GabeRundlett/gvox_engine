@@ -203,6 +203,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     PerframeComputeTaskState perframe_task_state;
 
     PostprocessingRasterTaskState postprocessing_task_state;
+    DebugImageRasterTaskState debug_image_task_state;
     TestComputeTaskState test_task_state;
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
@@ -249,6 +250,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           startup_task_state{pipeline_manager},
           perframe_task_state{pipeline_manager},
           postprocessing_task_state{pipeline_manager, swapchain_format},
+          debug_image_task_state{pipeline_manager, swapchain_format},
           test_task_state{pipeline_manager},
           voxel_particle_sim_task_state{pipeline_manager},
           voxel_particle_raster_task_state{pipeline_manager} {
@@ -561,13 +563,13 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         temp_task_graph.execute({});
     }
 
-    void startup(RecordContext &record_ctx) {
+    void record_startup(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
 
         voxel_world.use_buffers(record_ctx);
 
-        voxel_world.startup(record_ctx);
+        voxel_world.record_startup(record_ctx);
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_globals_buffer},
@@ -594,7 +596,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
     }
 
-    void update(RecordContext &record_ctx) {
+    void record_frame(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_image(task_value_noise_image);
         record_ctx.task_graph.use_persistent_image(task_blue_noise_vec2_image);
         record_ctx.task_graph.use_persistent_image(task_debug_texture);
@@ -665,7 +667,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 #endif
 
-        voxel_world.update(record_ctx, task_gvox_model_buffer, task_value_noise_image);
+        voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
 
         auto raster_color_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_SFLOAT,
@@ -702,6 +704,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto irradiance = ssao_image;
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_image_buffer, raster_color_image);
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = composited_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+
         auto final_image = [&]() {
 #if ENABLE_TAA
             return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
@@ -710,15 +714,32 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 #endif
         }();
 
-        record_ctx.task_graph.add_task(PostprocessingRasterTask{
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .composited_image_id = final_image,
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .render_image = record_ctx.task_swapchain_image,
-            },
-            .state = &postprocessing_task_state,
-        });
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "[final]"});
+
+        auto &dbg_disp = *AppUi::DebugDisplay::s_instance;
+        auto pass_iter = std::find_if(dbg_disp.passes.begin(), dbg_disp.passes.end(), [&](auto &pass) { return pass.name == dbg_disp.selected_pass_name; });
+        if (pass_iter == dbg_disp.passes.end() || dbg_disp.selected_pass_name == "[final]") {
+            record_ctx.task_graph.add_task(PostprocessingRasterTask{
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .composited_image_id = final_image,
+                    .g_buffer_image_id = gbuffer_depth.gbuffer,
+                    .render_image = record_ctx.task_swapchain_image,
+                },
+                .state = &postprocessing_task_state,
+            });
+        } else {
+            auto const &pass = *pass_iter;
+            debug_image_task_state.type = pass.type;
+            record_ctx.task_graph.add_task(DebugImageRasterTask{
+                .uses = {
+                    .gpu_input = task_input_buffer,
+                    .image_id = pass.task_image_id,
+                    .render_image = record_ctx.task_swapchain_image,
+                },
+                .state = &debug_image_task_state,
+            });
+        }
 
         record_ctx.task_graph.add_task({
             .uses = {

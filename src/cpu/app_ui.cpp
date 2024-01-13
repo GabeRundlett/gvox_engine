@@ -553,6 +553,10 @@ void AppUi::settings_ui() {
             settings_controls_ui();
             ImGui::EndTabItem();
         }
+        if (ImGui::BeginTabItem("Passes")) {
+            settings_passes_ui();
+            ImGui::EndTabItem();
+        }
         ImGui::EndTabBar();
     }
 
@@ -721,6 +725,19 @@ void AppUi::settings_controls_ui() {
             }
         }
         ImGui::EndTable();
+    }
+}
+
+void AppUi::settings_passes_ui() {
+    for (uint32_t pass_i = 0; pass_i < debug_display.passes.size(); ++pass_i) {
+        auto &pass = debug_display.passes[pass_i];
+        if (ImGui::Selectable(pass.name.c_str(), debug_display.selected_pass == pass_i)) {
+            if (debug_display.selected_pass_name != pass.name) {
+                debug_display.selected_pass = pass_i;
+                debug_display.selected_pass_name = pass.name;
+                should_record_task_graph = true;
+            }
+        }
     }
 }
 

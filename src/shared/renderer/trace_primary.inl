@@ -213,6 +213,9 @@ struct GbufferRenderer {
             .state = &trace_primary_task_state,
         });
 
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "gbuffer", .task_image_id = gbuffer_depth.gbuffer, .type = DEBUG_IMAGE_TYPE_GBUFFER});
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "velocity", .task_image_id = velocity_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+
         return {gbuffer_depth, velocity_image};
     }
 };

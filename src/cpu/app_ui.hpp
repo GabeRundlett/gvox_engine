@@ -38,6 +38,12 @@ struct AppUi {
         int on_text_edit(ImGuiInputTextCallbackData *data);
     };
 
+    struct Pass {
+        std::string name;
+        daxa::TaskImageView task_image_id;
+        daxa_u32 type;
+    };
+
     struct DebugDisplayProvider {
         virtual ~DebugDisplayProvider() = default;
         virtual void add_ui() = 0;
@@ -51,6 +57,9 @@ struct AppUi {
         };
         std::vector<GpuResourceInfo> gpu_resource_infos;
         std::vector<DebugDisplayProvider *> providers;
+        std::vector<Pass> passes{};
+        uint32_t selected_pass{};
+        std::string selected_pass_name{};
 
         inline static DebugDisplay *s_instance = nullptr;
 
@@ -95,6 +104,8 @@ struct AppUi {
     bool should_upload_seed_data = true;
     bool should_hotload_shaders = false;
 
+    bool should_record_task_graph = false;
+
     static inline char const *resolution_scale_options[4] = {
         "33%",
         "50%",
@@ -133,4 +144,5 @@ struct AppUi {
   private:
     void settings_ui();
     void settings_controls_ui();
+    void settings_passes_ui();
 };

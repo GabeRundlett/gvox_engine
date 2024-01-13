@@ -90,6 +90,7 @@ struct ReprojectionRenderer {
             },
             .state = &calculate_reprojection_map_task_state,
         });
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "reprojection_map", .task_image_id = reprojection_map, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         return reprojection_map;
     }
 };

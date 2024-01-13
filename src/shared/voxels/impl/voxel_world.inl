@@ -346,7 +346,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         // buffers.voxel_parent_chunk_malloc.for_each_buffer(func);
     }
 
-    void startup(RecordContext &record_ctx) {
+    void record_startup(RecordContext &record_ctx) {
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_globals_buffer},
@@ -453,7 +453,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&record_ctx](auto &task_buffer) { record_ctx.task_graph.use_persistent_buffer(task_buffer); });
     }
 
-    void update(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
+    void record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
         record_ctx.task_graph.add_task(PerChunkComputeTask{
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,

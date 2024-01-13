@@ -21,11 +21,11 @@ concept IsVoxelWorld = requires(T x, AsyncPipelineManager &p, RecordContext &r, 
     {
         x.for_each_buffer([](daxa::BufferId) {})
     };
-    { x.startup(r) };
+    { x.record_startup(r) };
     { x.check_for_realloc(r.device, VoxelWorldOutput{}) } -> std::same_as<bool>;
     { x.dynamic_buffers_realloc(r.task_graph, b) };
     { x.use_buffers(r) };
-    { x.update(r, daxa::TaskBufferView{}, daxa::TaskImageView{}) };
+    { x.record_frame(r, daxa::TaskBufferView{}, daxa::TaskImageView{}) };
 };
 
 #endif

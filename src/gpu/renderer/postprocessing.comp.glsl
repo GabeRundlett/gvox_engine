@@ -188,3 +188,27 @@ void main() {
 }
 
 #endif
+
+#if DEBUG_IMAGE_RASTER
+
+layout(location = 0) out daxa_f32vec4 color;
+
+void main() {
+    daxa_f32vec2 uv = daxa_f32vec2(gl_FragCoord.xy) / daxa_f32vec2(push.output_tex_size.xy);
+    daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
+    daxa_f32vec3 tex_color;
+
+    if (push.type == DEBUG_IMAGE_TYPE_GBUFFER) {
+        daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0);
+        daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
+        daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
+        tex_color = vec3(nrm);
+        // tex_color = vec3(g_buffer_value.xyz) * 0.01;
+    } else if (push.type == DEBUG_IMAGE_TYPE_DEFAULT) {
+        tex_color = texelFetch(daxa_texture2D(image_id), in_pixel_i, 0).rgb;
+    }
+
+    color = daxa_f32vec4(tex_color, 1.0);
+}
+
+#endif

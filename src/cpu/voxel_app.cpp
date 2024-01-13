@@ -694,6 +694,10 @@ void VoxelApp::on_update() {
         upload_model(main_task_graph);
     }
 
+    if (ui.should_record_task_graph) {
+        main_task_graph = record_main_task_graph();
+    }
+
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
     // condition_values[static_cast<size_t>(Conditions::DYNAMIC_BUFFERS_REALLOC)] = should_realloc;
     // main_task_graph.execute({.permutation_condition_values = condition_values});
@@ -888,7 +892,7 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
         .task_graph = temp_task_graph,
     };
 
-    gpu_app.startup(record_ctx);
+    gpu_app.record_startup(record_ctx);
 
     temp_task_graph.submit({});
     temp_task_graph.complete({});
@@ -978,6 +982,9 @@ void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
 // PostprocessingTask            [Render]
 // ImGui draw                    [GUI Render]
 auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
+    ui.debug_display.passes.clear();
+    ui.should_record_task_graph = false;
+
     compute_image_sizes();
 
     daxa::TaskGraph result_task_graph = daxa::TaskGraph({
@@ -1000,7 +1007,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
 
     // gpu_app.task_value_noise_image.view().view({});
 
-    gpu_app.update(record_ctx);
+    gpu_app.record_frame(record_ctx);
 
     record_ctx.task_graph.add_task({
         .uses = {
