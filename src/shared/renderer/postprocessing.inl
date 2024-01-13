@@ -6,7 +6,7 @@
 DAXA_DECL_TASK_HEAD_BEGIN(CompositingCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), shadow_image_buffer)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_bitmap)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
@@ -21,7 +21,7 @@ struct CompositingComputePush {
 DAXA_DECL_PUSH_CONSTANT(CompositingComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_RWBufferPtr(daxa_u32) shadow_image_buffer = push.uses.shadow_image_buffer;
+daxa_ImageViewId shadow_bitmap = push.uses.shadow_bitmap;
 daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewId sky_lut = push.uses.sky_lut;
@@ -263,7 +263,7 @@ struct Compositor {
         : compositing_compute_task_state{pipeline_manager} {
     }
 
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskBufferView shadow_image_buffer, daxa::TaskImageView particles_image) -> daxa::TaskImageView {
+    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap, daxa::TaskImageView particles_image) -> daxa::TaskImageView {
         auto output_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -274,7 +274,7 @@ struct Compositor {
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
-                .shadow_image_buffer = shadow_image_buffer,
+                .shadow_bitmap = shadow_bitmap,
                 .g_buffer_image_id = gbuffer_depth.gbuffer,
                 .transmittance_lut = transmittance_lut,
                 .sky_lut = sky_lut,
@@ -284,6 +284,7 @@ struct Compositor {
             },
             .state = &compositing_compute_task_state,
         });
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return output_image;
     }

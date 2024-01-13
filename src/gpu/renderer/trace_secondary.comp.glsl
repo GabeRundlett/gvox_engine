@@ -13,11 +13,10 @@ void main() {
     daxa_f32vec4 output_tex_size;
     output_tex_size.xy = deref(gpu_input).frame_dim;
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-    daxa_u32vec2 offset = get_downscale_offset(gpu_input);
-    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy * SHADING_SCL + offset, output_tex_size);
+    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
 
     daxa_f32 depth = texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
-    daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy * SHADING_SCL + offset), 0);
+    daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
     ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
@@ -31,7 +30,7 @@ void main() {
     daxa_f32vec3 ray_dir = tbn * normalize(vec3((rand_circle_pt(abs(blue_noise)) - 0.5) * tan(SUN_ANGULAR_DIAMETER), 1));
     // daxa_f32vec3 ray_dir = SUN_DIR;
 
-    ray_pos += ray_dir / depth / (8192.0 * 4.0);
+    // ray_pos += ray_dir / depth / (8192.0 * 4.0);
 
     if (depth == 0.0) { // || dot(ray_dir, nrm) <= 0.0
         return;
@@ -39,10 +38,15 @@ void main() {
 
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    uint out_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * uint(output_tex_size.x + SHADING_SCL - 1) / SHADING_SCL;
-    uint hit = uint(trace_result.dist == MAX_DIST) << (out_index & 31);
-    if (hit != 0) {
-        atomicOr(deref(shadow_image_buffer[out_index / 32]), hit);
+    daxa_i32vec2 in_tile_i = daxa_i32vec2(gl_GlobalInvocationID.xy) & daxa_i32vec2(7, 3);
+
+    uint bit_index = in_tile_i.x + in_tile_i.y * 8;
+    uint hit = uint(trace_result.dist == MAX_DIST) << bit_index;
+    hit = subgroupOr(hit);
+
+    if ((gl_SubgroupInvocationID & 31) == 0) {
+        daxa_i32vec2 output_i = daxa_i32vec2(gl_GlobalInvocationID.xy) >> daxa_i32vec2(3, 2);
+        imageStore(daxa_uimage2D(shadow_bitmap), output_i, daxa_u32vec4(hit, 0, 0, 0));
     }
 }
 #undef INPUT

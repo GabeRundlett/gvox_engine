@@ -699,12 +699,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shadow_image_buffer = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
+        auto shadow_bitmap = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
 
         auto irradiance = ssao_image;
 
-        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_image_buffer, raster_color_image);
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = composited_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_bitmap, raster_color_image);
 
         auto final_image = [&]() {
 #if ENABLE_TAA
