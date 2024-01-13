@@ -10,12 +10,12 @@
         daxa_RWBufferPtr(ElementType_) heap;                                                                   \
         daxa_RWBufferPtr(IndexType_) available_element_stack;                                                  \
         daxa_RWBufferPtr(IndexType_) released_element_stack;                                                   \
-        daxa_i32 element_count;                                                                                     \
-        daxa_i32 available_element_stack_size;                                                                      \
-        daxa_i32 released_element_stack_size;                                                                       \
+        daxa_i32 element_count;                                                                                \
+        daxa_i32 available_element_stack_size;                                                                 \
+        daxa_i32 released_element_stack_size;                                                                  \
     };                                                                                                         \
     struct AllocatorType_##GpuOutput {                                                                         \
-        daxa_u32 current_element_count;                                                                             \
+        daxa_u32 current_element_count;                                                                        \
     };                                                                                                         \
     DAXA_DECL_BUFFER_PTR(AllocatorType_)                                                                       \
     CPU_ONLY(DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_))
@@ -26,8 +26,8 @@
         using AllocatorType = AllocatorType_;                                                                                       \
         using ElementType = ElementType_;                                                                                           \
         using IndexType = IndexType_;                                                                                               \
-        static constexpr size_t ELEMENT_MULTIPLIER = ElementMultiplier_;                                                             \
-        static constexpr daxa_u32 MAX_ELEMENT_ALLOCATIONS_PER_FRAME = MaxAllocPerFrame_;                                                 \
+        static constexpr size_t ELEMENT_MULTIPLIER = ElementMultiplier_;                                                            \
+        static constexpr daxa_u32 MAX_ELEMENT_ALLOCATIONS_PER_FRAME = MaxAllocPerFrame_;                                            \
         static constexpr char const *const task_allocator_buffer_name = "task_" #AllocatorType_ "_allocator_buffer";                \
         static constexpr char const *const task_element_buffer_name = "task_" #AllocatorType_ "_element_buffer";                    \
         static constexpr char const *const task_old_element_buffer_name = "task" #AllocatorType_ "_old_element_buffer";             \

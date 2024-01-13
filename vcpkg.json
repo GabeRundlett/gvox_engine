@@ -19,6 +19,9 @@
     "platform-folders",
     "nativefiledialog",
     "minizip",
+    "assimp",
+    "freeimage",
+    "glm",
     "soloud",
     {
       "name": "glfw3",

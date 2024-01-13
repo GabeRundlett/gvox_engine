@@ -160,9 +160,9 @@ void main() {
     const daxa_f32 sample_count = 20;
 
     daxa_f32vec2 uv = (daxa_f32vec2(gl_GlobalInvocationID.xy) + daxa_f32vec2(0.5, 0.5)) /
-                 SKY_MULTISCATTERING_RES;
+                      SKY_MULTISCATTERING_RES;
     uv = daxa_f32vec2(from_subuv_to_unit(uv.x, SKY_MULTISCATTERING_RES.x),
-                 from_subuv_to_unit(uv.y, SKY_MULTISCATTERING_RES.y));
+                      from_subuv_to_unit(uv.y, SKY_MULTISCATTERING_RES.y));
 
     /* Mapping uv to multiscattering LUT parameters
        TODO -> Is the range from 0.0 to -1.0 really needed? */
@@ -173,8 +173,8 @@ void main() {
         sun_cos_zenith_angle);
 
     daxa_f32 view_height = deref(gpu_input).sky_settings.atmosphere_bottom +
-                      clamp(uv.y + PLANET_RADIUS_OFFSET, 0.0, 1.0) *
-                          (deref(gpu_input).sky_settings.atmosphere_top - deref(gpu_input).sky_settings.atmosphere_bottom - PLANET_RADIUS_OFFSET);
+                           clamp(uv.y + PLANET_RADIUS_OFFSET, 0.0, 1.0) *
+                               (deref(gpu_input).sky_settings.atmosphere_top - deref(gpu_input).sky_settings.atmosphere_bottom - PLANET_RADIUS_OFFSET);
 
     daxa_f32vec3 world_position = daxa_f32vec3(0.0, 0.0, view_height);
 
@@ -280,18 +280,18 @@ daxa_f32 rayleigh_phase(daxa_f32 cos_theta) {
 
 daxa_f32vec3 get_multiple_scattering(daxa_f32vec3 world_position, daxa_f32 view_zenith_cos_angle) {
     daxa_f32vec2 uv = clamp(daxa_f32vec2(
-                           view_zenith_cos_angle * 0.5 + 0.5,
-                           (length(world_position) - deref(gpu_input).sky_settings.atmosphere_bottom) /
-                               (deref(gpu_input).sky_settings.atmosphere_top - deref(gpu_input).sky_settings.atmosphere_bottom)),
-                       0.0, 1.0);
+                                view_zenith_cos_angle * 0.5 + 0.5,
+                                (length(world_position) - deref(gpu_input).sky_settings.atmosphere_bottom) /
+                                    (deref(gpu_input).sky_settings.atmosphere_top - deref(gpu_input).sky_settings.atmosphere_bottom)),
+                            0.0, 1.0);
     uv = daxa_f32vec2(from_unit_to_subuv(uv.x, SKY_MULTISCATTERING_RES.x),
-                 from_unit_to_subuv(uv.y, SKY_MULTISCATTERING_RES.y));
+                      from_unit_to_subuv(uv.y, SKY_MULTISCATTERING_RES.y));
 
     return texture(daxa_sampler2D(multiscattering_lut, deref(gpu_input).sampler_llc), uv).rgb;
 }
 
 daxa_f32vec3 integrate_scattered_luminance(daxa_f32vec3 world_position,
-                                      daxa_f32vec3 world_direction, daxa_f32vec3 sun_direction, daxa_i32 sample_count) {
+                                           daxa_f32vec3 world_direction, daxa_f32vec3 sun_direction, daxa_i32 sample_count) {
     daxa_f32vec3 planet_zero = daxa_f32vec3(0.0, 0.0, 0.0);
     daxa_f32 planet_intersection_distance = ray_sphere_intersect_nearest(
         world_position, world_direction, planet_zero, deref(gpu_input).sky_settings.atmosphere_bottom);
@@ -358,7 +358,7 @@ daxa_f32vec3 integrate_scattered_luminance(daxa_f32vec3 world_position,
 
         /* Light arriving from the sun to this point */
         daxa_f32vec3 sun_light = in_earth_shadow * transmittance_to_sun * phase_times_scattering +
-                            multiscattered_luminance * (medium_scattering.ray + medium_scattering.mie);
+                                 multiscattered_luminance * (medium_scattering.ray + medium_scattering.mie);
 
         /* TODO: This probably should be a texture lookup*/
         daxa_f32vec3 trans_increase_over_integration_step = exp(-(medium_extinction * d_int_step));

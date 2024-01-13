@@ -1001,8 +1001,8 @@ daxa_f32vec4 get_bilinear_custom_weights(Bilinear f, daxa_f32vec4 custom_weights
 }
 
 daxa_f32vec4 apply_bilinear_custom_weights(daxa_f32vec4 s00, daxa_f32vec4 s10, daxa_f32vec4 s01, daxa_f32vec4 s11, daxa_f32vec4 w, bool should_normalize) {
-	daxa_f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
-	return r * (should_normalize ? (1.0 / dot(w, daxa_f32vec4(1.0))) : 1.0);
+    daxa_f32vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
+    return r * (should_normalize ? (1.0 / dot(w, daxa_f32vec4(1.0))) : 1.0);
 }
 
 void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 friction_vec, float friction_coeff) {

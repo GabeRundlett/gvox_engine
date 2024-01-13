@@ -203,6 +203,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     PerframeComputeTaskState perframe_task_state;
 
     PostprocessingRasterTaskState postprocessing_task_state;
+    TestComputeTaskState test_task_state;
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
@@ -218,6 +219,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
     daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
     daxa::TaskBuffer task_placed_voxel_particles_buffer{{.name = "task_placed_voxel_particles_buffer"}};
+
+    daxa::BufferId test_buffer;
+    daxa::TaskBuffer task_test_buffer{{.name = "task_test_buffer"}};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -245,6 +249,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           startup_task_state{pipeline_manager},
           perframe_task_state{pipeline_manager},
           postprocessing_task_state{pipeline_manager, swapchain_format},
+          test_task_state{pipeline_manager},
           voxel_particle_sim_task_state{pipeline_manager},
           voxel_particle_raster_task_state{pipeline_manager} {
 
@@ -263,6 +268,12 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
 
         voxel_world.create(device);
+
+        test_buffer = device.create_buffer({
+            .size = static_cast<daxa_u32>(sizeof(uint32_t) * 8 * 8 * 8 * 64 * 64 * 64),
+            .name = "test_buffer",
+        });
+        task_test_buffer.set_buffers({.buffers = std::array{test_buffer}});
 
         AppUi::DebugDisplay::s_instance->providers.push_back(this);
         AppUi::DebugDisplay::s_instance->providers.push_back(&voxel_world);
@@ -289,7 +300,6 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                         [[maybe_unused]] int err = 0;
                         daxa_i32 size_x = 0;
                         daxa_i32 size_y = 0;
-                        daxa_i32 channel_n = 0;
                         auto load_image = [&](char const *path, uint8_t *buffer_out_ptr) {
                             err = unzLocateFile(stbn_zip, path, 1);
                             assert(err == UNZ_OK);
@@ -302,11 +312,27 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                             assert(err == UNZ_OK);
                             err = unzReadCurrentFile(stbn_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
                             assert(err == file_data.size());
-                            auto *temp_data = stbi_load_from_memory(file_data.data(), static_cast<int>(file_data.size()), &size_x, &size_y, &channel_n, 4);
+
+                            auto fi_mem = FreeImage_OpenMemory(file_data.data(), static_cast<DWORD>(file_data.size()));
+                            auto fi_file_desc = FreeImage_GetFileTypeFromMemory(fi_mem, 0);
+                            FIBITMAP *fi_bitmap = FreeImage_LoadFromMemory(fi_file_desc, fi_mem);
+                            FreeImage_CloseMemory(fi_mem);
+                            size_x = static_cast<int32_t>(FreeImage_GetWidth(fi_bitmap));
+                            size_y = static_cast<int32_t>(FreeImage_GetHeight(fi_bitmap));
+                            auto *temp_data = FreeImage_GetBits(fi_bitmap);
+                            assert(temp_data != nullptr && "Failed to load image");
+                            auto pixel_size = FreeImage_GetBPP(fi_bitmap);
+                            if (pixel_size != 32) {
+                                auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
+                                FreeImage_Unload(fi_bitmap);
+                                fi_bitmap = temp;
+                            }
+
                             if (temp_data != nullptr) {
                                 assert(size_x == 128 && size_y == 128);
                                 std::copy(temp_data + 0, temp_data + 128 * 128 * 4, buffer_out_ptr);
                             }
+                            FreeImage_Unload(fi_bitmap);
                         };
                         auto vec2_name = std::string{"STBN/stbn_vec2_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
                         load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
@@ -338,10 +364,19 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 .name = "temp_task_graph",
             });
 
-            daxa_i32 size_x = 0;
-            daxa_i32 size_y = 0;
-            daxa_i32 channel_n = 0;
-            auto *temp_data = stbi_load("assets/debug.png", &size_x, &size_y, &channel_n, 4);
+            auto texture_path = "assets/debug.png";
+            auto fi_file_desc = FreeImage_GetFileType(texture_path, 0);
+            FIBITMAP *fi_bitmap = FreeImage_Load(fi_file_desc, texture_path);
+            auto size_x = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap));
+            auto size_y = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap));
+            auto *temp_data = FreeImage_GetBits(fi_bitmap);
+            assert(temp_data != nullptr && "Failed to load image");
+            auto pixel_size = FreeImage_GetBPP(fi_bitmap);
+            if (pixel_size != 32) {
+                auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
+                FreeImage_Unload(fi_bitmap);
+                fi_bitmap = temp;
+            }
             auto size = static_cast<daxa_u32>(size_x) * static_cast<daxa_u32>(size_y) * 4 * 1;
 
             gpu_resources.debug_texture = device.create_image({
@@ -366,6 +401,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                     });
                     auto *buffer_ptr = ti.get_device().get_host_address_as<uint8_t>(staging_buffer).value();
                     std::copy(temp_data + 0, temp_data + size, buffer_ptr);
+                    FreeImage_Unload(fi_bitmap);
+
                     auto &recorder = ti.get_recorder();
                     recorder.pipeline_barrier({
                         .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
@@ -399,6 +436,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     void destroy(daxa::Device &device) {
         gpu_resources.destroy(device);
         voxel_world.destroy(device);
+
+        device.destroy_buffer(test_buffer);
     }
 
     void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph) {
@@ -664,11 +703,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_image_buffer, raster_color_image);
         auto final_image = [&]() {
-            #if ENABLE_TAA
-                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
-            #else
-                return composited_image;
-            #endif
+#if ENABLE_TAA
+            return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
+#else
+            return composited_image;
+#endif
         }();
 
         record_ctx.task_graph.add_task(PostprocessingRasterTask{
@@ -702,6 +741,14 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             },
             .name = "GpuOutputDownloadTransferTask",
         });
+
+        // record_ctx.task_graph.use_persistent_buffer(task_test_buffer);
+        // record_ctx.task_graph.add_task(TestComputeTask{
+        //     .uses = {
+        //         .data = task_test_buffer,
+        //     },
+        //     .state = &test_task_state,
+        // });
 
         needs_vram_calc = true;
     }

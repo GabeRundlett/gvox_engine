@@ -9,8 +9,8 @@
 #define INVALID_CHUNK_I daxa_i32vec3(0x80000000)
 #define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / voxel_scl)
 
-#define UNIFORMITY_LOD_INDEX_IMPL(N)                                  \
-    daxa_u32 uniformity_lod_index_##N(daxa_u32vec3 index_within_lod) {          \
+#define UNIFORMITY_LOD_INDEX_IMPL(N)                                       \
+    daxa_u32 uniformity_lod_index_##N(daxa_u32vec3 index_within_lod) {     \
         return index_within_lod.x + index_within_lod.y * daxa_u32(64 / N); \
     }
 UNIFORMITY_LOD_INDEX_IMPL(2)
@@ -20,9 +20,9 @@ UNIFORMITY_LOD_INDEX_IMPL(16)
 UNIFORMITY_LOD_INDEX_IMPL(32)
 UNIFORMITY_LOD_INDEX_IMPL(64)
 
-#define UNIFORMITY_LOD_MASK_IMPL(N)                         \
+#define UNIFORMITY_LOD_MASK_IMPL(N)                                   \
     daxa_u32 uniformity_lod_mask_##N(daxa_u32vec3 index_within_lod) { \
-        return 1u << index_within_lod.z;                    \
+        return 1u << index_within_lod.z;                              \
     }
 UNIFORMITY_LOD_MASK_IMPL(2)
 UNIFORMITY_LOD_MASK_IMPL(4)
@@ -33,23 +33,23 @@ UNIFORMITY_LOD_MASK_IMPL(64)
 
 #define LINEAR_INDEX(N, within_lod_i) (within_lod_i.x + within_lod_i.y * N + within_lod_i.z * N * N)
 
-daxa_u32 new_uniformity_lod_index_2 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) >> 5; }
-daxa_u32 new_uniformity_lod_index_4 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) >> 5; }
-daxa_u32 new_uniformity_lod_index_8 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) >> 5; }
+daxa_u32 new_uniformity_lod_index_2(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) >> 5; }
+daxa_u32 new_uniformity_lod_index_4(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) >> 5; }
+daxa_u32 new_uniformity_lod_index_8(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) >> 5; }
 daxa_u32 new_uniformity_lod_index_16(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, within_lod_i) + 0) >> 5; }
 daxa_u32 new_uniformity_lod_index_32(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, within_lod_i) + 64) >> 5; }
 daxa_u32 new_uniformity_lod_index_64(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, within_lod_i) + 72) >> 5; }
 
-daxa_u32 new_uniformity_lod_bit_pos_2 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) & 31; }
-daxa_u32 new_uniformity_lod_bit_pos_4 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) & 31; }
-daxa_u32 new_uniformity_lod_bit_pos_8 (daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) & 31; }
+daxa_u32 new_uniformity_lod_bit_pos_2(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, (within_lod_i & 3)) + 0) & 31; }
+daxa_u32 new_uniformity_lod_bit_pos_4(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, (within_lod_i & 1)) + 64) & 31; }
+daxa_u32 new_uniformity_lod_bit_pos_8(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, (within_lod_i & 0)) + 72) & 31; }
 daxa_u32 new_uniformity_lod_bit_pos_16(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(4, within_lod_i) + 0) & 31; }
 daxa_u32 new_uniformity_lod_bit_pos_32(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(2, within_lod_i) + 64) & 31; }
 daxa_u32 new_uniformity_lod_bit_pos_64(daxa_u32vec3 within_lod_i) { return (LINEAR_INDEX(1, within_lod_i) + 72) & 31; }
 
-daxa_u32 new_uniformity_lod_mask_2 (daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_2(within_lod_i); }
-daxa_u32 new_uniformity_lod_mask_4 (daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_4(within_lod_i); }
-daxa_u32 new_uniformity_lod_mask_8 (daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_8(within_lod_i); }
+daxa_u32 new_uniformity_lod_mask_2(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_2(within_lod_i); }
+daxa_u32 new_uniformity_lod_mask_4(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_4(within_lod_i); }
+daxa_u32 new_uniformity_lod_mask_8(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_8(within_lod_i); }
 daxa_u32 new_uniformity_lod_mask_16(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_16(within_lod_i); }
 daxa_u32 new_uniformity_lod_mask_32(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_32(within_lod_i); }
 daxa_u32 new_uniformity_lod_mask_64(daxa_u32vec3 within_lod_i) { return 1 << new_uniformity_lod_bit_pos_64(within_lod_i); }

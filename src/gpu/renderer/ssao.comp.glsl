@@ -12,9 +12,17 @@ daxa_f32vec4 output_tex_size;
 #define USE_SSGI_FACING_CORRECTION 1
 #define USE_AO_ONLY 1
 
+#define WORLDSPACE_SSAO 1
+
+#if WORLDSPACE_SSAO
+#define SSGI_KERNEL_RADIUS 5
+#define MAX_KERNEL_RADIUS_CS 100
 const uint SSGI_HALF_SAMPLE_COUNT = 6;
+#else
 #define SSGI_KERNEL_RADIUS (60.0 * output_tex_size.w)
 #define MAX_KERNEL_RADIUS_CS 0.4
+const uint SSGI_HALF_SAMPLE_COUNT = 6;
+#endif
 
 const float temporal_rotations[] = {60.0, 300.0, 180.0, 240.0, 120.0, 0.0};
 const float temporal_offsets[] = {0.0, 0.5, 0.25, 0.75};
@@ -116,8 +124,13 @@ void main() {
     {
         const float ws_to_cs = 0.5 / -ray_hit_vs.z * deref(globals).player.cam.view_to_clip[1][1];
 
+#if WORLDSPACE_SSAO
+        kernel_radius_ws = SSGI_KERNEL_RADIUS;
+        const float cs_kernel_radius_scaled = kernel_radius_ws * ws_to_cs;
+#else
         const float cs_kernel_radius_scaled = SSGI_KERNEL_RADIUS;
         kernel_radius_ws = cs_kernel_radius_scaled / ws_to_cs;
+#endif
 
         cs_slice_dir *= cs_kernel_radius_scaled;
 

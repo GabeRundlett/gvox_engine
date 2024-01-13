@@ -118,12 +118,12 @@ inline auto extract_downscaled_ssao(RecordContext &ctx, DownscaleComputeTaskStat
     });
 
     ctx.task_graph.add_task(DownscaleComputeTask{
-            .uses = {
-                .gpu_input = ctx.task_input_buffer,
-                .globals = ctx.task_globals_buffer,
-                .src_image_id = ssao_image,
-                .dst_image_id = output_tex,
-            },
+        .uses = {
+            .gpu_input = ctx.task_input_buffer,
+            .globals = ctx.task_globals_buffer,
+            .src_image_id = ssao_image,
+            .dst_image_id = output_tex,
+        },
         .state = &task_state,
     });
 

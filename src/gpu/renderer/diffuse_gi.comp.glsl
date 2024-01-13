@@ -970,8 +970,8 @@ void main() {
     // float history = texelFetch(daxa_texture2D(history_tex), daxa_i32vec2(reproj_px), 0);
 
     imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(max(history * 0.75, invalid_blurred.x),
-                                                              // invalid_blurred.x,
-                                                              texelFetch(daxa_texture2D(input_tex), daxa_i32vec2(px), 0).x, 0.0, 0.0));
+                                                                        // invalid_blurred.x,
+                                                                        texelFetch(daxa_texture2D(input_tex), daxa_i32vec2(px), 0).x, 0.0, 0.0));
 }
 #endif
 

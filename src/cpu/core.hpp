@@ -8,8 +8,8 @@
 #include <daxa/utils/pipeline_manager.hpp>
 #include <daxa/utils/imgui.hpp>
 #include <daxa/utils/task_graph.hpp>
-// #include <daxa/utils/math_operators.hpp>
-// using namespace daxa::math_operators;
+
+#include <cpu/app_ui.hpp>
 
 using BDA = daxa::DeviceAddress;
 
@@ -135,7 +135,7 @@ namespace {
     struct ThreadPool {
         void start() {
 #if ENABLE_THREAD_POOL
-            uint32_t const num_threads = std::thread::hardware_concurrency();
+            uint32_t const num_threads = 8; // std::thread::hardware_concurrency();
             threads.resize(num_threads);
             for (uint32_t i = 0; i < num_threads; i++) {
                 threads.at(i) = std::thread(&ThreadPool::thread_loop, this);
@@ -251,9 +251,9 @@ struct AsyncManagedRasterPipeline {
 };
 
 struct AsyncPipelineManager {
-    std::array<daxa::PipelineManager, 16> pipeline_managers;
+    std::array<daxa::PipelineManager, 8> pipeline_managers;
     struct Atomics {
-        std::array<std::mutex, 16> mutexes{};
+        std::array<std::mutex, 8> mutexes{};
         std::atomic_uint64_t current_index = 0;
         ThreadPool thread_pool{};
     };
@@ -270,14 +270,14 @@ struct AsyncPipelineManager {
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
 
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
-            daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
+            // daxa::PipelineManager(info),
         };
         atomics = std::make_unique<Atomics>();
 
@@ -382,8 +382,14 @@ struct AsyncPipelineManager {
             pipeline_manager.add_virtual_file(info);
         }
     }
+    void wait() {
+#if ENABLE_THREAD_POOL
+        while (atomics->thread_pool.busy()) {
+        }
+#endif
+    }
     auto reload_all() -> daxa::PipelineReloadResult {
-        std::array<daxa::PipelineReloadResult, 16> results;
+        std::array<daxa::PipelineReloadResult, 8> results;
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
 // #if ENABLE_THREAD_POOL
 //             atomics->thread_pool.enqueue([this, i, &results]() {
@@ -413,7 +419,19 @@ struct AsyncPipelineManager {
     auto get_pipeline_manager() -> std::pair<daxa::PipelineManager &, std::unique_lock<std::mutex>> {
 #if ENABLE_THREAD_POOL
         auto index = atomics->current_index.fetch_add(1);
-        index = index % pipeline_managers.size();
+        index = (index / 4) % pipeline_managers.size();
+
+#if NDEBUG // Pipeline manager really needs to be internally thread-safe
+        // try to find one that's not locked, otherwise we'll fall back on the index above.
+        for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
+            auto &mtx = this->atomics->mutexes[i];
+            if (mtx.try_lock()) {
+                index = i;
+                mtx.unlock();
+                break;
+            }
+        }
+#endif
 #else
         auto index = 0;
 #endif

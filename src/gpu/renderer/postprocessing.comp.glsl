@@ -20,7 +20,7 @@ void main() {
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x) + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
+    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x); // + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
     nrm = normalize(nrm);
 
     daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
@@ -40,7 +40,7 @@ void main() {
     daxa_f32vec3 ssao_value;
     {
         ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
-        ssao_value = pow(ssao_value, vec3(2)) * 2.0;
+        ssao_value = pow(ssao_value, vec3(2)) * 4.0;
         ssao_value *= sky_lighting.atmosphere_normal_illuminance * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5);
     }
     // daxa_f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);

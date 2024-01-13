@@ -14,7 +14,8 @@ using namespace daxa::types;
 #endif
 #include <GLFW/glfw3native.h>
 
-#include <stb_image.h>
+#include <FreeImage.h>
+#include <cassert>
 
 #include <span>
 
@@ -68,9 +69,25 @@ struct AppWindow {
             });
 
         GLFWimage images[1];
-        images[0].pixels = stbi_load("appicon.png", &images[0].width, &images[0].height, 0, 4);
+        auto const *texture_path = "appicon.png";
+        auto fi_file_desc = FreeImage_GetFileType(texture_path, 0);
+        auto *fi_bitmap = FreeImage_Load(fi_file_desc, texture_path);
+        auto pixel_size = FreeImage_GetBPP(fi_bitmap);
+        if (pixel_size != 32) {
+            auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
+            FreeImage_Unload(fi_bitmap);
+            fi_bitmap = temp;
+        }
+        FreeImage_FlipVertical(fi_bitmap);
+        images[0].width = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap));
+        images[0].height = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap));
+        images[0].pixels = FreeImage_GetBits(fi_bitmap);
+        assert(images[0].pixels != nullptr && "Failed to load image");
+        for (auto &pix : std::span(reinterpret_cast<std::array<uint8_t, 4> *>(images[0].pixels), images[0].width * images[0].height)) {
+            std::swap(pix[0], pix[2]);
+        }
         glfwSetWindowIcon(glfw_window_ptr, 1, images);
-        stbi_image_free(images[0].pixels);
+        FreeImage_Unload(fi_bitmap);
 
 #if defined(_WIN32)
         {

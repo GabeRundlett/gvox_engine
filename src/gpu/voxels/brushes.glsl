@@ -303,6 +303,10 @@ void brushgen_world(in out daxa_f32vec3 col, in out daxa_u32 id) {
         // if (id != 0) {
         //     id = 2;
         // }
+        if (voxel_pos.z == -2) {
+            col = vec3(0.1);
+            id = 1;
+        }
     } else if (true) { // Terrain world
         brushgen_world_terrain(col, id);
     } else if (true) { // Ball world (each ball is centered on a chunk center)

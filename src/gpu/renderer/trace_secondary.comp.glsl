@@ -52,6 +52,10 @@ void main() {
 #if UPSCALE_RECONSTRUCT_COMPUTE
 
 daxa_u32 get_prev_val(daxa_i32vec2 pixel_i) {
+    if ((pixel_i.x < 0 || pixel_i.y < 0) ||
+        (pixel_i.x >= deref(gpu_input).frame_dim.x || pixel_i.y >= deref(gpu_input).frame_dim.y)) {
+        return 0;
+    }
     daxa_u32 i = pixel_i.x + pixel_i.y * deref(gpu_input).frame_dim.x;
     daxa_u32 index = i / 32;
     daxa_u32 shift = i % 32;
@@ -59,6 +63,11 @@ daxa_u32 get_prev_val(daxa_i32vec2 pixel_i) {
 }
 
 daxa_u32 get_scaled_val(daxa_i32vec2 in_tile_i) {
+    if ((in_tile_i.x < 0 || in_tile_i.y < 0) ||
+        (in_tile_i.x >= deref(gpu_input).frame_dim.x || in_tile_i.y >= deref(gpu_input).frame_dim.y)) {
+        return 0;
+    }
+
     daxa_u32 i = in_tile_i.x + in_tile_i.y * (deref(gpu_input).frame_dim.x + SHADING_SCL - 1) / SHADING_SCL;
     daxa_u32 index = i / 32;
     daxa_u32 shift = i % 32;
@@ -73,7 +82,7 @@ void main() {
     daxa_u32vec2 in_tile_i = gl_GlobalInvocationID.xy - tile * half_frame_dim;
     daxa_i32vec2 output_i = daxa_i32vec2(in_tile_i * SHADING_SCL + tile);
 
-    daxa_u32 result = 0;
+    daxa_u32 result = 0;          
 
     if (deref(gpu_input).resize_factor != 0.0) {
         daxa_f32vec4 reproj_val = texelFetch(daxa_texture2D(reprojection_image_id), output_i, 0);

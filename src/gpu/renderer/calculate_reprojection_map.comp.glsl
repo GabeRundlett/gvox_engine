@@ -45,9 +45,9 @@ void main() {
 
     daxa_f32vec3 normal_vs = fetch_nrm(px) * 2.0 - 1.0;
     daxa_f32vec3 normal_pvs = (deref(globals).player.cam.prev_clip_to_prev_view *
-                          (deref(globals).player.cam.clip_to_prev_clip *
-                           (deref(globals).player.cam.view_to_clip * daxa_f32vec4(normal_vs, 0))))
-                             .xyz;
+                               (deref(globals).player.cam.clip_to_prev_clip *
+                                (deref(globals).player.cam.view_to_clip * daxa_f32vec4(normal_vs, 0))))
+                                  .xyz;
 
     daxa_f32vec4 pos_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
     daxa_f32vec4 pos_vs = (deref(globals).player.cam.clip_to_view * pos_cs);

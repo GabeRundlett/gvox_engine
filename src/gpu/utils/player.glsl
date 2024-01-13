@@ -37,6 +37,11 @@ void player_startup(
     // PLAYER.pitch = PI * 0.249;
     // PLAYER.yaw = PI * 1.25;
 
+    // Inside Bistro
+    // PLAYER.pos = daxa_f32vec3(22.63, 51.60, 43.82);
+    // PLAYER.yaw = 1.68;
+    // PLAYER.pitch = 1.49;
+
     player_fix_chunk_offset(input_ptr, globals_ptr);
 }
 #undef PLAYER

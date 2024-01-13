@@ -3,6 +3,7 @@
 #include "app_window.hpp"
 #include "app_ui.hpp"
 #include "app_audio.hpp"
+#include "mesh_model.hpp"
 
 #include <shared/app.inl>
 
@@ -60,7 +61,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void run();
 
+    auto load_gvox_data_from_parser(GvoxAdapterContext *i_ctx, GvoxAdapterContext *p_ctx, GvoxRegionRange const *region_range) -> GvoxModelData;
     auto load_gvox_data() -> GvoxModelData;
+    auto open_mesh_model() -> GvoxModelData;
 
     void on_update();
     void on_mouse_move(daxa_f32 x, daxa_f32 y);

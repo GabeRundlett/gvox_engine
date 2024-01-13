@@ -12,6 +12,7 @@ add_executable(${PROJECT_NAME}
     "src/cpu/app_ui.cpp"
     "src/cpu/app_audio.cpp"
     "src/cpu/app_settings.cpp"
+    "src/cpu/mesh_model.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
@@ -24,9 +25,26 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
-find_package(Stb REQUIRED)
 find_package(unofficial-minizip CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 find_package(soloud CONFIG REQUIRED)
+
+find_package(freeimage CONFIG REQUIRED)
+# FreeImage links OpenEXR, which adds /EHsc for its targets, even if we're using Clang
+function(FIXUP_TARGET TGT_NAME)
+    if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
+        get_property(A_OPTIONS TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS)
+        string(REPLACE "/EHsc" "-Wl,/EHsc" A_OPTIONS "")
+        set_property(TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS "${A_OPTIONS}")
+    endif()
+endfunction()
+FIXUP_TARGET(Imath::Imath)
+FIXUP_TARGET(OpenEXR::Iex)
+FIXUP_TARGET(OpenEXR::IlmThread)
+FIXUP_TARGET(OpenEXR::OpenEXRCore)
+FIXUP_TARGET(OpenEXR::OpenEXR)
+FIXUP_TARGET(OpenEXR::OpenEXRUtil)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
@@ -37,11 +55,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     sago::platform_folders
     unofficial::nativefiledialog::nfd
     unofficial::minizip::minizip
+    assimp::assimp
+    freeimage::FreeImage
+    glm::glm
     soloud
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"
-    ${Stb_INCLUDE_DIR}
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

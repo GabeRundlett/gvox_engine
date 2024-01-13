@@ -284,11 +284,13 @@ void AppSettings::reset_default() {
     };
     sky.absorption_extinction = {
         .x = 0.00229072f,
-        .y = 0.00154036f,
+        .y = 0.00214036f,
         .z = 0.0f,
     };
     sky.atmosphere_bottom = 6360.0f;
     sky.atmosphere_top = 6460.0f;
+    sky.mie_phase_function_g = 0.800000011920929f,
+    sky.mie_scale_height = 1.2000000476837158f,
     sky.mie_density[0] = {
         .const_term = 0.0f,
         .exp_scale = 0.0f,
@@ -298,7 +300,7 @@ void AppSettings::reset_default() {
     };
     sky.mie_density[1] = {
         .const_term = 0.0f,
-        .exp_scale = -0.8333333134651184f,
+        .exp_scale = -1.0f / sky.mie_scale_height,
         .exp_term = 1.0f,
         .layer_width = 0.0f,
         .lin_term = 0.0f,
@@ -308,13 +310,12 @@ void AppSettings::reset_default() {
         .y = 0.00443999981507659f,
         .z = 0.00443999981507659f,
     };
-    sky.mie_phase_function_g = 0.800000011920929f,
-    sky.mie_scale_height = 1.2000000476837158f,
     sky.mie_scattering = {
         .x = 0.003996000159531832f,
         .y = 0.003996000159531832f,
         .z = 0.003996000159531832f,
     };
+    sky.rayleigh_scale_height = 8.696f;
     sky.rayleigh_density[0] = {
         .const_term = 0.0f,
         .exp_scale = 0.0f,
@@ -324,15 +325,14 @@ void AppSettings::reset_default() {
     };
     sky.rayleigh_density[1] = {
         .const_term = 0.0f,
-        .exp_scale = -0.125f,
+        .exp_scale = -1.0f / sky.rayleigh_scale_height,
         .exp_term = 1.0f,
         .layer_width = 0.0f,
         .lin_term = 0.0f,
     };
-    sky.rayleigh_scale_height = 8.696f;
     sky.rayleigh_scattering = {
         .x = 0.006604931f,
-        .y = 0.012344918f,
+        .y = 0.013344918f,
         .z = 0.029412623f,
     };
 

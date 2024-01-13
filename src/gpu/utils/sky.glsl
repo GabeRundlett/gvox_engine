@@ -66,7 +66,6 @@ daxa_f32 ray_sphere_intersect_nearest(daxa_f32vec3 r0, daxa_f32vec3 rd, daxa_f32
     return max(0.0, min(sol0, sol1));
 }
 
-
 const daxa_f32 PLANET_RADIUS_OFFSET = 0.01;
 
 ///	Transmittance LUT uses not uniform mapping -> transfer from mapping to texture uv
@@ -79,8 +78,8 @@ daxa_f32vec2 transmittance_lut_to_uv(TransmittanceParams parameters, daxa_f32 at
     daxa_f32 rho = safe_sqrt(parameters.height * parameters.height - atmosphere_bottom * atmosphere_bottom);
 
     daxa_f32 discriminant = parameters.height * parameters.height *
-                           (parameters.zenith_cos_angle * parameters.zenith_cos_angle - 1.0) +
-                       atmosphere_top * atmosphere_top;
+                                (parameters.zenith_cos_angle * parameters.zenith_cos_angle - 1.0) +
+                            atmosphere_top * atmosphere_top;
     /* Distance to top atmosphere boundary */
     daxa_f32 d = max(0.0, (-parameters.height * parameters.zenith_cos_angle + safe_sqrt(discriminant)));
 
@@ -126,7 +125,7 @@ SkyviewParams uv_to_skyview_lut_params(daxa_f32vec2 uv, daxa_f32 atmosphere_bott
     /* Constrain uvs to valid sub texel range
     (avoid zenith derivative issue making LUT usage visible) */
     uv = daxa_f32vec2(from_subuv_to_unit(uv.x, skyview_dimensions.x),
-                 from_subuv_to_unit(uv.y, skyview_dimensions.y));
+                      from_subuv_to_unit(uv.y, skyview_dimensions.y));
 
     daxa_f32 beta = asin(atmosphere_bottom / view_height);
     daxa_f32 zenith_horizon_angle = PI - beta;
@@ -153,7 +152,7 @@ SkyviewParams uv_to_skyview_lut_params(daxa_f32vec2 uv, daxa_f32 atmosphere_bott
 /// @param atmosphere_bottom - bottom of the atmosphere in km
 /// @param atmosphere_top - top of the atmosphere in km
 daxa_b32 move_to_top_atmosphere(inout daxa_f32vec3 world_position, daxa_f32vec3 world_direction,
-                           daxa_f32 atmosphere_bottom, daxa_f32 atmosphere_top) {
+                                daxa_f32 atmosphere_bottom, daxa_f32 atmosphere_top) {
     daxa_f32vec3 planet_origin = daxa_f32vec3(0.0, 0.0, 0.0);
     /* Check if the world_position is outside of the atmosphere */
     if (length(world_position) > atmosphere_top) {
@@ -223,7 +222,7 @@ ScatteringSample sample_medium_scattering_detailed(daxa_BufferPtr(GpuInput) gpu_
     const daxa_f32 density_mie = exp(deref(gpu_input).sky_settings.mie_density[1].exp_scale * height);
     const daxa_f32 density_ray = exp(deref(gpu_input).sky_settings.rayleigh_density[1].exp_scale * height);
     const daxa_f32 density_ozo = clamp(height < deref(gpu_input).sky_settings.absorption_density[0].layer_width ? deref(gpu_input).sky_settings.absorption_density[0].lin_term * height + deref(gpu_input).sky_settings.absorption_density[0].const_term : deref(gpu_input).sky_settings.absorption_density[1].lin_term * height + deref(gpu_input).sky_settings.absorption_density[1].const_term,
-                                  0.0, 1.0);
+                                       0.0, 1.0);
 
     daxa_f32vec3 mie_scattering = deref(gpu_input).sky_settings.mie_scattering * density_mie;
     daxa_f32vec3 ray_scattering = deref(gpu_input).sky_settings.rayleigh_scattering * density_ray;
@@ -242,7 +241,7 @@ ScatteringSample sample_medium_scattering_detailed(daxa_BufferPtr(GpuInput) gpu_
 /// @param view_height - view_height in world coordinates -> distance from planet center
 /// @return - uv for the skyview LUT sampling
 daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams params,
-                                 daxa_f32 atmosphere_bottom, daxa_f32 atmosphere_top, daxa_f32vec2 skyview_dimensions, daxa_f32 view_height) {
+                                      daxa_f32 atmosphere_bottom, daxa_f32 atmosphere_top, daxa_f32vec2 skyview_dimensions, daxa_f32 view_height) {
     daxa_f32vec2 uv;
     daxa_f32 beta = asin(atmosphere_bottom / view_height);
     daxa_f32 zenith_horizon_angle = PI - beta;
@@ -258,7 +257,7 @@ daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams para
     }
     uv.x = safe_sqrt(params.light_view_angle / PI);
     uv = daxa_f32vec2(from_unit_to_subuv(uv.x, SKY_SKY_RES.x),
-                 from_unit_to_subuv(uv.y, SKY_SKY_RES.y));
+                      from_unit_to_subuv(uv.y, SKY_SKY_RES.y));
     return uv;
 }
 

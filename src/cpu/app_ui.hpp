@@ -95,7 +95,7 @@ struct AppUi {
     bool should_upload_seed_data = true;
     bool should_hotload_shaders = false;
 
-    static inline char const * resolution_scale_options[4] = {
+    static inline char const *resolution_scale_options[4] = {
         "33%",
         "50%",
         "75%",
