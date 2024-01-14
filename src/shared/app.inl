@@ -15,6 +15,7 @@
 #include <shared/renderer/calculate_reprojection_map.inl>
 #include <shared/renderer/ssao.inl>
 #include <shared/renderer/trace_secondary.inl>
+#include <shared/renderer/shadow_denoiser.inl>
 #include <shared/renderer/taa.inl>
 #include <shared/renderer/postprocessing.inl>
 #include <shared/renderer/voxel_particle_raster.inl>
@@ -193,6 +194,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     TaaRenderer taa_renderer;
 #endif
     SkyRenderer sky_renderer;
+    ShadowDenoiser shadow_denoiser;
 
     VoxelWorld voxel_world;
 
@@ -243,6 +245,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           taa_renderer{pipeline_manager},
 #endif
           sky_renderer{pipeline_manager},
+          shadow_denoiser{pipeline_manager},
 
           voxel_world{pipeline_manager},
           gpu_resources{},
@@ -544,10 +547,10 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     void end_frame() {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
-        shadow_renderer.next_frame();
 #if ENABLE_TAA
         taa_renderer.next_frame();
 #endif
+        shadow_denoiser.next_frame();
     }
 
     void dynamic_buffers_realloc(daxa::Device &device) {
@@ -699,11 +702,12 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers);
         auto reprojection_map = reprojection_renderer.calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shadow_bitmap = shadow_renderer.render(record_ctx, gbuffer_depth, reprojection_map, voxel_world.buffers);
+        auto shadow_bitmap = shadow_renderer.render(record_ctx, gbuffer_depth, voxel_world.buffers);
+        auto denoised_shadows = shadow_denoiser.denoise_shadow_bitmap(record_ctx, gbuffer_depth, shadow_bitmap, reprojection_map);
 
         auto irradiance = ssao_image;
 
-        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, shadow_bitmap, raster_color_image);
+        auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, denoised_shadows, raster_color_image);
 
         auto final_image = [&]() {
 #if ENABLE_TAA

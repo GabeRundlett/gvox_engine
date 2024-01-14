@@ -118,7 +118,8 @@ VoxelApp::VoxelApp()
     constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
     if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
         // ui.gvox_model_path = "C:/Users/gabe/AppData/Roaming/GabeVoxelGame/models/building.vox";
-        ui.gvox_model_path = "C:/dev/models/half-life/test.dae";
+        // ui.gvox_model_path = "C:/dev/models/half-life/test.dae";
+        ui.gvox_model_path = "C:/dev/models/Bistro_v5_2/BistroExterior.fbx";
         gvox_model_data = load_gvox_data();
         if (gvox_model_data.size != 0) {
             model_is_ready = true;
