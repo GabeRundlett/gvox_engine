@@ -7,7 +7,15 @@
 
 #if TRACE_SECONDARY_COMPUTE
 
-#define INPUT deref(gpu_input)
+vec3 sample_sun_direction(vec2 urand) {
+    float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
+    if (sun_angular_radius_cos < 1.0) {
+        const mat3 basis = build_orthonormal_basis(normalize(SUN_DIR));
+        return basis * uniform_sample_cone(urand, sun_angular_radius_cos);
+    }
+    return SUN_DIR;
+}
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     daxa_f32vec4 output_tex_size;
@@ -24,11 +32,9 @@ void main() {
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
     daxa_f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 0.001;
 
-    daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, INPUT.frame_index) & ivec3(127, 127, 63), 0).xy - 0.5;
+    daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, deref(gpu_input).frame_index) & ivec3(127, 127, 63), 0).yz * 255.0 / 256.0 + 0.5 / 256.0;
 
-    mat3 tbn = tbn_from_normal(SUN_DIR);
-    daxa_f32vec3 ray_dir = tbn * normalize(vec3((rand_circle_pt(abs(blue_noise)) - 0.5) * tan(SUN_ANGULAR_DIAMETER), 1));
-    // daxa_f32vec3 ray_dir = SUN_DIR;
+    daxa_f32vec3 ray_dir = sample_sun_direction(blue_noise);
 
     // ray_pos += ray_dir / depth / (8192.0 * 4.0);
 
@@ -47,65 +53,6 @@ void main() {
     if ((gl_SubgroupInvocationID & 31) == 0) {
         daxa_i32vec2 output_i = daxa_i32vec2(gl_GlobalInvocationID.xy) >> daxa_i32vec2(3, 2);
         imageStore(daxa_uimage2D(shadow_bitmap), output_i, daxa_u32vec4(hit, 0, 0, 0));
-    }
-}
-#undef INPUT
-
-#endif
-
-#if UPSCALE_RECONSTRUCT_COMPUTE
-
-daxa_u32 get_prev_val(daxa_i32vec2 pixel_i) {
-    if ((pixel_i.x < 0 || pixel_i.y < 0) ||
-        (pixel_i.x >= deref(gpu_input).frame_dim.x || pixel_i.y >= deref(gpu_input).frame_dim.y)) {
-        return 0;
-    }
-    daxa_u32 i = pixel_i.x + pixel_i.y * deref(gpu_input).frame_dim.x;
-    daxa_u32 index = i / 32;
-    daxa_u32 shift = i % 32;
-    return (deref(src_image_id[index]) >> shift) & 0x1;
-}
-
-daxa_u32 get_scaled_val(daxa_i32vec2 in_tile_i) {
-    if ((in_tile_i.x < 0 || in_tile_i.y < 0) ||
-        (in_tile_i.x >= deref(gpu_input).frame_dim.x || in_tile_i.y >= deref(gpu_input).frame_dim.y)) {
-        return 0;
-    }
-
-    daxa_u32 i = in_tile_i.x + in_tile_i.y * (deref(gpu_input).frame_dim.x + SHADING_SCL - 1) / SHADING_SCL;
-    daxa_u32 index = i / 32;
-    daxa_u32 shift = i % 32;
-    return (deref(scaled_shading_image[index]) >> shift) & 0x1;
-}
-
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    daxa_u32vec2 offset = get_downscale_offset(gpu_input);
-    daxa_u32vec2 half_frame_dim = deref(gpu_input).frame_dim / 2;
-    daxa_u32vec2 tile = daxa_u32vec2(gl_GlobalInvocationID.x >= half_frame_dim.x, gl_GlobalInvocationID.y >= half_frame_dim.y);
-    daxa_u32vec2 in_tile_i = gl_GlobalInvocationID.xy - tile * half_frame_dim;
-    daxa_i32vec2 output_i = daxa_i32vec2(in_tile_i * SHADING_SCL + tile);
-
-    daxa_u32 result = 0;          
-
-    if (deref(gpu_input).resize_factor != 0.0) {
-        daxa_f32vec4 reproj_val = texelFetch(daxa_texture2D(reprojection_image_id), output_i, 0);
-        daxa_u32 prev_val = get_prev_val(output_i + daxa_i32vec2(reproj_val.xy * 0.0 * deref(gpu_input).frame_dim));
-        daxa_f32 validity = reproj_val.z;
-        if (offset == tile) {
-            result = get_scaled_val(daxa_i32vec2(in_tile_i));
-            // result = mix(prev_val, result, 0.05);
-        } else {
-            result = prev_val;
-        }
-    }
-
-    daxa_u32 i = output_i.x + output_i.y * deref(gpu_input).frame_dim.x;
-    daxa_u32 index = i / 32;
-    daxa_u32 shift = i % 32;
-    result = result << shift;
-    if (result != 0) {
-        atomicOr(deref(dst_image_id[index]), result);
     }
 }
 

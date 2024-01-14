@@ -17,6 +17,7 @@ struct AppSettings {
 
     SkySettings sky;
     daxa_f32vec2 sun_angle;
+    daxa_f32 sun_angular_radius;
 
     bool show_debug_info;
     bool show_console;

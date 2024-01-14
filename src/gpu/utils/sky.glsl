@@ -2,7 +2,6 @@
 
 #include <shared/core.inl>
 
-#define SUN_ANGULAR_DIAMETER 0.005
 #define SUN_DIR deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
 const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin blackbody
@@ -265,14 +264,12 @@ daxa_f32vec3 get_sun_illuminance(
     daxa_ImageViewId _transmittance,
     daxa_f32vec3 view_direction,
     daxa_f32 height,
-    daxa_f32 zenith_cos_angle) {
-    const daxa_f32 sun_solid_angle = 0.5 * PI / 180.0;
-    const daxa_f32 min_sun_cos_theta = cos(sun_solid_angle);
-
+    daxa_f32 zenith_cos_angle,
+    daxa_f32 sun_angular_radius_cos) {
     const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
     daxa_f32 cos_theta = dot(view_direction, sun_direction);
 
-    if (cos_theta >= min_sun_cos_theta) {
+    if (cos_theta >= sun_angular_radius_cos) {
         TransmittanceParams transmittance_lut_params = TransmittanceParams(height, zenith_cos_angle);
         daxa_f32vec2 transmittance_texture_uv = transmittance_lut_to_uv(
             transmittance_lut_params,
@@ -353,7 +350,7 @@ AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewId _skyview, daxa_I
         sun_direction,
         view_ray_intersects_ground);
 
-    const daxa_f32vec3 direct_sun_illuminance = view_ray_intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(_transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)));
+    const daxa_f32vec3 direct_sun_illuminance = view_ray_intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(_transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
 
     return AtmosphereLightingInfo(
         atmosphere_normal_illuminance,

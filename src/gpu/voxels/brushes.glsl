@@ -303,7 +303,7 @@ void brushgen_world(in out daxa_f32vec3 col, in out daxa_u32 id) {
         // if (id != 0) {
         //     id = 2;
         // }
-        if (voxel_pos.z == -2) {
+        if (voxel_pos.z == -1.0 / VOXEL_SCL) {
             col = vec3(0.1);
             id = 1;
         }

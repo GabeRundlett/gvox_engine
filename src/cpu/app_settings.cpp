@@ -120,6 +120,7 @@ void AppSettings::save(std::filesystem::path const &filepath) {
 
     json["sun_angle_x"] = sun_angle.x;
     json["sun_angle_y"] = sun_angle.y;
+    json["sun_angular_radius"] = sun_angular_radius;
 
     for (auto [key_i, action_i] : keybinds) {
         auto str = fmt::format("key_{}", key_i);
@@ -207,6 +208,7 @@ void AppSettings::load(std::filesystem::path const &filepath) {
 
     grab_value("sun_angle_x", sun_angle.x);
     grab_value("sun_angle_y", sun_angle.y);
+    grab_value("sun_angular_radius", sun_angular_radius);
     recompute_sun_direction();
 
     for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
@@ -337,6 +339,7 @@ void AppSettings::reset_default() {
     };
 
     sun_angle = {210.0f, 25.0f};
+    sun_angular_radius = 0.25f;
     recompute_sun_direction();
 }
 
@@ -349,4 +352,6 @@ void AppSettings::recompute_sun_direction() {
         daxa_f32(std::sin(radians(sun_angle.x)) * std::sin(radians(sun_angle.y))),
         daxa_f32(std::cos(radians(sun_angle.y))),
     };
+
+    sky.sun_angular_radius_cos = std::cos(radians(sun_angular_radius));
 }

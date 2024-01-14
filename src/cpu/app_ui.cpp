@@ -526,6 +526,9 @@ void AppUi::settings_ui() {
             if (ImGui::SliderFloat("Sun Angle Y", &settings.sun_angle.y, 0.0f, 180.0f)) {
                 needs_saving = true;
             }
+            if (ImGui::SliderFloat("Sun Angular Radius", &settings.sun_angular_radius, 0.05f, 2.5f)) {
+                needs_saving = true;
+            }
             settings.recompute_sun_direction();
             if (ImGui::TreeNode("Sky")) {
                 sky_settings(settings.sky, needs_saving);

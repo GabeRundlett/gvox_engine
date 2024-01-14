@@ -32,6 +32,8 @@ void main() {
 
     if (depth != 0) {
         ray_dir = SUN_DIR;
+    } else {
+        shaded_value *= 0.0;
     }
     AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, ray_dir, nrm);
 
