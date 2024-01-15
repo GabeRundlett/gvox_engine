@@ -520,20 +520,36 @@ void AppUi::settings_ui() {
                 needs_saving = true;
             }
 
-            if (ImGui::SliderFloat("Sun Angle X", &settings.sun_angle.x, 0.0f, 360.0f)) {
-                needs_saving = true;
+            if (ImGui::TreeNode("Auto Exposure")) {
+                if (ImGui::SliderFloat("EV Shift", &settings.auto_exposure.ev_shift, -5.0f, 5.0f)) {
+                    needs_saving = true;
+                }
+                if (ImGui::SliderFloat("Histogram Clip Min", &settings.auto_exposure.histogram_clip_low, 0.0f, 1.0f)) {
+                    needs_saving = true;
+                }
+                if (ImGui::SliderFloat("Histogram Clip Max", &settings.auto_exposure.histogram_clip_high, 0.0f, 1.0f - settings.auto_exposure.histogram_clip_low)) {
+                    needs_saving = true;
+                }
+                if (ImGui::SliderFloat("Adaption Speed", &settings.auto_exposure.speed, 0.1f, 10.0f)) {
+                    needs_saving = true;
+                }
+                ImGui::TreePop();
             }
-            if (ImGui::SliderFloat("Sun Angle Y", &settings.sun_angle.y, 0.0f, 180.0f)) {
-                needs_saving = true;
-            }
-            if (ImGui::SliderFloat("Sun Angular Radius", &settings.sun_angular_radius, 0.05f, 2.5f)) {
-                needs_saving = true;
-            }
-            settings.recompute_sun_direction();
+
             if (ImGui::TreeNode("Sky")) {
+                if (ImGui::SliderFloat("Sun Angle X", &settings.sun_angle.x, 0.0f, 360.0f)) {
+                    needs_saving = true;
+                }
+                if (ImGui::SliderFloat("Sun Angle Y", &settings.sun_angle.y, 0.0f, 180.0f)) {
+                    needs_saving = true;
+                }
+                if (ImGui::SliderFloat("Sun Angular Radius", &settings.sun_angular_radius, 0.05f, 30.5f)) {
+                    needs_saving = true;
+                }
                 sky_settings(settings.sky, needs_saving);
                 ImGui::TreePop();
             }
+            settings.recompute_sun_direction();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("UI")) {

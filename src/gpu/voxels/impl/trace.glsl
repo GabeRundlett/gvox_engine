@@ -107,6 +107,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         daxa_f32 t_curr = min(min(t_start.x, t_start.y), t_start.z);
         daxa_f32vec3 current_pos = ray_pos;
         daxa_f32vec3 t_next = t_start;
+        bool hit_surface = false;
         for (result.step_n = 0; result.step_n < info.max_steps; ++result.step_n) {
             current_pos = ray_pos + info.ray_dir * t_curr;
             if (!inside(current_pos + info.ray_dir * 0.001, b) || t_curr > info.max_dist) {
@@ -114,9 +115,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
             }
             lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, voxel_chunks_ptr, chunk_n, current_pos, lod_index, result.voxel_data);
 #if TRACE_DEPTH_PREPASS_COMPUTE
-            bool hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage * voxel_scl), 1, 7);
+            hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage * voxel_scl), 1, 7);
 #else
-            bool hit_surface = lod == 0;
+            hit_surface = lod == 0;
 #endif
             if (hit_surface) {
                 result.nrm = sign(info.ray_dir) * (sign(t_next - min(min(t_next.x, t_next.y), t_next.z).xxx) - 1);
@@ -132,7 +133,6 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         }
         ray_pos -= offset;
 
-        bool hit_surface = lod == 0 || lod_index == 7;
         if (hit_surface) {
 
             if (info.extend_to_max_dist) {

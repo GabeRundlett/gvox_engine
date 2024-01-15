@@ -19,6 +19,8 @@ struct AppSettings {
     daxa_f32vec2 sun_angle;
     daxa_f32 sun_angular_radius;
 
+    AutoExposureSettings auto_exposure;
+
     bool show_debug_info;
     bool show_console;
     bool show_help;

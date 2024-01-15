@@ -36,18 +36,16 @@ void main() {
 
     daxa_f32vec3 ray_dir = sample_sun_direction(blue_noise);
 
-    // ray_pos += ray_dir / depth / (8192.0 * 4.0);
+    uint hit = 0;
+    if (depth != 0.0) {
+        VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    if (depth == 0.0) { // || dot(ray_dir, nrm) <= 0.0
-        return;
+        daxa_i32vec2 in_tile_i = daxa_i32vec2(gl_GlobalInvocationID.xy) & daxa_i32vec2(7, 3);
+
+        uint bit_index = in_tile_i.x + in_tile_i.y * 8;
+        hit = uint(trace_result.dist == MAX_DIST) << bit_index;
     }
 
-    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
-
-    daxa_i32vec2 in_tile_i = daxa_i32vec2(gl_GlobalInvocationID.xy) & daxa_i32vec2(7, 3);
-
-    uint bit_index = in_tile_i.x + in_tile_i.y * 8;
-    uint hit = uint(trace_result.dist == MAX_DIST) << bit_index;
     hit = subgroupOr(hit);
 
     if ((gl_SubgroupInvocationID & 31) == 0) {

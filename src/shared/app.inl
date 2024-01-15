@@ -20,6 +20,7 @@
 #include <shared/renderer/postprocessing.inl>
 #include <shared/renderer/voxel_particle_raster.inl>
 #include <shared/renderer/sky.inl>
+#include <shared/renderer/blur.inl>
 
 #if STARTUP_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute)
@@ -195,6 +196,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 #endif
     SkyRenderer sky_renderer;
     ShadowDenoiser shadow_denoiser;
+    PostProcessor post_processor;
 
     VoxelWorld voxel_world;
 
@@ -246,6 +248,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 #endif
           sky_renderer{pipeline_manager},
           shadow_denoiser{pipeline_manager},
+          post_processor{device, pipeline_manager},
 
           voxel_world{pipeline_manager},
           gpu_resources{},
@@ -433,9 +436,37 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         for (auto const &str : ui_strings) {
             ImGui::Text("%s", str.c_str());
         }
-        ImGui::Text("Player pos: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_pos.x), static_cast<double>(gpu_output.player_pos.y), static_cast<double>(gpu_output.player_pos.z));
-        ImGui::Text("Player y/p/r: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_rot.x), static_cast<double>(gpu_output.player_rot.y), static_cast<double>(gpu_output.player_rot.z));
-        ImGui::Text("Player unit offs: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_unit_offset.x), static_cast<double>(gpu_output.player_unit_offset.y), static_cast<double>(gpu_output.player_unit_offset.z));
+        if (ImGui::TreeNode("Player")) {
+            ImGui::Text("pos: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_pos.x), static_cast<double>(gpu_output.player_pos.y), static_cast<double>(gpu_output.player_pos.z));
+            ImGui::Text("y/p/r: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_rot.x), static_cast<double>(gpu_output.player_rot.y), static_cast<double>(gpu_output.player_rot.z));
+            ImGui::Text("unit offs: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_unit_offset.x), static_cast<double>(gpu_output.player_unit_offset.y), static_cast<double>(gpu_output.player_unit_offset.z));
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Auto-Exposure")) {
+            ImGui::Text("Exposure multiple: %.2f", static_cast<double>(gpu_input.pre_exposure));
+            auto hist_float = std::array<float, LUMINANCE_HISTOGRAM_BIN_COUNT>{};
+            auto hist_min = static_cast<float>(post_processor.histogram[0]);
+            auto hist_max = static_cast<float>(post_processor.histogram[0]);
+            auto first_bin_with_value = -1;
+            auto last_bin_with_value = -1;
+            for (uint32_t i = 0; i < LUMINANCE_HISTOGRAM_BIN_COUNT; ++i) {
+                if (first_bin_with_value == -1 && post_processor.histogram[i] != 0) {
+                    first_bin_with_value = i;
+                }
+                if (post_processor.histogram[i] != 0) {
+                    last_bin_with_value = i;
+                }
+                hist_float[i] = static_cast<float>(post_processor.histogram[i]);
+                hist_min = std::min(hist_min, hist_float[i]);
+                hist_max = std::max(hist_max, hist_float[i]);
+            }
+            ImGui::PlotHistogram("Histogram", hist_float.data(), static_cast<int>(hist_float.size()), 0, "hist", hist_min, hist_max, ImVec2(0, 120.0f));
+            ImGui::Text("min %.2f | max %.2f", static_cast<double>(hist_min), static_cast<double>(hist_max));
+            auto a = double(first_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
+            auto b = double(last_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
+            ImGui::Text("first bin %d (%.2f) | last bin %d (%.2f)", first_bin_with_value, exp2(a), last_bin_with_value, exp2(b));
+            ImGui::TreePop();
+        }
     }
 
     void destroy(daxa::Device &device) {
@@ -526,6 +557,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
 
         gpu_input.sky_settings = ui.settings.sky;
+        gpu_input.pre_exposure = post_processor.exposure_state.pre_mult;
+        gpu_input.pre_exposure_prev = post_processor.exposure_state.pre_mult_prev;
+        gpu_input.pre_exposure_delta = post_processor.exposure_state.pre_mult_delta;
 
         auto now = Clock::now();
         if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
@@ -544,9 +578,10 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         }
     }
 
-    void end_frame() {
+    void end_frame(AppUi &ui) {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
+        post_processor.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
 #if ENABLE_TAA
         taa_renderer.next_frame();
 #endif
@@ -709,13 +744,15 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, denoised_shadows, raster_color_image);
 
-        auto final_image = [&]() {
+        auto antialiased_image = [&]() {
 #if ENABLE_TAA
             return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
 #else
             return composited_image;
 #endif
         }();
+
+        auto post_processed_image = post_processor.process(record_ctx, antialiased_image, record_ctx.output_resolution);
 
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "[final]"});
 
@@ -725,7 +762,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             record_ctx.task_graph.add_task(PostprocessingRasterTask{
                 .uses = {
                     .gpu_input = task_input_buffer,
-                    .composited_image_id = final_image,
+                    .composited_image_id = antialiased_image,
                     .g_buffer_image_id = gbuffer_depth.gbuffer,
                     .render_image = record_ctx.task_swapchain_image,
                 },

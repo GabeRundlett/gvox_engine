@@ -7,6 +7,13 @@
 #undef DAXA_ENABLE_SHADER_NO_NAMESPACE
 #undef DAXA_ENABLE_IMAGE_OVERLOADS_BASIC
 
+struct AutoExposureSettings {
+    daxa_f32 histogram_clip_low;
+    daxa_f32 histogram_clip_high;
+    daxa_f32 speed;
+    daxa_f32 ev_shift;
+};
+
 struct DensityProfileLayer {
     daxa_f32 const_term;
     daxa_f32 exp_scale;

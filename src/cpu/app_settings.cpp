@@ -122,6 +122,11 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["sun_angle_y"] = sun_angle.y;
     json["sun_angular_radius"] = sun_angular_radius;
 
+    json["auto_exposure_histogram_clip_low"] = auto_exposure.histogram_clip_low;
+    json["auto_exposure_histogram_clip_high"] = auto_exposure.histogram_clip_high;
+    json["auto_exposure_speed"] = auto_exposure.speed;
+    json["auto_exposure_ev_shift"] = auto_exposure.ev_shift;
+
     for (auto [key_i, action_i] : keybinds) {
         auto str = fmt::format("key_{}", key_i);
         json[str] = action_i;
@@ -210,6 +215,11 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("sun_angle_y", sun_angle.y);
     grab_value("sun_angular_radius", sun_angular_radius);
     recompute_sun_direction();
+
+    grab_value("auto_exposure_histogram_clip_low", auto_exposure.histogram_clip_low);
+    grab_value("auto_exposure_histogram_clip_high", auto_exposure.histogram_clip_high);
+    grab_value("auto_exposure_speed", auto_exposure.speed);
+    grab_value("auto_exposure_ev_shift", auto_exposure.ev_shift);
 
     for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
         auto str = fmt::format("key_{}", key_i);
@@ -341,6 +351,11 @@ void AppSettings::reset_default() {
     sun_angle = {210.0f, 25.0f};
     sun_angular_radius = 0.25f;
     recompute_sun_direction();
+
+    auto_exposure.histogram_clip_low = 0.2f;
+    auto_exposure.histogram_clip_high = 0.1f;
+    auto_exposure.speed = 3.0f;
+    auto_exposure.ev_shift = 0.0f;
 }
 
 void AppSettings::recompute_sun_direction() {

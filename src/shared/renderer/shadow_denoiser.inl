@@ -166,11 +166,10 @@ struct ShadowBitPackComputeTask {
     daxa_u32vec2 bitpacked_shadow_mask_extent;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
-        auto const &input_image_info = ti.get_device().info_image(uses.input_tex.image()).value();
+        auto const &image_info = ti.get_device().info_image(uses.input_tex.image()).value();
         auto push = ShadowBitPackComputePush{};
         ti.copy_task_head_to(&push.uses);
-        push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x * 8), float(input_image_info.size.y * 4), 0.0f, 0.0f};
+        push.input_tex_size = daxa_f32vec4{float(image_info.size.x * 8), float(image_info.size.y * 4), 0.0f, 0.0f};
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;

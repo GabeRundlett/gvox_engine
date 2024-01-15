@@ -42,6 +42,9 @@ struct GpuInput {
     daxa_u32vec2 rounded_frame_dim;
     daxa_u32vec2 output_resolution;
     daxa_f32vec2 halton_jitter;
+    daxa_f32 pre_exposure;
+    daxa_f32 pre_exposure_prev;
+    daxa_f32 pre_exposure_delta;
     daxa_f32 render_res_scl;
     daxa_f32 resize_factor;
     daxa_f32 fov;

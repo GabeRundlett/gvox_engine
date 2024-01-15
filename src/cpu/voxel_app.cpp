@@ -709,7 +709,7 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
-    gpu_app.end_frame();
+    gpu_app.end_frame(ui);
 
     auto t1 = Clock::now();
     ui.update(gpu_input.delta_time, std::chrono::duration<daxa_f32>(t1 - t0).count());

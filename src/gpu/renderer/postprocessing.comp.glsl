@@ -13,14 +13,14 @@ void main() {
     ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
     daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
 
-    daxa_u32vec4 g_buffer_nrm_samples = textureGather(
-        daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc),
-        daxa_f32vec2(gl_GlobalInvocationID.xy) / deref(gpu_input).frame_dim.xy, 1);
-
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
-    // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
+    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x); // + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
+    // daxa_u32vec4 g_buffer_nrm_samples = textureGather(
+    //     daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc),
+    //     daxa_f32vec2(gl_GlobalInvocationID.xy) / deref(gpu_input).frame_dim.xy, 1);
+    // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x) + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
+
     nrm = normalize(nrm);
 
     daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
@@ -37,11 +37,11 @@ void main() {
     }
     AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, ray_dir, nrm);
 
-    daxa_f32vec3 ssao_value;
+    daxa_f32vec3 ssao_value = vec3(1);
     {
         ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
         ssao_value = pow(ssao_value, vec3(2)) * 4.0;
-        ssao_value *= sky_lighting.atmosphere_normal_illuminance * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5);
+        ssao_value *= max(vec3(0.5), sky_lighting.atmosphere_normal_illuminance * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5));
     }
     // daxa_f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec4 particles_color = vec4(0); // texelFetch(daxa_texture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
@@ -49,7 +49,7 @@ void main() {
 
     daxa_f32vec3 emit_col = uint_urgb9e5_to_f32vec3(g_buffer_value.w);
     if (depth == 0) {
-        emit_col += sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance;
+        emit_col += (sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance) * 10.0;
     }
 
     daxa_f32vec3 albedo_col = (uint_rgba8_to_f32vec4(g_buffer_value.x).rgb);
@@ -63,7 +63,7 @@ void main() {
     // lighting += 1.0;
 
     daxa_f32vec3 final_color = particles_color.rgb + emit_col + albedo_col * lighting;
-    final_color *= 0.05;
+    final_color *= deref(gpu_input).pre_exposure;
 
     imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(final_color, 1.0));
 }
