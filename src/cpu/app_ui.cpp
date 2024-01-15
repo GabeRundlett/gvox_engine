@@ -515,8 +515,9 @@ void AppUi::settings_ui() {
             if (ImGui::SliderFloat("Camera FOV", &settings.camera_fov, 0.01f, 170.0f)) {
                 needs_saving = true;
             }
-            if (ImGui::Combo("Resolution Scale", &resolution_scale_id, resolution_scale_options, 4)) {
-                settings.render_res_scl = resolution_scale_values[static_cast<size_t>(resolution_scale_id)];
+            auto resolution_scale_id = static_cast<int>(settings.render_res_scl_id);
+            if (ImGui::Combo("Resolution Scale", &resolution_scale_id, resolution_scale_options.data(), resolution_scale_options.size())) {
+                settings.render_res_scl_id = static_cast<RenderResScl>(resolution_scale_id);
                 needs_saving = true;
             }
 
@@ -530,7 +531,7 @@ void AppUi::settings_ui() {
                 if (ImGui::SliderFloat("Histogram Clip Max", &settings.auto_exposure.histogram_clip_high, 0.0f, 1.0f - settings.auto_exposure.histogram_clip_low)) {
                     needs_saving = true;
                 }
-                if (ImGui::SliderFloat("Adaption Speed", &settings.auto_exposure.speed, 0.1f, 10.0f)) {
+                if (ImGui::SliderFloat("Adaption Speed", &settings.auto_exposure.speed, 0.5f, 50.0f)) {
                     needs_saving = true;
                 }
                 ImGui::TreePop();
@@ -788,6 +789,7 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
     full_frametimes[frametime_rotation_index] = delta_time;
     frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
+    render_res_scl = resolution_scale_values[static_cast<size_t>(settings.render_res_scl_id)];
 
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();

@@ -190,6 +190,7 @@ struct SsaoTemporalFilterComputeTaskState {
 
 struct SsaoComputeTask {
     SsaoCompute::Uses uses;
+    std::string name = "SsaoCompute";
     SsaoComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -202,6 +203,7 @@ struct SsaoComputeTask {
 
 struct SsaoSpatialFilterComputeTask {
     SsaoSpatialFilterCompute::Uses uses;
+    std::string name = "SsaoSpatialFilterCompute";
     SsaoSpatialFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -214,6 +216,7 @@ struct SsaoSpatialFilterComputeTask {
 
 struct SsaoUpscaleComputeTask {
     SsaoUpscaleCompute::Uses uses;
+    std::string name = "SsaoUpscaleCompute";
     SsaoUpscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -226,6 +229,7 @@ struct SsaoUpscaleComputeTask {
 
 struct SsaoTemporalFilterComputeTask {
     SsaoTemporalFilterCompute::Uses uses;
+    std::string name = "SsaoTemporalFilterCompute";
     SsaoTemporalFilterComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

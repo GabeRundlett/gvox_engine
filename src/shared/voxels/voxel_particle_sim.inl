@@ -56,6 +56,7 @@ struct VoxelParticleSimComputeTaskState {
 
 struct VoxelParticleSimComputeTask {
     VoxelParticleSimCompute::Uses uses;
+    std::string name = "VoxelParticleSimCompute";
     VoxelParticleSimComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

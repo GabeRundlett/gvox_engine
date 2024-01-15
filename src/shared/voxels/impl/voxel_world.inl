@@ -225,6 +225,7 @@ struct ChunkAllocComputeTaskState {
 
 struct PerChunkComputeTask {
     PerChunkCompute::Uses uses;
+    std::string name = "PerChunkCompute";
     PerChunkComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -236,6 +237,7 @@ struct PerChunkComputeTask {
 
 struct ChunkEditComputeTask {
     ChunkEditCompute::Uses uses;
+    std::string name = "ChunkEditCompute";
     ChunkEditComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -248,6 +250,7 @@ struct ChunkEditComputeTask {
 template <int PASS_INDEX>
 struct ChunkOptComputeTask {
     ChunkOptCompute::Uses uses;
+    std::string name = "ChunkOptCompute";
     ChunkOptComputeTaskState<PASS_INDEX> *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -264,6 +267,7 @@ using ChunkOpt_x8up_ComputeTask = ChunkOptComputeTask<1>;
 
 struct ChunkAllocComputeTask {
     ChunkAllocCompute::Uses uses;
+    std::string name = "ChunkAllocCompute";
     ChunkAllocComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

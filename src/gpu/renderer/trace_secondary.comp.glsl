@@ -39,19 +39,10 @@ void main() {
     uint hit = 0;
     if (depth != 0.0) {
         VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
-
-        daxa_i32vec2 in_tile_i = daxa_i32vec2(gl_GlobalInvocationID.xy) & daxa_i32vec2(7, 3);
-
-        uint bit_index = in_tile_i.x + in_tile_i.y * 8;
-        hit = uint(trace_result.dist == MAX_DIST) << bit_index;
+        hit = uint(trace_result.dist == MAX_DIST);
     }
 
-    hit = subgroupOr(hit);
-
-    if ((gl_SubgroupInvocationID & 31) == 0) {
-        daxa_i32vec2 output_i = daxa_i32vec2(gl_GlobalInvocationID.xy) >> daxa_i32vec2(3, 2);
-        imageStore(daxa_uimage2D(shadow_bitmap), output_i, daxa_u32vec4(hit, 0, 0, 0));
-    }
+    imageStore(daxa_uimage2D(shadow_bitmap), ivec2(gl_GlobalInvocationID.xy), daxa_u32vec4(hit, 0, 0, 0));
 }
 
 #endif

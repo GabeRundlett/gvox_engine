@@ -161,6 +161,7 @@ struct ShadowTemporalFilterComputeTaskState {
 
 struct ShadowBitPackComputeTask {
     ShadowBitPackCompute::Uses uses;
+    std::string name = "ShadowBitPackCompute";
     ShadowBitPackComputeTaskState *state;
     daxa_u32 step_size;
     daxa_u32vec2 bitpacked_shadow_mask_extent;
@@ -169,7 +170,7 @@ struct ShadowBitPackComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.input_tex.image()).value();
         auto push = ShadowBitPackComputePush{};
         ti.copy_task_head_to(&push.uses);
-        push.input_tex_size = daxa_f32vec4{float(image_info.size.x * 8), float(image_info.size.y * 4), 0.0f, 0.0f};
+        push.input_tex_size = daxa_f32vec4{float(image_info.size.x), float(image_info.size.y), 0.0f, 0.0f};
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
@@ -179,6 +180,7 @@ struct ShadowBitPackComputeTask {
 
 struct ShadowSpatialFilterComputeTask {
     ShadowSpatialFilterCompute::Uses uses;
+    std::string name = "ShadowSpatialFilterCompute";
     ShadowSpatialFilterComputeTaskState *state;
     daxa_u32 step_size;
     daxa_u32vec2 bitpacked_shadow_mask_extent;
@@ -199,6 +201,7 @@ struct ShadowSpatialFilterComputeTask {
 
 struct ShadowTemporalFilterComputeTask {
     ShadowTemporalFilterCompute::Uses uses;
+    std::string name = "ShadowTemporalFilterCompute";
     ShadowTemporalFilterComputeTaskState *state;
     daxa_u32vec2 bitpacked_shadow_mask_extent;
     void callback(daxa::TaskInterface const &ti) {
@@ -207,7 +210,7 @@ struct ShadowTemporalFilterComputeTask {
         auto const &input_image_info = ti.get_device().info_image(uses.shadow_mask_tex.image()).value();
         auto push = ShadowTemporalFilterComputePush{};
         ti.copy_task_head_to(&push.uses);
-        push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x * 8), float(input_image_info.size.y * 4), 0.0f, 0.0f};
+        push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
@@ -241,7 +244,7 @@ struct ShadowDenoiser {
             .size = {bitpacked_shadow_mask_extent.x, bitpacked_shadow_mask_extent.y, 1},
             .name = "bitpacked_shadows_image",
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "shadow bitpack", .task_image_id = bitpacked_shadows_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "shadow bitpack", .task_image_id = bitpacked_shadows_image, .type = DEBUG_IMAGE_TYPE_SHADOW_BITMAP});
 
         record_ctx.task_graph.add_task(ShadowBitPackComputeTask{
             .uses = {

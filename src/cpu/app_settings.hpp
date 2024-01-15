@@ -6,13 +6,21 @@
 #include <GLFW/glfw3.h>
 #include <shared/settings.inl>
 
+enum struct RenderResScl {
+    SCL_33_PCT,
+    SCL_50_PCT,
+    SCL_67_PCT,
+    SCL_75_PCT,
+    SCL_100_PCT,
+};
+
 struct AppSettings {
     std::map<daxa_i32, daxa_i32> keybinds;
     std::map<daxa_i32, daxa_i32> mouse_button_binds;
     daxa_f32 ui_scl;
     daxa_f32 camera_fov;
     daxa_f32 mouse_sensitivity;
-    daxa_f32 render_res_scl;
+    RenderResScl render_res_scl_id;
     std::string world_seed_str;
 
     SkySettings sky;

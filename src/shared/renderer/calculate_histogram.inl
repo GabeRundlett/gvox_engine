@@ -50,7 +50,7 @@ struct CalculateHistogramComputeTaskState {
 };
 struct CalculateHistogramComputeTask {
     CalculateHistogramCompute::Uses uses;
-    std::string name = "calc hist";
+    std::string name = "CalculateHistogram";
     CalculateHistogramComputeTaskState *state;
     uint32_t input_mip_level;
     void callback(daxa::TaskInterface const &ti) {

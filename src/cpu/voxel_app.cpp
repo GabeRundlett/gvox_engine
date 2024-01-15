@@ -170,7 +170,7 @@ void VoxelApp::run() {
         }
 
         if (!AppWindow::minimized) {
-            auto resized = render_res_scl != ui.settings.render_res_scl;
+            auto resized = render_res_scl != ui.render_res_scl;
             if (resized) {
                 on_resize(window_size.x, window_size.y);
             }
@@ -625,8 +625,7 @@ void VoxelApp::on_update() {
     gpu_input.time = std::chrono::duration<daxa_f32>(now - start).count();
     gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
-    gpu_input.render_res_scl = ui.settings.render_res_scl;
-    gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
+    gpu_input.render_res_scl = ui.render_res_scl;
     gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<daxa_f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
 
@@ -790,12 +789,12 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
 }
 void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
     minimized = (sx == 0 || sy == 0);
-    auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != ui.settings.render_res_scl;
+    auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != ui.render_res_scl;
     if (!minimized && resized) {
         swapchain.resize();
         window_size.x = swapchain.get_surface_extent().x;
         window_size.y = swapchain.get_surface_extent().y;
-        render_res_scl = ui.settings.render_res_scl;
+        render_res_scl = ui.render_res_scl;
         {
             // resize render images
             // gpu_resources.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);

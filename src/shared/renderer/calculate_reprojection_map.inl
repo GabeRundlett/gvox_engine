@@ -55,6 +55,7 @@ struct CalculateReprojectionMapComputeTaskState {
 
 struct CalculateReprojectionMapComputeTask {
     CalculateReprojectionMapCompute::Uses uses;
+    std::string name = "CalculateReprojectionMapCompute";
     CalculateReprojectionMapComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

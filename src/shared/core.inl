@@ -36,6 +36,7 @@
     };                                                                                                                                                                           \
     struct Name##ComputeTask {                                                                                                                                                   \
         Name##Compute::Uses uses;                                                                                                                                                \
+        std::string name = #Name;                                                                                                                                                \
         Name##ComputeTaskState *state;                                                                                                                                           \
         daxa_u32vec3 thread_count;                                                                                                                                               \
         void callback(daxa::TaskInterface const &ti) {                                                                                                                           \

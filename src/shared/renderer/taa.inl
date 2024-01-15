@@ -222,6 +222,7 @@ struct TaaPushCommon {
     };                                                                                                                                           \
     struct Name##ComputeTask {                                                                                                                   \
         Name##Compute::Uses uses;                                                                                                                \
+        std::string name = #Name "Compute";                                                                                                      \
         Name##ComputeTaskState *state;                                                                                                           \
         daxa_u32vec2 thread_count;                                                                                                               \
         TaaPushCommon push_common;                                                                                                               \

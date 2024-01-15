@@ -56,6 +56,7 @@ struct TraceSecondaryComputeTaskState {
 
 struct TraceSecondaryComputeTask {
     TraceSecondaryCompute::Uses uses;
+    std::string name = "TraceSecondaryCompute";
     TraceSecondaryComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -75,11 +76,10 @@ struct ShadowRenderer {
 
     auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorld::Buffers &voxel_buffers)
         -> daxa::TaskImageView {
-        auto image_size = daxa_u32vec2{(record_ctx.render_resolution.x + 7) / 8, (record_ctx.render_resolution.y + 3) / 4};
 
         auto shadow_bitmap = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R32_UINT,
-            .size = {image_size.x, image_size.y, 1},
+            .format = daxa::Format::R8_UINT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
             .name = "shadow_bitmap",
         });
 
@@ -95,7 +95,7 @@ struct ShadowRenderer {
             },
             .state = &trace_secondary_task_state,
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "trace shadow bitmap", .task_image_id = shadow_bitmap, .type = DEBUG_IMAGE_TYPE_SHADOW_BITMAP});
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "trace shadow bitmap", .task_image_id = shadow_bitmap, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
 
         return daxa::TaskImageView{shadow_bitmap};
     }

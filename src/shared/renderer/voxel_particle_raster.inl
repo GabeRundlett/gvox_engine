@@ -73,6 +73,7 @@ struct VoxelParticleRasterTaskState {
 
 struct VoxelParticleRasterTask {
     VoxelParticleRaster::Uses uses;
+    std::string name = "VoxelParticleRaster";
     VoxelParticleRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

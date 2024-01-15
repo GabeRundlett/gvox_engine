@@ -5,7 +5,7 @@
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
 
-#define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA 1.0
+#define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA deref(gpu_input).pre_exposure_delta
 #define SAMPLE_OFFSET_PIXELS daxa_f32vec2(deref(gpu_input).halton_jitter)
 
 float linear_to_perceptual(float a) {

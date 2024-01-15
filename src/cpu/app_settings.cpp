@@ -61,7 +61,7 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["ui_scl"] = ui_scl;
     json["camera_fov"] = camera_fov;
     json["mouse_sensitivity"] = mouse_sensitivity;
-    json["render_res_scl"] = render_res_scl;
+    json["render_res_scl_id"] = render_res_scl_id;
     json["world_seed_str"] = world_seed_str;
 
     json["show_debug_info"] = show_debug_info;
@@ -154,7 +154,7 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("ui_scl", ui_scl);
     grab_value("camera_fov", camera_fov);
     grab_value("mouse_sensitivity", mouse_sensitivity);
-    grab_value("render_res_scl", render_res_scl);
+    grab_value("render_res_scl_id", render_res_scl_id);
     grab_value("world_seed_str", world_seed_str);
 
     grab_value("show_debug_info", show_debug_info);
@@ -240,7 +240,7 @@ void AppSettings::clear() {
 
     camera_fov = 90.0f;
     mouse_sensitivity = 1.0f;
-    render_res_scl = 1.0f;
+    render_res_scl_id = RenderResScl::SCL_100_PCT;
     world_seed_str = "gvox";
 
     show_debug_info = false;

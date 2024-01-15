@@ -54,6 +54,7 @@ struct DownscaleComputeTaskState {
 
 struct DownscaleComputeTask {
     DownscaleCompute::Uses uses;
+    std::string name = "DownscaleCompute";
     DownscaleComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

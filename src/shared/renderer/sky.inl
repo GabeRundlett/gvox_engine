@@ -76,6 +76,7 @@ daxa_ImageViewId sky_lut = push.uses.sky_lut;
     };                                                                                                                       \
     struct Name##ComputeTask {                                                                                               \
         Name##Compute::Uses uses;                                                                                            \
+        std::string name = #Name "Compute";                                                                                  \
         Name##ComputeTaskState *state;                                                                                       \
         void callback(daxa::TaskInterface const &ti) {                                                                       \
             auto &recorder = ti.get_recorder();                                                                              \

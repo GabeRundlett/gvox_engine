@@ -215,6 +215,7 @@ struct TestComputeTaskState {
 
 struct CompositingComputeTask {
     CompositingCompute::Uses uses;
+    std::string name = "CompositingCompute";
     CompositingComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -227,6 +228,7 @@ struct CompositingComputeTask {
 
 struct PostprocessingRasterTask {
     PostprocessingRaster::Uses uses;
+    std::string name = "PostprocessingRaster";
     PostprocessingRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -239,6 +241,7 @@ struct PostprocessingRasterTask {
 
 struct DebugImageRasterTask {
     DebugImageRaster::Uses uses;
+    std::string name = "DebugImageRaster";
     DebugImageRasterTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -253,7 +256,7 @@ struct DebugImageRasterTask {
 
 struct TestComputeTask {
     TestCompute::Uses uses;
-    std::string name = "test compute";
+    std::string name = "TestCompute";
     TestComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();

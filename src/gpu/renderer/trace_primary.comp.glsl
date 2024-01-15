@@ -82,8 +82,8 @@ void main() {
     // transform depth to ndc space
     vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos, 1));
     vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos + trace_result.vel, 1)); // when animated objects exist, this is where they'd put their velocity
-    vec4 cs_pos = (deref(globals).player.cam.view_to_sample * vs_pos);
-    daxa_f32 depth = cs_pos.z / cs_pos.w;
+    vec4 ss_pos = (deref(globals).player.cam.view_to_sample * vs_pos);
+    daxa_f32 depth = ss_pos.z / ss_pos.w;
     daxa_f32vec3 vs_nrm = daxa_f32vec3(0);
     daxa_f32vec3 vs_velocity = daxa_f32vec3(0);
 

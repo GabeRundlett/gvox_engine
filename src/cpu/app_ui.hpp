@@ -106,19 +106,21 @@ struct AppUi {
 
     bool should_record_task_graph = false;
 
-    static inline char const *resolution_scale_options[4] = {
+    static inline constexpr std::array<char const *, 5> resolution_scale_options = {
         "33%",
         "50%",
+        "67%",
         "75%",
         "100%",
     };
-    static inline constexpr std::array<float, 4> resolution_scale_values = {
-        0.33333f,
+    static inline constexpr std::array<float, 5> resolution_scale_values = {
+        0.33333333f,
         0.50f,
+        0.66666667f,
         0.75f,
         1.00f,
     };
-    daxa_i32 resolution_scale_id = 3;
+    daxa_f32 render_res_scl = 1.0f;
 
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;

@@ -108,6 +108,7 @@ struct TracePrimaryComputeTaskState {
 
 struct TraceDepthPrepassComputeTask {
     TraceDepthPrepassCompute::Uses uses;
+    std::string name = "TraceDepthPrepassCompute";
     TraceDepthPrepassComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
@@ -120,6 +121,7 @@ struct TraceDepthPrepassComputeTask {
 
 struct TracePrimaryComputeTask {
     TracePrimaryCompute::Uses uses;
+    std::string name = "TracePrimaryCompute";
     TracePrimaryComputeTaskState *state;
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
