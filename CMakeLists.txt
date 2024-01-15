@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
     "src/cpu/app_audio.cpp"
     "src/cpu/app_settings.cpp"
     "src/cpu/mesh_model.cpp"
+    "src/shared/renderer/fsr.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
@@ -29,6 +30,8 @@ find_package(unofficial-minizip CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(soloud CONFIG REQUIRED)
+find_package(Vulkan REQUIRED)
+find_package(fsr2 CONFIG REQUIRED)
 
 find_package(freeimage CONFIG REQUIRED)
 # FreeImage links OpenEXR, which adds /EHsc for its targets, even if we're using Clang
@@ -59,6 +62,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     freeimage::FreeImage
     glm::glm
     soloud
+    fsr2::ffx_fsr2_api
+    fsr2::ffx_fsr2_api_vk
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"

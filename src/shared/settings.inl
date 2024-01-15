@@ -53,7 +53,7 @@ struct SkySettings {
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
 
-#define ENABLE_TAA true
+#define ENABLE_TAA false
 
 #define DEBUG_IMAGE_TYPE_DEFAULT 0
 #define DEBUG_IMAGE_TYPE_DEFAULT_UINT 1
