@@ -204,6 +204,36 @@ uint packSnorm2x8(vec2 v) {
 vec2 unpackSnorm2x8(uint d) {
     return vec2(uvec2(d, d >> 8) & 255) / 127.5 - 1.0;
 }
+uint octahedral_8(in vec3 nor) {
+    nor.xy /= (abs(nor.x) + abs(nor.y) + abs(nor.z));
+    nor.xy = (nor.z >= 0.0) ? nor.xy : (1.0 - abs(nor.yx)) * msign(nor.xy);
+    uvec2 d = uvec2(round(7.5 + nor.xy * 7.5));
+    return d.x | (d.y << 4u);
+}
+vec3 i_octahedral_8(uint data) {
+    uvec2 iv = uvec2(data, data >> 4u) & 15u;
+    vec2 v = vec2(iv) / 7.5 - 1.0;
+    vec3 nor = vec3(v, 1.0 - abs(v.x) - abs(v.y)); // Rune Stubbe's version,
+    float t = max(-nor.z, 0.0);                    // much faster than original
+    nor.x += (nor.x > 0.0) ? -t : t;               // implementation of this
+    nor.y += (nor.y > 0.0) ? -t : t;               // technique
+    return normalize(nor);
+}
+uint octahedral_12(in vec3 nor) {
+    nor.xy /= (abs(nor.x) + abs(nor.y) + abs(nor.z));
+    nor.xy = (nor.z >= 0.0) ? nor.xy : (1.0 - abs(nor.yx)) * msign(nor.xy);
+    uvec2 d = uvec2(round(31.5 + nor.xy * 31.5));
+    return d.x | (d.y << 6u);
+}
+vec3 i_octahedral_12(uint data) {
+    uvec2 iv = uvec2(data, data >> 6u) & 63u;
+    vec2 v = vec2(iv) / 31.5 - 1.0;
+    vec3 nor = vec3(v, 1.0 - abs(v.x) - abs(v.y)); // Rune Stubbe's version,
+    float t = max(-nor.z, 0.0);                    // much faster than original
+    nor.x += (nor.x > 0.0) ? -t : t;               // implementation of this
+    nor.y += (nor.y > 0.0) ? -t : t;               // technique
+    return normalize(nor);
+}
 uint octahedral_16(in vec3 nor) {
     nor /= (abs(nor.x) + abs(nor.y) + abs(nor.z));
     nor.xy = (nor.z >= 0.0) ? nor.xy : (1.0 - abs(nor.yx)) * msign(nor.xy);

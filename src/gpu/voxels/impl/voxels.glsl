@@ -6,6 +6,70 @@
 #include <voxels/impl/voxel_malloc.glsl>
 #include <voxels/gvox_model.glsl>
 
+uint pack_unit(float x, uint bit_n) {
+    float scl = float(1u << bit_n) - 1.0;
+    return uint(round(x * scl));
+}
+float unpack_unit(uint x, uint bit_n) {
+    float scl = float(1u << bit_n) - 1.0;
+    return float(x) / scl;
+}
+
+// uint pack_unit(float x, uint bit_n) {
+//     float scl = float(1u << bit_n);
+//     return uint(x * scl);
+// }
+// float unpack_unit(uint x, uint bit_n) {
+//     float scl = float(1u << bit_n);
+//     return float(x) / scl;
+// }
+
+vec3 unpack_rgb(daxa_u32 u) {
+    vec3 result;
+    result.r = float((u >> 0) & 0x3f) / 64.0;
+    result.g = float((u >> 6) & 0x3f) / 63.0;
+    result.b = float((u >> 12) & 0x3f) / 63.0;
+    result.b = pow(result.b, 2.2);
+    result = hsv2rgb(result);
+    return result;
+}
+uint pack_rgb(vec3 f) {
+    f = rgb2hsv(f);
+    f.b = pow(f.b, 1.0 / 2.2);
+    uint result = 0;
+    result |= (uint(f.r * 64.0) & 63) << 0;
+    result |= uint(clamp(f.g * 63.0, 0, 63)) << 6;
+    result |= uint(clamp(f.b * 63.0, 0, 63)) << 12;
+    return result;
+}
+
+PackedVoxel pack_voxel(Voxel v) {
+    PackedVoxel result;
+
+    uint packed_roughness = pack_unit(v.roughness, 4);
+    uint packed_normal = octahedral_8(v.normal);
+    uint packed_color = pack_rgb(v.color);
+
+    result.data = (v.material_type) | (packed_roughness << 2) | (packed_normal << 6) | (packed_color << 14);
+
+    return result;
+}
+Voxel unpack_voxel(PackedVoxel v) {
+    Voxel result = Voxel(0, 0, vec3(0), vec3(0));
+
+    result.material_type = (v.data >> 0) & 3;
+
+    uint packed_roughness = (v.data >> 2) & 15;
+    uint packed_normal = (v.data >> 6) & ((1 << 8) - 1);
+    uint packed_color = (v.data >> 14);
+
+    result.roughness = unpack_unit(packed_roughness, 4);
+    result.normal = i_octahedral_8(packed_normal);
+    result.color = unpack_rgb(packed_color);
+
+    return result;
+}
+
 #define INVALID_CHUNK_I daxa_i32vec3(0x80000000)
 #define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / voxel_scl)
 
@@ -120,7 +184,7 @@ daxa_u32 calc_palette_voxel_index(daxa_u32vec3 inchunk_voxel_i) {
 
 #define READ_FROM_HEAP 1
 // This function assumes the variant_n is greater than 1.
-daxa_u32 sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, daxa_u32 palette_voxel_index) {
+PackedVoxel sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, daxa_u32 palette_voxel_index) {
 #if READ_FROM_HEAP
     daxa_RWBufferPtr(daxa_u32) blob_u32s;
     voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
@@ -128,9 +192,9 @@ daxa_u32 sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, Pale
 #endif
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
 #if READ_FROM_HEAP
-        return deref(blob_u32s[palette_voxel_index]);
+        return PackedVoxel(deref(blob_u32s[palette_voxel_index]));
 #else
-        return 0x01ffff00;
+        return PackedVoxel(0x01ffff00);
 #endif
     }
 #if READ_FROM_HEAP
@@ -145,23 +209,23 @@ daxa_u32 sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, Pale
         my_palette_index |= (deref(blob_u32s[palette_header.variant_n + data_index + 1]) << shift) & mask;
     }
     daxa_u32 voxel_data = deref(blob_u32s[my_palette_index]);
-    return voxel_data;
+    return PackedVoxel(voxel_data);
 #else
-    return 0x01ff00ff;
+    return PackedVoxel(0x01ffff00);
 #endif
 }
 
-daxa_u32 sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32vec3 inchunk_voxel_i) {
+PackedVoxel sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32vec3 inchunk_voxel_i) {
     daxa_u32 palette_region_index = calc_palette_region_index(inchunk_voxel_i);
     daxa_u32 palette_voxel_index = calc_palette_voxel_index(inchunk_voxel_i);
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
     if (palette_header.variant_n < 2) {
-        return palette_header.blob_ptr;
+        return PackedVoxel(palette_header.blob_ptr);
     }
     return sample_palette(allocator, palette_header, palette_voxel_index);
 }
 
-daxa_u32 sample_voxel_chunk(VoxelBufferPtrs ptrs, daxa_u32vec3 chunk_n, daxa_f32vec3 voxel_p, daxa_u32 lod_index, daxa_f32vec3 bias) {
+PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, daxa_u32vec3 chunk_n, daxa_f32vec3 voxel_p, daxa_u32 lod_index, daxa_f32vec3 bias) {
     daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL) / daxa_f32(1 << lod_index);
     daxa_f32vec3 offset = daxa_f32vec3((deref(ptrs.globals).offset) & ((1 << (lod_index + 3)) - 1)) + daxa_f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
     daxa_u32vec3 voxel_i = daxa_u32vec3(floor((voxel_p + offset) * voxel_scl + bias));
@@ -170,7 +234,7 @@ daxa_u32 sample_voxel_chunk(VoxelBufferPtrs ptrs, daxa_u32vec3 chunk_n, daxa_f32
     return sample_voxel_chunk(ptrs.allocator, ptrs.voxel_chunks_ptr[chunk_index], voxel_i - chunk_i * CHUNK_SIZE);
 }
 
-daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32vec3 chunk_i, daxa_u32vec3 inchunk_voxel_i, out daxa_u32 voxel_data) {
+daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32vec3 chunk_i, daxa_u32vec3 inchunk_voxel_i, out PackedVoxel voxel_data) {
     daxa_u32 lod_index_x2 = new_uniformity_lod_index(2)(inchunk_voxel_i / 2);
     daxa_u32 lod_mask_x2 = new_uniformity_lod_mask(2)(inchunk_voxel_i / 2);
     daxa_u32 lod_index_x4 = new_uniformity_lod_index(4)(inchunk_voxel_i / 4);
@@ -193,13 +257,18 @@ daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buf
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
 
     if (palette_header.variant_n < 2) {
-        voxel_data = palette_header.blob_ptr;
+        voxel_data = PackedVoxel(palette_header.blob_ptr);
     } else {
         voxel_data = sample_palette(allocator, palette_header, palette_voxel_index);
     }
 
-    if ((voxel_data & 0xff000000) != 0)
+    // if ((voxel_data & 0xff000000) != 0)
+    //     return 0;
+    Voxel voxel = unpack_voxel(voxel_data);
+    if (voxel.material_type != 0) {
         return 0;
+    }
+
 #endif
 #if TRACE_SECONDARY_COMPUTE
     // I have found, at least on memory bound GPUs (all GPUs), that never sampling
@@ -232,7 +301,7 @@ daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buf
     return 7;
 }
 
-daxa_u32 sample_lod(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, daxa_u32vec3 chunk_n, daxa_f32vec3 voxel_p, daxa_u32 lod_index, out daxa_u32 voxel_data) {
+daxa_u32 sample_lod(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, daxa_u32vec3 chunk_n, daxa_f32vec3 voxel_p, daxa_u32 lod_index, out PackedVoxel voxel_data) {
     daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL) / daxa_f32(1 << lod_index);
     daxa_u32vec3 voxel_i = daxa_u32vec3(voxel_p * voxel_scl);
     daxa_u32vec3 chunk_i = voxel_i / CHUNK_SIZE;

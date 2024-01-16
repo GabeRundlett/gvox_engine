@@ -32,16 +32,15 @@ struct Fsr2Renderer {
     Fsr2Info info;
     size_t jitter_frame_i;
 
-    Fsr2Renderer() = default;
-    Fsr2Renderer(Fsr2Renderer &&other) = default;
-    Fsr2Renderer &operator=(Fsr2Renderer &&other) = default;
-
-    Fsr2Renderer(Fsr2Renderer const &) = delete;
-    Fsr2Renderer &operator=(Fsr2Renderer const &) = delete;
-
     FfxFsr2Context fsr_context = {};
     FfxFsr2ContextDescription context_description = {};
     std::vector<std::byte> scratch_buffer = {};
+
+    Fsr2Renderer() = delete;
+    Fsr2Renderer(Fsr2Renderer &&other) = delete;
+    Fsr2Renderer &operator=(Fsr2Renderer &&other) = delete;
+    Fsr2Renderer(Fsr2Renderer const &) = delete;
+    Fsr2Renderer &operator=(Fsr2Renderer const &) = delete;
 
     Fsr2Renderer(daxa::Device a_device, Fsr2Info a_info);
     ~Fsr2Renderer();

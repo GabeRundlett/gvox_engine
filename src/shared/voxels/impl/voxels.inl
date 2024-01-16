@@ -40,12 +40,19 @@ DAXA_DECL_BUFFER_PTR(VoxelLeafChunk)
 // DECL_SIMPLE_ALLOCATOR(VoxelLeafChunkAllocator, VoxelLeafChunk, 1, daxa_u32, (MAX_CHUNK_WORK_ITEMS_L2))
 // DECL_SIMPLE_ALLOCATOR(VoxelParentChunkAllocator, VoxelParentChunk, 1, daxa_u32, (MAX_CHUNK_WORK_ITEMS_L0 + MAX_CHUNK_WORK_ITEMS_L1))
 
-struct TempVoxel {
-    daxa_u32 col_and_id;
+struct Voxel {
+    daxa_u32 material_type; // 2 bits (empty, dielectric, metallic, emissive)
+    daxa_f32 roughness;     // 4 bits
+    daxa_f32vec3 normal;    // 8 bits
+    daxa_f32vec3 color;     // 18 bits
+};
+
+struct PackedVoxel {
+    daxa_u32 data;
 };
 
 struct TempVoxelChunk {
-    TempVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    PackedVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
     TempVoxelChunkUniformity uniformity;
 };
 DAXA_DECL_BUFFER_PTR(TempVoxelChunk)

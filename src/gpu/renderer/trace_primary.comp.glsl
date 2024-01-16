@@ -92,9 +92,18 @@ void main() {
     if (trace_result.dist != MAX_DIST) {
         daxa_u32 lod_index = 0;
         daxa_u32vec3 chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-        daxa_u32 voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
-        is_valid = (voxel_data & 0xff000000) == 0;
+        PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
+        Voxel voxel = unpack_voxel(voxel_data);
+        is_valid = voxel.material_type == 0;
+
+#define PER_VOXEL_NORMALS 0
+
+#if PER_VOXEL_NORMALS
+        Voxel voxel2 = unpack_voxel(trace_result.voxel_data);
+        trace_result.nrm = voxel2.normal;
+#endif
     }
+#if !PER_VOXEL_NORMALS
     vec3 old_nrm = trace_result.nrm;
     if (!is_valid) {
         trace_result.nrm = vec3(0.0);
@@ -118,6 +127,7 @@ void main() {
     if (dot(valid_nrm, valid_nrm) == 0.0) {
         trace_result.nrm = old_nrm;
     }
+#endif
 
     if (trace_result.dist == MAX_DIST) {
         // daxa_f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
@@ -125,7 +135,7 @@ void main() {
         output_value.y |= nrm_to_u16(daxa_f32vec3(0, 0, 1));
         depth = 0.0;
     } else {
-        output_value.x = trace_result.voxel_data;
+        output_value.x = trace_result.voxel_data.data;
         output_value.y |= nrm_to_u16(trace_result.nrm);
         vs_nrm = (deref(globals).player.cam.world_to_view * daxa_f32vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);

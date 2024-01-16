@@ -198,7 +198,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     SkyRenderer sky_renderer;
     ShadowDenoiser shadow_denoiser;
     PostProcessor post_processor;
-    Fsr2Renderer fsr2_renderer;
+    std::unique_ptr<Fsr2Renderer> fsr2_renderer;
 
     VoxelWorld voxel_world;
 
@@ -210,7 +210,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
     PostprocessingRasterTaskState postprocessing_task_state;
     DebugImageRasterTaskState debug_image_task_state;
-    TestComputeTaskState test_task_state;
+    // TestComputeTaskState test_task_state;
     VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
     VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
@@ -227,8 +227,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
     daxa::TaskBuffer task_placed_voxel_particles_buffer{{.name = "task_placed_voxel_particles_buffer"}};
 
-    daxa::BufferId test_buffer;
-    daxa::TaskBuffer task_test_buffer{{.name = "task_test_buffer"}};
+    // daxa::BufferId test_buffer;
+    // daxa::TaskBuffer task_test_buffer{{.name = "task_test_buffer"}};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -259,7 +259,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           perframe_task_state{pipeline_manager},
           postprocessing_task_state{pipeline_manager, swapchain_format},
           debug_image_task_state{pipeline_manager, swapchain_format},
-          test_task_state{pipeline_manager},
+          // test_task_state{pipeline_manager},
           voxel_particle_sim_task_state{pipeline_manager},
           voxel_particle_raster_task_state{pipeline_manager} {
 
@@ -279,11 +279,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         voxel_world.create(device);
 
-        test_buffer = device.create_buffer({
-            .size = static_cast<daxa_u32>(sizeof(uint32_t) * 8 * 8 * 8 * 64 * 64 * 64),
-            .name = "test_buffer",
-        });
-        task_test_buffer.set_buffers({.buffers = std::array{test_buffer}});
+        // test_buffer = device.create_buffer({
+        //     .size = static_cast<daxa_u32>(sizeof(uint32_t) * 8 * 8 * 8 * 64 * 64 * 64),
+        //     .name = "test_buffer",
+        // });
+        // task_test_buffer.set_buffers({.buffers = std::array{test_buffer}});
 
         AppUi::DebugDisplay::s_instance->providers.push_back(this);
         AppUi::DebugDisplay::s_instance->providers.push_back(&voxel_world);
@@ -475,7 +475,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_resources.destroy(device);
         voxel_world.destroy(device);
 
-        device.destroy_buffer(test_buffer);
+        // device.destroy_buffer(test_buffer);
     }
 
     void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph) {
@@ -567,9 +567,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
 #endif
 
-        fsr2_renderer.next_frame();
-        fsr2_renderer.state.delta_time = gpu_input.delta_time;
-        gpu_input.halton_jitter = fsr2_renderer.state.jitter;
+        fsr2_renderer->next_frame();
+        fsr2_renderer->state.delta_time = gpu_input.delta_time;
+        gpu_input.halton_jitter = fsr2_renderer->state.jitter;
 
         auto now = Clock::now();
         if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
@@ -754,13 +754,13 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto composited_image = compositor.render(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, denoised_shadows, raster_color_image);
 
-        fsr2_renderer = Fsr2Renderer{record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution}};
+        fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
         auto antialiased_image = [&]() {
 #if ENABLE_TAA
             return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
 #else
-            return fsr2_renderer.upscale(record_ctx, gbuffer_depth, composited_image, reprojection_map);
+            return fsr2_renderer->upscale(record_ctx, gbuffer_depth, composited_image, reprojection_map);
             // return composited_image;
 #endif
         }();

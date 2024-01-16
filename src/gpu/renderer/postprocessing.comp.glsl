@@ -3,6 +3,7 @@
 
 #if COMPOSITING_COMPUTE
 #include <utils/sky.glsl>
+#include <voxels/core.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -20,6 +21,9 @@ void main() {
     //     daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc),
     //     daxa_f32vec2(gl_GlobalInvocationID.xy) / deref(gpu_input).frame_dim.xy, 1);
     // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x) + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
+
+    Voxel voxel = unpack_voxel(PackedVoxel(g_buffer_value.x));
+    daxa_f32vec3 albedo_col = voxel.color;
 
     nrm = normalize(nrm);
 
@@ -51,8 +55,6 @@ void main() {
     if (depth == 0) {
         emit_col += (sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance) * 10.0;
     }
-
-    daxa_f32vec3 albedo_col = (uint_rgba8_to_f32vec4(g_buffer_value.x).rgb);
 
     daxa_f32vec3 lighting = daxa_f32vec3(0.0);
     // Direct sun illumination

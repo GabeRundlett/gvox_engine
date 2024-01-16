@@ -42,25 +42,26 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
                     result.dist = info.max_dist;
                 }
             } else {
-                daxa_u32 dontcare;
+                PackedVoxel dontcare;
                 daxa_u32 lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, voxel_chunks_ptr, chunk_n, ray_pos, lod_index, dontcare);
-                vec3 col = vec3(0);
+                Voxel voxel = Voxel(0, 0, vec3(0), vec3(0));
+                voxel.color = vec3(0);
                 switch (lod) {
-                case 0: col = vec3(0.0, 0.0, 0.0); break;
-                case 1: col = vec3(1.0, 0.0, 0.0); break;
-                case 2: col = vec3(0.0, 1.0, 0.0); break;
-                case 3: col = vec3(1.0, 1.0, 0.0); break;
-                case 4: col = vec3(0.0, 0.0, 1.0); break;
-                case 5: col = vec3(1.0, 0.0, 1.0); break;
-                case 6: col = vec3(0.0, 1.0, 1.0); break;
-                case 7: col = vec3(1.0, 1.0, 1.0); break;
+                case 0: voxel.color = vec3(0.0, 0.0, 0.0); break;
+                case 1: voxel.color = vec3(1.0, 0.0, 0.0); break;
+                case 2: voxel.color = vec3(0.0, 1.0, 0.0); break;
+                case 3: voxel.color = vec3(1.0, 1.0, 0.0); break;
+                case 4: voxel.color = vec3(0.0, 0.0, 1.0); break;
+                case 5: voxel.color = vec3(1.0, 0.0, 1.0); break;
+                case 6: voxel.color = vec3(0.0, 1.0, 1.0); break;
+                case 7: voxel.color = vec3(1.0, 1.0, 1.0); break;
                 }
                 // if (abs(fract(ray_pos.x * voxel_scl) - 0.05) < 0.1 ||
                 //     abs(fract(ray_pos.y * voxel_scl) - 0.05) < 0.1 ||
                 //     abs(fract(ray_pos.z * voxel_scl) - 0.05) < 0.1) {
                 //     col = col * 0.5 + 0.25;
                 // }
-                result.voxel_data = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (1u << 0x18);
+                result.voxel_data = pack_voxel(voxel);
                 result.nrm = vec3(0, 0, 1);
             }
             ray_pos -= offset;

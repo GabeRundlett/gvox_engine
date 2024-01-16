@@ -171,7 +171,7 @@ daxa_f32vec3 forest_biome_palette(daxa_f32 t) {
     return pow(daxa_f32vec3(85, 114, 78) / 255.0, vec3(2.2)); // palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
 }
 
-void brushgen_world_terrain(in out daxa_f32vec3 col, in out daxa_u32 id) {
+void brushgen_world_terrain(in out Voxel voxel) {
     voxel_pos += daxa_f32vec3(0, 0, 280);
 
     daxa_f32vec4 val4 = terrain_noise(voxel_pos);
@@ -185,40 +185,43 @@ void brushgen_world_terrain(in out daxa_f32vec3 col, in out daxa_u32 id) {
     daxa_f32vec3 forest_biome_color = forest_biome_palette(voxel_noise_xy * 2 - 1);
 
     if (val < 0) {
-        id = 1;
+        voxel.material_type = 1;
         const bool SHOULD_COLOR_WORLD = true;
         if (SHOULD_COLOR_WORLD) {
             daxa_f32 r = good_rand(-val);
+            if (val > -0.002) {
+                // voxel.normal = nrm;
+            }
             if (val > -0.002 && upwards > 0.65) {
-                col = pow(daxa_f32vec3(105, 126, 78) / 255.0, vec3(2.2));
+                voxel.color = pow(daxa_f32vec3(105, 126, 78) / 255.0, vec3(2.2));
                 if (r < 0.5) {
-                    col *= 0.7;
+                    voxel.color *= 0.7;
                 }
                 // Mix with biome color
-                col = mix(col, forest_biome_color * .75, .3);
+                voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
             } else if (val > -0.05 && upwards > 0.5) {
-                col = daxa_f32vec3(0.13, 0.09, 0.05);
+                voxel.color = daxa_f32vec3(0.13, 0.09, 0.05);
                 if (r < 0.5) {
-                    col.r *= 0.5;
-                    col.g *= 0.5;
-                    col.b *= 0.5;
+                    voxel.color.r *= 0.5;
+                    voxel.color.g *= 0.5;
+                    voxel.color.b *= 0.5;
                 } else if (r < 0.52) {
-                    col.r *= 1.5;
-                    col.g *= 1.5;
-                    col.b *= 1.5;
+                    voxel.color.r *= 1.5;
+                    voxel.color.g *= 1.5;
+                    voxel.color.b *= 1.5;
                 }
             } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
-                col = daxa_f32vec3(0.17, 0.15, 0.07);
+                voxel.color = daxa_f32vec3(0.17, 0.15, 0.07);
                 if (r < 0.5) {
-                    col.r *= 0.75;
-                    col.g *= 0.75;
-                    col.b *= 0.75;
+                    voxel.color.r *= 0.75;
+                    voxel.color.g *= 0.75;
+                    voxel.color.b *= 0.75;
                 }
             } else {
-                col = daxa_f32vec3(0.11, 0.10, 0.07);
+                voxel.color = daxa_f32vec3(0.11, 0.10, 0.07);
             }
         } else {
-            col = daxa_f32vec3(0.25);
+            voxel.color = daxa_f32vec3(0.25);
         }
     } else if (ENABLE_TREE_GENERATION != 0) {
         // Meters per cell
@@ -262,8 +265,8 @@ void brushgen_world_terrain(in out daxa_f32vec3 col, in out daxa_u32 id) {
             // if (abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh ||
             //     abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.z)-rep/2.) <= tresh ||
             //     abs(abs(q.z)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh) {
-            //     id = 1;
-            //     col = daxa_f32vec3(0,0,0);
+            //     voxel.material_type = 1;
+            //     voxel.color = daxa_f32vec3(0,0,0);
             // }
 
             // Distance to tree
@@ -274,108 +277,105 @@ void brushgen_world_terrain(in out daxa_f32vec3 col, in out daxa_u32 id) {
 
             // Colorize tree
             if (tree.wood < 0) {
-                id = 1;
-                col = daxa_f32vec3(.68, .4, .15) * 0.16;
+                voxel.material_type = 1;
+                voxel.color = daxa_f32vec3(.68, .4, .15) * 0.16;
             } else if (tree.leaves < 0) {
-                id = 1;
-                col = forest_biome_color * 0.5;
+                voxel.material_type = 1;
+                voxel.color = forest_biome_color * 0.5;
             }
         }
     }
 }
 
-void brushgen_world(in out daxa_f32vec3 col, in out daxa_u32 id) {
+void brushgen_world(in out Voxel voxel) {
     if (false) { // Mandelbulb world
         daxa_f32vec3 mandelbulb_color;
         if (mandelbulb((voxel_pos / 64 - 1) * 1, mandelbulb_color)) {
-            col = daxa_f32vec3(0.02);
-            id = 1;
+            voxel.color = daxa_f32vec3(0.02);
+            voxel.material_type = 1;
         }
     } else if (false) { // Solid world
-        id = 1;
-        col = daxa_f32vec3(0.5, 0.1, 0.8);
+        voxel.material_type = 1;
+        voxel.color = daxa_f32vec3(0.5, 0.1, 0.8);
     } else if (GEN_MODEL != 0) { // Model world
         daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
-        id = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
-        // id = packed_col_data >> 0x18;
+        // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
+        voxel.material_type = packed_col_data >> 0x18;
         // daxa_u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
-        col = uint_rgba8_to_f32vec4(packed_col_data).rgb;
-        // if (id != 0) {
-        //     id = 2;
+        voxel.color = uint_rgba8_to_f32vec4(packed_col_data).rgb;
+        // if (voxel.material_type != 0) {
+        //     voxel.material_type = 2;
         // }
         if (voxel_pos.z == -1.0 / VOXEL_SCL) {
-            col = vec3(0.1);
-            id = 1;
+            voxel.color = vec3(0.1);
+            voxel.material_type = 1;
         }
     } else if (true) { // Terrain world
-        brushgen_world_terrain(col, id);
+        brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)
         if (length(fract(voxel_pos / 8) - 0.5) < 0.15) {
-            id = 1;
-            col = daxa_f32vec3(0.1);
+            voxel.material_type = 1;
+            voxel.color = daxa_f32vec3(0.1);
         }
     } else if (false) { // Checker board world
         daxa_u32vec3 voxel_i = daxa_u32vec3(voxel_pos / 8);
         if ((voxel_i.x + voxel_i.y + voxel_i.z) % 2 == 1) {
-            id = 1;
-            col = daxa_f32vec3(0.1);
+            voxel.material_type = 1;
+            voxel.color = daxa_f32vec3(0.1);
         }
     }
 }
 
-void brushgen_a(in out daxa_f32vec3 col, in out daxa_u32 id) {
-    daxa_u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    daxa_f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
-    daxa_u32 prev_id = voxel_data >> 0x18;
+void brushgen_a(in out Voxel voxel) {
+    PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    Voxel prev_voxel = unpack_voxel(voxel_data);
 
-    col = prev_col;
-    id = prev_id;
+    voxel.color = prev_voxel.color;
+    voxel.material_type = prev_voxel.material_type;
 
     if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
-        col = daxa_f32vec3(0, 0, 0);
-        id = 0;
+        voxel.color = daxa_f32vec3(0, 0, 0);
+        voxel.material_type = 0;
     }
 }
 
-void brushgen_b(in out daxa_f32vec3 col, in out daxa_u32 id) {
-    daxa_u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    daxa_f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
-    daxa_u32 prev_id = voxel_data >> 0x18;
+void brushgen_b(in out Voxel voxel) {
+    PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    Voxel prev_voxel = unpack_voxel(voxel_data);
 
-    col = prev_col;
-    id = prev_id;
+    voxel.color = prev_voxel.color;
+    voxel.material_type = prev_voxel.material_type;
 
     if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
         // daxa_f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
         // if (val > 0.3) {
-        //     col = daxa_f32vec3(0.99, 0.03, 0.01);
+        //     voxel.color = daxa_f32vec3(0.99, 0.03, 0.01);
         // } else if (val > -0.3) {
-        //     col = daxa_f32vec3(0.91, 0.05, 0.01);
+        //     voxel.color = daxa_f32vec3(0.91, 0.05, 0.01);
         // } else {
-        //     col = daxa_f32vec3(0.91, 0.15, 0.01);
+        //     voxel.color = daxa_f32vec3(0.91, 0.15, 0.01);
         // }
-        // col = daxa_f32vec3(rand(), rand(), rand());
-        // col = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
-        col = daxa_f32vec3(0.1, 0.3, 0.8);
-        id = 1;
+        // voxel.color = daxa_f32vec3(rand(), rand(), rand());
+        // voxel.color = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
+        voxel.color = daxa_f32vec3(0.1, 0.3, 0.8);
+        voxel.material_type = 1;
     }
 }
 
-void brushgen_particles(in out daxa_f32vec3 col, in out daxa_u32 id) {
+void brushgen_particles(in out Voxel voxel) {
     // for (daxa_u32 particle_i = 0; particle_i < deref(globals).voxel_particles_state.place_count; ++particle_i) {
     //     daxa_u32 sim_index = deref(placed_voxel_particles[particle_i]);
     //     SimulatedVoxelParticle self = deref(simulated_voxel_particles[sim_index]);
     //     if (daxa_u32vec3(floor(self.pos * VOXEL_SCL)) == voxel_i) {
-    //         col = daxa_f32vec3(0.8, 0.8, 0.8);
-    //         id = 1;
+    //         voxel.color = daxa_f32vec3(0.8, 0.8, 0.8);
+    //         voxel.material_type = 1;
     //         return;
     //     }
     // }
 
-    daxa_u32 voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    daxa_f32vec3 prev_col = uint_rgba8_to_f32vec4(voxel_data).rgb;
-    daxa_u32 prev_id = voxel_data >> 0x18;
+    PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    Voxel prev_voxel = unpack_voxel(voxel_data);
 
-    col = prev_col;
-    id = prev_id;
+    voxel.color = prev_voxel.color;
+    voxel.material_type = prev_voxel.material_type;
 }

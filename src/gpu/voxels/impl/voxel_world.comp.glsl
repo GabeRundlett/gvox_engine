@@ -146,25 +146,24 @@ void main() {
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
-    daxa_f32vec3 col = daxa_f32vec3(0.0);
-    daxa_u32 id = 0;
+    Voxel result = Voxel(0, 0, vec3(0), vec3(0));
 
     if ((brush_flags & BRUSH_FLAGS_WORLD_BRUSH) != 0) {
-        brushgen_world(col, id);
+        brushgen_world(result);
     }
     if ((brush_flags & BRUSH_FLAGS_USER_BRUSH_A) != 0) {
-        brushgen_a(col, id);
+        brushgen_a(result);
     }
     if ((brush_flags & BRUSH_FLAGS_USER_BRUSH_B) != 0) {
-        brushgen_b(col, id);
+        brushgen_b(result);
     }
     // if ((brush_flags & BRUSH_FLAGS_PARTICLE_BRUSH) != 0) {
     //     brushgen_particles(col, id);
     // }
 
-    TempVoxel result;
-    result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
-    deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = result;
+    PackedVoxel packed_result = pack_voxel(result);
+    // result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
+    deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = packed_result;
 }
 #undef VOXEL_WORLD
 
@@ -179,7 +178,8 @@ void main() {
 
 daxa_u32 sample_temp_voxel_id(daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr, in daxa_u32vec3 in_chunk_i) {
     daxa_u32 in_chunk_index = in_chunk_i.x + in_chunk_i.y * CHUNK_SIZE + in_chunk_i.z * CHUNK_SIZE * CHUNK_SIZE;
-    return deref(temp_voxel_chunk_ptr).voxels[in_chunk_index].col_and_id >> 24;
+    Voxel voxel = unpack_voxel(deref(temp_voxel_chunk_ptr).voxels[in_chunk_index]);
+    return voxel.material_type;
 }
 
 // For now, I'm testing with using non-zero as the accel structure, instead of uniformity.
@@ -568,7 +568,7 @@ void main() {
     daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
 
-    daxa_u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].col_and_id;
+    daxa_u32 my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].data;
     daxa_u32 my_palette_index = 0;
 
     process_palette_region(palette_region_voxel_index, my_voxel, my_palette_index);

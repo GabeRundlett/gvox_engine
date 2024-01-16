@@ -72,18 +72,18 @@ daxa_ImageViewId render_image = push.uses.render_image;
 #endif
 #endif
 
-#if TEST_COMPUTE || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TestCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
-DAXA_DECL_TASK_HEAD_END
-struct TestComputePush {
-    TestCompute uses;
-};
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
-daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
-#endif
-#endif
+// #if TEST_COMPUTE || defined(__cplusplus)
+// DAXA_DECL_TASK_HEAD_BEGIN(TestCompute)
+// DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
+// DAXA_DECL_TASK_HEAD_END
+// struct TestComputePush {
+//     TestCompute uses;
+// };
+// #if DAXA_SHADER
+// DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
+// daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
+// #endif
+// #endif
 
 #if defined(__cplusplus)
 #include <numeric>
@@ -188,30 +188,28 @@ struct DebugImageRasterTaskState {
     }
 };
 
-struct TestComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-
-    TestComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"test.comp.glsl"},
-                .compile_options = {.defines = {{"TEST_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(TestComputePush),
-            .name = "test",
-        });
-    }
-
-    void record_commands(TestComputePush const &push, daxa::CommandRecorder &recorder) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        auto volume_size = uint32_t(8 * 64);
-        recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
-    }
-};
+// struct TestComputeTaskState {
+//     AsyncManagedComputePipeline pipeline;
+//     TestComputeTaskState(AsyncPipelineManager &pipeline_manager) {
+//         pipeline = pipeline_manager.add_compute_pipeline({
+//             .shader_info = {
+//                 .source = daxa::ShaderFile{"test.comp.glsl"},
+//                 .compile_options = {.defines = {{"TEST_COMPUTE", "1"}}},
+//             },
+//             .push_constant_size = sizeof(TestComputePush),
+//             .name = "test",
+//         });
+//     }
+//     void record_commands(TestComputePush const &push, daxa::CommandRecorder &recorder) {
+//         if (!pipeline.is_valid()) {
+//             return;
+//         }
+//         recorder.set_pipeline(pipeline.get());
+//         recorder.push_constant(push);
+//         auto volume_size = uint32_t(8 * 64);
+//         recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
+//     }
+// };
 
 struct CompositingComputeTask {
     CompositingCompute::Uses uses;
@@ -254,17 +252,17 @@ struct DebugImageRasterTask {
     }
 };
 
-struct TestComputeTask {
-    TestCompute::Uses uses;
-    std::string name = "TestCompute";
-    TestComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto push = TestComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder);
-    }
-};
+// struct TestComputeTask {
+//     TestCompute::Uses uses;
+//     std::string name = "TestCompute";
+//     TestComputeTaskState *state;
+//     void callback(daxa::TaskInterface const &ti) {
+//         auto &recorder = ti.get_recorder();
+//         auto push = TestComputePush{};
+//         ti.copy_task_head_to(&push.uses);
+//         state->record_commands(push, recorder);
+//     }
+// };
 
 struct Compositor {
     CompositingComputeTaskState compositing_compute_task_state;

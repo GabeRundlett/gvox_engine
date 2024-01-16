@@ -16,7 +16,7 @@ struct VoxelTraceResult {
     daxa_f32vec3 nrm;
     daxa_f32vec3 vel;
     daxa_u32 step_n;
-    daxa_u32 voxel_data;
+    PackedVoxel voxel_data;
 };
 
 // These are the functions that this file must define!
