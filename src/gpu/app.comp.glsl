@@ -33,7 +33,7 @@ void main() {
         daxa_f32vec2 frame_dim = INPUT.frame_dim;
         daxa_f32vec2 inv_frame_dim = daxa_f32vec2(1.0) / frame_dim;
         daxa_f32vec2 uv = get_uv(deref(gpu_input).mouse.pos, daxa_f32vec4(frame_dim, inv_frame_dim));
-        ViewRayContext vrc = vrc_from_uv(globals, uv);
+        ViewRayContext vrc = unjittered_vrc_from_uv(globals, uv);
         daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
         daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
         daxa_f32vec3 ray_pos = cam_pos;
@@ -44,7 +44,9 @@ void main() {
         }
 
         deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos + daxa_f32vec3(deref(globals).player.player_unit_offset);
+        deref(globals).brush_input.prev_pos_offset = deref(globals).brush_input.pos_offset;
+        deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos;
+        deref(globals).brush_input.pos_offset = deref(globals).player.player_unit_offset;
 
         if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
             {

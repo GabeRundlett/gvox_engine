@@ -18,3 +18,4 @@
 #define USE_BLUE_NOISE 1
 
 #define VOXEL_SCL 8
+#define PER_VOXEL_NORMALS 1

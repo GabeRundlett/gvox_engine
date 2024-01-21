@@ -29,6 +29,7 @@ DAXA_DECL_BUFFER_PTR(VoxelParentChunk)
 
 struct VoxelLeafChunk {
     daxa_u32 flags;
+    daxa_u32 update_index;
     daxa_u32 uniformity_bits[3];
     // 8 bytes per 8x8x8
     VoxelMalloc_ChunkLocalPageSubAllocatorState sub_allocator_state;

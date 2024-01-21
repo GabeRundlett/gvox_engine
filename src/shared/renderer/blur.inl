@@ -4,7 +4,6 @@
 
 #if BLUR_COMPUTE || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(BlurCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
 DAXA_DECL_TASK_HEAD_END
@@ -198,6 +197,7 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, RevBlurComputeTaskState 
 
         record_ctx.task_graph.add_task(RevBlurComputeTask{
             .uses = {
+                .gpu_input = record_ctx.task_input_buffer,
                 .input_tail_tex = tail,
                 .input_tex = src,
                 .output_tex = dst,

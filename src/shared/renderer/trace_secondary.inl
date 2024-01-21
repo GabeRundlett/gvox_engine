@@ -78,7 +78,7 @@ struct ShadowRenderer {
         -> daxa::TaskImageView {
 
         auto shadow_bitmap = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R8_UINT,
+            .format = daxa::Format::R8_UNORM,
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
             .name = "shadow_bitmap",
         });

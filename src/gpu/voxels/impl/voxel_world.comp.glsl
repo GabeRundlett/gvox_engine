@@ -10,7 +10,7 @@
 #define CHUNKS(i) deref(voxel_chunks[i])
 #define INDIRECT deref(globals).indirect_dispatch
 
-void try_elect(in out VoxelChunkUpdateInfo work_item) {
+void try_elect(in out VoxelChunkUpdateInfo work_item, in out uint update_index) {
     daxa_u32 prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
 
     // Check if the work item can be added
@@ -21,6 +21,7 @@ void try_elect(in out VoxelChunkUpdateInfo work_item) {
         atomicAdd(INDIRECT.subchunk_x8up_dispatch.z, 1);
         // Set the chunk update info
         VOXEL_WORLD.chunk_update_infos[prev_update_n] = work_item;
+        update_index = prev_update_n + 1;
     }
 }
 
@@ -41,8 +42,10 @@ void main() {
     // (const) number of chunks in each axis
     daxa_u32 chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n) + terrain_work_item.lod_index * TOTAL_CHUNKS_PER_LOD;
 
+    uint update_index = 0;
+
     if ((CHUNKS(chunk_index).flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0) {
-        try_elect(terrain_work_item);
+        try_elect(terrain_work_item, update_index);
     } else if (offset != prev_offset) {
         // invalidate chunks outside the chunk_offset
         daxa_i32vec3 diff = clamp(daxa_i32vec3(offset - prev_offset), -chunk_n, chunk_n);
@@ -65,9 +68,29 @@ void main() {
             (temp_chunk_i.y >= start.y && temp_chunk_i.y < end.y) ||
             (temp_chunk_i.z >= start.z && temp_chunk_i.z < end.z)) {
             CHUNKS(chunk_index).flags &= ~CHUNK_FLAGS_ACCEL_GENERATED;
-            try_elect(terrain_work_item);
+            try_elect(terrain_work_item, update_index);
+        }
+    } else {
+        // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
+        daxa_i32vec3 wrapped_chunk_i = imod3(terrain_work_item.i - imod3(terrain_work_item.chunk_offset - daxa_i32vec3(chunk_n), daxa_i32vec3(chunk_n)), daxa_i32vec3(chunk_n));
+        // Leaf chunk position in world space
+        daxa_i32vec3 world_chunk = terrain_work_item.chunk_offset + wrapped_chunk_i - daxa_i32vec3(chunk_n / 2);
+
+        terrain_work_item.brush_input = deref(globals).brush_input;
+
+        daxa_i32vec3 brush_chunk = (daxa_i32vec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> 3;
+        bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
+
+        if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
+            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
+            try_elect(terrain_work_item, update_index);
+        } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
+            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
+            try_elect(terrain_work_item, update_index);
         }
     }
+
+    CHUNKS(chunk_index).update_index = update_index;
 }
 
 #undef INDIRECT
@@ -161,7 +184,182 @@ void main() {
     //     brushgen_particles(col, id);
     // }
 
+    if (result.material_type != 0 && dot(result.normal, result.normal) == 0) {
+        result.normal = vec3(0, 0, 1);
+    }
+
     PackedVoxel packed_result = pack_voxel(result);
+    // result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
+    deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = packed_result;
+}
+#undef VOXEL_WORLD
+
+#endif
+
+#if CHUNK_EDIT_POST_PROCESS_COMPUTE
+
+#include <utils/math.glsl>
+#include <utils/noise.glsl>
+#include <voxels/impl/voxels.glsl>
+
+daxa_u32vec3 chunk_n;
+daxa_u32 temp_chunk_index;
+daxa_i32vec3 chunk_i;
+daxa_u32 chunk_index;
+daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr;
+daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr;
+daxa_u32vec3 inchunk_voxel_i;
+daxa_i32vec3 voxel_i;
+daxa_i32vec3 world_voxel;
+daxa_f32vec3 voxel_pos;
+BrushInput brush_input;
+
+Voxel get_temp_voxel(ivec3 offset_i) {
+    // TODO: Simplify this, and improve precision
+    vec3 i = vec3(world_voxel + offset_i) / VOXEL_SCL - deref(globals).player.player_unit_offset;
+    daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL);
+    daxa_f32vec3 offset = daxa_f32vec3((deref(voxel_globals).offset) & ((1 << 3) - 1)) + daxa_f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+    daxa_u32vec3 voxel_i = daxa_u32vec3(floor((i + offset) * voxel_scl));
+    Voxel default_value = Voxel(0, 0, vec3(0), vec3(0));
+    if (any(greaterThanEqual(voxel_i, uvec3(CHUNK_SIZE * chunk_n)))) {
+        return default_value;
+    }
+    return unpack_voxel(sample_temp_voxel_chunk(
+        voxel_globals,
+        voxel_malloc_page_allocator,
+        voxel_chunks,
+        temp_voxel_chunks,
+        chunk_n, voxel_i));
+}
+
+bool has_air_neighbor() {
+    bool result = false;
+
+    {
+        Voxel v = get_temp_voxel(ivec3(-1, 0, 0));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+    {
+        Voxel v = get_temp_voxel(ivec3(+1, 0, 0));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+    {
+        Voxel v = get_temp_voxel(ivec3(0, -1, 0));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+    {
+        Voxel v = get_temp_voxel(ivec3(0, +1, 0));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+    {
+        Voxel v = get_temp_voxel(ivec3(0, 0, -1));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+    {
+        Voxel v = get_temp_voxel(ivec3(0, 0, +1));
+        if (v.material_type == 0) {
+            result = true;
+        }
+    }
+
+    return result;
+}
+
+vec3 generate_normal_from_geometry() {
+    vec3 result = vec3(0);
+    const int RADIUS = 2;
+    for (int zi = -RADIUS; zi <= RADIUS; ++zi) {
+        for (int yi = -RADIUS; yi <= RADIUS; ++yi) {
+            for (int xi = -RADIUS; xi <= RADIUS; ++xi) {
+                Voxel v = get_temp_voxel(ivec3(xi, yi, zi));
+                if (v.material_type == 0) {
+                    result += normalize(vec3(xi, yi, zi));
+                }
+            }
+        }
+    }
+    return result;
+}
+
+#define VOXEL_WORLD deref(voxel_globals)
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+void main() {
+    // (const) number of chunks in each axis
+    chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    // Index in chunk_update_infos buffer
+    temp_chunk_index = gl_GlobalInvocationID.z / CHUNK_SIZE;
+    // Chunk 3D index in leaf chunk space (0^3 - 31^3)
+    chunk_i = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].i;
+
+    // Here we check whether the chunk update that we're handling is an update
+    // for a chunk that has already been submitted. This is a bit inefficient,
+    // since we'd hopefully like to queue a separate work item into the queue
+    // instead, but this is tricky.
+    if (chunk_i == INVALID_CHUNK_I) {
+        return;
+    }
+
+    // Player chunk offset
+    daxa_i32vec3 chunk_offset = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].chunk_offset;
+    // Brush informations
+    brush_input = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_input;
+    // Brush flags
+    daxa_u32 brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
+    // Chunk daxa_u32 index in voxel_chunks buffer
+    daxa_u32 lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
+    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    // Pointer to the previous chunk
+    temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    // Pointer to the new chunk
+    voxel_chunk_ptr = voxel_chunks + chunk_index;
+    // Voxel offset in chunk
+    inchunk_voxel_i = gl_GlobalInvocationID.xyz - daxa_u32vec3(0, 0, temp_chunk_index * CHUNK_SIZE);
+    // Voxel 3D position (in voxel buffer)
+    voxel_i = chunk_i * CHUNK_SIZE + daxa_i32vec3(inchunk_voxel_i);
+
+    // Wrapped chunk index in leaf chunk space (0^3 - 31^3)
+    daxa_i32vec3 wrapped_chunk_i = imod3(chunk_i - imod3(chunk_offset - daxa_i32vec3(chunk_n), daxa_i32vec3(chunk_n)), daxa_i32vec3(chunk_n));
+    // Leaf chunk position in world space
+    daxa_i32vec3 world_chunk = chunk_offset + wrapped_chunk_i - daxa_i32vec3(chunk_n / 2);
+
+    // Voxel position in world space (voxels)
+    world_voxel = world_chunk * CHUNK_SIZE + daxa_i32vec3(inchunk_voxel_i);
+    // Voxel position in world space (meters)
+    daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL) / daxa_f32(1 << lod_index);
+    voxel_pos = daxa_f32vec3(world_voxel) / voxel_scl;
+
+    rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
+
+    PackedVoxel packed_result = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE];
+    Voxel result = unpack_voxel(packed_result);
+
+    bool is_occluded = !has_air_neighbor();
+
+    if (is_occluded) {
+        // nullify normal
+        result.normal = vec3(0, 0, 1);
+    } else {
+        // potentially generate a normal
+        // if the voxel normal is the "null" normal AKA up
+        // bool generate_normal = true;
+        bool generate_normal = dot(result.normal, vec3(0, 0, 1)) > 0.99;
+        if (generate_normal) {
+            result.normal = generate_normal_from_geometry();
+        }
+        result.normal = normalize(result.normal);
+    }
+
+    packed_result = pack_voxel(result);
     // result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
     deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE] = packed_result;
 }

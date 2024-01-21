@@ -995,6 +995,16 @@ ViewRayContext vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv
     res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
     return res;
 }
+ViewRayContext unjittered_vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv) {
+    ViewRayContext res;
+    res.ray_dir_cs = daxa_f32vec4(uv_to_cs(uv), 0.0, 1.0);
+    res.ray_dir_vs_h = deref(globals).player.cam.clip_to_view * res.ray_dir_cs;
+    res.ray_dir_ws_h = deref(globals).player.cam.view_to_world * res.ray_dir_vs_h;
+    res.ray_origin_cs = daxa_f32vec4(uv_to_cs(uv), 1.0, 1.0);
+    res.ray_origin_vs_h = deref(globals).player.cam.clip_to_view * res.ray_origin_cs;
+    res.ray_origin_ws_h = deref(globals).player.cam.view_to_world * res.ray_origin_vs_h;
+    return res;
+}
 ViewRayContext vrc_from_uv_and_depth(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv, float depth) {
     ViewRayContext res;
     res.ray_dir_cs = daxa_f32vec4(uv_to_cs(uv), 0.0, 1.0);

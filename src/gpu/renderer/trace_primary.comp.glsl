@@ -96,8 +96,6 @@ void main() {
         Voxel voxel = unpack_voxel(voxel_data);
         is_valid = voxel.material_type == 0;
 
-#define PER_VOXEL_NORMALS 0
-
 #if PER_VOXEL_NORMALS
         Voxel voxel2 = unpack_voxel(trace_result.voxel_data);
         trace_result.nrm = voxel2.normal;

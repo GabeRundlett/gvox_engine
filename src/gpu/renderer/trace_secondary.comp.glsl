@@ -30,7 +30,11 @@ void main() {
     ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
     daxa_f32vec3 cam_dir = ray_dir_ws(vrc);
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
+#if PER_VOXEL_NORMALS
+    daxa_f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 1.5 / VOXEL_SCL;
+#else
     daxa_f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 0.001;
+#endif
 
     daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, deref(gpu_input).frame_index) & ivec3(127, 127, 63), 0).yz * 255.0 / 256.0 + 0.5 / 256.0;
 
@@ -42,7 +46,7 @@ void main() {
         hit = uint(trace_result.dist == MAX_DIST);
     }
 
-    imageStore(daxa_uimage2D(shadow_bitmap), ivec2(gl_GlobalInvocationID.xy), daxa_u32vec4(hit, 0, 0, 0));
+    imageStore(daxa_image2D(shadow_bitmap), ivec2(gl_GlobalInvocationID.xy), daxa_f32vec4(hit, 0, 0, 0));
 }
 
 #endif

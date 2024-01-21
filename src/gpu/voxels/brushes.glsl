@@ -187,11 +187,9 @@ void brushgen_world_terrain(in out Voxel voxel) {
     if (val < 0) {
         voxel.material_type = 1;
         const bool SHOULD_COLOR_WORLD = true;
+        voxel.normal = nrm;
         if (SHOULD_COLOR_WORLD) {
             daxa_f32 r = good_rand(-val);
-            if (val > -0.002) {
-                // voxel.normal = nrm;
-            }
             if (val > -0.002 && upwards > 0.65) {
                 voxel.color = pow(daxa_f32vec3(105, 126, 78) / 255.0, vec3(2.2));
                 if (r < 0.5) {
@@ -300,7 +298,7 @@ void brushgen_world(in out Voxel voxel) {
     } else if (GEN_MODEL != 0) { // Model world
         daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
-        voxel.material_type = packed_col_data >> 0x18;
+        voxel.material_type = (packed_col_data >> 0x18) != 0 ? 1 : 0;
         // daxa_u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
         voxel.color = uint_rgba8_to_f32vec4(packed_col_data).rgb;
         // if (voxel.material_type != 0) {
@@ -309,6 +307,10 @@ void brushgen_world(in out Voxel voxel) {
         if (voxel_pos.z == -1.0 / VOXEL_SCL) {
             voxel.color = vec3(0.1);
             voxel.material_type = 1;
+        }
+
+        if (voxel.material_type != 0) {
+            voxel.normal = vec3(0, 0, 1);
         }
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
@@ -332,10 +334,16 @@ void brushgen_a(in out Voxel voxel) {
 
     voxel.color = prev_voxel.color;
     voxel.material_type = prev_voxel.material_type;
+    voxel.normal = prev_voxel.normal;
+    voxel.roughness = prev_voxel.roughness;
 
-    if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
+    if (sd < 0) {
         voxel.color = daxa_f32vec3(0, 0, 0);
         voxel.material_type = 0;
+    }
+    if (sd < 2.5 / VOXEL_SCL) {
+        voxel.normal = vec3(0, 0, 1);
     }
 }
 
@@ -345,8 +353,12 @@ void brushgen_b(in out Voxel voxel) {
 
     voxel.color = prev_voxel.color;
     voxel.material_type = prev_voxel.material_type;
+    voxel.normal = prev_voxel.normal;
+    voxel.roughness = prev_voxel.roughness;
 
-    if (sd_capsule(voxel_pos, brush_input.pos, brush_input.prev_pos, 32.0 / VOXEL_SCL) < 0) {
+
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
+    if (sd < 0) {
         // daxa_f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
         // if (val > 0.3) {
         //     voxel.color = daxa_f32vec3(0.99, 0.03, 0.01);
@@ -359,6 +371,10 @@ void brushgen_b(in out Voxel voxel) {
         // voxel.color = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
         voxel.color = daxa_f32vec3(0.1, 0.3, 0.8);
         voxel.material_type = 1;
+        // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
+    }
+    if (sd < 2.5 / VOXEL_SCL) {
+        voxel.normal = vec3(0, 0, 1);
     }
 }
 

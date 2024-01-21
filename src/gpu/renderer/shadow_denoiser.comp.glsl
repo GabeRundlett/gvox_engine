@@ -7,8 +7,8 @@ uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
 }
 
 bool FFX_DNSR_Shadows_HitsLight(uvec2 px, uvec2 gtid, uvec2 gid) {
-    daxa_u32 shadow_value = texelFetch(daxa_utexture2D(input_tex), daxa_i32vec2(px), 0).r;
-    return shadow_value != 0;
+    float shadow_value = texelFetch(daxa_texture2D(input_tex), daxa_i32vec2(px), 0).r;
+    return shadow_value != 0.0;
 }
 
 void FFX_DNSR_Shadows_WriteMask(uint linear_tile_index, uint value) {
@@ -114,8 +114,7 @@ void FFX_DNSR_Shadows_WriteMoments(uvec2 px, vec4 moments) {
 }
 
 float FFX_DNSR_Shadows_HitsLight(uvec2 px) {
-    daxa_u32 shadow_value = texelFetch(daxa_utexture2D(shadow_mask_tex), daxa_i32vec2(px), 0).r;
-    return float(shadow_value);
+    return texelFetch(daxa_texture2D(shadow_mask_tex), daxa_i32vec2(px), 0).r;
 }
 
 float soft_color_clamp(float center, float history, float ex, float dev) {

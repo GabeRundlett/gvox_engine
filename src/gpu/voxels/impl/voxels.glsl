@@ -29,13 +29,13 @@ vec3 unpack_rgb(daxa_u32 u) {
     result.r = float((u >> 0) & 0x3f) / 64.0;
     result.g = float((u >> 6) & 0x3f) / 63.0;
     result.b = float((u >> 12) & 0x3f) / 63.0;
-    result.b = pow(result.b, 2.2);
-    result = hsv2rgb(result);
+    result = pow(result, vec3(2.2));
+    // result = hsv2rgb(result);
     return result;
 }
 uint pack_rgb(vec3 f) {
-    f = rgb2hsv(f);
-    f.b = pow(f.b, 1.0 / 2.2);
+    // f = rgb2hsv(f);
+    f = pow(f, vec3(1.0 / 2.2));
     uint result = 0;
     result |= (uint(f.r * 64.0) & 63) << 0;
     result |= uint(clamp(f.g * 63.0, 0, 63)) << 6;
@@ -232,6 +232,27 @@ PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, daxa_u32vec3 chunk_n, daxa_
     daxa_u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
     daxa_u32 chunk_index = calc_chunk_index(ptrs.globals, chunk_i, chunk_n, lod_index);
     return sample_voxel_chunk(ptrs.allocator, ptrs.voxel_chunks_ptr[chunk_index], voxel_i - chunk_i * CHUNK_SIZE);
+}
+
+PackedVoxel sample_temp_voxel_chunk(
+    daxa_BufferPtr(VoxelWorldGlobals) voxel_globals,
+    daxa_BufferPtr(VoxelMallocPageAllocator) allocator,
+    daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr,
+    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks,
+    daxa_u32vec3 chunk_n, daxa_u32vec3 voxel_i) {
+    uint lod_index = 0;
+
+    daxa_u32vec3 chunk_i = voxel_i / CHUNK_SIZE;
+    daxa_u32vec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
+    daxa_u32 chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n, lod_index);
+    daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
+    uint update_index = deref(voxel_chunk_ptr).update_index;
+    if (update_index == 0) {
+        return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
+    } else {
+        daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + (update_index - 1);
+        return deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE];
+    }
 }
 
 daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr, daxa_u32vec3 chunk_i, daxa_u32vec3 inchunk_voxel_i, out PackedVoxel voxel_data) {
