@@ -86,7 +86,6 @@ daxa_ImageViewId meta_output_tex = push.uses.meta_output_tex;
 
 struct ShadowBitPackComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ShadowBitPackComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -97,21 +96,10 @@ struct ShadowBitPackComputeTaskState {
             .name = "shadow_bit_pack",
         });
     }
-
-    void record_commands(ShadowBitPackComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 3) / 4});
-    }
 };
 
 struct ShadowSpatialFilterComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ShadowSpatialFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -122,21 +110,10 @@ struct ShadowSpatialFilterComputeTaskState {
             .name = "shadow_spatial_filter",
         });
     }
-
-    void record_commands(ShadowSpatialFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 
 struct ShadowTemporalFilterComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ShadowTemporalFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -146,16 +123,6 @@ struct ShadowTemporalFilterComputeTaskState {
             .push_constant_size = sizeof(ShadowTemporalFilterComputePush),
             .name = "shadow_temporal_filter",
         });
-    }
-
-    void record_commands(ShadowTemporalFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 3) / 4});
     }
 };
 
@@ -174,7 +141,14 @@ struct ShadowBitPackComputeTask {
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        state->record_commands(push, recorder, {bitpacked_shadow_mask_extent.x * 2, bitpacked_shadow_mask_extent.y});
+        auto render_size = daxa_u32vec2{bitpacked_shadow_mask_extent.x * 2, bitpacked_shadow_mask_extent.y};
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 4) == 0);
+        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 3) / 4});
     }
 };
 
@@ -195,7 +169,13 @@ struct ShadowSpatialFilterComputeTask {
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 
@@ -214,7 +194,13 @@ struct ShadowTemporalFilterComputeTask {
         push.input_tex_size.z = 1.0f / push.input_tex_size.x;
         push.input_tex_size.w = 1.0f / push.input_tex_size.y;
         push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 3) / 4});
     }
 };
 

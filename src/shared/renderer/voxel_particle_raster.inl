@@ -29,7 +29,6 @@ daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
 
 struct VoxelParticleRasterTaskState {
     AsyncManagedRasterPipeline pipeline;
-
     VoxelParticleRasterTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"voxel_particle.raster.glsl"}, .compile_options = {.defines = {{"VOXEL_PARTICLE_RASTER", "1"}}}},
@@ -50,25 +49,6 @@ struct VoxelParticleRasterTaskState {
             .name = "voxel_particle_sim",
         });
     }
-
-    void record_commands(VoxelParticleRasterPush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id, daxa::ImageId render_image, daxa::ImageId depth_image_id, daxa_u32vec2 size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        auto renderpass_recorder = std::move(recorder).begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .depth_attachment = {{.image_view = depth_image_id.default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
-            .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
-        });
-        renderpass_recorder.set_pipeline(pipeline.get());
-        renderpass_recorder.push_constant(push);
-        renderpass_recorder.draw_indirect({
-            .draw_command_buffer = globals_buffer_id,
-            .indirect_buffer_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),
-            .is_indexed = false,
-        });
-        recorder = std::move(renderpass_recorder).end_renderpass();
-    }
 };
 
 struct VoxelParticleRasterTask {
@@ -80,7 +60,22 @@ struct VoxelParticleRasterTask {
         auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
         auto push = VoxelParticleRasterPush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer(), uses.render_image.image(), uses.depth_image_id.image(), {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        auto renderpass_recorder = std::move(recorder).begin_renderpass({
+            .color_attachments = {{.image_view = uses.render_image.image().default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+            .depth_attachment = {{.image_view = uses.depth_image_id.image().default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
+            .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+        });
+        renderpass_recorder.set_pipeline(state->pipeline.get());
+        renderpass_recorder.push_constant(push);
+        renderpass_recorder.draw_indirect({
+            .draw_command_buffer = uses.globals.buffer(),
+            .indirect_buffer_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),
+            .is_indexed = false,
+        });
+        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 

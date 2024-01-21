@@ -90,7 +90,6 @@ daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 
 struct SsaoComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     SsaoComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -101,21 +100,10 @@ struct SsaoComputeTaskState {
             .name = "ssao",
         });
     }
-
-    void record_commands(SsaoComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 
 struct SsaoSpatialFilterComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     SsaoSpatialFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -126,21 +114,10 @@ struct SsaoSpatialFilterComputeTaskState {
             .name = "spatial_filter",
         });
     }
-
-    void record_commands(SsaoSpatialFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 
 struct SsaoUpscaleComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     SsaoUpscaleComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -151,21 +128,10 @@ struct SsaoUpscaleComputeTaskState {
             .name = "ssao_upscale",
         });
     }
-
-    void record_commands(SsaoUpscaleComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 
 struct SsaoTemporalFilterComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     SsaoTemporalFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -175,16 +141,6 @@ struct SsaoTemporalFilterComputeTaskState {
             .push_constant_size = sizeof(SsaoTemporalFilterComputePush),
             .name = "ssao_temporal_filter",
         });
-    }
-
-    void record_commands(SsaoTemporalFilterComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -197,7 +153,13 @@ struct SsaoComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.ssao_image_id.image()).value();
         auto push = SsaoComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 
@@ -210,7 +172,13 @@ struct SsaoSpatialFilterComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
         auto push = SsaoSpatialFilterComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 
@@ -223,7 +191,13 @@ struct SsaoUpscaleComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
         auto push = SsaoUpscaleComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 
@@ -236,7 +210,13 @@ struct SsaoTemporalFilterComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
         auto push = SsaoTemporalFilterComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 

@@ -29,7 +29,6 @@ daxa_RWBufferPtr(daxa_u32) placed_voxel_particles = push.uses.placed_voxel_parti
 
 struct VoxelParticleSimComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     VoxelParticleSimComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         auto compile_result = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -38,18 +37,6 @@ struct VoxelParticleSimComputeTaskState {
             },
             .push_constant_size = sizeof(VoxelParticleSimComputePush),
             .name = "voxel_particle_sim",
-        });
-    }
-
-    void record_commands(VoxelParticleSimComputePush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch_indirect({
-            .indirect_buffer = globals_buffer_id,
-            .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),
         });
     }
 };
@@ -62,7 +49,15 @@ struct VoxelParticleSimComputeTask {
         auto &recorder = ti.get_recorder();
         auto push = VoxelParticleSimComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer());
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch_indirect({
+            .indirect_buffer = uses.globals.buffer(),
+            .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),
+        });
     }
 };
 

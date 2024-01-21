@@ -132,7 +132,6 @@ daxa_RWBufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.us
 
 struct PerChunkComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     PerChunkComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -143,21 +142,10 @@ struct PerChunkComputeTaskState {
             .name = "per_chunk",
         });
     }
-
-    void record_commands(PerChunkComputePush const &push, daxa::CommandRecorder &recorder) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
-        recorder.dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
-    }
 };
 
 struct ChunkEditComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ChunkEditComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -168,23 +156,10 @@ struct ChunkEditComputeTaskState {
             .name = "voxel_world",
         });
     }
-
-    void record_commands(ChunkEditComputePush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch_indirect({
-            .indirect_buffer = globals_buffer_id,
-            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
-        });
-    }
 };
 
 struct ChunkEditPostProcessComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ChunkEditPostProcessComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -195,24 +170,11 @@ struct ChunkEditPostProcessComputeTaskState {
             .name = "voxel_world",
         });
     }
-
-    void record_commands(ChunkEditPostProcessComputePush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch_indirect({
-            .indirect_buffer = globals_buffer_id,
-            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
-        });
-    }
 };
 
 template <int PASS_INDEX>
 struct ChunkOptComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ChunkOptComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         char const define_str[2] = {'0' + PASS_INDEX, '\0'};
         pipeline = pipeline_manager.add_compute_pipeline({
@@ -229,31 +191,10 @@ struct ChunkOptComputeTaskState {
             .name = "chunk_op",
         });
     }
-
-    auto get_pass_indirect_offset() {
-        if constexpr (PASS_INDEX == 0) {
-            return offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch);
-        } else {
-            return offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch);
-        }
-    }
-
-    void record_commands(ChunkOptComputePush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch_indirect({
-            .indirect_buffer = globals_buffer_id,
-            .offset = get_pass_indirect_offset(),
-        });
-    }
 };
 
 struct ChunkAllocComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     ChunkAllocComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -262,19 +203,6 @@ struct ChunkAllocComputeTaskState {
             },
             .push_constant_size = sizeof(ChunkAllocComputePush),
             .name = "chunk_alloc",
-        });
-    }
-
-    void record_commands(ChunkAllocComputePush const &push, daxa::CommandRecorder &recorder, daxa::BufferId globals_buffer_id) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch_indirect({
-            .indirect_buffer = globals_buffer_id,
-            // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
-            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
         });
     }
 };
@@ -287,7 +215,13 @@ struct PerChunkComputeTask {
         auto &recorder = ti.get_recorder();
         auto push = PerChunkComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder);
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
+        recorder.dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
     }
 };
 
@@ -299,7 +233,15 @@ struct ChunkEditComputeTask {
         auto &recorder = ti.get_recorder();
         auto push = ChunkEditComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer());
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch_indirect({
+            .indirect_buffer = uses.globals.buffer(),
+            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+        });
     }
 };
 
@@ -311,7 +253,15 @@ struct ChunkEditPostProcessComputeTask {
         auto &recorder = ti.get_recorder();
         auto push = ChunkEditPostProcessComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer());
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch_indirect({
+            .indirect_buffer = uses.globals.buffer(),
+            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+        });
     }
 };
 
@@ -320,11 +270,28 @@ struct ChunkOptComputeTask {
     ChunkOptCompute::Uses uses;
     std::string name = "ChunkOptCompute";
     ChunkOptComputeTaskState<PASS_INDEX> *state;
+
+    auto get_pass_indirect_offset() {
+        if constexpr (PASS_INDEX == 0) {
+            return offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch);
+        } else {
+            return offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch);
+        }
+    }
+
     void callback(daxa::TaskInterface const &ti) {
         auto &recorder = ti.get_recorder();
         auto push = ChunkOptComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer());
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch_indirect({
+            .indirect_buffer = uses.globals.buffer(),
+            .offset = get_pass_indirect_offset(),
+        });
     }
 };
 
@@ -341,7 +308,16 @@ struct ChunkAllocComputeTask {
         auto &recorder = ti.get_recorder();
         auto push = ChunkAllocComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.globals.buffer());
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch_indirect({
+            .indirect_buffer = uses.globals.buffer(),
+            // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
+            .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+        });
     }
 };
 

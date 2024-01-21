@@ -31,7 +31,6 @@ daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
 
 struct TraceSecondaryComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     TraceSecondaryComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -41,16 +40,6 @@ struct TraceSecondaryComputeTaskState {
             .push_constant_size = sizeof(TraceSecondaryComputePush),
             .name = "trace_secondary",
         });
-    }
-
-    void record_commands(TraceSecondaryComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -63,7 +52,13 @@ struct TraceSecondaryComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
         auto push = TraceSecondaryComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 

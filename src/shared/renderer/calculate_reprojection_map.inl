@@ -31,7 +31,6 @@ daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 
 struct CalculateReprojectionMapComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     CalculateReprojectionMapComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -41,15 +40,6 @@ struct CalculateReprojectionMapComputeTaskState {
             .push_constant_size = sizeof(CalculateReprojectionMapComputePush),
             .name = "calculate_reprojection_map",
         });
-    }
-
-    void record_commands(CalculateReprojectionMapComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -62,7 +52,12 @@ struct CalculateReprojectionMapComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
         auto push = CalculateReprojectionMapComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 

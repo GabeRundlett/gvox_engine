@@ -42,7 +42,6 @@ daxa_ImageViewId output_tex = push.uses.output_tex;
 
 struct BlurComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     BlurComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -53,20 +52,9 @@ struct BlurComputeTaskState {
             .name = "blur",
         });
     }
-
-    void record_commands(BlurComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 64) == 0);
-        recorder.dispatch({(render_size.x + 63) / 64, render_size.y});
-    }
 };
 struct RevBlurComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     RevBlurComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -76,16 +64,6 @@ struct RevBlurComputeTaskState {
             .push_constant_size = sizeof(RevBlurComputePush),
             .name = "rev_blur",
         });
-    }
-
-    void record_commands(RevBlurComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 64) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
     }
 };
 
@@ -98,7 +76,13 @@ struct BlurComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
         auto push = BlurComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 64) == 0);
+        recorder.dispatch({(image_info.size.x + 63) / 64, image_info.size.y});
     }
 };
 struct RevBlurComputeTask {
@@ -114,7 +98,13 @@ struct RevBlurComputeTask {
         ti.copy_task_head_to(&push.uses);
         push.output_extent = {image_info.size.x / downsample_amount, image_info.size.y / downsample_amount};
         push.self_weight = self_weight;
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 

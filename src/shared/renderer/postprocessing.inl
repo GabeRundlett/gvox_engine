@@ -92,7 +92,6 @@ daxa_ImageViewId render_image = push.uses.render_image;
 
 struct CompositingComputeTaskState {
     AsyncManagedComputePipeline pipeline;
-
     CompositingComputeTaskState(AsyncPipelineManager &pipeline_manager) {
         pipeline = pipeline_manager.add_compute_pipeline({
             .shader_info = {
@@ -103,51 +102,22 @@ struct CompositingComputeTaskState {
             .name = "compositing",
         });
     }
-
-    void record_commands(CompositingComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 
 struct PostprocessingRasterTaskState {
     AsyncManagedRasterPipeline pipeline;
     daxa::Format render_color_format;
-
-    auto get_color_format() -> daxa::Format {
-        return render_color_format;
-    }
-
     PostprocessingRasterTaskState(AsyncPipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
         : render_color_format{a_render_color_format} {
         pipeline = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
             .color_attachments = {{
-                .format = get_color_format(),
+                .format = render_color_format,
             }},
             .push_constant_size = sizeof(PostprocessingRasterPush),
             .name = "postprocessing",
         });
-    }
-
-    void record_commands(PostprocessingRasterPush const &push, daxa::CommandRecorder &recorder, daxa::ImageId render_image, daxa_u32vec2 size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        auto renderpass_recorder = std::move(recorder).begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
-        });
-        renderpass_recorder.set_pipeline(pipeline.get());
-        renderpass_recorder.push_constant(push);
-        renderpass_recorder.draw({.vertex_count = 3});
-        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
@@ -155,36 +125,17 @@ struct DebugImageRasterTaskState {
     AsyncManagedRasterPipeline pipeline;
     daxa::Format render_color_format;
     daxa_u32 type;
-
-    auto get_color_format() -> daxa::Format {
-        return render_color_format;
-    }
-
     DebugImageRasterTaskState(AsyncPipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
         : render_color_format{a_render_color_format} {
         pipeline = pipeline_manager.add_raster_pipeline({
             .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"DEBUG_IMAGE_RASTER", "1"}}}},
             .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"DEBUG_IMAGE_RASTER", "1"}}}},
             .color_attachments = {{
-                .format = get_color_format(),
+                .format = render_color_format,
             }},
             .push_constant_size = sizeof(DebugImageRasterPush),
             .name = "debug_image",
         });
-    }
-
-    void record_commands(DebugImageRasterPush const &push, daxa::CommandRecorder &recorder, daxa::ImageId render_image, daxa_u32vec2 size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        auto renderpass_recorder = std::move(recorder).begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .render_area = {.x = 0, .y = 0, .width = size.x, .height = size.y},
-        });
-        renderpass_recorder.set_pipeline(pipeline.get());
-        renderpass_recorder.push_constant(push);
-        renderpass_recorder.draw({.vertex_count = 3});
-        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
@@ -200,15 +151,6 @@ struct DebugImageRasterTaskState {
 //             .name = "test",
 //         });
 //     }
-//     void record_commands(TestComputePush const &push, daxa::CommandRecorder &recorder) {
-//         if (!pipeline.is_valid()) {
-//             return;
-//         }
-//         recorder.set_pipeline(pipeline.get());
-//         recorder.push_constant(push);
-//         auto volume_size = uint32_t(8 * 64);
-//         recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
-//     }
 // };
 
 struct CompositingComputeTask {
@@ -220,7 +162,13 @@ struct CompositingComputeTask {
         auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
         auto push = CompositingComputePush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
     }
 };
 
@@ -233,7 +181,18 @@ struct PostprocessingRasterTask {
         auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
         auto push = PostprocessingRasterPush{};
         ti.copy_task_head_to(&push.uses);
-        state->record_commands(push, recorder, uses.render_image.image(), {image_info.size.x, image_info.size.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        auto render_image = uses.render_image.image();
+        auto renderpass_recorder = std::move(recorder).begin_renderpass({
+            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+            .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+        });
+        renderpass_recorder.set_pipeline(state->pipeline.get());
+        renderpass_recorder.push_constant(push);
+        renderpass_recorder.draw({.vertex_count = 3});
+        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
@@ -248,7 +207,18 @@ struct DebugImageRasterTask {
         ti.copy_task_head_to(&push.uses);
         push.type = state->type;
         push.output_tex_size = {image_info.size.x, image_info.size.y};
-        state->record_commands(push, recorder, uses.render_image.image(), {image_info.size.x, image_info.size.y});
+        auto render_image = uses.render_image.image();
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        auto renderpass_recorder = std::move(recorder).begin_renderpass({
+            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+            .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+        });
+        renderpass_recorder.set_pipeline(state->pipeline.get());
+        renderpass_recorder.push_constant(push);
+        renderpass_recorder.draw({.vertex_count = 3});
+        recorder = std::move(renderpass_recorder).end_renderpass();
     }
 };
 
@@ -260,7 +230,13 @@ struct DebugImageRasterTask {
 //         auto &recorder = ti.get_recorder();
 //         auto push = TestComputePush{};
 //         ti.copy_task_head_to(&push.uses);
-//         state->record_commands(push, recorder);
+//         if (!state->pipeline.is_valid()) {
+//             return;
+//         }
+//         recorder.set_pipeline(state->pipeline.get());
+//         recorder.push_constant(push);
+//         auto volume_size = uint32_t(8 * 64);
+//         recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
 //     }
 // };
 

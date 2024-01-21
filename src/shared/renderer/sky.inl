@@ -66,13 +66,6 @@ daxa_ImageViewId sky_lut = push.uses.sky_lut;
                 .name = "sky_" #NAME,                                                                                        \
             });                                                                                                              \
         }                                                                                                                    \
-        void record_commands(Name##ComputePush const &push, daxa::CommandRecorder &recorder) {                               \
-            if (!pipeline.is_valid())                                                                                        \
-                return;                                                                                                      \
-            recorder.set_pipeline(pipeline.get());                                                                           \
-            recorder.push_constant(push);                                                                                    \
-            recorder.dispatch({(NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y}); \
-        }                                                                                                                    \
     };                                                                                                                       \
     struct Name##ComputeTask {                                                                                               \
         Name##Compute::Uses uses;                                                                                            \
@@ -82,7 +75,11 @@ daxa_ImageViewId sky_lut = push.uses.sky_lut;
             auto &recorder = ti.get_recorder();                                                                              \
             auto push = Name##ComputePush{};                                                                                 \
             ti.copy_task_head_to(&push.uses);                                                                                \
-            state->record_commands(push, recorder);                                                                          \
+            if (!state->pipeline.is_valid())                                                                                 \
+                return;                                                                                                      \
+            recorder.set_pipeline(state->pipeline.get());                                                                    \
+            recorder.push_constant(push);                                                                                    \
+            recorder.dispatch({(NAME##_RES.x + (WG_SIZE_X - 1)) / WG_SIZE_X, (NAME##_RES.y + (WG_SIZE_Y - 1)) / WG_SIZE_Y}); \
         }                                                                                                                    \
     }
 

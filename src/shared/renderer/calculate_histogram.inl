@@ -38,15 +38,6 @@ struct CalculateHistogramComputeTaskState {
             .name = "calculate_histogram",
         });
     }
-    void record_commands(CalculateHistogramComputePush const &push, daxa::CommandRecorder &recorder, daxa_u32vec2 render_size) {
-        if (!pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 7) / 8});
-    }
 };
 struct CalculateHistogramComputeTask {
     CalculateHistogramCompute::Uses uses;
@@ -59,7 +50,13 @@ struct CalculateHistogramComputeTask {
         auto push = CalculateHistogramComputePush{};
         ti.copy_task_head_to(&push.uses);
         push.input_extent = {(image_info.size.x + ((1 << input_mip_level) - 1)) >> input_mip_level, (image_info.size.y + ((1 << input_mip_level) - 1)) >> input_mip_level};
-        state->record_commands(push, recorder, {push.input_extent.x, push.input_extent.y});
+        if (!state->pipeline.is_valid()) {
+            return;
+        }
+        recorder.set_pipeline(state->pipeline.get());
+        recorder.push_constant(push);
+        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+        recorder.dispatch({(push.input_extent.x + 7) / 8, (push.input_extent.y + 7) / 8});
     }
 };
 

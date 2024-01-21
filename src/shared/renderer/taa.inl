@@ -212,13 +212,6 @@ struct TaaPushCommon {
                 .name = "taa_" #NAME,                                                                                                            \
             });                                                                                                                                  \
         }                                                                                                                                        \
-        void record_commands(daxa::CommandRecorder &recorder, daxa_u32vec2 thread_count, Name##ComputePush const &push) {                        \
-            if (!pipeline.is_valid())                                                                                                            \
-                return;                                                                                                                          \
-            recorder.set_pipeline(pipeline.get());                                                                                               \
-            recorder.push_constant(push);                                                                                                        \
-            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y}); \
-        }                                                                                                                                        \
     };                                                                                                                                           \
     struct Name##ComputeTask {                                                                                                                   \
         Name##Compute::Uses uses;                                                                                                                \
@@ -230,7 +223,11 @@ struct TaaPushCommon {
             auto &recorder = ti.get_recorder();                                                                                                  \
             auto push = Name##ComputePush{.input_tex_size = push_common.input_tex_size, .output_tex_size = push_common.output_tex_size};         \
             ti.copy_task_head_to(&push.uses);                                                                                                    \
-            state->record_commands(recorder, thread_count, push);                                                                                \
+            if (!state->pipeline.is_valid())                                                                                                     \
+                return;                                                                                                                          \
+            recorder.set_pipeline(state->pipeline.get());                                                                                        \
+            recorder.push_constant(push);                                                                                                        \
+            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y}); \
         }                                                                                                                                        \
     }
 
