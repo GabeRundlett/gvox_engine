@@ -98,6 +98,13 @@ void main() {
 
 #if PER_VOXEL_NORMALS
         Voxel voxel2 = unpack_voxel(trace_result.voxel_data);
+        vec3 voxel_pos = floor(ray_pos * VOXEL_SCL) / VOXEL_SCL;
+        vec3 del = normalize(voxel_pos - cam_pos);
+
+        if (dot(voxel2.normal, del) > -1.0 && dot(trace_result.nrm, voxel2.normal) < 0.0) {
+            voxel2.normal *= -1;
+        }
+
         trace_result.nrm = voxel2.normal;
 #endif
     }

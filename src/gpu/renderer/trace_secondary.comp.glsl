@@ -8,11 +8,13 @@
 #if TRACE_SECONDARY_COMPUTE
 
 vec3 sample_sun_direction(vec2 urand) {
+#if !PER_VOXEL_NORMALS
     float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
     if (sun_angular_radius_cos < 1.0) {
         const mat3 basis = build_orthonormal_basis(normalize(SUN_DIR));
         return basis * uniform_sample_cone(urand, sun_angular_radius_cos);
     }
+#endif
     return SUN_DIR;
 }
 
@@ -31,7 +33,7 @@ void main() {
     daxa_f32vec3 cam_dir = ray_dir_ws(vrc);
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
 #if PER_VOXEL_NORMALS
-    daxa_f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 1.5 / VOXEL_SCL;
+    daxa_f32vec3 ray_pos = floor(ray_hit_ws(vrc) * VOXEL_SCL) / VOXEL_SCL + 0.5 / VOXEL_SCL + nrm * 1.5 / VOXEL_SCL;
 #else
     daxa_f32vec3 ray_pos = ray_hit_ws(vrc) + nrm * 0.001;
 #endif

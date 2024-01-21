@@ -276,19 +276,54 @@ bool has_air_neighbor() {
 }
 
 vec3 generate_normal_from_geometry() {
-    vec3 result = vec3(0);
+    vec3 density_n = vec3(0);
+    vec3 density_p = vec3(0);
     const int RADIUS = 2;
     for (int zi = -RADIUS; zi <= RADIUS; ++zi) {
         for (int yi = -RADIUS; yi <= RADIUS; ++yi) {
             for (int xi = -RADIUS; xi <= RADIUS; ++xi) {
                 Voxel v = get_temp_voxel(ivec3(xi, yi, zi));
                 if (v.material_type == 0) {
-                    result += normalize(vec3(xi, yi, zi));
+                    vec3 dir = vec3(xi, yi, zi);
+                    density_n.x += max(0.0, dot(dir, vec3(-1, 0, 0)));
+                    density_p.x += max(0.0, dot(dir, vec3(+1, 0, 0)));
+                    density_n.y += max(0.0, dot(dir, vec3(0, -1, 0)));
+                    density_p.y += max(0.0, dot(dir, vec3(0, +1, 0)));
+                    density_n.z += max(0.0, dot(dir, vec3(0, 0, -1)));
+                    density_p.z += max(0.0, dot(dir, vec3(0, 0, +1)));
                 }
             }
         }
     }
-    return result;
+
+    vec3 d = density_p - density_n;
+    if (dot(d, d) < 0.1) {
+        // Hack to fix flat sides. TODO: Generalize
+        vec3 v = density_p + density_n;
+        float min_v = min(v.x, min(v.y, v.z));
+        float max_v = max(v.x, max(v.y, v.z));
+        if (min_v == v.x) {
+            if (max_v == v.z) {
+                d = vec3(0, 0, 1);
+            } else {
+                d = vec3(0, 1, 0);
+            }
+        } else if (min_v == v.y) {
+            if (max_v == v.z) {
+                d = vec3(0, 0, 1);
+            } else {
+                d = vec3(1, 0, 0);
+            }
+        } else {
+            if (max_v == v.x) {
+                d = vec3(1, 0, 0);
+            } else {
+                d = vec3(0, 1, 0);
+            }
+        }
+    }
+
+    return normalize(d);
 }
 
 #define VOXEL_WORLD deref(voxel_globals)
