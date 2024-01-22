@@ -5,17 +5,45 @@
 #include <utils/sky.glsl>
 #include <voxels/core.glsl>
 
+// const mat4 dither_mat = mat4(
+//     vec4(0, 8, 2, 10) * (1.0 / 16.0),
+//     vec4(12, 4, 14, 6) * (1.0 / 16.0),
+//     vec4(3, 11, 1, 9) * (1.0 / 16.0),
+//     vec4(15, 7, 13, 5) * (1.0 / 16.0));
+
+vec3 apply_fog(ViewRayContext vrc, vec3 albedo, vec3 col_a, vec3 col_b) {
+    vec3 camera_world_pos = ray_origin_ws(vrc);
+    vec3 hit_pos = ray_hit_ws(vrc);
+    vec3 camera_to_point = hit_pos - camera_world_pos;
+    camera_world_pos += deref(globals).player.player_unit_offset;
+    camera_world_pos.z += 100.0;
+    float world_distance = min(1000.0, length(camera_to_point));
+    camera_to_point = normalize(camera_to_point);
+    const float fog_strength = 0.00185;
+    const float fog_height_falloff = 0.085;
+    const float sun_col_base_bias = 0.005;
+    const float sun_col_max_bias = 0.1;
+    const float fog_amount = (fog_strength / fog_height_falloff) * exp(-camera_world_pos.z * fog_height_falloff) * (1.0 - exp(-world_distance * camera_to_point.z * fog_height_falloff)) / camera_to_point.z;
+    const float clamped_fog_amount = clamp(fog_amount, 0.0, 1.0);
+    const float sun_amount = dot(normalize(camera_to_point), SUN_DIR) * 0.5 + 0.5;
+    const vec3 fog_color = mix(col_a, col_b, pow(sun_amount, 8.0));
+    const vec3 col_after_fog = mix(albedo, fog_color, clamped_fog_amount);
+    // const float dither_weight = 0.001;
+    // const vec3 col_dither = dither_mat[coords.x % 4][coords.y % 4] * dither_weight + col_after_fog;
+    return vec3(col_after_fog);
+}
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
     daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
-
-    ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
-    daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
-
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
+    daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
+
+    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), max(0.00001, depth));
+    daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
 
     // daxa_u32vec4 g_buffer_nrm_samples = textureGather(
     //     daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc),
@@ -26,8 +54,6 @@ void main() {
     daxa_f32vec3 albedo_col = voxel.color;
 
     nrm = normalize(nrm);
-
-    daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
 
     float shadow_value = texelFetch(daxa_texture2D(shadow_bitmap), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
 
@@ -45,7 +71,7 @@ void main() {
     {
         ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
         ssao_value = pow(ssao_value, vec3(2)) * 4.0;
-        ssao_value *= max(vec3(0.0), sky_lighting.atmosphere_normal_illuminance * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5));
+        ssao_value *= max(vec3(0.0), sky_lighting.atmosphere_normal_illuminance); // * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5));
     }
     // daxa_f32vec4 temp_val = texelFetch(daxa_texture2D(indirect_diffuse_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec4 particles_color = vec4(0); // texelFetch(daxa_texture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
@@ -65,6 +91,8 @@ void main() {
     // lighting += 1.0;
 
     daxa_f32vec3 final_color = particles_color.rgb + emit_col + albedo_col * lighting;
+    // final_color = apply_fog(vrc, final_color, vec3(0.5, 0.6, 0.7) * 220.0, vec3(1.0, 0.9, 0.7) * 520.0);
+
     final_color *= deref(gpu_input).pre_exposure;
 
     imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(final_color, 1.0));

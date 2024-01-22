@@ -10,7 +10,7 @@ const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin black
 daxa_f32vec3 get_sky_world_camera_position() {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
-    const daxa_f32vec3 camera_position = daxa_f32vec3(0.0, 0.0, 0.1);
+    const daxa_f32vec3 camera_position = daxa_f32vec3(0.0, 0.0, 5.5);
     daxa_f32vec3 world_camera_position = camera_position;
     world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
     return world_camera_position;

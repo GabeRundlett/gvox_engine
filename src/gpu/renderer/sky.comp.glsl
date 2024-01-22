@@ -387,7 +387,7 @@ void main() {
     }
 
     // Hardcode player position to be 100 meters above sea level
-    daxa_f32vec3 world_position = daxa_f32vec3(0.0, 0.0, deref(gpu_input).sky_settings.atmosphere_bottom + 0.1);
+    daxa_f32vec3 world_position = daxa_f32vec3(0.0, 0.0, deref(gpu_input).sky_settings.atmosphere_bottom + 5.5);
 
     daxa_f32vec2 uv = daxa_f32vec2(gl_GlobalInvocationID.xy) / daxa_f32vec2(SKY_SKY_RES);
     SkyviewParams skyview_params = uv_to_skyview_lut_params(
