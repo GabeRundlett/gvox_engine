@@ -1,4 +1,5 @@
 #include <shared/app.inl>
+#include <utils/safety.glsl>
 
 #if BLUR_COMPUTE
 const uint kernel_radius = 5;
@@ -20,7 +21,7 @@ Color vblur(ivec2 dst_px, ivec2 src_px) {
 
     for (uint y = 0; y <= kernel_radius * 2; ++y) {
         float wt = gaussian_wt(dst_px.y, src_px.y + y);
-        res += texelFetch(daxa_texture2D(input_tex), src_px + ivec2(0, y), 0).Color_swizzle * wt;
+        res += safeTexelFetch(input_tex, src_px + ivec2(0, y), 0).Color_swizzle * wt;
         wt_sum += wt;
     }
 
@@ -56,7 +57,7 @@ void main() {
     }
     res /= wt_sum;
 
-    imageStore(daxa_image2D(output_tex), ivec2(px), res);
+    safeImageStore(output_tex, ivec2(px), res);
 }
 
 #endif
@@ -66,7 +67,7 @@ void main() {
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     uvec2 px = gl_GlobalInvocationID.xy;
-    vec4 pyramid_col = texelFetch(daxa_texture2D(input_tail_tex), ivec2(px), 0);
+    vec4 pyramid_col = safeTexelFetch(input_tail_tex, ivec2(px), 0);
 
     vec4 self_col = vec4(0);
     vec2 inv_size = vec2(1.0) / vec2(push.output_extent);
@@ -86,7 +87,7 @@ void main() {
     self_col /= float((2 * K + 1) * (2 * K + 1));
     float exponential_falloff = 0.6;
 
-    imageStore(daxa_image2D(output_tex), ivec2(px), mix(self_col, pyramid_col, push.self_weight * exponential_falloff));
+    safeImageStore(output_tex, ivec2(px), mix(self_col, pyramid_col, push.self_weight * exponential_falloff));
 }
 
 #endif

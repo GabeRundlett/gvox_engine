@@ -250,6 +250,9 @@ struct SsaoRenderer {
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
                 .name = "ssao_image",
             });
+
+        clear_task_images(record_ctx.device, std::array{prev_ssao_image});
+
         record_ctx.task_graph.use_persistent_image(ssao_image);
         record_ctx.task_graph.use_persistent_image(prev_ssao_image);
         auto ssao_image0 = record_ctx.task_graph.create_transient_image({

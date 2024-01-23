@@ -20,11 +20,14 @@ vec3 sample_sun_direction(vec2 urand) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_f32vec4 output_tex_size;
-    output_tex_size.xy = deref(gpu_input).frame_dim;
+    daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
 
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
+        return;
+    }
+
+    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
     daxa_f32 depth = texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);

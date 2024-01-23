@@ -11,7 +11,7 @@ void main() {
     daxa_f32vec4 output_tex_size;
     output_tex_size.xy = deref(gpu_input).frame_dim;
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy * SHADING_SCL, output_tex_size);
+    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy * PREPASS_SCL, output_tex_size);
 
     ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
     daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
@@ -27,6 +27,9 @@ void main() {
 
     daxa_f32 depth = length(ray_pos - cam_pos);
 
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, (uvec2(output_tex_size.xy)) / PREPASS_SCL))) {
+        return;
+    }
     imageStore(daxa_image2D(render_depth_prepass_image), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(depth, step_n, 0, 0));
 }
 #undef INPUT
@@ -60,7 +63,7 @@ void main() {
     for (daxa_i32 yi = -1; yi <= 1; ++yi) {
         for (daxa_i32 xi = -1; xi <= 1; ++xi) {
             daxa_i32vec2 pt = daxa_i32vec2(PIXEL_I / PREPASS_SCL) + daxa_i32vec2(xi, yi);
-            pt = clamp(pt, daxa_i32vec2(0), daxa_i32vec2(INPUT.rounded_frame_dim / PREPASS_SCL));
+            pt = clamp(pt, daxa_i32vec2(0), daxa_i32vec2(deref(gpu_input).frame_dim / PREPASS_SCL - 1));
             daxa_f32vec2 prepass_data = texelFetch(daxa_texture2D(render_depth_prepass_image), pt, 0).xy;
             daxa_f32 loaded_depth = prepass_data.x - 1.0 / VOXEL_SCL;
             prepass_depth = max(min(prepass_depth, loaded_depth), 0);
@@ -98,12 +101,12 @@ void main() {
 
 #if PER_VOXEL_NORMALS
         Voxel voxel2 = unpack_voxel(trace_result.voxel_data);
-        vec3 voxel_pos = floor(ray_pos * VOXEL_SCL) / VOXEL_SCL;
-        vec3 del = normalize(voxel_pos - cam_pos);
 
-        if (dot(voxel2.normal, del) > -1.0 && dot(trace_result.nrm, voxel2.normal) < 0.0) {
-            voxel2.normal *= -1;
-        }
+        // vec3 voxel_pos = floor(ray_pos * VOXEL_SCL) / VOXEL_SCL;
+        // vec3 del = normalize(voxel_pos - cam_pos);
+        // if (dot(voxel2.normal, del) > -1.0 && dot(trace_result.nrm, voxel2.normal) < 0.0) {
+        //     voxel2.normal *= -1;
+        // }
 
         trace_result.nrm = voxel2.normal;
 #endif
@@ -147,6 +150,9 @@ void main() {
     }
     output_value.z = floatBitsToUint(depth);
 
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
+        return;
+    }
     imageStore(daxa_uimage2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), output_value);
     imageStore(daxa_image2D(vs_normal_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(vs_nrm * 0.5 + 0.5, 0));
     imageStore(daxa_image2D(velocity_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(vs_velocity, 0));

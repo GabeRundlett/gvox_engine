@@ -5,38 +5,37 @@
 #include <utils/sky.glsl>
 #include <voxels/core.glsl>
 
-// const mat4 dither_mat = mat4(
-//     vec4(0, 8, 2, 10) * (1.0 / 16.0),
-//     vec4(12, 4, 14, 6) * (1.0 / 16.0),
-//     vec4(3, 11, 1, 9) * (1.0 / 16.0),
-//     vec4(15, 7, 13, 5) * (1.0 / 16.0));
-
-vec3 apply_fog(ViewRayContext vrc, vec3 albedo, vec3 col_a, vec3 col_b) {
-    vec3 camera_world_pos = ray_origin_ws(vrc);
-    vec3 hit_pos = ray_hit_ws(vrc);
-    vec3 camera_to_point = hit_pos - camera_world_pos;
-    camera_world_pos += deref(globals).player.player_unit_offset;
-    camera_world_pos.z += 100.0;
-    float world_distance = min(1000.0, length(camera_to_point));
-    camera_to_point = normalize(camera_to_point);
+vec3 apply_fog(
+    float height_above_msl_meters,
+    float distance_through_fog_meters,
+    vec3 ray_direction_normalized,
+    vec3 color_before_fog,
+    vec3 sky_fog_color,
+    vec3 sun_fog_color,
+    vec3 sun_direction) {
+    // SETTINGS TO CONFIGURE:
     const float fog_strength = 0.00185;
     const float fog_height_falloff = 0.085;
     const float sun_col_base_bias = 0.005;
     const float sun_col_max_bias = 0.1;
-    const float fog_amount = (fog_strength / fog_height_falloff) * exp(-camera_world_pos.z * fog_height_falloff) * (1.0 - exp(-world_distance * camera_to_point.z * fog_height_falloff)) / camera_to_point.z;
+
+    const float fog_amount = (fog_strength / fog_height_falloff) * exp(-height_above_msl_meters * fog_height_falloff) * (1.0 - exp(-distance_through_fog_meters * ray_direction_normalized.z * fog_height_falloff)) / ray_direction_normalized.z;
     const float clamped_fog_amount = clamp(fog_amount, 0.0, 1.0);
-    const float sun_amount = dot(normalize(camera_to_point), SUN_DIR) * 0.5 + 0.5;
-    const vec3 fog_color = mix(col_a, col_b, pow(sun_amount, 8.0));
-    const vec3 col_after_fog = mix(albedo, fog_color, clamped_fog_amount);
-    // const float dither_weight = 0.001;
-    // const vec3 col_dither = dither_mat[coords.x % 4][coords.y % 4] * dither_weight + col_after_fog;
-    return vec3(col_after_fog);
+    const float sun_amount = dot(normalize(ray_direction_normalized), sun_direction) * 0.5 + 0.5;
+    const vec3 fog_color = mix(sky_fog_color, sun_fog_color, pow(sun_amount, 8.0));
+    const vec3 col_after_fog = mix(color_before_fog, fog_color, clamped_fog_amount);
+    return col_after_fog;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
+
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
+        return;
+    }
+
     daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
@@ -91,7 +90,21 @@ void main() {
     // lighting += 1.0;
 
     daxa_f32vec3 final_color = particles_color.rgb + emit_col + albedo_col * lighting;
-    // final_color = apply_fog(vrc, final_color, vec3(0.5, 0.6, 0.7) * 220.0, vec3(1.0, 0.9, 0.7) * 520.0);
+
+    // vec3 camera_world_pos = ray_origin_ws(vrc);
+    // vec3 hit_pos = ray_hit_ws(vrc);
+    // vec3 camera_to_point = hit_pos - camera_world_pos;
+    // camera_world_pos += deref(globals).player.player_unit_offset;
+    // camera_world_pos.z += 100.0;
+    // float world_distance = min(1000.0, length(camera_to_point));
+    // final_color = apply_fog(
+    //     camera_world_pos.z,
+    //     world_distance,
+    //     normalize(camera_to_point),
+    //     final_color,
+    //     vec3(0.5, 0.6, 0.7) * 220.0,
+    //     vec3(1.0, 0.9, 0.7) * 520.0,
+    //     SUN_DIR);
 
     final_color *= deref(gpu_input).pre_exposure;
 

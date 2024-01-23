@@ -266,6 +266,8 @@ struct ShadowDenoiser {
         record_ctx.task_graph.use_persistent_image(accum_image);
         record_ctx.task_graph.use_persistent_image(prev_accum_image);
 
+        clear_task_images(record_ctx.device, std::array{prev_moments_image, prev_accum_image});
+
         auto spatial_input_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16_SFLOAT,
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},

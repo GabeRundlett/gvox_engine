@@ -1,4 +1,5 @@
 #include <shared/app.inl>
+#include <utils/safety.glsl>
 
 #if SHADOW_BIT_PACK_COMPUTE
 
@@ -7,7 +8,7 @@ uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
 }
 
 bool FFX_DNSR_Shadows_HitsLight(uvec2 px, uvec2 gtid, uvec2 gid) {
-    float shadow_value = texelFetch(daxa_texture2D(input_tex), daxa_i32vec2(px), 0).r;
+    float shadow_value = safeTexelFetch(input_tex, daxa_i32vec2(px), 0).r;
     return shadow_value != 0.0;
 }
 
@@ -16,7 +17,7 @@ void FFX_DNSR_Shadows_WriteMask(uint linear_tile_index, uint value) {
         linear_tile_index % push.bitpacked_shadow_mask_extent.x,
         linear_tile_index / push.bitpacked_shadow_mask_extent.x);
 
-    imageStore(daxa_uimage2D(output_tex), tile, uvec4(value, 0, 0, 0));
+    safeImageStoreU(output_tex, tile, uvec4(value, 0, 0, 0));
 }
 
 #include "ffx/ffx_denoiser_shadows_prepare.glsl"
@@ -90,7 +91,7 @@ void FFX_DNSR_Shadows_WriteMetadata(uint linear_tile_index, uint mask) {
         linear_tile_index % push.bitpacked_shadow_mask_extent.x,
         linear_tile_index / push.bitpacked_shadow_mask_extent.x);
 
-    imageStore(daxa_uimage2D(meta_output_tex), tile, uvec4(mask, 0, 0, 0));
+    safeImageStoreU(meta_output_tex, tile, uvec4(mask, 0, 0, 0));
 }
 
 uint FFX_DNSR_Shadows_ReadRaytracedShadowMask(uint linear_tile_index) {
@@ -98,11 +99,11 @@ uint FFX_DNSR_Shadows_ReadRaytracedShadowMask(uint linear_tile_index) {
         linear_tile_index % push.bitpacked_shadow_mask_extent.x,
         linear_tile_index / push.bitpacked_shadow_mask_extent.x);
 
-    return texelFetch(daxa_utexture2D(bitpacked_shadow_mask_tex), tile, 0).r;
+    return safeTexelFetchU(bitpacked_shadow_mask_tex, tile, 0).r;
 }
 
 void FFX_DNSR_Shadows_WriteReprojectionResults(uvec2 px, vec2 shadow_clamped_variance) {
-    imageStore(daxa_image2D(temporal_output_tex), ivec2(px), vec4(shadow_clamped_variance, 0, 0));
+    safeImageStore(temporal_output_tex, ivec2(px), vec4(shadow_clamped_variance, 0, 0));
 }
 
 void FFX_DNSR_Shadows_WriteMoments(uvec2 px, vec4 moments) {
@@ -110,11 +111,11 @@ void FFX_DNSR_Shadows_WriteMoments(uvec2 px, vec4 moments) {
     // so that our variance estimate is quick, and contact shadows turn crispy sooner.
     moments.z = min(moments.z, 32);
 
-    imageStore(daxa_image2D(output_moments_tex), ivec2(px), moments);
+    safeImageStore(output_moments_tex, ivec2(px), moments);
 }
 
 float FFX_DNSR_Shadows_HitsLight(uvec2 px) {
-    return texelFetch(daxa_texture2D(shadow_mask_tex), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(shadow_mask_tex, daxa_i32vec2(px), 0).r;
 }
 
 float soft_color_clamp(float center, float history, float ex, float dev) {
@@ -155,25 +156,25 @@ daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewId img, daxa_f32vec2 P, daxa
     // pixel = floor(pixel) / output_tex_size.xy - daxa_f32vec2(c_onePixel/2.0);
     daxa_i32vec2 ipixel = daxa_i32vec2(pixel) - 1;
 
-    daxa_f32vec4 C00 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(-1, -1), 0));
-    daxa_f32vec4 C10 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(0, -1), 0));
-    daxa_f32vec4 C20 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(1, -1), 0));
-    daxa_f32vec4 C30 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(2, -1), 0));
+    daxa_f32vec4 C00 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, -1), 0));
+    daxa_f32vec4 C10 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, -1), 0));
+    daxa_f32vec4 C20 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, -1), 0));
+    daxa_f32vec4 C30 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, -1), 0));
 
-    daxa_f32vec4 C01 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(-1, 0), 0));
-    daxa_f32vec4 C11 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(0, 0), 0));
-    daxa_f32vec4 C21 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(1, 0), 0));
-    daxa_f32vec4 C31 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(2, 0), 0));
+    daxa_f32vec4 C01 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 0), 0));
+    daxa_f32vec4 C11 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 0), 0));
+    daxa_f32vec4 C21 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 0), 0));
+    daxa_f32vec4 C31 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 0), 0));
 
-    daxa_f32vec4 C02 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(-1, 1), 0));
-    daxa_f32vec4 C12 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(0, 1), 0));
-    daxa_f32vec4 C22 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(1, 1), 0));
-    daxa_f32vec4 C32 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(2, 1), 0));
+    daxa_f32vec4 C02 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 1), 0));
+    daxa_f32vec4 C12 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 1), 0));
+    daxa_f32vec4 C22 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 1), 0));
+    daxa_f32vec4 C32 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 1), 0));
 
-    daxa_f32vec4 C03 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(-1, 2), 0));
-    daxa_f32vec4 C13 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(0, 2), 0));
-    daxa_f32vec4 C23 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(1, 2), 0));
-    daxa_f32vec4 C33 = REMAP_FUNC(texelFetch(daxa_texture2D(img), ipixel + daxa_i32vec2(2, 2), 0));
+    daxa_f32vec4 C03 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 2), 0));
+    daxa_f32vec4 C13 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 2), 0));
+    daxa_f32vec4 C23 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 2), 0));
+    daxa_f32vec4 C33 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 2), 0));
 
     daxa_f32vec4 CP0X = cubic_hermite(C00, C10, C20, C30, frc.x);
     daxa_f32vec4 CP1X = cubic_hermite(C01, C11, C21, C31, frc.x);
@@ -242,20 +243,20 @@ float FFX_DNSR_Shadows_GetDepthSimilaritySigma() {
 }
 
 bool FFX_DNSR_Shadows_IsShadowReciever(uvec2 px) {
-    return texelFetch(daxa_texture2D(depth_tex), ivec2(px), 0).r != 0;
+    return safeTexelFetch(depth_tex, ivec2(px), 0).r != 0;
 }
 
 vec3 FFX_DNSR_Shadows_ReadNormals(uvec2 px) {
-    vec3 normal_vs = texelFetch(daxa_texture2D(geometric_normal_tex), ivec2(px), 0).xyz * 2.0 - 1.0;
+    vec3 normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(px), 0).xyz * 2.0 - 1.0;
     return vec3(normal_vs);
 }
 
 float FFX_DNSR_Shadows_ReadDepth(uvec2 px) {
-    return texelFetch(daxa_texture2D(depth_tex), ivec2(px), 0).r;
+    return safeTexelFetch(depth_tex, ivec2(px), 0).r;
 }
 
 vec2 FFX_DNSR_Shadows_ReadInput(uvec2 px) {
-    return texelFetch(daxa_texture2D(input_tex), ivec2(px), 0).xy;
+    return safeTexelFetch(input_tex, ivec2(px), 0).xy;
 }
 
 uint FFX_DNSR_Shadows_ReadTileMetaData(uint linear_tile_index) {
@@ -263,7 +264,7 @@ uint FFX_DNSR_Shadows_ReadTileMetaData(uint linear_tile_index) {
         linear_tile_index % push.bitpacked_shadow_mask_extent.x,
         linear_tile_index / push.bitpacked_shadow_mask_extent.x);
 
-    return texelFetch(daxa_utexture2D(meta_tex), tile, 0).x;
+    return safeTexelFetchU(meta_tex, tile, 0).x;
 }
 
 #include "ffx/ffx_denoiser_shadows_filter.glsl"
@@ -276,7 +277,7 @@ void main() {
     vec2 filter_output = FFX_DNSR_Shadows_FilterSoftShadowsPass(gl_WorkGroupID.xy, gl_LocalInvocationID.xy, gl_GlobalInvocationID.xy, write_results, pass_idx, push.step_size);
 
     if (write_results) {
-        imageStore(daxa_image2D(output_tex), ivec2(gl_GlobalInvocationID.xy), vec4(max(vec2(0.0), filter_output), 0, 0));
+        safeImageStore(output_tex, ivec2(gl_GlobalInvocationID.xy), vec4(max(vec2(0.0), filter_output), 0, 0));
     }
 }
 #endif

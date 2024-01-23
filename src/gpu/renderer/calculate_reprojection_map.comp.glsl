@@ -1,17 +1,18 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
+#include <utils/safety.glsl>
 
 float fetch_depth(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(depth_image_id, daxa_i32vec2(px), 0).r;
 }
 float fetch_prev_depth(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(prev_depth_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(prev_depth_image_id, daxa_i32vec2(px), 0).r;
 }
 daxa_f32vec4 fetch_vel(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(velocity_image_id), daxa_i32vec2(px), 0);
+    return safeTexelFetch(velocity_image_id, daxa_i32vec2(px), 0);
 }
 daxa_f32vec3 fetch_nrm(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(vs_normal_image_id), daxa_i32vec2(px), 0).xyz;
+    return safeTexelFetch(vs_normal_image_id, daxa_i32vec2(px), 0).xyz;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -37,7 +38,7 @@ void main() {
         daxa_f32vec2 prev_uv = cs_to_uv(prev_pcs.xy);
         daxa_f32vec2 uv_diff = prev_uv - uv;
 
-        imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(uv_diff, 0, 0));
+        safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(uv_diff, 0, 0));
         return;
     }
 
@@ -131,5 +132,5 @@ void main() {
         accuracy = -1;
     }
 
-    imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(uv_diff, validity, accuracy));
+    safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(uv_diff, validity, accuracy));
 }

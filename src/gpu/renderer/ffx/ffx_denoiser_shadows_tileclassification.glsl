@@ -292,6 +292,8 @@ void FFX_DNSR_Shadows_ClearTargets(uvec2 did, uvec2 gtid, uvec2 gid, float shado
     FFX_DNSR_Shadows_WriteMoments(did, vec4(shadow_value, 0, temporal_sample_count, shadow_value)); // mean, variance, temporal sample count, local neighborhood
 }
 
+#include <utils/safety.glsl>
+
 void FFX_DNSR_Shadows_TileClassification(uint group_index, uvec2 gid) {
     uvec2 gtid = FFX_DNSR_Shadows_RemapLane8x8(group_index); // Make sure we can use the QuadReadAcross intrinsics to access a 2x2 region.
     uvec2 did = gid * 8 + gtid;
@@ -323,7 +325,7 @@ void FFX_DNSR_Shadows_TileClassification(uint group_index, uvec2 gid) {
 
     float depth = FFX_DNSR_Shadows_ReadDepth(did);
     // const vec2 velocity = FFX_DNSR_Shadows_GetClosestVelocity(did.xy, depth); // Must happen before we deactivate lanes
-    const vec4 reproj = texelFetch(daxa_texture2D(reprojection_tex), ivec2(did.xy), 0);
+    const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(did.xy), 0);
     const float local_neighborhood = FFX_DNSR_Shadows_ComputeLocalNeighborhood(ivec2(did), ivec2(gtid));
 
     const vec2 texel_size = FFX_DNSR_Shadows_GetInvBufferDimensions();

@@ -1,6 +1,7 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
+#include <utils/safety.glsl>
 
 #if SSAO_COMPUTE
 
@@ -28,12 +29,12 @@ const float temporal_rotations[] = {60.0, 300.0, 180.0, 240.0, 120.0, 0.0};
 const float temporal_offsets[] = {0.0, 0.5, 0.25, 0.75};
 
 float fetch_depth(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(depth_image_id, daxa_i32vec2(px), 0).r;
 }
 
 daxa_f32vec3 fetch_normal_vs(daxa_f32vec2 uv) {
     daxa_i32vec2 px = daxa_i32vec2(output_tex_size.xy * uv);
-    daxa_f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image_id), px, 0).xyz;
+    daxa_f32vec3 normal_vs = safeTexelFetch(vs_normal_image_id, px, 0).xyz;
     return normal_vs;
 }
 
@@ -96,10 +97,10 @@ void main() {
     output_tex_size *= vec4((1.0 / SHADING_SCL).xx, SHADING_SCL.xx);
 
     daxa_f32 depth = fetch_depth(px);
-    daxa_f32vec3 normal_vs = texelFetch(daxa_texture2D(vs_normal_image_id), daxa_i32vec2(px), 0).xyz;
+    daxa_f32vec3 normal_vs = safeTexelFetch(vs_normal_image_id, daxa_i32vec2(px), 0).xyz;
 
     if (depth == 0.0 || dot(normal_vs, normal_vs) == 0.0) {
-        imageStore(daxa_image2D(ssao_image_id), daxa_i32vec2(px), daxa_f32vec4(1, 0, 0, 0));
+        safeImageStore(ssao_image_id, daxa_i32vec2(px), daxa_f32vec4(1, 0, 0, 0));
         return;
     }
 
@@ -207,20 +208,20 @@ void main() {
 
     col *= slice_contrib_weight;
 
-    imageStore(daxa_image2D(ssao_image_id), daxa_i32vec2(px), daxa_f32vec4(col));
+    safeImageStore(ssao_image_id, daxa_i32vec2(px), daxa_f32vec4(col));
 }
 
 #endif
 #if SSAO_SPATIAL_FILTER_COMPUTE
 
 float fetch_src(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(src_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
 }
 float fetch_depth(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(depth_image_id, daxa_i32vec2(px), 0).r;
 }
 daxa_f32vec3 fetch_nrm(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(vs_normal_image_id), daxa_i32vec2(px), 0).xyz;
+    return safeTexelFetch(vs_normal_image_id, daxa_i32vec2(px), 0).xyz;
 }
 
 float process_sample(float ssgi, float depth, daxa_f32vec3 normal, float center_depth, daxa_f32vec3 center_normal, inout float w_sum) {
@@ -279,20 +280,20 @@ void main() {
     }
 #endif
 
-    imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(result / max(w_sum, 1e-5), 0, 0, 0));
+    safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(result / max(w_sum, 1e-5), 0, 0, 0));
 }
 
 #endif
 #if SSAO_UPSAMPLE_COMPUTE
 
 float fetch_src(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(src_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
 }
 float fetch_depth(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(depth_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(depth_image_id, daxa_i32vec2(px), 0).r;
 }
 daxa_f32vec3 fetch_nrm(daxa_u32vec2 px) {
-    daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(px), 0);
+    daxa_u32vec4 g_buffer_value = safeTexelFetchU(g_buffer_image_id, daxa_i32vec2(px), 0);
     return u16_to_nrm(g_buffer_value.y);
 }
 
@@ -350,9 +351,9 @@ void main() {
     }
 
     if (w_sum > 1e-6) {
-        imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(result / w_sum, 0, 0, 0));
+        safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(result / w_sum, 0, 0, 0));
     } else {
-        imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(fetch_src(px / SHADING_SCL), 0, 0, 0));
+        safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(fetch_src(px / SHADING_SCL), 0, 0, 0));
     }
 }
 
@@ -360,7 +361,7 @@ void main() {
 #if SSAO_TEMPORAL_FILTER_COMPUTE
 
 float fetch_src(daxa_u32vec2 px) {
-    return texelFetch(daxa_texture2D(src_image_id), daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
 }
 
 #define LINEAR_TO_WORKING(x) x
@@ -375,7 +376,7 @@ void main() {
     daxa_f32vec2 uv = get_uv(px, output_tex_size);
 
     float center = WORKING_TO_LINEAR(fetch_src(px));
-    daxa_f32vec4 reproj = texelFetch(daxa_texture2D(reprojection_image_id), daxa_i32vec2(px), 0);
+    daxa_f32vec4 reproj = safeTexelFetch(reprojection_image_id, daxa_i32vec2(px), 0);
     float history = WORKING_TO_LINEAR(textureLod(daxa_sampler2D(history_image_id, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).r);
 
     float vsum = 0.0;
@@ -409,7 +410,7 @@ void main() {
     // res = center;
 
     // history_output_tex[px] = LINEAR_TO_WORKING(res);
-    imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(px), daxa_f32vec4(res));
+    safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(res));
 }
 
 #endif
