@@ -1,7 +1,7 @@
 #include <shared/app.inl>
 #include <utils/safety.glsl>
 
-#if SHADOW_BIT_PACK_COMPUTE
+#if ShadowBitPackComputeShader
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);
@@ -29,7 +29,7 @@ void main() {
 
 #endif
 
-#if SHADOW_TEMPORAL_FILTER_COMPUTE
+#if ShadowTemporalFilterComputeShader
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);
@@ -224,7 +224,7 @@ void main() {
 
 #endif
 
-#if SHADOW_SPATIAL_FILTER_COMPUTE
+#if ShadowSpatialFilterComputeShader
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);

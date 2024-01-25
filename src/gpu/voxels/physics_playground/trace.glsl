@@ -31,7 +31,7 @@ vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
     RigidBody body;
     switch (id) {
     case 0:
-#if 0 // TRACE_PRIMARY_COMPUTE
+#if 0 // TracePrimaryComputeShader
         return texture(daxa_sampler2D(debug_texture, deref(gpu_input).sampler_llr), pos.xy).rgb;
 #else
         return daxa_f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
@@ -90,7 +90,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
     daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
     ray_pos += offset;
 
-#if TRACE_DEPTH_PREPASS_COMPUTE
+#if TraceDepthPrepassComputeShader
     ray_pos -= offset;
     return result;
 #endif

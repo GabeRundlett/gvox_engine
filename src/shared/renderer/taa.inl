@@ -5,7 +5,7 @@
 #define TAA_WG_SIZE_X 16
 #define TAA_WG_SIZE_Y 8
 
-#if TAA_REPROJECT_COMPUTE || defined(__cplusplus)
+#if TaaReprojectComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaReprojectCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -31,7 +31,7 @@ daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
 daxa_ImageViewId closest_velocity_img = push.uses.closest_velocity_img;
 #endif
 #endif
-#if TAA_FILTER_INPUT_COMPUTE || defined(__cplusplus)
+#if TaaFilterInputComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterInputCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -55,7 +55,7 @@ daxa_ImageViewId filtered_input_img = push.uses.filtered_input_img;
 daxa_ImageViewId filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
 #endif
 #endif
-#if TAA_FILTER_HISTORY_COMPUTE || defined(__cplusplus)
+#if TaaFilterHistoryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterHistoryCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -75,7 +75,7 @@ daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
 daxa_ImageViewId filtered_history_img = push.uses.filtered_history_img;
 #endif
 #endif
-#if TAA_INPUT_PROB_COMPUTE || defined(__cplusplus)
+#if TaaInputProbComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaInputProbCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -111,7 +111,7 @@ daxa_ImageViewId velocity_history_tex = push.uses.velocity_history_tex;
 daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
 #endif
 #endif
-#if TAA_PROB_FILTER_COMPUTE || defined(__cplusplus)
+#if TaaProbFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -131,7 +131,7 @@ daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
 daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
 #endif
 #endif
-#if TAA_PROB_FILTER2_COMPUTE || defined(__cplusplus)
+#if TaaProbFilter2ComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilter2Compute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -151,7 +151,7 @@ daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
 daxa_ImageViewId prob_filtered2_img = push.uses.prob_filtered2_img;
 #endif
 #endif
-#if TAA_COMPUTE || defined(__cplusplus)
+#if TaaComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -199,70 +199,10 @@ struct TaaPushCommon {
 
 #if defined(__cplusplus)
 
-#define TAA_DECL_TASK_STATE(Name, NAME)                                                                                                          \
-    struct Name##ComputeTaskState {                                                                                                              \
-        AsyncManagedComputePipeline pipeline;                                                                                                    \
-        Name##ComputeTaskState(AsyncPipelineManager &pipeline_manager) {                                                                         \
-            pipeline = pipeline_manager.add_compute_pipeline({                                                                                   \
-                .shader_info = {                                                                                                                 \
-                    .source = daxa::ShaderFile{"taa.comp.glsl"},                                                                                 \
-                    .compile_options = {.defines = {{#NAME "_COMPUTE", "1"}}},                                                                   \
-                },                                                                                                                               \
-                .push_constant_size = sizeof(Name##ComputePush),                                                                                 \
-                .name = "taa_" #NAME,                                                                                                            \
-            });                                                                                                                                  \
-        }                                                                                                                                        \
-    };                                                                                                                                           \
-    struct Name##ComputeTask {                                                                                                                   \
-        Name##Compute::Uses uses;                                                                                                                \
-        std::string name = #Name "Compute";                                                                                                      \
-        Name##ComputeTaskState *state;                                                                                                           \
-        daxa_u32vec2 thread_count;                                                                                                               \
-        TaaPushCommon push_common;                                                                                                               \
-        void callback(daxa::TaskInterface const &ti) {                                                                                           \
-            auto &recorder = ti.get_recorder();                                                                                                  \
-            auto push = Name##ComputePush{.input_tex_size = push_common.input_tex_size, .output_tex_size = push_common.output_tex_size};         \
-            ti.copy_task_head_to(&push.uses);                                                                                                    \
-            if (!state->pipeline.is_valid())                                                                                                     \
-                return;                                                                                                                          \
-            recorder.set_pipeline(state->pipeline.get());                                                                                        \
-            recorder.push_constant(push);                                                                                                        \
-            recorder.dispatch({(thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y}); \
-        }                                                                                                                                        \
-    }
-
-// recorder.set_uniform_buffer(ti.uses.get_uniform_buffer_info());
-
-TAA_DECL_TASK_STATE(TaaReproject, TAA_REPROJECT);
-TAA_DECL_TASK_STATE(TaaFilterInput, TAA_FILTER_INPUT);
-TAA_DECL_TASK_STATE(TaaFilterHistory, TAA_FILTER_HISTORY);
-TAA_DECL_TASK_STATE(TaaInputProb, TAA_INPUT_PROB);
-TAA_DECL_TASK_STATE(TaaProbFilter, TAA_PROB_FILTER);
-TAA_DECL_TASK_STATE(TaaProbFilter2, TAA_PROB_FILTER2);
-TAA_DECL_TASK_STATE(Taa, TAA);
-
 struct TaaRenderer {
     PingPongImage ping_pong_taa_col_image;
     PingPongImage ping_pong_taa_vel_image;
     PingPongImage ping_pong_smooth_var_image;
-
-    TaaReprojectComputeTaskState taa_reproject_task_state;
-    TaaFilterInputComputeTaskState taa_filter_input_task_state;
-    TaaFilterHistoryComputeTaskState taa_filter_history_task_state;
-    TaaInputProbComputeTaskState taa_input_prob_task_state;
-    TaaProbFilterComputeTaskState taa_prob_filter_task_state;
-    TaaProbFilter2ComputeTaskState taa_prob_filter2_task_state;
-    TaaComputeTaskState taa_task_state;
-
-    TaaRenderer(AsyncPipelineManager &pipeline_manager)
-        : taa_reproject_task_state{pipeline_manager},
-          taa_filter_input_task_state{pipeline_manager},
-          taa_filter_history_task_state{pipeline_manager},
-          taa_input_prob_task_state{pipeline_manager},
-          taa_prob_filter_task_state{pipeline_manager},
-          taa_prob_filter2_task_state{pipeline_manager},
-          taa_task_state{pipeline_manager} {
-    }
 
     void next_frame() {
         ping_pong_taa_col_image.task_resources.output_resource.swap_images(ping_pong_taa_col_image.task_resources.history_resource);
@@ -319,7 +259,14 @@ struct TaaRenderer {
         auto i_extent = daxa_f32vec2(static_cast<daxa_f32>(record_ctx.render_resolution.x), static_cast<daxa_f32>(record_ctx.render_resolution.y));
         auto o_extent = daxa_f32vec2(static_cast<daxa_f32>(record_ctx.output_resolution.x), static_cast<daxa_f32>(record_ctx.output_resolution.y));
 
-        record_ctx.task_graph.add_task(TaaReprojectComputeTask{
+        struct TaaTaskInfo {
+            daxa_u32vec2 thread_count;
+            daxa_f32vec2 input_tex_size;
+            daxa_f32vec2 output_tex_size;
+        };
+
+        record_ctx.add(ComputeTask<TaaReprojectCompute, TaaReprojectComputePush, TaaTaskInfo>{
+            .source = daxa::ShaderFile{"taa.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -331,11 +278,17 @@ struct TaaRenderer {
                 .reprojected_history_img = reprojected_history_img,
                 .closest_velocity_img = closest_velocity_img,
             },
-            .state = &taa_reproject_task_state,
-            .thread_count = record_ctx.output_resolution,
-            .push_common = TaaPushCommon{
-                i_extent,
-                o_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaReprojectCompute::Uses &, TaaReprojectComputePush &push, TaaTaskInfo const &info) {
+                push.input_tex_size = info.input_tex_size;
+                push.output_tex_size = info.output_tex_size;
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+            },
+            .info = {
+                .thread_count = record_ctx.output_resolution,
+                .input_tex_size = i_extent,
+                .output_tex_size = o_extent,
             },
         });
 
@@ -352,7 +305,8 @@ struct TaaRenderer {
             .name = "filtered_input_deviation_img",
         });
 
-        record_ctx.task_graph.add_task(TaaFilterInputComputeTask{
+        record_ctx.add(ComputeTask<TaaFilterInputCompute, TaaFilterInputComputePush, TaaTaskInfo>{
+            .source = daxa::ShaderFile{"taa.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -363,11 +317,17 @@ struct TaaRenderer {
                 .filtered_input_img = filtered_input_img,
                 .filtered_input_deviation_img = filtered_input_deviation_img,
             },
-            .state = &taa_filter_input_task_state,
-            .thread_count = record_ctx.render_resolution,
-            .push_common = TaaPushCommon{
-                i_extent,
-                o_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterInputCompute::Uses &, TaaFilterInputComputePush &push, TaaTaskInfo const &info) {
+                push.input_tex_size = info.input_tex_size;
+                push.output_tex_size = info.output_tex_size;
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+            },
+            .info = {
+                .thread_count = record_ctx.render_resolution,
+                .input_tex_size = i_extent,
+                .output_tex_size = o_extent,
             },
         });
 
@@ -379,7 +339,8 @@ struct TaaRenderer {
             .name = "filtered_history_img",
         });
 
-        record_ctx.task_graph.add_task(TaaFilterHistoryComputeTask{
+        record_ctx.add(ComputeTask<TaaFilterHistoryCompute, TaaFilterHistoryComputePush, TaaTaskInfo>{
+            .source = daxa::ShaderFile{"taa.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -388,11 +349,17 @@ struct TaaRenderer {
 
                 .filtered_history_img = filtered_history_img,
             },
-            .state = &taa_filter_history_task_state,
-            .thread_count = record_ctx.render_resolution,
-            .push_common = TaaPushCommon{
-                o_extent,
-                i_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterHistoryCompute::Uses &, TaaFilterHistoryComputePush &push, TaaTaskInfo const &info) {
+                push.input_tex_size = info.input_tex_size;
+                push.output_tex_size = info.output_tex_size;
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+            },
+            .info = {
+                .thread_count = record_ctx.render_resolution,
+                .input_tex_size = i_extent,
+                .output_tex_size = o_extent,
             },
         });
 
@@ -404,7 +371,8 @@ struct TaaRenderer {
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
                 .name = "input_prob_img",
             });
-            record_ctx.task_graph.add_task(TaaInputProbComputeTask{
+            record_ctx.add(ComputeTask<TaaInputProbCompute, TaaInputProbComputePush, TaaTaskInfo>{
+                .source = daxa::ShaderFile{"taa.comp.glsl"},
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
@@ -421,11 +389,17 @@ struct TaaRenderer {
 
                     .input_prob_img = input_prob_img,
                 },
-                .state = &taa_input_prob_task_state,
-                .thread_count = record_ctx.render_resolution,
-                .push_common = TaaPushCommon{
-                    i_extent,
-                    o_extent,
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaInputProbCompute::Uses &, TaaInputProbComputePush &push, TaaTaskInfo const &info) {
+                    push.input_tex_size = info.input_tex_size;
+                    push.output_tex_size = info.output_tex_size;
+                    ti.get_recorder().set_pipeline(pipeline);
+                    ti.get_recorder().push_constant(push);
+                    ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+                },
+                .info = {
+                    .thread_count = record_ctx.render_resolution,
+                    .input_tex_size = i_extent,
+                    .output_tex_size = o_extent,
                 },
             });
 
@@ -436,7 +410,9 @@ struct TaaRenderer {
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
                 .name = "prob_filtered1_img",
             });
-            record_ctx.task_graph.add_task(TaaProbFilterComputeTask{
+
+            record_ctx.add(ComputeTask<TaaProbFilterCompute, TaaProbFilterComputePush, TaaTaskInfo>{
+                .source = daxa::ShaderFile{"taa.comp.glsl"},
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
@@ -445,11 +421,17 @@ struct TaaRenderer {
 
                     .prob_filtered1_img = prob_filtered1_img,
                 },
-                .state = &taa_prob_filter_task_state,
-                .thread_count = record_ctx.render_resolution,
-                .push_common = TaaPushCommon{
-                    i_extent,
-                    o_extent,
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilterCompute::Uses &, TaaProbFilterComputePush &push, TaaTaskInfo const &info) {
+                    push.input_tex_size = info.input_tex_size;
+                    push.output_tex_size = info.output_tex_size;
+                    ti.get_recorder().set_pipeline(pipeline);
+                    ti.get_recorder().push_constant(push);
+                    ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+                },
+                .info = {
+                    .thread_count = record_ctx.render_resolution,
+                    .input_tex_size = i_extent,
+                    .output_tex_size = o_extent,
                 },
             });
 
@@ -460,7 +442,9 @@ struct TaaRenderer {
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
                 .name = "prob_filtered2_img",
             });
-            record_ctx.task_graph.add_task(TaaProbFilter2ComputeTask{
+
+            record_ctx.add(ComputeTask<TaaProbFilter2Compute, TaaProbFilter2ComputePush, TaaTaskInfo>{
+                .source = daxa::ShaderFile{"taa.comp.glsl"},
                 .uses = {
                     .gpu_input = record_ctx.task_input_buffer,
                     .globals = record_ctx.task_globals_buffer,
@@ -469,11 +453,17 @@ struct TaaRenderer {
 
                     .prob_filtered2_img = prob_filtered2_img,
                 },
-                .state = &taa_prob_filter2_task_state,
-                .thread_count = record_ctx.render_resolution,
-                .push_common = TaaPushCommon{
-                    i_extent,
-                    o_extent,
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilter2Compute::Uses &, TaaProbFilter2ComputePush &push, TaaTaskInfo const &info) {
+                    push.input_tex_size = info.input_tex_size;
+                    push.output_tex_size = info.output_tex_size;
+                    ti.get_recorder().set_pipeline(pipeline);
+                    ti.get_recorder().push_constant(push);
+                    ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+                },
+                .info = {
+                    .thread_count = record_ctx.render_resolution,
+                    .input_tex_size = i_extent,
+                    .output_tex_size = o_extent,
                 },
             });
 
@@ -488,7 +478,8 @@ struct TaaRenderer {
             .name = "this_frame_output_img",
         });
 
-        record_ctx.task_graph.add_task(TaaComputeTask{
+        record_ctx.add(ComputeTask<TaaCompute, TaaComputePush, TaaTaskInfo>{
+            .source = daxa::ShaderFile{"taa.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -507,11 +498,17 @@ struct TaaRenderer {
                 .smooth_var_output_tex = smooth_var_output_tex,
                 .temporal_velocity_output_tex = temporal_velocity_output_tex,
             },
-            .state = &taa_task_state,
-            .thread_count = record_ctx.output_resolution,
-            .push_common = TaaPushCommon{
-                i_extent,
-                o_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaCompute::Uses &, TaaComputePush &push, TaaTaskInfo const &info) {
+                push.input_tex_size = info.input_tex_size;
+                push.output_tex_size = info.output_tex_size;
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                ti.get_recorder().dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+            },
+            .info = {
+                .thread_count = record_ctx.output_resolution,
+                .input_tex_size = i_extent,
+                .output_tex_size = o_extent,
             },
         });
 

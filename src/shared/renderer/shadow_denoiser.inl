@@ -2,7 +2,7 @@
 
 #include <shared/core.inl>
 
-#if SHADOW_BIT_PACK_COMPUTE || defined(__cplusplus)
+#if ShadowBitPackComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowBitPackCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -21,7 +21,7 @@ daxa_ImageViewId output_tex = push.uses.output_tex;
 #endif
 #endif
 
-#if SHADOW_SPATIAL_FILTER_COMPUTE || defined(__cplusplus)
+#if ShadowSpatialFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowSpatialFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -49,7 +49,7 @@ daxa_ImageViewId output_tex = push.uses.output_tex;
 #endif
 #endif
 
-#if SHADOW_TEMPORAL_FILTER_COMPUTE || defined(__cplusplus)
+#if ShadowTemporalFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowTemporalFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -84,138 +84,9 @@ daxa_ImageViewId meta_output_tex = push.uses.meta_output_tex;
 
 #if defined(__cplusplus)
 
-struct ShadowBitPackComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    ShadowBitPackComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
-                .compile_options = {.defines = {{"SHADOW_BIT_PACK_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(ShadowBitPackComputePush),
-            .name = "shadow_bit_pack",
-        });
-    }
-};
-
-struct ShadowSpatialFilterComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    ShadowSpatialFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
-                .compile_options = {.defines = {{"SHADOW_SPATIAL_FILTER_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(ShadowSpatialFilterComputePush),
-            .name = "shadow_spatial_filter",
-        });
-    }
-};
-
-struct ShadowTemporalFilterComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    ShadowTemporalFilterComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
-                .compile_options = {.defines = {{"SHADOW_TEMPORAL_FILTER_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(ShadowTemporalFilterComputePush),
-            .name = "shadow_temporal_filter",
-        });
-    }
-};
-
-struct ShadowBitPackComputeTask {
-    ShadowBitPackCompute::Uses uses;
-    std::string name = "ShadowBitPackCompute";
-    ShadowBitPackComputeTaskState *state;
-    daxa_u32 step_size;
-    daxa_u32vec2 bitpacked_shadow_mask_extent;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.input_tex.image()).value();
-        auto push = ShadowBitPackComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        push.input_tex_size = daxa_f32vec4{float(image_info.size.x), float(image_info.size.y), 0.0f, 0.0f};
-        push.input_tex_size.z = 1.0f / push.input_tex_size.x;
-        push.input_tex_size.w = 1.0f / push.input_tex_size.y;
-        push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        auto render_size = daxa_u32vec2{bitpacked_shadow_mask_extent.x * 2, bitpacked_shadow_mask_extent.y};
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 4) == 0);
-        recorder.dispatch({(render_size.x + 7) / 8, (render_size.y + 3) / 4});
-    }
-};
-
-struct ShadowSpatialFilterComputeTask {
-    ShadowSpatialFilterCompute::Uses uses;
-    std::string name = "ShadowSpatialFilterCompute";
-    ShadowSpatialFilterComputeTaskState *state;
-    daxa_u32 step_size;
-    daxa_u32vec2 bitpacked_shadow_mask_extent;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
-        auto const &input_image_info = ti.get_device().info_image(uses.input_tex.image()).value();
-        auto push = ShadowSpatialFilterComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        push.step_size = step_size;
-        push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
-        push.input_tex_size.z = 1.0f / push.input_tex_size.x;
-        push.input_tex_size.w = 1.0f / push.input_tex_size.y;
-        push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
-
-struct ShadowTemporalFilterComputeTask {
-    ShadowTemporalFilterCompute::Uses uses;
-    std::string name = "ShadowTemporalFilterCompute";
-    ShadowTemporalFilterComputeTaskState *state;
-    daxa_u32vec2 bitpacked_shadow_mask_extent;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.output_moments_tex.image()).value();
-        auto const &input_image_info = ti.get_device().info_image(uses.shadow_mask_tex.image()).value();
-        auto push = ShadowTemporalFilterComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
-        push.input_tex_size.z = 1.0f / push.input_tex_size.x;
-        push.input_tex_size.w = 1.0f / push.input_tex_size.y;
-        push.bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent;
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 3) / 4});
-    }
-};
-
 struct ShadowDenoiser {
-    ShadowBitPackComputeTaskState shadow_bit_pack_task_state;
-    ShadowTemporalFilterComputeTaskState shadow_temporal_filter_task_state;
-    ShadowSpatialFilterComputeTaskState shadow_spatial_filter_task_state;
     PingPongImage ping_pong_moments_image;
     PingPongImage ping_pong_accum_image;
-
-    ShadowDenoiser(AsyncPipelineManager &pipeline_manager)
-        : shadow_bit_pack_task_state{pipeline_manager},
-          shadow_temporal_filter_task_state{pipeline_manager},
-          shadow_spatial_filter_task_state{pipeline_manager} {
-    }
 
     void next_frame() {
         ping_pong_moments_image.task_resources.output_resource.swap_images(ping_pong_moments_image.task_resources.history_resource);
@@ -232,14 +103,31 @@ struct ShadowDenoiser {
         });
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "shadow bitpack", .task_image_id = bitpacked_shadows_image, .type = DEBUG_IMAGE_TYPE_SHADOW_BITMAP});
 
-        record_ctx.task_graph.add_task(ShadowBitPackComputeTask{
+        struct ShadowBitPackComputeInfo {
+            daxa_u32vec2 bitpacked_shadow_mask_extent;
+        };
+        record_ctx.add(ComputeTask<ShadowBitPackCompute, ShadowBitPackComputePush, ShadowBitPackComputeInfo>{
+            .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .input_tex = shadow_bitmap,
                 .output_tex = bitpacked_shadows_image,
             },
-            .state = &shadow_bit_pack_task_state,
-            .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowBitPackCompute::Uses &uses, ShadowBitPackComputePush &push, ShadowBitPackComputeInfo const &info) {
+                auto const &image_info = ti.get_device().info_image(uses.input_tex.image()).value();
+                push.input_tex_size = daxa_f32vec4{float(image_info.size.x), float(image_info.size.y), 0.0f, 0.0f};
+                push.input_tex_size.z = 1.0f / push.input_tex_size.x;
+                push.input_tex_size.w = 1.0f / push.input_tex_size.y;
+                push.bitpacked_shadow_mask_extent = info.bitpacked_shadow_mask_extent;
+                auto render_size = daxa_u32vec2{info.bitpacked_shadow_mask_extent.x * 2, info.bitpacked_shadow_mask_extent.y};
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                // assert((render_size.x % 8) == 0 && (render_size.y % 4) == 0);
+                ti.get_recorder().dispatch({(render_size.x + 7) / 8, (render_size.y + 3) / 4});
+            },
+            .info = {
+                .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            },
         });
 
         ping_pong_moments_image = PingPongImage{};
@@ -248,7 +136,7 @@ struct ShadowDenoiser {
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "moments_image",
             });
         record_ctx.task_graph.use_persistent_image(moments_image);
@@ -260,7 +148,7 @@ struct ShadowDenoiser {
             {
                 .format = daxa::Format::R16G16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+                .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "accum_image",
             });
         record_ctx.task_graph.use_persistent_image(accum_image);
@@ -285,7 +173,8 @@ struct ShadowDenoiser {
             .name = "metadata_image",
         });
 
-        record_ctx.task_graph.add_task(ShadowTemporalFilterComputeTask{
+        record_ctx.add(ComputeTask<ShadowTemporalFilterCompute, ShadowTemporalFilterComputePush, ShadowBitPackComputeInfo>{
+            .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -298,11 +187,43 @@ struct ShadowDenoiser {
                 .temporal_output_tex = spatial_input_image,
                 .meta_output_tex = metadata_image,
             },
-            .state = &shadow_temporal_filter_task_state,
-            .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowTemporalFilterCompute::Uses &uses, ShadowTemporalFilterComputePush &push, ShadowBitPackComputeInfo const &info) {
+                auto const &image_info = ti.get_device().info_image(uses.output_moments_tex.image()).value();
+                auto const &input_image_info = ti.get_device().info_image(uses.shadow_mask_tex.image()).value();
+                push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
+                push.input_tex_size.z = 1.0f / push.input_tex_size.x;
+                push.input_tex_size.w = 1.0f / push.input_tex_size.y;
+                push.bitpacked_shadow_mask_extent = info.bitpacked_shadow_mask_extent;
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 3) / 4});
+            },
+            .info = {
+                .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            },
         });
 
-        record_ctx.task_graph.add_task(ShadowSpatialFilterComputeTask{
+        struct ShadowSpatialFilterComputeInfo {
+            daxa_u32 step_size;
+            daxa_u32vec2 bitpacked_shadow_mask_extent;
+        };
+        auto shadow_spatial_task_callback = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowSpatialFilterCompute::Uses &uses, ShadowSpatialFilterComputePush &push, ShadowSpatialFilterComputeInfo const &info) {
+            auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
+            auto const &input_image_info = ti.get_device().info_image(uses.input_tex.image()).value();
+            push.step_size = info.step_size;
+            push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
+            push.input_tex_size.z = 1.0f / push.input_tex_size.x;
+            push.input_tex_size.w = 1.0f / push.input_tex_size.y;
+            push.bitpacked_shadow_mask_extent = info.bitpacked_shadow_mask_extent;
+            ti.get_recorder().set_pipeline(pipeline);
+            ti.get_recorder().push_constant(push);
+            // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+            ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+        };
+
+        record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
+            .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -312,12 +233,15 @@ struct ShadowDenoiser {
                 .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                 .output_tex = accum_image,
             },
-            .state = &shadow_spatial_filter_task_state,
-            .step_size = 1,
-            .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            .callback_ = shadow_spatial_task_callback,
+            .info = {
+                .step_size = 1,
+                .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            },
         });
 
-        record_ctx.task_graph.add_task(ShadowSpatialFilterComputeTask{
+        record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
+            .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -327,12 +251,15 @@ struct ShadowDenoiser {
                 .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                 .output_tex = shadow_denoise_intermediary_1,
             },
-            .state = &shadow_spatial_filter_task_state,
-            .step_size = 2,
-            .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            .callback_ = shadow_spatial_task_callback,
+            .info = {
+                .step_size = 2,
+                .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            },
         });
 
-        record_ctx.task_graph.add_task(ShadowSpatialFilterComputeTask{
+        record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
+            .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -342,9 +269,11 @@ struct ShadowDenoiser {
                 .depth_tex = gbuffer_depth.depth.task_resources.output_resource,
                 .output_tex = spatial_input_image,
             },
-            .state = &shadow_spatial_filter_task_state,
-            .step_size = 4,
-            .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            .callback_ = shadow_spatial_task_callback,
+            .info = {
+                .step_size = 4,
+                .bitpacked_shadow_mask_extent = bitpacked_shadow_mask_extent,
+            },
         });
 
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "shadow temporal", .task_image_id = moments_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});

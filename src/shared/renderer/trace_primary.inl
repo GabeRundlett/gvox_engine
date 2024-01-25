@@ -2,7 +2,7 @@
 
 #include <shared/core.inl>
 
-#if TRACE_DEPTH_PREPASS_COMPUTE || defined(__cplusplus)
+#if TraceDepthPrepassComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -21,7 +21,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 #endif
 #endif
 
-#if TRACE_PRIMARY_COMPUTE || defined(__cplusplus)
+#if TracePrimaryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -56,82 +56,8 @@ daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
 
 #if defined(__cplusplus)
 
-struct TraceDepthPrepassComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    TraceDepthPrepassComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
-                .compile_options = {.defines = {{"TRACE_DEPTH_PREPASS_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(TraceDepthPrepassComputePush),
-            .name = "trace_depth_prepass",
-        });
-    }
-};
-
-struct TracePrimaryComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    TracePrimaryComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
-                .compile_options = {.defines = {{"TRACE_PRIMARY_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(TracePrimaryComputePush),
-            .name = "trace_primary",
-        });
-    }
-};
-
-struct TraceDepthPrepassComputeTask {
-    TraceDepthPrepassCompute::Uses uses;
-    std::string name = "TraceDepthPrepassCompute";
-    TraceDepthPrepassComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image()).value();
-        auto push = TraceDepthPrepassComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
-
-struct TracePrimaryComputeTask {
-    TracePrimaryCompute::Uses uses;
-    std::string name = "TracePrimaryCompute";
-    TracePrimaryComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
-        auto push = TracePrimaryComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
-
 struct GbufferRenderer {
     GbufferDepth gbuffer_depth;
-    TraceDepthPrepassComputeTaskState trace_depth_prepass_task_state;
-    TracePrimaryComputeTaskState trace_primary_task_state;
-
-    GbufferRenderer(AsyncPipelineManager &pipeline_manager)
-        : gbuffer_depth{pipeline_manager},
-          trace_depth_prepass_task_state{pipeline_manager},
-          trace_primary_task_state{pipeline_manager} {
-    }
 
     void next_frame() {
         gbuffer_depth.next_frame();
@@ -178,17 +104,25 @@ struct GbufferRenderer {
             .name = "depth_prepass_image",
         });
 
-        record_ctx.task_graph.add_task(TraceDepthPrepassComputeTask{
+        record_ctx.add(ComputeTask<TraceDepthPrepassCompute, TraceDepthPrepassComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
                 VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
                 .render_depth_prepass_image = depth_prepass_image,
             },
-            .state = &trace_depth_prepass_task_state,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceDepthPrepassCompute::Uses &uses, TraceDepthPrepassComputePush &push, NoTaskInfo const &) {
+                auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image()).value();
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+            },
         });
 
-        record_ctx.task_graph.add_task(TracePrimaryComputeTask{
+        record_ctx.add(ComputeTask<TracePrimaryCompute, TracePrimaryComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
             .uses = {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
@@ -202,7 +136,13 @@ struct GbufferRenderer {
                 .velocity_image_id = velocity_image,
                 .depth_image_id = depth_image,
             },
-            .state = &trace_primary_task_state,
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryCompute::Uses &uses, TracePrimaryComputePush &push, NoTaskInfo const &) {
+                auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
+                ti.get_recorder().set_pipeline(pipeline);
+                ti.get_recorder().push_constant(push);
+                // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+            },
         });
 
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "depth_prepass", .task_image_id = depth_prepass_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});

@@ -70,7 +70,7 @@ daxa_f32vec3 encode_rgb(daxa_f32vec3 v) {
 #endif
 }
 
-#if TAA_REPROJECT_COMPUTE
+#if TaaReprojectComputeShader
 
 // Optimization: Try to skip velocity dilation if velocity diff is small
 // around the pixel.
@@ -268,7 +268,7 @@ void main() {
 }
 #endif
 
-#if TAA_FILTER_INPUT_COMPUTE
+#if TaaFilterInputComputeShader
 
 // struct InputRemap {
 // };
@@ -357,7 +357,7 @@ void main() {
 
 #endif
 
-#if TAA_FILTER_HISTORY_COMPUTE
+#if TaaFilterHistoryComputeShader
 
 daxa_f32vec4 fetch_input(daxa_i32vec2 px) {
     return safeTexelFetch(reprojected_history_img, px, 0);
@@ -415,7 +415,7 @@ void main() {
 
 #endif
 
-#if TAA_INPUT_PROB_COMPUTE
+#if TaaInputProbComputeShader
 
 // struct InputRemap {
 // };
@@ -518,7 +518,7 @@ void main() {
 
 #endif
 
-#if TAA_PROB_FILTER_COMPUTE
+#if TaaProbFilterComputeShader
 
 daxa_f32 fetch_input(daxa_i32vec2 px) {
     return safeTexelFetch(input_prob_img, px, 0).r;
@@ -544,7 +544,7 @@ void main() {
 
 #endif
 
-#if TAA_PROB_FILTER2_COMPUTE
+#if TaaProbFilter2ComputeShader
 
 daxa_f32 fetch_input(daxa_i32vec2 px) {
     return safeTexelFetch(prob_filtered1_img, px, 0).r;
@@ -576,7 +576,7 @@ void main() {
 
 #endif
 
-#if TAA_COMPUTE
+#if TaaComputeShader
 
 // Apply at spatial kernel to the current frame, "un-jittering" it.
 #define FILTER_CURRENT_FRAME 1

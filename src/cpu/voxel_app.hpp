@@ -28,6 +28,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
     AsyncPipelineManager main_pipeline_manager;
+    std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
+    std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;
 
     AppUi ui;
     AppAudio audio;

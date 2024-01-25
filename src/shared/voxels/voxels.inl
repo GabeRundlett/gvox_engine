@@ -13,8 +13,7 @@
 #if defined(__cplusplus)
 
 template <typename T>
-concept IsVoxelWorld = requires(T x, AsyncPipelineManager &p, RecordContext &r, bool b) {
-    { T(p) };
+concept IsVoxelWorld = requires(T x, RecordContext &r, bool b) {
     { x.buffers } -> std::same_as<typename T::Buffers &>;
     { x.create(r.device) };
     { x.destroy(r.device) };

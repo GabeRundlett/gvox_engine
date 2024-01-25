@@ -3,7 +3,7 @@
 #include <utils/math.glsl>
 #include <utils/safety.glsl>
 
-#if SSAO_COMPUTE
+#if SsaoComputeShader
 
 #include <voxels/core.glsl>
 #include <utils/downscale.glsl>
@@ -212,7 +212,7 @@ void main() {
 }
 
 #endif
-#if SSAO_SPATIAL_FILTER_COMPUTE
+#if SsaoSpatialFilterComputeShader
 
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
@@ -284,7 +284,7 @@ void main() {
 }
 
 #endif
-#if SSAO_UPSAMPLE_COMPUTE
+#if SsaoUpscaleComputeShader
 
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
@@ -358,7 +358,7 @@ void main() {
 }
 
 #endif
-#if SSAO_TEMPORAL_FILTER_COMPUTE
+#if SsaoTemporalFilterComputeShader
 
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;

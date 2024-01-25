@@ -5,7 +5,7 @@
 #include <utils/sky.glsl>
 #include <utils/downscale.glsl>
 
-#if TRACE_SECONDARY_COMPUTE
+#if TraceSecondaryComputeShader
 
 vec3 sample_sun_direction(vec2 urand) {
 #if !PER_VOXEL_NORMALS

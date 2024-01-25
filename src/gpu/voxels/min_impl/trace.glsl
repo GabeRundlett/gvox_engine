@@ -53,7 +53,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
     daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
     ray_pos += offset;
 
-#if TRACE_DEPTH_PREPASS_COMPUTE
+#if TraceDepthPrepassComputeShader
     ray_pos -= offset;
     return result;
 #endif

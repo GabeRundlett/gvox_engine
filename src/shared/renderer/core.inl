@@ -11,15 +11,8 @@ struct GbufferDepth {
     daxa::TaskImageView geometric_normal;
     PingPongImage depth;
 
-    DownscaleComputeTaskState downscale_depth_task_state;
-    DownscaleComputeTaskState downscale_normal_task_state;
     std::optional<daxa::TaskImageView> downscaled_depth = std::nullopt;
     std::optional<daxa::TaskImageView> downscaled_view_normal = std::nullopt;
-
-    GbufferDepth(AsyncPipelineManager &pipeline_manager)
-        : downscale_depth_task_state{pipeline_manager, {{"DOWNSCALE_DEPTH", "1"}}},
-          downscale_normal_task_state{pipeline_manager, {{"DOWNSCALE_NRM", "1"}}} {
-    }
 
     void next_frame() {
         depth.task_resources.output_resource.swap_images(depth.task_resources.history_resource);
@@ -29,20 +22,20 @@ struct GbufferDepth {
 
     auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
         if (!downscaled_depth) {
-            downscaled_depth = extract_downscaled_depth(ctx, downscale_depth_task_state, depth.task_resources.output_resource);
+            downscaled_depth = extract_downscaled_depth(ctx, depth.task_resources.output_resource);
         }
         return *downscaled_depth;
     }
     auto get_downscaled_view_normal(RecordContext &ctx) -> daxa::TaskImageView {
         if (!downscaled_view_normal) {
-            downscaled_view_normal = extract_downscaled_gbuffer_view_normal_rgba8(ctx, downscale_normal_task_state, gbuffer);
+            downscaled_view_normal = extract_downscaled_gbuffer_view_normal_rgba8(ctx, gbuffer);
         }
         return *downscaled_view_normal;
     }
 };
 
 namespace {
-    template<size_t N>
+    template <size_t N>
     inline void clear_task_images(daxa::Device &device, std::array<daxa::TaskImage, N> task_images) {
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,

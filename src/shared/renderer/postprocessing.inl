@@ -5,7 +5,7 @@
 #include <shared/renderer/blur.inl>
 #include <shared/renderer/calculate_histogram.inl>
 
-#if COMPOSITING_COMPUTE || defined(__cplusplus)
+#if CompositingComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CompositingCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -34,11 +34,10 @@ daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 #endif
 #endif
 
-#if POSTPROCESSING_RASTER || defined(__cplusplus)
+#if PostprocessingRasterShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, composited_image_id)
-DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct PostprocessingRasterPush {
@@ -48,12 +47,11 @@ struct PostprocessingRasterPush {
 DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewId composited_image_id = push.uses.composited_image_id;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewId render_image = push.uses.render_image;
 #endif
 #endif
 
-#if DEBUG_IMAGE_RASTER || defined(__cplusplus)
+#if DebugImageRasterShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
@@ -72,206 +70,106 @@ daxa_ImageViewId render_image = push.uses.render_image;
 #endif
 #endif
 
-// #if TEST_COMPUTE || defined(__cplusplus)
-// DAXA_DECL_TASK_HEAD_BEGIN(TestCompute)
-// DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
-// DAXA_DECL_TASK_HEAD_END
-// struct TestComputePush {
-//     TestCompute uses;
-// };
-// #if DAXA_SHADER
-// DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
-// daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
-// #endif
-// #endif
-
 #if defined(__cplusplus)
 #include <numeric>
 #include <algorithm>
 #include <fmt/format.h>
 
-struct CompositingComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    CompositingComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
-                .compile_options = {.defines = {{"COMPOSITING_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(CompositingComputePush),
-            .name = "compositing",
-        });
-    }
-};
+inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap, daxa::TaskImageView particles_image) -> daxa::TaskImageView {
+    auto output_image = record_ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .name = "composited_image",
+    });
 
-struct PostprocessingRasterTaskState {
-    AsyncManagedRasterPipeline pipeline;
-    daxa::Format render_color_format;
-    PostprocessingRasterTaskState(AsyncPipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
-        : render_color_format{a_render_color_format} {
-        pipeline = pipeline_manager.add_raster_pipeline({
-            .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
-            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"POSTPROCESSING_RASTER", "1"}}}},
-            .color_attachments = {{
-                .format = render_color_format,
-            }},
-            .push_constant_size = sizeof(PostprocessingRasterPush),
-            .name = "postprocessing",
-        });
-    }
-};
+    record_ctx.add(ComputeTask<CompositingCompute, CompositingComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
+        .uses = {
+            .gpu_input = record_ctx.task_input_buffer,
+            .globals = record_ctx.task_globals_buffer,
+            .shadow_bitmap = shadow_bitmap,
+            .g_buffer_image_id = gbuffer_depth.gbuffer,
+            .transmittance_lut = transmittance_lut,
+            .sky_lut = sky_lut,
+            .particles_image_id = particles_image,
+            .ssao_image_id = ssao_image,
+            .dst_image_id = output_image,
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CompositingCompute::Uses &uses, CompositingComputePush &push, NoTaskInfo const &) {
+            auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+            ti.get_recorder().set_pipeline(pipeline);
+            ti.get_recorder().push_constant(push);
+            // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+            ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+        },
+    });
 
-struct DebugImageRasterTaskState {
-    AsyncManagedRasterPipeline pipeline;
-    daxa::Format render_color_format;
-    daxa_u32 type;
-    DebugImageRasterTaskState(AsyncPipelineManager &pipeline_manager, daxa::Format a_render_color_format = daxa::Format::R32G32B32A32_SFLOAT)
-        : render_color_format{a_render_color_format} {
-        pipeline = pipeline_manager.add_raster_pipeline({
-            .vertex_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"}, .compile_options = {.defines = {{"DEBUG_IMAGE_RASTER", "1"}}}},
-            .fragment_shader_info = daxa::ShaderCompileInfo{.source = daxa::ShaderFile{"postprocessing.comp.glsl"}, .compile_options = {.defines = {{"DEBUG_IMAGE_RASTER", "1"}}}},
-            .color_attachments = {{
-                .format = render_color_format,
-            }},
-            .push_constant_size = sizeof(DebugImageRasterPush),
-            .name = "debug_image",
-        });
-    }
-};
+    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-// struct TestComputeTaskState {
-//     AsyncManagedComputePipeline pipeline;
-//     TestComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-//         pipeline = pipeline_manager.add_compute_pipeline({
-//             .shader_info = {
-//                 .source = daxa::ShaderFile{"test.comp.glsl"},
-//                 .compile_options = {.defines = {{"TEST_COMPUTE", "1"}}},
-//             },
-//             .push_constant_size = sizeof(TestComputePush),
-//             .name = "test",
-//         });
-//     }
-// };
+    return output_image;
+}
 
-struct CompositingComputeTask {
-    CompositingCompute::Uses uses;
-    std::string name = "CompositingCompute";
-    CompositingComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        auto push = CompositingComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
+inline auto tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
+    record_ctx.add(RasterTask<PostprocessingRaster, PostprocessingRasterPush, NoTaskInfo>{
+        .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
+        .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
+        .color_attachments = {{
+            .format = output_format,
+        }},
+        .uses = {
+            .gpu_input = record_ctx.task_input_buffer,
+            .composited_image_id = antialiased_image,
+            .render_image = output_image,
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, PostprocessingRaster::Uses &uses, PostprocessingRasterPush &push, NoTaskInfo const &) {
+            auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
+            auto render_image = uses.render_image.image();
+            auto renderpass_recorder = std::move(ti.get_recorder()).begin_renderpass({
+                .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+                .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+            });
+            renderpass_recorder.set_pipeline(pipeline);
+            renderpass_recorder.push_constant(push);
+            renderpass_recorder.draw({.vertex_count = 3});
+            ti.get_recorder() = std::move(renderpass_recorder).end_renderpass();
+        },
+    });
+}
 
-struct PostprocessingRasterTask {
-    PostprocessingRaster::Uses uses;
-    std::string name = "PostprocessingRaster";
-    PostprocessingRasterTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
-        auto push = PostprocessingRasterPush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        auto render_image = uses.render_image.image();
-        auto renderpass_recorder = std::move(recorder).begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
-        });
-        renderpass_recorder.set_pipeline(state->pipeline.get());
-        renderpass_recorder.push_constant(push);
-        renderpass_recorder.draw({.vertex_count = 3});
-        recorder = std::move(renderpass_recorder).end_renderpass();
-    }
-};
-
-struct DebugImageRasterTask {
-    DebugImageRaster::Uses uses;
-    std::string name = "DebugImageRaster";
-    DebugImageRasterTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
-        auto push = DebugImageRasterPush{};
-        ti.copy_task_head_to(&push.uses);
-        push.type = state->type;
-        push.output_tex_size = {image_info.size.x, image_info.size.y};
-        auto render_image = uses.render_image.image();
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        auto renderpass_recorder = std::move(recorder).begin_renderpass({
-            .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
-            .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
-        });
-        renderpass_recorder.set_pipeline(state->pipeline.get());
-        renderpass_recorder.push_constant(push);
-        renderpass_recorder.draw({.vertex_count = 3});
-        recorder = std::move(renderpass_recorder).end_renderpass();
-    }
-};
-
-// struct TestComputeTask {
-//     TestCompute::Uses uses;
-//     std::string name = "TestCompute";
-//     TestComputeTaskState *state;
-//     void callback(daxa::TaskInterface const &ti) {
-//         auto &recorder = ti.get_recorder();
-//         auto push = TestComputePush{};
-//         ti.copy_task_head_to(&push.uses);
-//         if (!state->pipeline.is_valid()) {
-//             return;
-//         }
-//         recorder.set_pipeline(state->pipeline.get());
-//         recorder.push_constant(push);
-//         auto volume_size = uint32_t(8 * 64);
-//         recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
-//     }
-// };
-
-struct Compositor {
-    CompositingComputeTaskState compositing_compute_task_state;
-    Compositor(AsyncPipelineManager &pipeline_manager)
-        : compositing_compute_task_state{pipeline_manager} {
-    }
-
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap, daxa::TaskImageView particles_image) -> daxa::TaskImageView {
-        auto output_image = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "composited_image",
-        });
-
-        record_ctx.task_graph.add_task(CompositingComputeTask{
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .shadow_bitmap = shadow_bitmap,
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .transmittance_lut = transmittance_lut,
-                .sky_lut = sky_lut,
-                .particles_image_id = particles_image,
-                .ssao_image_id = ssao_image,
-                .dst_image_id = output_image,
-            },
-            .state = &compositing_compute_task_state,
-        });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-
-        return output_image;
-    }
-};
+inline auto debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
+    struct DebugImageRasterTaskInfo {
+        daxa_u32 type;
+    };
+    record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
+        .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
+        .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
+        .color_attachments = {{
+            .format = output_format,
+        }},
+        .uses = {
+            .gpu_input = record_ctx.task_input_buffer,
+            .image_id = pass.task_image_id,
+            .render_image = output_image,
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRaster::Uses &uses, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {
+            auto const &image_info = ti.get_device().info_image(uses.render_image.image()).value();
+            auto render_image = uses.render_image.image();
+            auto renderpass_recorder = std::move(ti.get_recorder()).begin_renderpass({
+                .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
+                .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+            });
+            push.type = info.type;
+            push.output_tex_size = {image_info.size.x, image_info.size.y};
+            renderpass_recorder.set_pipeline(pipeline);
+            renderpass_recorder.push_constant(push);
+            renderpass_recorder.draw({.vertex_count = 3});
+            ti.get_recorder() = std::move(renderpass_recorder).end_renderpass();
+        },
+        .info = {
+            .type = pass.type,
+        },
+    });
+}
 
 struct ExposureState {
     float pre_mult = 1.0f;
@@ -304,10 +202,6 @@ struct DynamicExposureState {
 };
 
 struct PostProcessor {
-    BlurComputeTaskState blur_task_state;
-    CalculateHistogramComputeTaskState calculate_histogram_task_state;
-    RevBlurComputeTaskState rev_blur_task_state;
-
     daxa::Device device;
     std::array<daxa::BufferId, FRAMES_IN_FLIGHT + 1> histogram_buffers;
     daxa::TaskBuffer task_histogram_buffer;
@@ -318,11 +212,7 @@ struct PostProcessor {
 
     std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT> histogram{};
 
-    PostProcessor(daxa::Device a_device, AsyncPipelineManager &pipeline_manager)
-        : blur_task_state{pipeline_manager},
-          calculate_histogram_task_state{pipeline_manager},
-          rev_blur_task_state{pipeline_manager},
-          device{std::move(a_device)} {
+    PostProcessor(daxa::Device a_device) : device{std::move(a_device)} {
         uint32_t i = 0;
         for (auto &histogram_buffer : histogram_buffers) {
             histogram_buffer = device.create_buffer(daxa::BufferInfo{
@@ -378,12 +268,9 @@ struct PostProcessor {
             }
             // AppUi::Console::s_instance->add_log(fmt::format("{}", used_count));
 
-            // assert_eq !(entry_count_to_use, used_count);
-
             auto mean = sum / std::max(used_count, 1u);
             auto image_log2_lum = float(LUMINANCE_HISTOGRAM_MIN_LOG2 + mean * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2));
 
-            // float dt = 1.0f / 60.0f;
             dynamic_exposure.update(-image_log2_lum, dt, auto_exposure_settings.speed);
 
             auto ev_mult = std::exp2f(auto_exposure_settings.ev_shift + dynamic_exposure.ev_smoothed());
@@ -398,9 +285,9 @@ struct PostProcessor {
 
     auto process(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
         record_ctx.task_graph.use_persistent_buffer(task_histogram_buffer);
-        auto blur_pyramid = ::blur_pyramid(record_ctx, blur_task_state, input_image, image_size);
-        calculate_luminance_histogram(record_ctx, calculate_histogram_task_state, blur_pyramid, task_histogram_buffer, image_size);
-        auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, rev_blur_task_state, blur_pyramid, image_size);
+        auto blur_pyramid = ::blur_pyramid(record_ctx, input_image, image_size);
+        calculate_luminance_histogram(record_ctx, blur_pyramid, task_histogram_buffer, image_size);
+        auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, blur_pyramid, image_size);
         return blur_pyramid;
     }
 };

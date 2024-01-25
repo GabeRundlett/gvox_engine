@@ -1,7 +1,7 @@
 #include <shared/app.inl>
 #include <utils/safety.glsl>
 
-#if BLUR_COMPUTE
+#if BlurComputeShader
 const uint kernel_radius = 5;
 const uint group_width = 64;
 const uint vblur_window_size = (group_width + kernel_radius) * 2;
@@ -62,7 +62,7 @@ void main() {
 
 #endif
 
-#if REV_BLUR_COMPUTE
+#if RevBlurComputeShader
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

@@ -10,8 +10,6 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
     Buffers buffers;
 
-    VoxelWorld(AsyncPipelineManager &) {
-    }
     virtual ~VoxelWorld() override = default;
 
     virtual void add_ui() override {

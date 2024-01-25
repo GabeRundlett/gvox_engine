@@ -3,7 +3,7 @@
 #include <utils/math.glsl>
 #include <utils/sky.glsl>
 
-#if SKY_TRANSMITTANCE_COMPUTE
+#if SkyTransmittanceComputeShader
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 daxa_f32vec3 integrate_transmittance(daxa_f32vec3 world_position, daxa_f32vec3 world_direction, daxa_u32 sample_count) {
@@ -53,7 +53,7 @@ void main() {
 
 #endif
 
-#if SKY_MULTISCATTERING_COMPUTE
+#if SkyMultiscatteringComputeShader
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 64) in;
 /* This number should match the number of local threads -> z dimension */
@@ -259,7 +259,7 @@ void main() {
 
 #endif
 
-#if SKY_SKY_COMPUTE
+#if SkySkyComputeShader
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 /* ============================= PHASE FUNCTIONS ============================ */

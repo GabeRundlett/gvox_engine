@@ -2,7 +2,7 @@
 
 #include <shared/core.inl>
 
-#if TRACE_SECONDARY_COMPUTE || defined(__cplusplus)
+#if TraceSecondaryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TraceSecondaryCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -29,71 +29,36 @@ daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
 
 #if defined(__cplusplus)
 
-struct TraceSecondaryComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    TraceSecondaryComputeTaskState(AsyncPipelineManager &pipeline_manager) {
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
-                .compile_options = {.defines = {{"TRACE_SECONDARY_COMPUTE", "1"}}},
-            },
-            .push_constant_size = sizeof(TraceSecondaryComputePush),
-            .name = "trace_secondary",
-        });
-    }
-};
+inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorld::Buffers &voxel_buffers) -> daxa::TaskImageView {
+    auto shadow_bitmap = record_ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R8_UNORM,
+        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .name = "shadow_bitmap",
+    });
 
-struct TraceSecondaryComputeTask {
-    TraceSecondaryCompute::Uses uses;
-    std::string name = "TraceSecondaryCompute";
-    TraceSecondaryComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
-        auto push = TraceSecondaryComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
+    record_ctx.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
+        .uses = {
+            .gpu_input = record_ctx.task_input_buffer,
+            .globals = record_ctx.task_globals_buffer,
+            .shadow_bitmap = shadow_bitmap,
+            VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
+            .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
+            .g_buffer_image_id = gbuffer_depth.gbuffer,
+            .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceSecondaryCompute::Uses &uses, TraceSecondaryComputePush &push, NoTaskInfo const &) {
+            auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
+            ti.get_recorder().set_pipeline(pipeline);
+            ti.get_recorder().push_constant(push);
+            // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+            ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+        },
+    });
 
-struct ShadowRenderer {
-    TraceSecondaryComputeTaskState trace_secondary_task_state;
+    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "trace shadow bitmap", .task_image_id = shadow_bitmap, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
 
-    ShadowRenderer(AsyncPipelineManager &pipeline_manager)
-        : trace_secondary_task_state{pipeline_manager} {
-    }
-
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorld::Buffers &voxel_buffers)
-        -> daxa::TaskImageView {
-
-        auto shadow_bitmap = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R8_UNORM,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "shadow_bitmap",
-        });
-
-        record_ctx.task_graph.add_task(TraceSecondaryComputeTask{
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .shadow_bitmap = shadow_bitmap,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .depth_image_id = gbuffer_depth.depth.task_resources.output_resource,
-            },
-            .state = &trace_secondary_task_state,
-        });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "trace shadow bitmap", .task_image_id = shadow_bitmap, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
-
-        return daxa::TaskImageView{shadow_bitmap};
-    }
-};
+    return daxa::TaskImageView{shadow_bitmap};
+}
 
 #endif

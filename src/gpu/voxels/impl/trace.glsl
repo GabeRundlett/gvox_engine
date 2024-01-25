@@ -115,7 +115,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
                 break;
             }
             lod = sample_lod(info.ptrs.globals, info.ptrs.allocator, voxel_chunks_ptr, chunk_n, current_pos, lod_index, result.voxel_data);
-#if TRACE_DEPTH_PREPASS_COMPUTE
+#if TraceDepthPrepassComputeShader
             hit_surface = lod < clamp(sqrt(t_curr * info.angular_coverage * voxel_scl), 1, 7);
 #else
             hit_surface = lod == 0;

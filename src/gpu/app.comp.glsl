@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#if STARTUP_COMPUTE
+#if StartupComputeShader
 
 #include <utils/player.glsl>
 #include <voxels/core.glsl>
@@ -13,7 +13,7 @@ void main() {
 
 #endif
 
-#if PERFRAME_COMPUTE
+#if PerframeComputeShader
 
 #include <utils/player.glsl>
 

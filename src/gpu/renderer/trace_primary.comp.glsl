@@ -3,7 +3,7 @@
 #include <utils/math.glsl>
 #include <voxels/core.glsl>
 
-#if TRACE_DEPTH_PREPASS_COMPUTE
+#if TraceDepthPrepassComputeShader
 
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -36,7 +36,7 @@ void main() {
 
 #endif
 
-#if TRACE_PRIMARY_COMPUTE
+#if TracePrimaryComputeShader
 
 #include <utils/sky.glsl>
 

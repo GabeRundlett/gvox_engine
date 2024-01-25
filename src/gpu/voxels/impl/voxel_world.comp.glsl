@@ -1,6 +1,6 @@
 #include <shared/app.inl>
 
-#if PER_CHUNK_COMPUTE
+#if PerChunkComputeShader
 
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
@@ -100,7 +100,7 @@ void main() {
 
 #endif
 
-#if CHUNK_EDIT_COMPUTE
+#if ChunkEditComputeShader
 
 #include <utils/math.glsl>
 #include <utils/noise.glsl>
@@ -196,7 +196,7 @@ void main() {
 
 #endif
 
-#if CHUNK_EDIT_POST_PROCESS_COMPUTE
+#if ChunkEditPostProcessComputeShader
 
 #include <utils/math.glsl>
 #include <utils/noise.glsl>
@@ -402,7 +402,7 @@ void main() {
 
 #endif
 
-#if CHUNK_OPT_COMPUTE
+#if ChunkOptComputeShader
 
 #include <voxels/impl/voxels.glsl>
 
@@ -738,7 +738,7 @@ void main() {
 
 #endif
 
-#if CHUNK_ALLOC_COMPUTE
+#if ChunkAllocComputeShader
 
 #extension GL_EXT_shader_atomic_int64 : require
 

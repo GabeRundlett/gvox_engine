@@ -272,7 +272,7 @@ daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buf
     if ((chunk_flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0)
         return 7;
 
-#if !defined(TRACE_DEPTH_PREPASS_COMPUTE) || VOXEL_ACCEL_UNIFORMITY
+#if !defined(TraceDepthPrepassComputeShader) || VOXEL_ACCEL_UNIFORMITY
     daxa_u32 palette_region_index = calc_palette_region_index(inchunk_voxel_i);
     daxa_u32 palette_voxel_index = calc_palette_voxel_index(inchunk_voxel_i);
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
@@ -291,7 +291,7 @@ daxa_u32 sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_Buf
     }
 
 #endif
-#if TRACE_SECONDARY_COMPUTE
+#if TraceSecondaryComputeShader
     // I have found, at least on memory bound GPUs (all GPUs), that never sampling
     // the X2 uniformity in the accel structure actually results in about 20% better
     // perf for the secondary trace, due to the fact that the secondary rays are

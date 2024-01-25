@@ -1,7 +1,7 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
 
-#if COMPOSITING_COMPUTE
+#if CompositingComputeShader
 #include <utils/sky.glsl>
 #include <voxels/core.glsl>
 
@@ -112,7 +112,7 @@ void main() {
 }
 #endif
 
-#if POSTPROCESSING_RASTER
+#if PostprocessingRasterShader
 
 const mat3 SRGB_2_XYZ_MAT = mat3(
     0.4124564, 0.3575761, 0.1804375,
@@ -219,20 +219,12 @@ void main() {
         }
     }
 
-    // daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_FragCoord.xy), 0);
-    // daxa_u32vec4 g_buffer_value = texture(daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc), (uv + 0.5) / deref(gpu_input).frame_dim.xy);
-    // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
-    // daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
-    // final_color = nrm;
-    // final_color = max(dot(normalize(nrm), deref(gpu_input).sky_settings.sun_direction), vec3(0.0));
-    // final_color = vec3(dot(normalize(nrm), deref(gpu_input).sky_settings.sun_direction.xyz));
-
     color = daxa_f32vec4(color_correct(final_color), 1.0);
 }
 
 #endif
 
-#if DEBUG_IMAGE_RASTER
+#if DebugImageRasterShader
 
 layout(location = 0) out daxa_f32vec4 color;
 

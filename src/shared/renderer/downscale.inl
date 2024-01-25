@@ -2,7 +2,7 @@
 
 #include <shared/core.inl>
 
-#if DOWNSCALE_COMPUTE || defined(__cplusplus)
+#if DownscaleComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -23,101 +23,59 @@ daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 
 #if defined(__cplusplus)
 
-struct DownscaleComputeTaskState {
-    AsyncManagedComputePipeline pipeline;
-    DownscaleComputeTaskState(AsyncPipelineManager &pipeline_manager, std::vector<daxa::ShaderDefine> &&extra_defines) {
-        extra_defines.push_back({"DOWNSCALE_COMPUTE", "1"});
-        pipeline = pipeline_manager.add_compute_pipeline({
-            .shader_info = {
-                .source = daxa::ShaderFile{"downscale.comp.glsl"},
-                .compile_options = {.defines = extra_defines, .enable_debug_info = true},
-            },
-            .push_constant_size = sizeof(DownscaleComputePush),
-            .name = "downscale",
-        });
-    }
-};
+inline auto extract_downscaled_depth(RecordContext &record_ctx, daxa::TaskImageView depth) -> daxa::TaskImageView {
+    auto size = record_ctx.render_resolution;
 
-struct DownscaleComputeTask {
-    DownscaleCompute::Uses uses;
-    std::string name = "DownscaleCompute";
-    DownscaleComputeTaskState *state;
-    void callback(daxa::TaskInterface const &ti) {
-        auto &recorder = ti.get_recorder();
-        auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
-        auto push = DownscaleComputePush{};
-        ti.copy_task_head_to(&push.uses);
-        if (!state->pipeline.is_valid()) {
-            return;
-        }
-        recorder.set_pipeline(state->pipeline.get());
-        recorder.push_constant(push);
-        // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-        recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-    }
-};
-
-inline auto extract_downscaled_depth(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView depth) -> daxa::TaskImageView {
-    auto size = ctx.render_resolution;
-
-    auto output_tex = ctx.task_graph.create_transient_image({
+    auto output_tex = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R32_SFLOAT,
         .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
         .name = "downscaled_depth",
     });
 
-    ctx.task_graph.add_task(DownscaleComputeTask{
+    record_ctx.add(ComputeTask<DownscaleCompute, DownscaleComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"downscale.comp.glsl"},
+        .extra_defines = {{"DOWNSCALE_DEPTH", "1"}},
         .uses = {
-            .gpu_input = ctx.task_input_buffer,
-            .globals = ctx.task_globals_buffer,
+            .gpu_input = record_ctx.task_input_buffer,
+            .globals = record_ctx.task_globals_buffer,
             .src_image_id = depth,
             .dst_image_id = output_tex,
         },
-        .state = &task_state,
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, DownscaleCompute::Uses &uses, DownscaleComputePush &push, NoTaskInfo const &) {
+            auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+            ti.get_recorder().set_pipeline(pipeline);
+            ti.get_recorder().push_constant(push);
+            ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+        },
     });
 
     return output_tex;
 }
 
-inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView gbuffer) -> daxa::TaskImageView {
-    auto size = ctx.render_resolution;
+inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &record_ctx, daxa::TaskImageView gbuffer) -> daxa::TaskImageView {
+    auto size = record_ctx.render_resolution;
 
-    auto output_tex = ctx.task_graph.create_transient_image({
+    auto output_tex = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R8G8B8A8_SNORM,
         .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
         .name = "downscaled_gbuffer_view_normal",
     });
 
-    ctx.task_graph.add_task(DownscaleComputeTask{
+    record_ctx.add(ComputeTask<DownscaleCompute, DownscaleComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"downscale.comp.glsl"},
+        .extra_defines = {{"DOWNSCALE_NRM", "1"}},
         .uses = {
-            .gpu_input = ctx.task_input_buffer,
-            .globals = ctx.task_globals_buffer,
+            .gpu_input = record_ctx.task_input_buffer,
+            .globals = record_ctx.task_globals_buffer,
             .src_image_id = gbuffer,
             .dst_image_id = output_tex,
         },
-        .state = &task_state,
-    });
-
-    return output_tex;
-}
-
-inline auto extract_downscaled_ssao(RecordContext &ctx, DownscaleComputeTaskState &task_state, daxa::TaskImageView ssao_image) -> daxa::TaskImageView {
-    auto size = ctx.render_resolution;
-
-    auto output_tex = ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16_SFLOAT,
-        .size = {size.x / SHADING_SCL, size.y / SHADING_SCL, 1},
-        .name = "downscaled_ssao_image",
-    });
-
-    ctx.task_graph.add_task(DownscaleComputeTask{
-        .uses = {
-            .gpu_input = ctx.task_input_buffer,
-            .globals = ctx.task_globals_buffer,
-            .src_image_id = ssao_image,
-            .dst_image_id = output_tex,
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, DownscaleCompute::Uses &uses, DownscaleComputePush &push, NoTaskInfo const &) {
+            auto const &image_info = ti.get_device().info_image(uses.dst_image_id.image()).value();
+            ti.get_recorder().set_pipeline(pipeline);
+            ti.get_recorder().push_constant(push);
+            ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
         },
-        .state = &task_state,
     });
 
     return output_tex;

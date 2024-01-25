@@ -629,6 +629,10 @@ void VoxelApp::on_update() {
     gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<daxa_f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
 
+#if ENABLE_TAA
+    gpu_input.halton_jitter = halton_offsets[gpu_input.frame_index % halton_offsets.size()];
+#endif
+
     audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     if (ui.should_hotload_shaders) {
@@ -890,6 +894,9 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = temp_task_graph,
+        .pipeline_manager = &main_pipeline_manager,
+        .compute_pipelines = &this->compute_pipelines,
+        .raster_pipelines = &this->raster_pipelines,
     };
 
     gpu_app.record_startup(record_ctx);
@@ -1000,9 +1007,12 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = result_task_graph,
+        .pipeline_manager = &main_pipeline_manager,
         .render_resolution = gpu_input.rounded_frame_dim,
         .output_resolution = gpu_input.output_resolution,
         .task_swapchain_image = task_swapchain_image,
+        .compute_pipelines = &this->compute_pipelines,
+        .raster_pipelines = &this->raster_pipelines,
     };
 
     // gpu_app.task_value_noise_image.view().view({});

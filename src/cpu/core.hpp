@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <functional>
+#include <unordered_map>
 
 #include <daxa/daxa.hpp>
 #include <daxa/utils/pipeline_manager.hpp>
@@ -14,19 +15,6 @@
 using BDA = daxa::DeviceAddress;
 
 static inline constexpr size_t FRAMES_IN_FLIGHT = 1;
-
-struct RecordContext {
-    daxa::Device device;
-    daxa::TaskGraph task_graph;
-    daxa_u32vec2 render_resolution;
-    daxa_u32vec2 output_resolution;
-
-    daxa::TaskImageView task_swapchain_image;
-    daxa::TaskImageView task_blue_noise_vec2_image;
-    daxa::TaskImageView task_debug_texture;
-    daxa::TaskBufferView task_input_buffer;
-    daxa::TaskBufferView task_globals_buffer;
-};
 
 struct PingPongImage_impl {
     using ResourceType = daxa::ImageId;
@@ -210,6 +198,7 @@ namespace {
 } // namespace
 
 struct AsyncManagedComputePipeline {
+    using PipelineT = daxa::ComputePipeline;
     std::shared_ptr<daxa::ComputePipeline> pipeline;
 #if ENABLE_THREAD_POOL
     std::shared_ptr<std::promise<std::shared_ptr<daxa::ComputePipeline>>> pipeline_promise;
@@ -230,6 +219,7 @@ struct AsyncManagedComputePipeline {
     }
 };
 struct AsyncManagedRasterPipeline {
+    using PipelineT = daxa::RasterPipeline;
     std::shared_ptr<daxa::RasterPipeline> pipeline;
 #if ENABLE_THREAD_POOL
     std::shared_ptr<std::promise<std::shared_ptr<daxa::RasterPipeline>>> pipeline_promise;
@@ -391,22 +381,22 @@ struct AsyncPipelineManager {
     auto reload_all() -> daxa::PipelineReloadResult {
         std::array<daxa::PipelineReloadResult, 8> results;
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
-// #if ENABLE_THREAD_POOL
-//             atomics->thread_pool.enqueue([this, i, &results]() {
-//                 auto &pipeline_manager = this->pipeline_managers[i];
-//                 auto lock = std::lock_guard{this->atomics->mutexes[i]};
-//                 (results)[i] = pipeline_manager.reload_all();
-//             });
-// #else
+            // #if ENABLE_THREAD_POOL
+            //             atomics->thread_pool.enqueue([this, i, &results]() {
+            //                 auto &pipeline_manager = this->pipeline_managers[i];
+            //                 auto lock = std::lock_guard{this->atomics->mutexes[i]};
+            //                 (results)[i] = pipeline_manager.reload_all();
+            //             });
+            // #else
             auto &pipeline_manager = pipeline_managers[i];
             auto lock = std::lock_guard{atomics->mutexes[i]};
             results[i] = pipeline_manager.reload_all();
-// #endif
+            // #endif
         }
-// #if ENABLE_THREAD_POOL
-//         while (atomics->thread_pool.busy()) {
-//         }
-// #endif
+        // #if ENABLE_THREAD_POOL
+        //         while (atomics->thread_pool.busy()) {
+        //         }
+        // #endif
         for (auto const &result : results) {
             if (daxa::holds_alternative<daxa::PipelineReloadError>(result)) {
                 return result;
@@ -439,5 +429,138 @@ struct AsyncPipelineManager {
             pipeline_managers[index],
             std::unique_lock(atomics->mutexes[index]),
         };
+    }
+};
+
+template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+using TaskCallback = void(daxa::TaskInterface const &ti, typename PipelineT::PipelineT &pipeline, typename TaskHeadT::Uses &uses, PushT &push, InfoT const &info);
+
+struct NoTaskInfo {
+};
+
+template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+struct Task {
+    daxa::ShaderSource source;
+    std::vector<daxa::ShaderDefine> extra_defines{};
+    TaskHeadT::Uses uses{};
+    TaskCallback<TaskHeadT, PushT, InfoT, PipelineT> *callback_{};
+    InfoT info{};
+    // Not set by user
+    std::string_view name = TaskHeadT::NAME;
+    std::shared_ptr<PipelineT> pipeline;
+    void callback(daxa::TaskInterface const &ti) {
+        auto push = PushT{};
+        ti.copy_task_head_to(&push.uses);
+        if (!pipeline->is_valid()) {
+            return;
+        }
+        callback_(ti, pipeline->get(), uses, push, info);
+    }
+};
+
+template <typename TaskHeadT, typename PushT, typename InfoT>
+struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> {
+    daxa::ShaderSource vert_source;
+    daxa::ShaderSource frag_source;
+    std::vector<daxa::RenderAttachment> color_attachments{};
+    daxa::Optional<daxa::DepthTestInfo> depth_test{};
+    daxa::RasterizerInfo raster{};
+    std::vector<daxa::ShaderDefine> extra_defines{};
+    TaskHeadT::Uses uses{};
+    TaskCallback<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> *callback_{};
+    InfoT info{};
+    // Not set by user
+    std::string_view name = TaskHeadT::NAME;
+    std::shared_ptr<AsyncManagedRasterPipeline> pipeline;
+    void callback(daxa::TaskInterface const &ti) {
+        auto push = PushT{};
+        ti.copy_task_head_to(&push.uses);
+        if (!pipeline->is_valid()) {
+            return;
+        }
+        callback_(ti, pipeline->get(), uses, push, info);
+    }
+};
+
+template <typename TaskHeadT, typename PushT, typename InfoT>
+using ComputeTask = Task<TaskHeadT, PushT, InfoT, AsyncManagedComputePipeline>;
+
+template <typename TaskHeadT, typename PushT, typename InfoT>
+using RasterTask = Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline>;
+
+struct RecordContext {
+    daxa::Device device;
+    daxa::TaskGraph task_graph;
+    AsyncPipelineManager *pipeline_manager;
+    daxa_u32vec2 render_resolution;
+    daxa_u32vec2 output_resolution;
+
+    daxa::TaskImageView task_swapchain_image;
+    daxa::TaskImageView task_blue_noise_vec2_image;
+    daxa::TaskImageView task_debug_texture;
+    daxa::TaskBufferView task_input_buffer;
+    daxa::TaskBufferView task_globals_buffer;
+
+    std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> *compute_pipelines;
+    std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> *raster_pipelines;
+
+    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+    auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, std::string const &shader_id) {
+        if constexpr (std::is_same_v<PipelineT, AsyncManagedComputePipeline>) {
+            auto pipe_iter = compute_pipelines->find(shader_id);
+            if (pipe_iter == compute_pipelines->end()) {
+                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
+                auto emplace_result = compute_pipelines->emplace(
+                    shader_id,
+                    std::make_shared<AsyncManagedComputePipeline>(pipeline_manager->add_compute_pipeline({
+                        .shader_info = {
+                            .source = task.source,
+                            .compile_options = {.defines = task.extra_defines},
+                        },
+                        .push_constant_size = sizeof(PushT),
+                        .name = std::string{TaskHeadT::NAME},
+                    })));
+                pipe_iter = emplace_result.first;
+            }
+            return pipe_iter;
+        } else if constexpr (std::is_same_v<PipelineT, AsyncManagedRasterPipeline>) {
+            auto pipe_iter = raster_pipelines->find(shader_id);
+            // TODO: if we found a pipeline, but it has differing info such as attachments or raster info,
+            // we should destroy that old one and create a new one.
+            if (pipe_iter == raster_pipelines->end()) {
+                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
+                auto emplace_result = raster_pipelines->emplace(
+                    shader_id,
+                    std::make_shared<AsyncManagedRasterPipeline>(pipeline_manager->add_raster_pipeline({
+                        .vertex_shader_info = daxa::ShaderCompileInfo{
+                            .source = task.vert_source,
+                            .compile_options = {.defines = task.extra_defines},
+                        },
+                        .fragment_shader_info = daxa::ShaderCompileInfo{
+                            .source = task.frag_source,
+                            .compile_options = {.defines = task.extra_defines},
+                        },
+                        .color_attachments = task.color_attachments,
+                        .depth_test = task.depth_test,
+                        .raster = task.raster,
+                        .push_constant_size = sizeof(PushT),
+                        .name = std::string{TaskHeadT::NAME},
+                    })));
+                pipe_iter = emplace_result.first;
+            }
+            return pipe_iter;
+        }
+    }
+
+    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+    void add(Task<TaskHeadT, PushT, InfoT, PipelineT> &&task) {
+        auto shader_id = std::string{TaskHeadT::NAME};
+        for (auto const &define : task.extra_defines) {
+            shader_id.append(define.name);
+            shader_id.append(define.value);
+        }
+        auto pipe_iter = find_or_add_pipeline<TaskHeadT, PushT, InfoT, PipelineT>(task, shader_id);
+        task.pipeline = pipe_iter->second;
+        task_graph.add_task(std::move(task));
     }
 };

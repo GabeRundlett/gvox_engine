@@ -1,7 +1,7 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
 
-#if TEST_COMPUTE
+#if TestComputeShader
 uint gen_voxel(ivec3 pos) {
     uint r = uint(0);
     uint g = uint(0);
