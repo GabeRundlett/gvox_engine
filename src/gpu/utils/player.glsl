@@ -8,6 +8,7 @@
 void player_fix_chunk_offset(
     daxa_BufferPtr(GpuInput) input_ptr,
     daxa_RWBufferPtr(GpuGlobals) globals_ptr) {
+    PLAYER.prev_unit_offset = PLAYER.player_unit_offset;
 #if ENABLE_CHUNK_WRAPPING
     PLAYER.player_unit_offset += daxa_i32vec3(floor(PLAYER.pos));
     PLAYER.pos = fract(PLAYER.pos);

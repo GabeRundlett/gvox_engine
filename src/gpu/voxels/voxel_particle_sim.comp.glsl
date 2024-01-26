@@ -10,7 +10,7 @@ void main() {
     // }
 
     bool should_place = false;
-    particle_update(self, gpu_input, should_place);
+    particle_update(self, VOXELS_BUFFER_PTRS, gpu_input, should_place);
     deref(simulated_voxel_particles[particle_index]) = self;
 
     // if (self.pos.z < 600.5) {

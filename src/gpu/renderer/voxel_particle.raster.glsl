@@ -1,9 +1,10 @@
 #include <shared/app.inl>
+
 #define VOXEL_SCL 8
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
-layout(location = 0) out daxa_f32vec3 pos;
+#include <voxels/voxel_particle.glsl>
 layout(location = 1) out uint id;
 
 void main() {
@@ -55,11 +56,16 @@ void main() {
     daxa_u32 simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
     SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
 
-    vec3 vert_pos = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL + floor(particle.pos * VOXEL_SCL) / VOXEL_SCL;
+    vec3 particle_worldspace_origin = get_particle_worldspace_origin(globals, particle.pos);
+    vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
+    vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 
-    pos = vert_pos;
+    mat4 view_to_clip = deref(globals).player.cam.view_to_clip;
+    // TODO: Figure out why raster is projected upside down
+    view_to_clip[1][1] *= -1.0;
+
     vec4 vs_pos = deref(globals).player.cam.world_to_view * daxa_f32vec4(vert_pos, 1);
-    vec4 cs_pos = deref(globals).player.cam.view_to_clip * vs_pos;
+    vec4 cs_pos = view_to_clip * vs_pos;
 
     gl_Position = cs_pos;
 
@@ -68,13 +74,11 @@ void main() {
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
 
-layout(location = 0) in daxa_f32vec3 pos;
 layout(location = 1) flat in uint id;
-layout(location = 0) out daxa_f32vec4 color;
+layout(location = 0) out daxa_u32vec4 color;
 
 void main() {
-    // color = daxa_f32vec4(pos, uintBitsToFloat(1 + id));
-    color = daxa_f32vec4(pos, float(1 + id));
+    color = daxa_u32vec4(id + 1, 0, 0, 0);
 }
 
 #endif

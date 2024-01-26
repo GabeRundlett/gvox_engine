@@ -111,7 +111,7 @@ VoxelApp::VoxelApp()
               .use_custom_config = false,
           });
       }()},
-      gpu_app{device, main_pipeline_manager, swapchain.get_format()}, gvox_ctx(gvox_create_context()), main_task_graph{[this]() {
+      gpu_app{device, swapchain.get_format()}, gvox_ctx(gvox_create_context()), main_task_graph{[this]() {
           return record_main_task_graph();
       }()} {
 

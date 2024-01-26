@@ -123,6 +123,18 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
             if (hit_surface) {
                 result.nrm = sign(info.ray_dir) * (sign(t_next - min(min(t_next.x, t_next.y), t_next.z).xxx) - 1);
                 result.dist = t_curr;
+
+#if PER_VOXEL_NORMALS
+                Voxel voxel = unpack_voxel(result.voxel_data);
+
+                // vec3 voxel_pos = floor(ray_pos * VOXEL_SCL) / VOXEL_SCL;
+                // vec3 del = normalize(voxel_pos - cam_pos);
+                // if (dot(voxel.normal, del) > -1.0 && dot(trace_result.nrm, voxel.normal) < 0.0) {
+                //     voxel.normal *= -1;
+                // }
+
+                result.nrm = voxel.normal;
+#endif
                 break;
             }
             cell_size = daxa_f32(1l << (lod - 1)) / voxel_scl;

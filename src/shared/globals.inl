@@ -30,6 +30,7 @@ struct Player {
     daxa_f32 pitch, yaw, roll;
     daxa_f32vec3 forward, lateral;
     daxa_i32vec3 player_unit_offset;
+    daxa_i32vec3 prev_unit_offset;
     daxa_f32 max_speed;
 };
 
@@ -56,7 +57,7 @@ struct SimulatedVoxelParticle {
     daxa_f32vec3 pos;
     daxa_f32 duration_alive;
     daxa_f32vec3 vel;
-    daxa_u32 voxel_data;
+    PackedVoxel packed_voxel;
     daxa_u32 flags;
 };
 DAXA_DECL_BUFFER_PTR(SimulatedVoxelParticle)

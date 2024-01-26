@@ -7,7 +7,7 @@
 
 #include <shared/voxels/voxels.inl>
 #include <shared/voxels/impl/voxel_world.inl>
-#include <shared/voxels/voxel_particle_sim.inl>
+#include <shared/voxels/voxel_particles.inl>
 #include <shared/voxels/gvox_model.inl>
 
 #include <shared/renderer/downscale.inl>
@@ -18,7 +18,6 @@
 #include <shared/renderer/shadow_denoiser.inl>
 #include <shared/renderer/taa.inl>
 #include <shared/renderer/postprocessing.inl>
-#include <shared/renderer/voxel_particle_raster.inl>
 #include <shared/renderer/sky.inl>
 #include <shared/renderer/blur.inl>
 #include <shared/renderer/fsr.inl>
@@ -111,10 +110,6 @@ struct GpuResources {
     daxa::BufferId globals_buffer;
     daxa::BufferId gvox_model_buffer;
 
-    daxa::BufferId simulated_voxel_particles_buffer;
-    daxa::BufferId rendered_voxel_particles_buffer;
-    daxa::BufferId placed_voxel_particles_buffer;
-
     daxa::SamplerId sampler_nnc;
     daxa::SamplerId sampler_lnc;
     daxa::SamplerId sampler_llc;
@@ -157,18 +152,6 @@ struct GpuResources {
             .size = static_cast<daxa_u32>(offsetof(GpuGvoxModel, data)),
             .name = "gvox_model_buffer",
         });
-        simulated_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
-            .name = "simulated_voxel_particles_buffer",
-        });
-        rendered_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
-            .name = "rendered_voxel_particles_buffer",
-        });
-        placed_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
-            .name = "placed_voxel_particles_buffer",
-        });
         sampler_nnc = device.create_sampler({
             .magnification_filter = daxa::Filter::NEAREST,
             .minification_filter = daxa::Filter::NEAREST,
@@ -206,9 +189,6 @@ struct GpuResources {
         if (!gvox_model_buffer.is_empty()) {
             device.destroy_buffer(gvox_model_buffer);
         }
-        device.destroy_buffer(simulated_voxel_particles_buffer);
-        device.destroy_buffer(rendered_voxel_particles_buffer);
-        device.destroy_buffer(placed_voxel_particles_buffer);
         device.destroy_sampler(sampler_nnc);
         device.destroy_sampler(sampler_lnc);
         device.destroy_sampler(sampler_llc);
@@ -219,20 +199,16 @@ struct GpuResources {
 struct GpuApp : AppUi::DebugDisplayProvider {
     GbufferRenderer gbuffer_renderer;
     SsaoRenderer ssao_renderer;
-#if ENABLE_TAA
     TaaRenderer taa_renderer;
-#endif
     ShadowDenoiser shadow_denoiser;
     PostProcessor post_processor;
     std::unique_ptr<Fsr2Renderer> fsr2_renderer;
 
     VoxelWorld voxel_world;
+    VoxelParticles particles;
 
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
-
-    VoxelParticleSimComputeTaskState voxel_particle_sim_task_state;
-    VoxelParticleRasterTaskState voxel_particle_raster_task_state;
 
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -243,9 +219,6 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
-    daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
-    daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
-    daxa::TaskBuffer task_placed_voxel_particles_buffer{{.name = "task_placed_voxel_particles_buffer"}};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -257,29 +230,23 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     Clock::time_point prev_phys_update_time = Clock::now();
     daxa::Format swapchain_format;
 
-    GpuApp(daxa::Device &device, AsyncPipelineManager &pipeline_manager, daxa::Format a_swapchain_format)
+    GpuApp(daxa::Device &device, daxa::Format a_swapchain_format)
         : post_processor{device},
           gpu_resources{},
-
-          voxel_particle_sim_task_state{pipeline_manager},
-          voxel_particle_raster_task_state{pipeline_manager},
           swapchain_format{a_swapchain_format} {
 
         gpu_resources.create(device);
+        voxel_world.create(device);
+        particles.create(device);
 
         task_input_buffer.set_buffers({.buffers = std::array{gpu_resources.input_buffer}});
         task_output_buffer.set_buffers({.buffers = std::array{gpu_resources.output_buffer}});
         task_staging_output_buffer.set_buffers({.buffers = std::array{gpu_resources.staging_output_buffer}});
         task_globals_buffer.set_buffers({.buffers = std::array{gpu_resources.globals_buffer}});
         task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
-        task_simulated_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.simulated_voxel_particles_buffer}});
-        task_rendered_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.rendered_voxel_particles_buffer}});
-        task_placed_voxel_particles_buffer.set_buffers({.buffers = std::array{gpu_resources.placed_voxel_particles_buffer}});
 
         task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
         task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
-
-        voxel_world.create(device);
 
         AppUi::DebugDisplay::s_instance->providers.push_back(this);
         AppUi::DebugDisplay::s_instance->providers.push_back(&voxel_world);
@@ -470,8 +437,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     void destroy(daxa::Device &device) {
         gpu_resources.destroy(device);
         voxel_world.destroy(device);
-
-        // device.destroy_buffer(test_buffer);
+        particles.destroy(device);
     }
 
     void calc_vram_usage(daxa::Device &device, daxa::TaskGraph &task_graph) {
@@ -524,9 +490,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         voxel_world.for_each_buffer(buffer_size);
 
         buffer_size(gpu_resources.gvox_model_buffer);
-        buffer_size(gpu_resources.simulated_voxel_particles_buffer);
-        buffer_size(gpu_resources.rendered_voxel_particles_buffer);
-        buffer_size(gpu_resources.placed_voxel_particles_buffer);
+        buffer_size(particles.simulated_voxel_particles_buffer);
+        buffer_size(particles.rendered_voxel_particles_buffer);
+        buffer_size(particles.placed_voxel_particles_buffer);
 
         {
             auto size = task_graph.get_transient_memory_size();
@@ -559,11 +525,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.pre_exposure_prev = post_processor.exposure_state.pre_mult_prev;
         gpu_input.pre_exposure_delta = post_processor.exposure_state.pre_mult_delta;
 
-#if !ENABLE_TAA
-        fsr2_renderer->next_frame();
-        fsr2_renderer->state.delta_time = gpu_input.delta_time;
-        gpu_input.halton_jitter = fsr2_renderer->state.jitter;
-#endif
+        if constexpr (!ENABLE_TAA) {
+            fsr2_renderer->next_frame();
+            fsr2_renderer->state.delta_time = gpu_input.delta_time;
+            gpu_input.halton_jitter = fsr2_renderer->state.jitter;
+        }
 
         auto now = Clock::now();
         if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
@@ -586,9 +552,9 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
         post_processor.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
-#if ENABLE_TAA
-        taa_renderer.next_frame();
-#endif
+        if constexpr (ENABLE_TAA) {
+            taa_renderer.next_frame();
+        }
         shadow_denoiser.next_frame();
     }
 
@@ -654,11 +620,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
         record_ctx.task_graph.use_persistent_buffer(task_gvox_model_buffer);
 
-        record_ctx.task_graph.use_persistent_buffer(task_simulated_voxel_particles_buffer);
-        record_ctx.task_graph.use_persistent_buffer(task_rendered_voxel_particles_buffer);
-        record_ctx.task_graph.use_persistent_buffer(task_placed_voxel_particles_buffer);
-
         voxel_world.use_buffers(record_ctx);
+        particles.use_buffers(record_ctx);
 
         record_ctx.task_blue_noise_vec2_image = task_blue_noise_vec2_image;
         record_ctx.task_debug_texture = task_debug_texture;
@@ -688,13 +651,14 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .name = "GpuInputUploadTransferTask",
         });
 
+        // TODO: Refactor this. I hate that due to these tasks, I have to call this "use_buffers" thing above.
         record_ctx.add(ComputeTask<PerframeCompute, PerframeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"app.comp.glsl"},
             .uses = {
                 .gpu_input = task_input_buffer,
                 .gpu_output = task_output_buffer,
                 .globals = task_globals_buffer,
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
+                .simulated_voxel_particles = particles.task_simulated_voxel_particles_buffer,
                 VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerframeCompute::Uses &, PerframeComputePush &push, NoTaskInfo const &) {
@@ -704,68 +668,25 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             },
         });
 
-#if MAX_RENDERED_VOXEL_PARTICLES > 0
-        record_ctx.task_graph.add_task(VoxelParticleSimComputeTask{
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
-                .placed_voxel_particles = task_placed_voxel_particles_buffer,
-            },
-            .state = &voxel_particle_sim_task_state,
-        });
-#endif
-
+        particles.simulate(record_ctx, voxel_world.buffers);
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
 
-        auto raster_color_image = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R32G32B32A32_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "raster_color_image",
-        });
-
-#if MAX_RENDERED_VOXEL_PARTICLES > 0
-        auto raster_depth_image = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::D32_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "raster_depth_image",
-        });
-        record_ctx.task_graph.add_task(VoxelParticleRasterTask{
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                .rendered_voxel_particles = task_rendered_voxel_particles_buffer,
-                .render_image = raster_color_image,
-                .depth_image_id = raster_depth_image,
-            },
-            .state = &voxel_particle_raster_task_state,
-        });
-#endif
-
+        auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
         auto [sky_lut, transmittance_lut] = render_sky(record_ctx);
-
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
         auto shadow_bitmap = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
         auto denoised_shadows = shadow_denoiser.denoise_shadow_bitmap(record_ctx, gbuffer_depth, shadow_bitmap, reprojection_map);
-
-        auto irradiance = ssao_image;
-
-        auto composited_image = composite(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, irradiance, denoised_shadows, raster_color_image);
-
+        auto composited_image = composite(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, ssao_image, denoised_shadows);
         fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
         auto antialiased_image = [&]() {
-#if ENABLE_TAA
-            return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
-#else
-            return fsr2_renderer->upscale(record_ctx, gbuffer_depth, composited_image, reprojection_map);
-            // return composited_image;
-#endif
+            if constexpr (ENABLE_TAA) {
+                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
+            } else {
+                return fsr2_renderer->upscale(record_ctx, gbuffer_depth, composited_image, reprojection_map);
+            }
         }();
 
         auto post_processed_image = post_processor.process(record_ctx, antialiased_image, record_ctx.output_resolution);

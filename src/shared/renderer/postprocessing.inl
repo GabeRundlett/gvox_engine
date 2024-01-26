@@ -13,7 +13,6 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_bitmap)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ssao_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
@@ -28,7 +27,6 @@ daxa_ImageViewId shadow_bitmap = push.uses.shadow_bitmap;
 daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewId sky_lut = push.uses.sky_lut;
-daxa_ImageViewId particles_image_id = push.uses.particles_image_id;
 daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
 daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 #endif
@@ -75,7 +73,7 @@ daxa_ImageViewId render_image = push.uses.render_image;
 #include <algorithm>
 #include <fmt/format.h>
 
-inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap, daxa::TaskImageView particles_image) -> daxa::TaskImageView {
+inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap) -> daxa::TaskImageView {
     auto output_image = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -91,7 +89,6 @@ inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, da
             .g_buffer_image_id = gbuffer_depth.gbuffer,
             .transmittance_lut = transmittance_lut,
             .sky_lut = sky_lut,
-            .particles_image_id = particles_image,
             .ssao_image_id = ssao_image,
             .dst_image_id = output_image,
         },

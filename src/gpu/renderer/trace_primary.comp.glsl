@@ -98,18 +98,6 @@ void main() {
         PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
         Voxel voxel = unpack_voxel(voxel_data);
         is_valid = voxel.material_type == 0;
-
-#if PER_VOXEL_NORMALS
-        Voxel voxel2 = unpack_voxel(trace_result.voxel_data);
-
-        // vec3 voxel_pos = floor(ray_pos * VOXEL_SCL) / VOXEL_SCL;
-        // vec3 del = normalize(voxel_pos - cam_pos);
-        // if (dot(voxel2.normal, del) > -1.0 && dot(trace_result.nrm, voxel2.normal) < 0.0) {
-        //     voxel2.normal *= -1;
-        // }
-
-        trace_result.nrm = voxel2.normal;
-#endif
     }
 #if !PER_VOXEL_NORMALS
     vec3 old_nrm = trace_result.nrm;
@@ -140,11 +128,11 @@ void main() {
     if (trace_result.dist == MAX_DIST) {
         // daxa_f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
         // output_value.w = daxa_f32vec3_to_uint_urgb9e5(sky_col);
-        output_value.y |= nrm_to_u16(daxa_f32vec3(0, 0, 1));
+        output_value.y = nrm_to_u16(daxa_f32vec3(0, 0, 1));
         depth = 0.0;
     } else {
         output_value.x = trace_result.voxel_data.data;
-        output_value.y |= nrm_to_u16(trace_result.nrm);
+        output_value.y = nrm_to_u16(trace_result.nrm);
         vs_nrm = (deref(globals).player.cam.world_to_view * daxa_f32vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
     }
@@ -154,10 +142,57 @@ void main() {
         return;
     }
     imageStore(daxa_uimage2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), output_value);
+    imageStore(daxa_image2D(velocity_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(vs_velocity, 0));
+}
+#undef INPUT
+
+#endif
+
+#if CompositeParticlesComputeShader
+
+#include <voxels/voxel_particle.glsl>
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
+    output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
+
+    daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
+    vec3 vs_velocity = texelFetch(daxa_texture2D(velocity_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).xyz;
+    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
+    float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
+    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
+    daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
+
+    if (particles_depth > depth) {
+        depth = particles_depth;
+        nrm = vec3(0, 0, 1);
+        vs_velocity = vec3(0);
+
+        uint simulated_particle_index = uint(particle_id) - 1;
+        SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
+        float dt = 0.01;
+        vec3 pos = get_particle_worldspace_origin(globals, particle.pos);
+        vec3 extra_vel = daxa_f32vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);
+        vec3 prev_pos = get_particle_worldspace_origin(globals, particle.pos - particle.vel * dt + extra_vel);
+        vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(pos, 1));
+        vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(prev_pos, 1));
+        vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+
+        g_buffer_value.x = particle.packed_voxel.data;
+        g_buffer_value.y = nrm_to_u16(nrm);
+    }
+    g_buffer_value.z = floatBitsToUint(depth);
+    vec3 vs_nrm = (deref(globals).player.cam.world_to_view * daxa_f32vec4(nrm, 0)).xyz;
+
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
+        return;
+    }
+
+    imageStore(daxa_uimage2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), g_buffer_value);
     imageStore(daxa_image2D(vs_normal_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(vs_nrm * 0.5 + 0.5, 0));
     imageStore(daxa_image2D(velocity_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(vs_velocity, 0));
     imageStore(daxa_image2D(depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(depth, 0, 0, 0));
 }
-#undef INPUT
 
 #endif
