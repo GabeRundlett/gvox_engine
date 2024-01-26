@@ -171,13 +171,15 @@ void main() {
 
         uint simulated_particle_index = uint(particle_id) - 1;
         SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
-        float dt = 0.01;
+        float dt = min(deref(gpu_input).delta_time, 0.01);
         vec3 pos = get_particle_worldspace_origin(globals, particle.pos);
         vec3 extra_vel = daxa_f32vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);
         vec3 prev_pos = get_particle_worldspace_origin(globals, particle.pos - particle.vel * dt + extra_vel);
         vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(pos, 1));
         vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+
+        // nrm = normalize(deref(globals).player.pos - pos);
 
         g_buffer_value.x = particle.packed_voxel.data;
         g_buffer_value.y = nrm_to_u16(nrm);

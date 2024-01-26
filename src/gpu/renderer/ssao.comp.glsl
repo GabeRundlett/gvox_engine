@@ -13,7 +13,7 @@ daxa_f32vec4 output_tex_size;
 #define USE_SSGI_FACING_CORRECTION 1
 #define USE_AO_ONLY 1
 
-#define WORLDSPACE_SSAO 0
+#define WORLDSPACE_SSAO 1
 
 #if WORLDSPACE_SSAO
 #define SSGI_KERNEL_RADIUS 5

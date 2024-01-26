@@ -60,7 +60,7 @@ void main() {
     vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
     vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 
-    mat4 view_to_clip = deref(globals).player.cam.view_to_clip;
+    mat4 view_to_clip = deref(globals).player.cam.view_to_sample;
     // TODO: Figure out why raster is projected upside down
     view_to_clip[1][1] *= -1.0;
 
