@@ -651,7 +651,7 @@ daxa_f32 good_rand(daxa_f32vec2 v) { return good_rand_float_construct(good_rand_
 daxa_f32 good_rand(daxa_f32vec3 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 daxa_f32 good_rand(daxa_f32vec4 v) { return good_rand_float_construct(good_rand_hash(floatBitsToUint(v))); }
 
-// TODO: check if we need a better hash function
+// Jenkins hash function. TODO: check if we need a better hash function
 uint hash1(uint x) { return good_rand_hash(x); }
 uint hash1_mut(inout uint h) {
     uint res = h;
@@ -1081,5 +1081,16 @@ void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 fr
         vel = new_vel;
     } else {
         vel -= friction_vec;
+    }
+}
+
+mat3 CUBE_MAP_FACE_ROTATION(uint face) {
+    switch (face) {
+    case 0: return mat3(+0, +0, -1, +0, -1, +0, -1, +0, +0);
+    case 1: return mat3(+0, +0, +1, +0, -1, +0, +1, +0, +0);
+    case 2: return mat3(+1, +0, +0, +0, +0, +1, +0, -1, +0);
+    case 3: return mat3(+1, +0, +0, +0, +0, -1, +0, +1, +0);
+    case 4: return mat3(+1, +0, +0, +0, -1, +0, +0, +0, -1);
+    default: return mat3(-1, +0, +0, +0, -1, +0, +0, +0, +1);
     }
 }

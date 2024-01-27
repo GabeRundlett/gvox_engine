@@ -19,7 +19,7 @@ void main() {
     daxa_f32vec3 ray_pos = cam_pos;
 
 #if ENABLE_DEPTH_PREPASS
-    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 32.0 * output_tex_size.w * deref(globals).player.cam.clip_to_view[1][1], true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 16.0 * output_tex_size.w * deref(globals).player.cam.clip_to_view[1][1], true), ray_pos);
     daxa_u32 step_n = trace_result.step_n;
 #else
     daxa_u32 step_n = 0;
@@ -126,8 +126,6 @@ void main() {
 #endif
 
     if (trace_result.dist == MAX_DIST) {
-        // daxa_f32vec3 sky_col = get_far_sky_color_sun(sky_lut, ray_dir);
-        // output_value.w = daxa_f32vec3_to_uint_urgb9e5(sky_col);
         output_value.y = nrm_to_u16(daxa_f32vec3(0, 0, 1));
         depth = 0.0;
     } else {

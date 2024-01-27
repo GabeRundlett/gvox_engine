@@ -103,6 +103,7 @@ struct AppUi {
     bool autosave_override = false;
     bool should_upload_seed_data = true;
     bool should_hotload_shaders = false;
+    bool should_regenerate_sky = true;
 
     bool should_record_task_graph = false;
 

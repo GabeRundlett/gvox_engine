@@ -26,7 +26,6 @@ DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, debug_texture)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, render_depth_prepass_image)
@@ -41,7 +40,6 @@ DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_ImageViewId sky_lut = push.uses.sky_lut;
 daxa_ImageViewId blue_noise_vec2 = push.uses.blue_noise_vec2;
 daxa_ImageViewId debug_texture = push.uses.debug_texture;
 daxa_ImageViewId render_depth_prepass_image = push.uses.render_depth_prepass_image;
@@ -88,7 +86,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, daxa::TaskImageView sky_lut, VoxelWorld::Buffers &voxel_buffers, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
+    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
@@ -152,7 +150,6 @@ struct GbufferRenderer {
                 .gpu_input = record_ctx.task_input_buffer,
                 .globals = record_ctx.task_globals_buffer,
                 VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                .sky_lut = sky_lut,
                 .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
                 .debug_texture = record_ctx.task_debug_texture,
                 .render_depth_prepass_image = depth_prepass_image,

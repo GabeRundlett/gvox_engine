@@ -203,6 +203,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     ShadowDenoiser shadow_denoiser;
     PostProcessor post_processor;
     std::unique_ptr<Fsr2Renderer> fsr2_renderer;
+    SkyRenderer sky;
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
@@ -235,6 +236,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
           gpu_resources{},
           swapchain_format{a_swapchain_format} {
 
+        sky.create(device);
         gpu_resources.create(device);
         voxel_world.create(device);
         particles.create(device);
@@ -435,6 +437,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     }
 
     void destroy(daxa::Device &device) {
+        sky.destroy(device);
         gpu_resources.destroy(device);
         voxel_world.destroy(device);
         particles.destroy(device);
@@ -628,6 +631,16 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         record_ctx.task_input_buffer = task_input_buffer;
         record_ctx.task_globals_buffer = task_globals_buffer;
 
+#if IMMEDIATE_SKY
+        auto [sky_cube, ibl_cube] = generate_procedural_sky(record_ctx);
+#else
+        sky.use_images(record_ctx);
+        auto sky_cube = sky.task_sky_cube.view().view({.layer_count = 6});
+        auto ibl_cube = sky.task_ibl_cube.view().view({.layer_count = 6});
+#endif
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+
         record_ctx.task_graph.add_task({
             .uses = {
                 daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_input_buffer},
@@ -672,13 +685,12 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
 
         auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
-        auto [sky_lut, transmittance_lut] = render_sky(record_ctx);
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, sky_lut, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
         auto shadow_bitmap = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
         auto denoised_shadows = shadow_denoiser.denoise_shadow_bitmap(record_ctx, gbuffer_depth, shadow_bitmap, reprojection_map);
-        auto composited_image = composite(record_ctx, gbuffer_depth, sky_lut, transmittance_lut, ssao_image, denoised_shadows);
+        auto composited_image = composite(record_ctx, gbuffer_depth, sky_cube, ibl_cube, ssao_image, denoised_shadows);
         fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
         auto antialiased_image = [&]() {
@@ -724,6 +736,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 
         // test_compute(record_ctx);
+        
 
         needs_vram_calc = true;
     }

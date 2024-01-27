@@ -6,11 +6,12 @@
 #define SUN_INTENSITY 1.0
 const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin blackbody
 #define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIR) * SUN_INTENSITY)
+#define ATMOSPHERE_CAMERA_HEIGHT 3.0
 
 daxa_f32vec3 get_sky_world_camera_position() {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
-    const daxa_f32vec3 camera_position = daxa_f32vec3(0.0, 0.0, 5.5);
+    const daxa_f32vec3 camera_position = daxa_f32vec3(0.0, 0.0, ATMOSPHERE_CAMERA_HEIGHT);
     daxa_f32vec3 world_camera_position = camera_position;
     world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
     return world_camera_position;

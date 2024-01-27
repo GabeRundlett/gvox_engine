@@ -11,8 +11,8 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_bitmap)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, ibl_cube)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ssao_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
@@ -25,8 +25,8 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewId shadow_bitmap = push.uses.shadow_bitmap;
 daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewId sky_lut = push.uses.sky_lut;
+daxa_ImageViewId sky_cube = push.uses.sky_cube;
+daxa_ImageViewId ibl_cube = push.uses.ibl_cube;
 daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
 daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 #endif
@@ -53,17 +53,20 @@ daxa_ImageViewId render_image = push.uses.render_image;
 DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
+DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D_ARRAY, cube_image_id)
 DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct DebugImageRasterPush {
     DebugImageRaster uses;
     daxa_u32 type;
+    daxa_u32 cube_size;
     daxa_u32vec2 output_tex_size;
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(DebugImageRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewId image_id = push.uses.image_id;
+daxa_ImageViewId cube_image_id = push.uses.cube_image_id;
 daxa_ImageViewId render_image = push.uses.render_image;
 #endif
 #endif
@@ -73,7 +76,7 @@ daxa_ImageViewId render_image = push.uses.render_image;
 #include <algorithm>
 #include <fmt/format.h>
 
-inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap) -> daxa::TaskImageView {
+inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_cube, daxa::TaskImageView ibl_cube, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap) -> daxa::TaskImageView {
     auto output_image = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -87,8 +90,8 @@ inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, da
             .globals = record_ctx.task_globals_buffer,
             .shadow_bitmap = shadow_bitmap,
             .g_buffer_image_id = gbuffer_depth.gbuffer,
-            .transmittance_lut = transmittance_lut,
-            .sky_lut = sky_lut,
+            .sky_cube = sky_cube,
+            .ibl_cube = ibl_cube,
             .ssao_image_id = ssao_image,
             .dst_image_id = output_image,
         },
@@ -106,7 +109,7 @@ inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, da
     return output_image;
 }
 
-inline auto tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
+inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
     record_ctx.add(RasterTask<PostprocessingRaster, PostprocessingRasterPush, NoTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
         .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
@@ -133,10 +136,11 @@ inline auto tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
     });
 }
 
-inline auto debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
+inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
     struct DebugImageRasterTaskInfo {
         daxa_u32 type;
     };
+
     record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
         .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
@@ -145,7 +149,8 @@ inline auto debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
         }},
         .uses = {
             .gpu_input = record_ctx.task_input_buffer,
-            .image_id = pass.task_image_id,
+            .image_id = pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? record_ctx.task_debug_texture : pass.task_image_id,
+            .cube_image_id = pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.task_debug_texture,
             .render_image = output_image,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRaster::Uses &uses, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {
@@ -156,6 +161,9 @@ inline auto debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
                 .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
             });
             push.type = info.type;
+            if (info.type == DEBUG_IMAGE_TYPE_CUBEMAP) {
+                push.cube_size = ti.get_device().info_image(uses.cube_image_id.image()).value().size.x;
+            }
             push.output_tex_size = {image_info.size.x, image_info.size.y};
             renderpass_recorder.set_pipeline(pipeline);
             renderpass_recorder.push_constant(push);

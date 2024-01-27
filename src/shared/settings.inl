@@ -46,6 +46,8 @@ struct SkySettings {
 #define SKY_TRANSMITTANCE_RES daxa_u32vec2(256, 64)
 #define SKY_MULTISCATTERING_RES daxa_u32vec2(32, 32)
 #define SKY_SKY_RES daxa_u32vec2(192, 192)
+#define SKY_CUBE_RES 2048
+#define IBL_CUBE_RES 16
 
 #define MAX_SIMULATED_VOXEL_PARTICLES 0 // (1 << 14)
 #define MAX_RENDERED_VOXEL_PARTICLES 0  // (1 << 14)
@@ -59,3 +61,6 @@ struct SkySettings {
 #define DEBUG_IMAGE_TYPE_DEFAULT_UINT 1
 #define DEBUG_IMAGE_TYPE_GBUFFER 2
 #define DEBUG_IMAGE_TYPE_SHADOW_BITMAP 3
+#define DEBUG_IMAGE_TYPE_CUBEMAP 4
+
+#define IMMEDIATE_SKY true

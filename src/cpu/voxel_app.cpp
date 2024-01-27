@@ -689,6 +689,40 @@ void VoxelApp::on_update() {
         }
     }
 
+#if !IMMEDIATE_SKY
+    if (ui.should_regenerate_sky) {
+        auto sky_task_graph = daxa::TaskGraph({
+            .device = device,
+            .alias_transients = GVOX_ENGINE_INSTALL,
+            .name = "sky_task_graph",
+        });
+
+        auto record_ctx = RecordContext{
+            .device = this->device,
+            .task_graph = sky_task_graph,
+            .pipeline_manager = &main_pipeline_manager,
+            .render_resolution = gpu_input.rounded_frame_dim,
+            .output_resolution = gpu_input.output_resolution,
+            .task_swapchain_image = task_swapchain_image,
+            .compute_pipelines = &this->compute_pipelines,
+            .raster_pipelines = &this->raster_pipelines,
+        };
+
+        record_ctx.task_input_buffer = gpu_app.task_input_buffer;
+        sky_task_graph.use_persistent_buffer(gpu_app.task_input_buffer);
+
+        auto sky_cube = generate_procedural_sky(record_ctx);
+        gpu_app.sky.use_images(record_ctx);
+        gpu_app.sky.render(record_ctx, sky_cube);
+
+        sky_task_graph.submit({});
+        sky_task_graph.complete({});
+        sky_task_graph.execute({});
+
+        ui.should_regenerate_sky = false;
+    }
+#endif
+
     gpu_app.begin_frame(device, main_task_graph, ui);
 
     if (ui.should_run_startup || model_is_ready) {
@@ -699,6 +733,7 @@ void VoxelApp::on_update() {
     }
 
     if (ui.should_record_task_graph) {
+        device.wait_idle();
         main_task_graph = record_main_task_graph();
     }
 

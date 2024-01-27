@@ -59,24 +59,19 @@ void main() {
     daxa_f32vec3 shaded_value = daxa_f32vec3(shadow_value);
     shaded_value *= clamp(dot(nrm, SUN_DIR), 0.0, 1.0);
 
-    if (depth != 0) {
-        ray_dir = SUN_DIR;
-    }
-    AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, ray_dir, nrm);
-
     daxa_f32vec3 ssao_value = vec3(1);
     {
         ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
         ssao_value = pow(ssao_value, vec3(2)) * 4.0;
-        ssao_value *= max(vec3(0.0), sky_lighting.atmosphere_normal_illuminance); // * (dot(nrm, vec3(0, 0, 1)) * 0.5 + 0.5));
+        ssao_value *= max(vec3(0.0), texture(daxa_samplerCube(ibl_cube, deref(gpu_input).sampler_llr), nrm).rgb);
     }
     daxa_f32vec3 emit_col = uint_urgb9e5_to_f32vec3(g_buffer_value.w);
 
     if (depth == 0) {
-        emit_col += (sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance) * 10.0;
+        emit_col += texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), ray_dir).rgb * 10.0;
         shaded_value *= 0.0;
     }
-    daxa_f32vec3 direct_value = shaded_value * (sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance);
+    daxa_f32vec3 direct_value = shaded_value * texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), SUN_DIR).rgb;
 
     daxa_f32vec3 lighting = daxa_f32vec3(0.0);
     // Direct sun illumination
@@ -227,24 +222,34 @@ layout(location = 0) out daxa_f32vec4 color;
 
 void main() {
     daxa_f32vec2 uv = daxa_f32vec2(gl_FragCoord.xy) / daxa_f32vec2(push.output_tex_size.xy);
-    daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
     daxa_f32vec3 tex_color;
 
     if (push.type == DEBUG_IMAGE_TYPE_GBUFFER) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
         daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0);
         daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
         daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
         tex_color = vec3(nrm);
         // tex_color = vec3(g_buffer_value.x * 0.00001, g_buffer_value.y * 0.0001, depth * 0.01);
     } else if (push.type == DEBUG_IMAGE_TYPE_SHADOW_BITMAP) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
         daxa_u32 shadow_value = texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0).r;
         daxa_i32vec2 in_tile_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy * daxa_f32vec2(8, 4)) & daxa_i32vec2(7, 3);
         daxa_u32 bit_index = in_tile_i.x + in_tile_i.y * 8;
         tex_color = vec3((shadow_value >> bit_index) & 1);
     } else if (push.type == DEBUG_IMAGE_TYPE_DEFAULT_UINT) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
         tex_color = texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0).rgb;
     } else if (push.type == DEBUG_IMAGE_TYPE_DEFAULT) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_texture2D(image_id), 0).xy);
         tex_color = texelFetch(daxa_texture2D(image_id), in_pixel_i, 0).rgb;
+    } else if (push.type == DEBUG_IMAGE_TYPE_CUBEMAP) {
+        uv = uv * vec2(3, 2);
+        ivec2 uv_i = ivec2(floor(uv));
+        uv = uv - uv_i;
+        int face = uv_i.x + uv_i.y * 3;
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * push.cube_size);
+        tex_color = texelFetch(daxa_texture2DArray(cube_image_id), ivec3(in_pixel_i, face), 0).rgb * 0.05;
     }
 
     color = daxa_f32vec4(tex_color, 1.0);

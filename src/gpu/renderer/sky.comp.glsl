@@ -387,7 +387,7 @@ void main() {
     }
 
     // Hardcode player position to be 100 meters above sea level
-    daxa_f32vec3 world_position = daxa_f32vec3(0.0, 0.0, deref(gpu_input).sky_settings.atmosphere_bottom + 5.5);
+    daxa_f32vec3 world_position = daxa_f32vec3(0.0, 0.0, deref(gpu_input).sky_settings.atmosphere_bottom + ATMOSPHERE_CAMERA_HEIGHT);
 
     daxa_f32vec2 uv = daxa_f32vec2(gl_GlobalInvocationID.xy) / daxa_f32vec2(SKY_SKY_RES);
     SkyviewParams skyview_params = uv_to_skyview_lut_params(
@@ -417,6 +417,25 @@ void main() {
     }
     daxa_f32vec3 luminance = integrate_scattered_luminance(world_position, world_direction, local_sun_direction, 30);
     imageStore(daxa_image2D(sky_lut), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(luminance, 1.0));
+}
+
+#endif
+
+#if SkyCubeComputeShader
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    daxa_u32vec3 px = gl_GlobalInvocationID.xyz;
+    uint face = px.z;
+    vec2 uv = (px.xy + 0.5) / SKY_CUBE_RES;
+
+    vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
+    const mat3 basis = build_orthonormal_basis(output_dir);
+
+    AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, output_dir, output_dir);
+    vec4 result = vec4(sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance, 1);
+
+    imageStore(daxa_image2DArray(sky_cube), ivec3(px), result);
 }
 
 #endif
