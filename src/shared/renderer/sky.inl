@@ -164,7 +164,7 @@ struct SkyRenderer {
 };
 
 #if IMMEDIATE_SKY
-inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
+inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<daxa::TaskImageView, 4> {
 #else
 inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImageView {
 #endif
@@ -276,7 +276,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
         },
     });
 
-    return {sky_cube, ibl_cube};
+    return {sky_lut, transmittance_lut, sky_cube, ibl_cube};
 #else
     return sky_cube;
 #endif

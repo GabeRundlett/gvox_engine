@@ -23,7 +23,7 @@ RigidBody create_rigid_body(
 }
 
 RigidBody create_rigid_body_sphere(float radius, daxa_f32vec3 pos, float density, float restitution, bool is_static) {
-    daxa_f32 volume = 4.0 / 3.0 * PI * radius * radius * radius;
+    daxa_f32 volume = 4.0 / 3.0 * M_PI * radius * radius * radius;
     return create_rigid_body(
         pos, daxa_f32vec3(0.0, 0.0, 0.0), daxa_f32vec3(0.0, 0.0, 0.0), daxa_f32vec3(0.0, 0.0, 0.0),
         density, density * volume, restitution, is_static, daxa_f32vec3(radius, 0.0, 0.0), RIGID_BODY_SHAPE_TYPE_SPHERE);

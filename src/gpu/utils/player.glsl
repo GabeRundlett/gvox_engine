@@ -32,11 +32,11 @@ void player_startup(
     // Inside beach hut
     // PLAYER.pos = daxa_f32vec3(173.78, 113.72, 12.09);
 
-    PLAYER.pitch = PI * 0.349;
-    PLAYER.yaw = PI * 0.25;
+    PLAYER.pitch = M_PI * 0.349;
+    PLAYER.yaw = M_PI * 0.25;
 
-    // PLAYER.pitch = PI * 0.249;
-    // PLAYER.yaw = PI * 1.25;
+    // PLAYER.pitch = M_PI * 0.249;
+    // PLAYER.yaw = M_PI * 1.25;
 
     // Inside Bistro
     // PLAYER.pos = daxa_f32vec3(22.63, 51.60, 43.82);
@@ -62,7 +62,7 @@ void player_perframe(
     }
 
     const float MAX_ROT_EPS = 0.01;
-    PLAYER.pitch = clamp(PLAYER.pitch, MAX_ROT_EPS, PI - MAX_ROT_EPS);
+    PLAYER.pitch = clamp(PLAYER.pitch, MAX_ROT_EPS, M_PI - MAX_ROT_EPS);
     float sin_rot_x = sin(PLAYER.pitch), cos_rot_x = cos(PLAYER.pitch);
     float sin_rot_z = sin(PLAYER.yaw), cos_rot_z = cos(PLAYER.yaw);
 

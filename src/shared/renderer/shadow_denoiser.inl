@@ -93,7 +93,7 @@ struct ShadowDenoiser {
         ping_pong_accum_image.task_resources.output_resource.swap_images(ping_pong_accum_image.task_resources.history_resource);
     }
 
-    auto denoise_shadow_bitmap(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView shadow_bitmap, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
+    auto denoise_shadow_mask(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView shadow_mask, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
         auto bitpacked_shadow_mask_extent = daxa_u32vec2{(record_ctx.render_resolution.x + 7) / 8, (record_ctx.render_resolution.y + 3) / 4};
 
         auto bitpacked_shadows_image = record_ctx.task_graph.create_transient_image({
@@ -110,7 +110,7 @@ struct ShadowDenoiser {
             .source = daxa::ShaderFile{"shadow_denoiser.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::input_tex, shadow_bitmap}},
+                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::input_tex, shadow_mask}},
                 daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::output_tex, bitpacked_shadows_image}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowBitPackComputePush &push, ShadowBitPackComputeInfo const &info) {
@@ -178,7 +178,7 @@ struct ShadowDenoiser {
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::gpu_input, record_ctx.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::globals, record_ctx.task_globals_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::shadow_mask_tex, shadow_bitmap}},
+                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::shadow_mask_tex, shadow_mask}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::bitpacked_shadow_mask_tex, bitpacked_shadows_image}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::prev_moments_tex, prev_moments_image}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::prev_accum_tex, prev_accum_image}},

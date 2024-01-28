@@ -1,107 +1,164 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
 
-#if CompositingComputeShader
+#if LightGbufferComputeShader
+
 #include <utils/sky.glsl>
-#include <voxels/core.glsl>
+#include <utils/gbuffer.glsl>
 
-vec3 apply_fog(
-    float height_above_msl_meters,
-    float distance_through_fog_meters,
-    vec3 ray_direction_normalized,
-    vec3 color_before_fog,
-    vec3 sky_fog_color,
-    vec3 sun_fog_color,
-    vec3 sun_direction) {
-    // SETTINGS TO CONFIGURE:
-    const float fog_strength = 0.00185;
-    const float fog_height_falloff = 0.085;
-    const float sun_col_base_bias = 0.005;
-    const float sun_col_max_bias = 0.1;
+#include <utils/layered_brdf.glsl>
 
-    const float fog_amount = (fog_strength / fog_height_falloff) * exp(-height_above_msl_meters * fog_height_falloff) * (1.0 - exp(-distance_through_fog_meters * ray_direction_normalized.z * fog_height_falloff)) / ray_direction_normalized.z;
-    const float clamped_fog_amount = clamp(fog_amount, 0.0, 1.0);
-    const float sun_amount = dot(normalize(ray_direction_normalized), sun_direction) * 0.5 + 0.5;
-    const vec3 fog_color = mix(sky_fog_color, sun_fog_color, pow(sun_amount, 8.0));
-    const vec3 col_after_fog = mix(color_before_fog, fog_color, clamped_fog_amount);
-    return col_after_fog;
+#define SHADING_MODE_DEFAULT 0
+#define SHADING_MODE_NO_TEXTURES 1
+#define SHADING_MODE_DIFFUSE_GI 2
+#define SHADING_MODE_REFLECTIONS 3
+#define SHADING_MODE_RTX_OFF 4
+#define SHADING_MODE_IRCACHE 5
+
+#define USE_RTDGI true
+#define USE_RTR true
+
+#define RTR_RENDER_SCALED_BY_FG false
+
+#define USE_DIFFUSE_GI_FOR_ROUGH_SPEC false
+#define USE_DIFFUSE_GI_FOR_ROUGH_SPEC_MIN_ROUGHNESS 0.7
+
+// #include "inc/atmosphere.hlsl"
+// #include "inc/sun.hlsl"
+
+vec3 sun_color_in_direction(vec3 nrm) {
+    AtmosphereLightingInfo sun_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, nrm, vec3(0, 0, 1));
+    return sun_lighting.sun_direct_illuminance;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
-    output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
+    vec2 uv = get_uv(px, push.output_tex_size);
 
-    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
+    if (any(greaterThanEqual(px, uvec2(push.output_tex_size.xy)))) {
         return;
     }
 
-    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
-    daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
-    daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
-    daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
-
-    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), max(0.00001, depth));
-    daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
-
-    // daxa_u32vec4 g_buffer_nrm_samples = textureGather(
-    //     daxa_usampler2D(g_buffer_image_id, deref(gpu_input).sampler_llc),
-    //     daxa_f32vec2(gl_GlobalInvocationID.xy) / deref(gpu_input).frame_dim.xy, 1);
-    // daxa_f32vec3 nrm = u16_to_nrm(g_buffer_nrm_samples.x) + u16_to_nrm(g_buffer_nrm_samples.y) + u16_to_nrm(g_buffer_nrm_samples.z) + u16_to_nrm(g_buffer_nrm_samples.w);
-
-    Voxel voxel = unpack_voxel(PackedVoxel(g_buffer_value.x));
-    daxa_f32vec3 albedo_col = voxel.color;
-
-    nrm = normalize(nrm);
-
-    float shadow_value = texelFetch(daxa_texture2D(shadow_bitmap), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
-
-    daxa_f32vec3 shaded_value = daxa_f32vec3(shadow_value);
-    shaded_value *= clamp(dot(nrm, SUN_DIR), 0.0, 1.0);
-
-    daxa_f32vec3 ssao_value = vec3(1);
+    RayDesc outgoing_ray;
+    ViewRayContext view_ray_context = vrc_from_uv(globals, uv);
     {
-        ssao_value = texelFetch(daxa_texture2D(ssao_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).rrr;
-        ssao_value = pow(ssao_value, vec3(2)) * 4.0;
-        ssao_value *= max(vec3(0.0), texture(daxa_samplerCube(ibl_cube, deref(gpu_input).sampler_llr), nrm).rgb);
+        outgoing_ray = new_ray(
+            ray_origin_ws(view_ray_context),
+            ray_dir_ws(view_ray_context),
+            0.0,
+            FLT_MAX);
     }
-    daxa_f32vec3 emit_col = uint_urgb9e5_to_f32vec3(g_buffer_value.w);
 
-    if (depth == 0) {
-        emit_col += texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), ray_dir).rgb * 10.0;
-        shaded_value *= 0.0;
+    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), daxa_i32vec2(px), 0));
+    const float depth = uintBitsToFloat(gbuffer_packed.data0.z);
+
+    const vec3 SUN_DIRECTION = SUN_DIR;
+
+    if (depth == 0.0) {
+        // Render the sun disk
+
+        // Allow the size to be changed, but don't go below the real sun's size,
+        // so that we have something in the sky.
+        const float real_sun_angular_radius = 0.53 * 0.5 * M_PI / 180.0;
+        const float sun_angular_radius_cos = min(cos(real_sun_angular_radius), deref(gpu_input).sky_settings.sun_angular_radius_cos);
+
+        // Conserve the sun's energy by making it dimmer as it increases in size
+        // Note that specular isn't quite correct with this since we're not using area lights.
+        float current_sun_angular_radius = acos(sun_angular_radius_cos);
+        float sun_radius_ratio = real_sun_angular_radius / current_sun_angular_radius;
+
+        vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, deref(gpu_input).sampler_llr), outgoing_ray.Direction).rgb;
+        if (dot(outgoing_ray.Direction, SUN_DIRECTION) > sun_angular_radius_cos) {
+            // TODO: what's the correct value?
+            output_ += 800.0 * sun_color_in_direction(outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
+        }
+
+        output_ *= deref(gpu_input).pre_exposure;
+        // temporal_output_tex[px] = vec4(output_, 1);
+        imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+        return;
     }
-    daxa_f32vec3 direct_value = shaded_value * texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), SUN_DIR).rgb;
 
-    daxa_f32vec3 lighting = daxa_f32vec3(0.0);
-    // Direct sun illumination
-    lighting += direct_value;
-    // Sky ambient
-    lighting += daxa_f32vec3(ssao_value);
-    // Default ambient
-    // lighting += 1.0;
+    vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
+    vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
+    pt_ws /= pt_ws.w;
 
-    daxa_f32vec3 final_color = emit_col + albedo_col * lighting;
+    const vec3 to_light_norm = SUN_DIRECTION;
 
-    // vec3 camera_world_pos = ray_origin_ws(vrc);
-    // vec3 hit_pos = ray_hit_ws(vrc);
-    // vec3 camera_to_point = hit_pos - camera_world_pos;
-    // camera_world_pos += deref(globals).player.player_unit_offset;
-    // camera_world_pos.z += 100.0;
-    // float world_distance = min(1000.0, length(camera_to_point));
-    // final_color = apply_fog(
-    //     camera_world_pos.z,
-    //     world_distance,
-    //     normalize(camera_to_point),
-    //     final_color,
-    //     vec3(0.5, 0.6, 0.7) * 220.0,
-    //     vec3(1.0, 0.9, 0.7) * 520.0,
-    //     SUN_DIR);
+    float shadow_mask = texelFetch(daxa_texture2D(shadow_mask_tex), daxa_i32vec2(px), 0).x;
 
-    final_color *= deref(gpu_input).pre_exposure;
+    if (push.debug_shading_mode == SHADING_MODE_RTX_OFF) {
+        shadow_mask = 1;
+    }
 
-    imageStore(daxa_image2D(dst_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(final_color, 1.0));
+    GbufferData gbuffer = unpack(gbuffer_packed);
+
+    if (push.debug_shading_mode == SHADING_MODE_NO_TEXTURES) {
+        gbuffer.albedo = vec3(0.5);
+    }
+
+    const mat3 tangent_to_world = build_orthonormal_basis(gbuffer.normal);
+    const vec3 wi = to_light_norm * tangent_to_world;
+    vec3 wo = (-outgoing_ray.Direction) * tangent_to_world;
+
+    // Hack for shading normals facing away from the outgoing ray's direction:
+    // We flip the outgoing ray along the shading normal, so that the reflection's curvature
+    // continues, albeit at a lower rate.
+    if (wo.z < 0.0) {
+        wo.z *= -0.25;
+        wo = normalize(wo);
+    }
+
+    LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
+    const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z);
+    const vec3 light_radiance = shadow_mask * sun_color_in_direction(SUN_DIR);
+    vec3 total_radiance = brdf_value * light_radiance;
+
+    total_radiance += gbuffer.emissive;
+
+    vec3 gi_irradiance = vec3(0.0);
+
+    if (push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
+        if (USE_RTDGI) {
+            gi_irradiance = texelFetch(daxa_texture2D(rtdgi_tex), daxa_i32vec2(px), 0).rgb;
+        }
+    }
+
+    if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY) {
+        total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo;
+    } else {
+        total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo * brdf.energy_preservation.preintegrated_transmission_fraction;
+    }
+
+    if (USE_RTR && !LAYERED_BRDF_FORCE_DIFFUSE_ONLY && push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
+        vec3 rtr_radiance;
+
+        if (!RTR_RENDER_SCALED_BY_FG) {
+            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), daxa_i32vec2(px), 0).xyz * brdf.energy_preservation.preintegrated_reflection;
+        } else {
+            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), daxa_i32vec2(px), 0).xyz;
+        }
+
+        if (USE_DIFFUSE_GI_FOR_ROUGH_SPEC) {
+            rtr_radiance = mix(
+                rtr_radiance,
+                gi_irradiance * brdf.energy_preservation.preintegrated_reflection,
+                smoothstep(USE_DIFFUSE_GI_FOR_ROUGH_SPEC_MIN_ROUGHNESS, mix(USE_DIFFUSE_GI_FOR_ROUGH_SPEC_MIN_ROUGHNESS, 1.0, 0.5), gbuffer.roughness));
+        }
+
+        total_radiance += rtr_radiance;
+    }
+
+    // temporal_output_tex[px] = vec4(total_radiance, 1.0);
+
+    vec3 output_ = total_radiance;
+    output_ *= deref(gpu_input).pre_exposure;
+
+    // output_ = gbuffer.albedo;
+    imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
 }
+
 #endif
 
 #if PostprocessingRasterShader

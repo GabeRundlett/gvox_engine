@@ -5,30 +5,46 @@
 #include <shared/renderer/blur.inl>
 #include <shared/renderer/calculate_histogram.inl>
 
-#if CompositingComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(CompositingCompute, 8)
+#if LightGbufferComputeShader || defined(__cplusplus)
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 12)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_bitmap)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, ibl_cube)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ssao_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, dst_image_id)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
+// DEFINE_IRCACHE_BINDINGS(5, 6, 7, 8, 9, 10, 11, 12, 13)
+// DEFINE_WRC_BINDINGS(14)
+// DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
-struct CompositingComputePush {
-    DAXA_TH_BLOB(CompositingCompute, uses)
+struct LightGbufferComputePush {
+    daxa_f32vec4 output_tex_size;
+    daxa_u32 debug_shading_mode;
+    daxa_u32 debug_show_wrc;
+    DAXA_TH_BLOB(LightGbufferCompute, uses)
 };
 #if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(CompositingComputePush, push)
+DAXA_DECL_PUSH_CONSTANT(LightGbufferComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId shadow_bitmap = push.uses.shadow_bitmap;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId sky_cube = push.uses.sky_cube;
-daxa_ImageViewId ibl_cube = push.uses.ibl_cube;
-daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
-daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+daxa_ImageViewId gbuffer_tex = push.uses.gbuffer_tex;
+daxa_ImageViewId depth_tex = push.uses.depth_tex;
+daxa_ImageViewId shadow_mask_tex = push.uses.shadow_mask_tex;
+daxa_ImageViewId rtr_tex = push.uses.rtr_tex;
+daxa_ImageViewId rtdgi_tex = push.uses.rtdgi_tex;
+// IRCACHE and WRC
+// daxa_ImageViewId temporal_output_tex = push.uses.temporal_output_tex;
+daxa_ImageViewId output_tex = push.uses.output_tex;
+daxa_ImageViewId unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
+daxa_ImageViewId sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewId sky_lut = push.uses.sky_lut;
+daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
 #endif
 #endif
 
@@ -76,35 +92,60 @@ daxa_ImageViewId render_image = push.uses.render_image;
 #include <algorithm>
 #include <fmt/format.h>
 
-inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView sky_cube, daxa::TaskImageView ibl_cube, daxa::TaskImageView ssao_image, daxa::TaskImageView shadow_bitmap) -> daxa::TaskImageView {
+inline auto light_gbuffer(
+    RecordContext &record_ctx,
+    GbufferDepth &gbuffer_depth,
+    daxa::TaskImageView shadow_mask,
+    daxa::TaskImageView rtr,
+    daxa::TaskImageView rtdgi,
+    // ircache: &mut IrcacheRenderState,
+    // wrc: &WrcRenderState,
+    // temporal_output: &mut rg::Handle<Image>,
+    // output: &mut rg::Handle<Image>,
+    daxa::TaskImageView sky_cube,
+    daxa::TaskImageView convolved_sky_cube,
+    daxa::TaskImageView sky_lut,
+    daxa::TaskImageView transmittance_lut) -> daxa::TaskImageView {
+
     auto output_image = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
         .name = "composited_image",
     });
 
-    record_ctx.add(ComputeTask<CompositingCompute, CompositingComputePush, NoTaskInfo>{
+    record_ctx.add(ComputeTask<LightGbufferCompute, LightGbufferComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"postprocessing.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{CompositingCompute::gpu_input, record_ctx.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::globals, record_ctx.task_globals_buffer}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::shadow_bitmap, shadow_bitmap}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::sky_cube, sky_cube}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::ibl_cube, ibl_cube}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::ssao_image_id, ssao_image}},
-            daxa::TaskViewVariant{std::pair{CompositingCompute::dst_image_id, output_image}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.task_resources.output_resource.view()}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtr_tex, rtr}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtdgi_tex, rtdgi}},
+            // daxa::TaskViewVariant{std::pair{LightGbufferCompute::temporal_output_tex, output_image}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::output_tex, output_image}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::unconvolved_sky_cube_tex, sky_cube}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_cube_tex, convolved_sky_cube}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_lut, sky_lut}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CompositingComputePush &push, NoTaskInfo const &) {
-            auto const image_info = ti.device.info_image(ti.get(CompositingCompute::dst_image_id).ids[0]).value();
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {
+            auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::gbuffer_tex).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
+            push.debug_shading_mode = 0;
+            push.debug_show_wrc = 0;
+            push.output_tex_size.x = image_info.size.x;
+            push.output_tex_size.y = image_info.size.y;
+            push.output_tex_size.z = 1.0f / push.output_tex_size.x;
+            push.output_tex_size.w = 1.0f / push.output_tex_size.y;
             set_push_constant(ti, push);
             // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
         },
     });
 
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "composited_image", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "lit gbuffer", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
     return output_image;
 }

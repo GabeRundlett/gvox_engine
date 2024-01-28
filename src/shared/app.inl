@@ -629,7 +629,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         record_ctx.task_globals_buffer = task_globals_buffer;
 
 #if IMMEDIATE_SKY
-        auto [sky_cube, ibl_cube] = generate_procedural_sky(record_ctx);
+        auto [sky_lut, transmittance_lut, sky_cube, ibl_cube] = generate_procedural_sky(record_ctx);
 #else
         sky.use_images(record_ctx);
         auto sky_cube = sky.task_sky_cube.view().view({.layer_count = 6});
@@ -684,16 +684,40 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
-        auto shadow_bitmap = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
-        auto denoised_shadows = shadow_denoiser.denoise_shadow_bitmap(record_ctx, gbuffer_depth, shadow_bitmap, reprojection_map);
-        auto composited_image = composite(record_ctx, gbuffer_depth, sky_cube, ibl_cube, ssao_image, denoised_shadows);
+        auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
+        auto denoised_shadow_mask = shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
+
+        auto rtr = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "rtr",
+        });
+        auto rtdgi = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "rtdgi",
+        });
+        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 2>{rtr, rtdgi});
+
+        auto debug_out_tex = light_gbuffer(
+            record_ctx,
+            gbuffer_depth,
+            denoised_shadow_mask,
+            rtr,
+            rtdgi,
+            // mut ircache_state,
+            // wrc,
+            sky_cube,
+            ibl_cube,
+            sky_lut,
+            transmittance_lut);
         fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
         auto antialiased_image = [&]() {
             if constexpr (ENABLE_TAA) {
-                return taa_renderer.render(record_ctx, composited_image, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
+                return taa_renderer.render(record_ctx, debug_out_tex, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
             } else {
-                return fsr2_renderer->upscale(record_ctx, gbuffer_depth, composited_image, reprojection_map);
+                return fsr2_renderer->upscale(record_ctx, gbuffer_depth, debug_out_tex, reprojection_map);
             }
         }();
 

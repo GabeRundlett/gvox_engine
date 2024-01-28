@@ -6,8 +6,6 @@
 #include <utils/safety.glsl>
 
 #define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA 1.0
-#define M_PI PI
-#define M_TAU (PI * 2.0)
 #define GOLDEN_ANGLE 2.39996323
 #define SKY_DIST MAX_DIST
 
@@ -106,13 +104,6 @@ daxa_f32vec4 blue_noise_for_pixel(daxa_ImageViewId blue_noise_image, daxa_u32vec
     return blue_noise.xyxy;
 }
 
-struct RayDesc {
-    daxa_f32vec3 Origin;
-    float TMin;
-    daxa_f32vec3 Direction;
-    float TMax;
-};
-
 bool is_rtdgi_validation_frame() {
 #if ENABLE_RESTIR
 #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
@@ -137,8 +128,6 @@ bool is_rtdgi_tracing_frame() {
 #endif
 }
 
-#define select(cond, a, b) ((cond) ? (a) : (b))
-
 #if RTDGI_TRACE_COMPUTE || RTDGI_VALIDATE_COMPUTE
 #include <voxels/core.glsl>
 #include <utils/sky.glsl>
@@ -156,7 +145,7 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
     daxa_f32vec3 hit_normal_ws = -outgoing_ray.Direction;
 
     float hit_t = outgoing_ray.TMax;
-    float pdf = max(0.0, 1.0 / (dot(normal_ws, outgoing_ray.Direction) * 2.0 * PI));
+    float pdf = max(0.0, 1.0 / (dot(normal_ws, outgoing_ray.Direction) * 2.0 * M_PI));
 
     daxa_f32vec3 ray_pos = outgoing_ray.Origin;
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
@@ -971,8 +960,8 @@ void main() {
     // float history = safeTexelFetch(history_tex, daxa_i32vec2(reproj_px), 0);
 
     safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(max(history * 0.75, invalid_blurred.x),
-                                                                        // invalid_blurred.x,
-                                                                        safeTexelFetch(input_tex, daxa_i32vec2(px), 0).x, 0.0, 0.0));
+                                                              // invalid_blurred.x,
+                                                              safeTexelFetch(input_tex, daxa_i32vec2(px), 0).x, 0.0, 0.0));
 }
 #endif
 

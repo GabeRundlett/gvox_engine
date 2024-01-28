@@ -126,10 +126,6 @@ struct VoxelParticles {
             .name = "raster_depth_image",
         });
 
-        if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
-            return {raster_color_image, raster_depth_image};
-        }
-
         record_ctx.add(RasterTask<VoxelParticleRaster, VoxelParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxel_particle.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxel_particle.raster.glsl"},

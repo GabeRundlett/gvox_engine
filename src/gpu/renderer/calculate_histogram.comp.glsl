@@ -1,16 +1,6 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
-
-// #include "../inc/frame_constants.hlsl"
-// #include "../inc/color/srgb.hlsl"
-
-// #include "luminance_histogram_common.hlsl"
-
-// [[vk::binding(0)]] Texture2D<float3> input_tex;
-// [[vk::binding(1)]] RWStructuredBuffer<uint> output_buffer;
-// [[vk::binding(2)]] cbuffer _ {
-//     uint2 input_extent;
-// };
+#include <utils/color.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

@@ -92,7 +92,7 @@ TreeSDF sd_spruce_tree(in daxa_f32vec3 p, in daxa_f32vec3 seed) {
         daxa_f32 scl2 = 1.0 / (1.0 + i * 0.1);
         daxa_u32 branch_n = 8 - i;
         for (daxa_u32 branch_i = 0; branch_i < branch_n; ++branch_i) {
-            daxa_f32 angle = (1.0 / branch_n * branch_i) * 2.0 * PI + rand(seed + i + 1.0 * branch_i) * 0.5;
+            daxa_f32 angle = (1.0 / branch_n * branch_i) * 2.0 * M_PI + rand(seed + i + 1.0 * branch_i) * 0.5;
             sd_branch(val, p, daxa_f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(daxa_f32vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
         }
     }
@@ -355,7 +355,6 @@ void brushgen_b(in out Voxel voxel) {
     voxel.material_type = prev_voxel.material_type;
     voxel.normal = prev_voxel.normal;
     voxel.roughness = prev_voxel.roughness;
-
 
     float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
     if (sd < 0) {

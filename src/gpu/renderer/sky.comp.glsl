@@ -59,7 +59,7 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 64) in;
 /* This number should match the number of local threads -> z dimension */
 const daxa_f32 SPHERE_SAMPLES = 64.0;
 const daxa_f32 GOLDEN_RATIO = 1.6180339;
-const daxa_f32 uniformPhase = 1.0 / (4.0 * PI);
+const daxa_f32 uniformPhase = 1.0 / (4.0 * M_PI);
 
 shared daxa_f32vec3 multiscatt_shared[64];
 shared daxa_f32vec3 luminance_shared[64];
@@ -190,12 +190,12 @@ void main() {
         daxa_f32 randA = i / sqrt_sample;
         daxa_f32 randB = j / sqrt_sample;
 
-        daxa_f32 theta = 2.0 * PI * randA;
-        daxa_f32 phi = PI * randB;
+        daxa_f32 theta = 2.0 * M_PI * randA;
+        daxa_f32 phi = M_PI * randB;
 #else
         /* Fibbonaci lattice -> http://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/ */
         daxa_f32 theta = acos(1.0 - 2.0 * (sample_idx + 0.5) / SPHERE_SAMPLES);
-        daxa_f32 phi = (2 * PI * sample_idx) / GOLDEN_RATIO;
+        daxa_f32 phi = (2 * M_PI * sample_idx) / GOLDEN_RATIO;
 #endif
 
         daxa_f32vec3 world_direction = daxa_f32vec3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
@@ -264,16 +264,16 @@ void main() {
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 /* ============================= PHASE FUNCTIONS ============================ */
 daxa_f32 cornette_shanks_mie_phase_function(daxa_f32 g, daxa_f32 cos_theta) {
-    daxa_f32 k = 3.0 / (8.0 * PI) * (1.0 - g * g) / (2.0 + g * g);
+    daxa_f32 k = 3.0 / (8.0 * M_PI) * (1.0 - g * g) / (2.0 + g * g);
     return k * (1.0 + cos_theta * cos_theta) / pow(1.0 + g * g - 2.0 * g * -cos_theta, 1.5);
 }
 
 float kleinNishinaPhase(float cosTheta, float e) {
-    return e / (2.0 * PI * (e * (1.0 - cosTheta) + 1.0) * log(2.0 * e + 1.0));
+    return e / (2.0 * M_PI * (e * (1.0 - cosTheta) + 1.0) * log(2.0 * e + 1.0));
 }
 
 daxa_f32 rayleigh_phase(daxa_f32 cos_theta) {
-    daxa_f32 factor = 3.0 / (16.0 * PI);
+    daxa_f32 factor = 3.0 / (16.0 * M_PI);
     return factor * (1.0 + cos_theta * cos_theta);
 }
 /* ========================================================================== */
@@ -433,7 +433,7 @@ void main() {
     const mat3 basis = build_orthonormal_basis(output_dir);
 
     AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, output_dir, output_dir);
-    vec4 result = vec4(sky_lighting.atmosphere_direct_illuminance + sky_lighting.sun_direct_illuminance, 1);
+    vec4 result = vec4(sky_lighting.atmosphere_direct_illuminance, 1);
 
     imageStore(daxa_image2DArray(sky_cube), ivec3(px), result);
 }

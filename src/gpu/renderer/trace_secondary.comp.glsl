@@ -51,7 +51,7 @@ void main() {
         hit = uint(trace_result.dist == MAX_DIST);
     }
 
-    imageStore(daxa_image2D(shadow_bitmap), ivec2(gl_GlobalInvocationID.xy), daxa_f32vec4(hit, 0, 0, 0));
+    imageStore(daxa_image2D(shadow_mask), ivec2(gl_GlobalInvocationID.xy), daxa_f32vec4(hit, 0, 0, 0));
 }
 
 #endif

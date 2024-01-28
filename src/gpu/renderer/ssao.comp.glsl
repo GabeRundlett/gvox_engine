@@ -115,7 +115,7 @@ void main() {
     float spatial_offset_noise = (1.0 / 4.0) * ((px.y - px.x) & 3);
     float temporal_offset_noise = temporal_offsets[deref(gpu_input).frame_index / 6 % 4];
 
-    float ss_angle = fract(spatial_direction_noise + temporal_direction_noise) * PI;
+    float ss_angle = fract(spatial_direction_noise + temporal_direction_noise) * M_PI;
     float rand_offset = fract(spatial_offset_noise + temporal_offset_noise);
 
     daxa_f32vec2 cs_slice_dir = daxa_f32vec2(cos(ss_angle) * daxa_f32(deref(gpu_input).frame_dim.y) / daxa_f32(deref(gpu_input).frame_dim.x), sin(ss_angle));
@@ -158,8 +158,8 @@ void main() {
 
     float n_angle = fast_acos(clamp(dot(proj_normal_vs, v_vs), -1.0, 1.0)) * sign(dot(vs_slice_dir, proj_normal_vs.xy - v_vs.xy));
 
-    float theta_cos_max1 = cos(n_angle - PI * 0.5);
-    float theta_cos_max2 = cos(n_angle + PI * 0.5);
+    float theta_cos_max1 = cos(n_angle - M_PI * 0.5);
+    float theta_cos_max2 = cos(n_angle + M_PI * 0.5);
 
     daxa_f32vec3 prev_sample0_vs = v_vs;
     daxa_f32vec3 prev_sample1_vs = v_vs;
@@ -198,8 +198,8 @@ void main() {
     float h1 = -fast_acos(theta_cos_max1);
     float h2 = +fast_acos(theta_cos_max2);
 
-    float h1p = n_angle + max(h1 - n_angle, -PI * 0.5);
-    float h2p = n_angle + min(h2 - n_angle, PI * 0.5);
+    float h1p = n_angle + max(h1 - n_angle, -M_PI * 0.5);
+    float h2p = n_angle + min(h2 - n_angle, M_PI * 0.5);
 
     float inv_ao = integrate_arc(h1p, h2p, n_angle);
     daxa_f32vec4 col;

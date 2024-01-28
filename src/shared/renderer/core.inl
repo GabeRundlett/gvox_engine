@@ -36,20 +36,14 @@ struct GbufferDepth {
 
 namespace {
     template <size_t N>
-    inline void clear_task_images(daxa::Device &device, std::array<daxa::TaskImage, N> task_images) {
-        daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
-            .device = device,
-            .name = "temp_task_graph",
-        });
+    inline void clear_task_images(daxa::TaskGraph &task_graph, std::array<daxa::TaskImageView, N> const &task_image_views) {
         auto uses = std::vector<daxa::TaskAttachmentInfo>{};
-        auto views = std::vector<daxa::TaskImageView>{};
-        auto use_count = task_images.size();
+        auto use_count = task_image_views.size();
         uses.reserve(use_count);
-        for (auto const &task_image : task_images) {
-            temp_task_graph.use_persistent_image(task_image);
+        for (auto const &task_image : task_image_views) {
             uses.push_back(daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image));
         }
-        temp_task_graph.add_task({
+        task_graph.add_task({
             .attachments = std::move(uses),
             .task = [use_count](daxa::TaskInterface const &ti) {
                 for (uint8_t i = 0; i < use_count; ++i) {
@@ -61,6 +55,19 @@ namespace {
             },
             .name = "clear images",
         });
+    }
+    template <size_t N>
+    inline void clear_task_images(daxa::Device &device, std::array<daxa::TaskImage, N> const &task_images) {
+        daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
+            .device = device,
+            .name = "temp_task_graph",
+        });
+        auto task_image_views = std::array<daxa::TaskImageView, N>{};
+        for (size_t i = 0; i < N; ++i) {
+            task_image_views[i] = task_images[i];
+            temp_task_graph.use_persistent_image(task_images[i]);
+        }
+        clear_task_images(temp_task_graph, task_image_views);
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});

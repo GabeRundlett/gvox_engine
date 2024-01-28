@@ -128,7 +128,7 @@ SkyviewParams uv_to_skyview_lut_params(daxa_f32vec2 uv, daxa_f32 atmosphere_bott
                       from_subuv_to_unit(uv.y, skyview_dimensions.y));
 
     daxa_f32 beta = asin(atmosphere_bottom / view_height);
-    daxa_f32 zenith_horizon_angle = PI - beta;
+    daxa_f32 zenith_horizon_angle = M_PI - beta;
 
     daxa_f32 view_zenith_angle;
     daxa_f32 light_view_angle;
@@ -140,7 +140,7 @@ SkyviewParams uv_to_skyview_lut_params(daxa_f32vec2 uv, daxa_f32 atmosphere_bott
         daxa_f32 coord = (uv.y * 2.0 - 1.0) * (uv.y * 2.0 - 1.0);
         view_zenith_angle = zenith_horizon_angle + beta * coord;
     }
-    light_view_angle = (uv.x * uv.x) * PI;
+    light_view_angle = (uv.x * uv.x) * M_PI;
     return SkyviewParams(view_zenith_angle, light_view_angle);
 }
 
@@ -244,7 +244,7 @@ daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams para
                                       daxa_f32 atmosphere_bottom, daxa_f32 atmosphere_top, daxa_f32vec2 skyview_dimensions, daxa_f32 view_height) {
     daxa_f32vec2 uv;
     daxa_f32 beta = asin(atmosphere_bottom / view_height);
-    daxa_f32 zenith_horizon_angle = PI - beta;
+    daxa_f32 zenith_horizon_angle = M_PI - beta;
 
     if (!intersects_ground) {
         daxa_f32 coord = params.view_zenith_angle / zenith_horizon_angle;
@@ -255,7 +255,7 @@ daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams para
         coord = (safe_sqrt(coord) + 1.0) / 2.0;
         uv.y = coord;
     }
-    uv.x = safe_sqrt(params.light_view_angle / PI);
+    uv.x = safe_sqrt(params.light_view_angle / M_PI);
     uv = daxa_f32vec2(from_unit_to_subuv(uv.x, SKY_SKY_RES.x),
                       from_unit_to_subuv(uv.y, SKY_SKY_RES.y));
     return uv;
