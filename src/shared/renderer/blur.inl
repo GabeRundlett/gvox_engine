@@ -75,7 +75,7 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
     struct BlurTaskInfo {
         daxa_u32 mip_i;
     };
-    auto blur_dispatch = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* BlurCompute::Uses &uses */, BlurComputePush &push, BlurTaskInfo const &info) {
+    auto blur_dispatch = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, BlurComputePush &push, BlurTaskInfo const &info) {
         auto const image_info = ti.device.info_image(ti.get(BlurCompute::output_tex).ids[0]).value();
         auto downscale_factor = 1u << info.mip_i;
         ti.recorder.set_pipeline(pipeline);
@@ -147,7 +147,7 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView inpu
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tex, src}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::output_tex, dst}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* RevBlurCompute::Uses &uses */, RevBlurComputePush &push, RevBlurTaskInfo const &info) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RevBlurComputePush &push, RevBlurTaskInfo const &info) {
                 auto const image_info = ti.device.info_image(ti.get(RevBlurCompute::output_tex).ids[0]).value();
                 push.output_extent = {image_info.size.x / info.downsample_amount, image_info.size.y / info.downsample_amount, 1};
                 push.self_weight = info.self_weight;

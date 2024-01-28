@@ -88,7 +88,6 @@ daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
 
 #if defined(__cplusplus)
 
-
 struct SsaoRenderer {
     PingPongImage ping_pong_ssao_image;
 
@@ -138,7 +137,7 @@ struct SsaoRenderer {
                 daxa::TaskViewVariant{std::pair{SsaoCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::ssao_image_id, ssao_image0}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SsaoCompute::Uses &uses */, SsaoComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SsaoComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(SsaoCompute::ssao_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
@@ -155,7 +154,7 @@ struct SsaoRenderer {
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::src_image_id, ssao_image0}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::dst_image_id, ssao_image1}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SsaoSpatialFilterCompute::Uses &uses */, SsaoSpatialFilterComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SsaoSpatialFilterComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(SsaoSpatialFilterCompute::dst_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
@@ -172,7 +171,7 @@ struct SsaoRenderer {
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::src_image_id, ssao_image1}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::dst_image_id, ssao_image2}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SsaoUpscaleCompute::Uses &uses */, SsaoUpscaleComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SsaoUpscaleComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(SsaoUpscaleCompute::dst_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
@@ -189,7 +188,7 @@ struct SsaoRenderer {
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::src_image_id, ssao_image2}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::dst_image_id, ssao_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SsaoTemporalFilterCompute::Uses &uses */, SsaoTemporalFilterComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SsaoTemporalFilterComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(SsaoTemporalFilterCompute::dst_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);

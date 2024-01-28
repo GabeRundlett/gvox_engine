@@ -154,7 +154,7 @@ struct SkyRenderer {
                 daxa::TaskViewVariant{std::pair{IblCubeCompute::sky_cube, sky_cube}},
                 daxa::TaskViewVariant{std::pair{IblCubeCompute::ibl_cube, ibl_cube}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* IblCubeCompute::Uses & */, IblCubeComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, IblCubeComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
@@ -190,7 +190,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
             daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, record_ctx.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::transmittance_lut, transmittance_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyTransmittanceCompute::Uses & */, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SKY_TRANSMITTANCE_RES.x + 7) / 8, (SKY_TRANSMITTANCE_RES.y + 3) / 4});
@@ -203,7 +203,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
             daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::transmittance_lut, transmittance_lut}},
             daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::multiscattering_lut, multiscattering_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyMultiscatteringCompute::Uses & */, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y});
@@ -217,7 +217,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
             daxa::TaskViewVariant{std::pair{SkySkyCompute::multiscattering_lut, multiscattering_lut}},
             daxa::TaskViewVariant{std::pair{SkySkyCompute::sky_lut, sky_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkySkyCompute::Uses & */, SkySkyComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkySkyComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SKY_SKY_RES.x + 7) / 8, (SKY_SKY_RES.y + 3) / 4});
@@ -244,7 +244,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
             daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_lut, sky_lut}},
             daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_cube, sky_cube}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyCubeCompute::Uses & */, SkyCubeComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyCubeComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SKY_CUBE_RES + 7) / 8, (SKY_CUBE_RES + 7) / 8, 6});
@@ -269,7 +269,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
             daxa::TaskViewVariant{std::pair{IblCubeCompute::sky_cube, sky_cube}},
             daxa::TaskViewVariant{std::pair{IblCubeCompute::ibl_cube, ibl_cube}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* IblCubeCompute::Uses & */, IblCubeComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, IblCubeComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});

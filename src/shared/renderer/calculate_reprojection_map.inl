@@ -46,7 +46,7 @@ inline auto calculate_reprojection_map(RecordContext &record_ctx, GbufferDepth c
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::velocity_image_id, velocity_image}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::dst_image_id, reprojection_map}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* CalculateReprojectionMapCompute::Uses &uses */, CalculateReprojectionMapComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CalculateReprojectionMapComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(CalculateReprojectionMapCompute::dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);

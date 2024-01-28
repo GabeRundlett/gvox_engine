@@ -304,7 +304,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* PerChunkCompute::Uses & */, PerChunkComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerChunkComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
@@ -331,7 +331,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 // daxa::TaskViewVariant{std::pair{ChunkEditCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkEditCompute::Uses &uses */, ChunkEditComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkEditComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
@@ -355,7 +355,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 // daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkEditPostProcessCompute::Uses &uses */, ChunkEditPostProcessComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkEditPostProcessComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
@@ -375,7 +375,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkOptCompute::Uses &uses */, ChunkOptComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkOptComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
@@ -395,7 +395,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkOptCompute::Uses &uses */, ChunkOptComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkOptComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
@@ -415,7 +415,7 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_malloc_page_allocator, buffers.voxel_malloc.task_allocator_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkAllocCompute::Uses &uses */, ChunkAllocComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkAllocComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({

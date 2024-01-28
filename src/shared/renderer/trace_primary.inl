@@ -135,7 +135,7 @@ struct GbufferRenderer {
                 VOXELS_BUFFER_USES_ASSIGN(TraceDepthPrepassCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::render_depth_prepass_image, depth_prepass_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TraceDepthPrepassCompute::Uses &uses */, TraceDepthPrepassComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceDepthPrepassComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(TraceDepthPrepassCompute::render_depth_prepass_image).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
@@ -156,7 +156,7 @@ struct GbufferRenderer {
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::velocity_image_id, velocity_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TracePrimaryCompute::Uses &uses */, TracePrimaryComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(TracePrimaryCompute::g_buffer_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 // AppUi::Console::s_instance->add_log(fmt::format("0 {}, {}", image_info.size.x, image_info.size.y));
@@ -182,7 +182,7 @@ struct GbufferRenderer {
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_image_id, particles_image}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_depth_image_id, particles_depth_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* CompositeParticlesCompute::Uses &uses */, CompositeParticlesComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CompositeParticlesComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(CompositeParticlesCompute::g_buffer_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);

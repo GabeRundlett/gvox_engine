@@ -278,7 +278,7 @@ struct TaaRenderer {
                 daxa::TaskViewVariant{std::pair{TaaReprojectCompute::reprojected_history_img, reprojected_history_img}},
                 daxa::TaskViewVariant{std::pair{TaaReprojectCompute::closest_velocity_img, closest_velocity_img}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaReprojectCompute::Uses & */, TaaReprojectComputePush &push, TaaTaskInfo const &info) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaReprojectComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
                 push.output_tex_size = info.output_tex_size;
                 ti.recorder.set_pipeline(pipeline);
@@ -317,7 +317,7 @@ struct TaaRenderer {
                 daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::filtered_input_img, filtered_input_img}},
                 daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::filtered_input_deviation_img, filtered_input_deviation_img}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaFilterInputCompute::Uses & */, TaaFilterInputComputePush &push, TaaTaskInfo const &info) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterInputComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
                 push.output_tex_size = info.output_tex_size;
                 ti.recorder.set_pipeline(pipeline);
@@ -349,7 +349,7 @@ struct TaaRenderer {
 
                 daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::filtered_history_img, filtered_history_img}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaFilterHistoryCompute::Uses & */, TaaFilterHistoryComputePush &push, TaaTaskInfo const &info) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterHistoryComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
                 push.output_tex_size = info.output_tex_size;
                 ti.recorder.set_pipeline(pipeline);
@@ -389,7 +389,7 @@ struct TaaRenderer {
 
                     daxa::TaskViewVariant{std::pair{TaaInputProbCompute::input_prob_img, input_prob_img}},
                 },
-                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaInputProbCompute::Uses & */, TaaInputProbComputePush &push, TaaTaskInfo const &info) {
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaInputProbComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
                     push.output_tex_size = info.output_tex_size;
                     ti.recorder.set_pipeline(pipeline);
@@ -421,7 +421,7 @@ struct TaaRenderer {
 
                     daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::prob_filtered1_img, prob_filtered1_img}},
                 },
-                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaProbFilterCompute::Uses & */, TaaProbFilterComputePush &push, TaaTaskInfo const &info) {
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilterComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
                     push.output_tex_size = info.output_tex_size;
                     ti.recorder.set_pipeline(pipeline);
@@ -453,7 +453,7 @@ struct TaaRenderer {
 
                     daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::prob_filtered2_img, prob_filtered2_img}},
                 },
-                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaProbFilter2Compute::Uses & */, TaaProbFilter2ComputePush &push, TaaTaskInfo const &info) {
+                .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilter2ComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
                     push.output_tex_size = info.output_tex_size;
                     ti.recorder.set_pipeline(pipeline);
@@ -498,7 +498,7 @@ struct TaaRenderer {
                 daxa::TaskViewVariant{std::pair{TaaCompute::smooth_var_output_tex, smooth_var_output_tex}},
                 daxa::TaskViewVariant{std::pair{TaaCompute::temporal_velocity_output_tex, temporal_velocity_output_tex}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TaaCompute::Uses & */, TaaComputePush &push, TaaTaskInfo const &info) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
                 push.output_tex_size = info.output_tex_size;
                 ti.recorder.set_pipeline(pipeline);

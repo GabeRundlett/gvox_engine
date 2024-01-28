@@ -3,8 +3,8 @@
 #include <shared/core.inl>
 
 #define LUMINANCE_HISTOGRAM_BIN_COUNT 256
-#define LUMINANCE_HISTOGRAM_MIN_LOG2 -6.0
-#define LUMINANCE_HISTOGRAM_MAX_LOG2 10.0
+#define LUMINANCE_HISTOGRAM_MIN_LOG2 -16.0
+#define LUMINANCE_HISTOGRAM_MAX_LOG2 +16.0
 
 #if CalculateHistogramComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateHistogramCompute, 3)
@@ -63,7 +63,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::input_tex, blur_pyramid.view({.base_mip_level = input_mip_level, .level_count = 1})}},
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::output_buffer, tmp_histogram}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* CalculateHistogramCompute::Uses &uses */, CalculateHistogramComputePush &push, CalculateHistogramTaskInfo const &info) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CalculateHistogramComputePush &push, CalculateHistogramTaskInfo const &info) {
             auto const image_info = ti.device.info_image(ti.get(CalculateHistogramCompute::input_tex).ids[0]).value();
             push.input_extent = {(image_info.size.x + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level, (image_info.size.y + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level};
             ti.recorder.set_pipeline(pipeline);

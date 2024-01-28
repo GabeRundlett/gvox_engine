@@ -90,7 +90,7 @@ inline void test_compute(RecordContext &record_ctx) {
         .views = std::array{
             daxa::TaskViewVariant{std::pair{TestCompute::data, test_buffer}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* TestCompute::Uses & */, TestComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TestComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             auto volume_size = uint32_t(8 * 64);
@@ -601,7 +601,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{StartupCompute::globals, task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(StartupCompute, voxel_world.buffers),
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* StartupCompute::Uses & */, StartupComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, StartupComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({1, 1, 1});
@@ -670,7 +670,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                 daxa::TaskViewVariant{std::pair{PerframeCompute::simulated_voxel_particles, particles.task_simulated_voxel_particles_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(PerframeCompute, voxel_world.buffers),
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* PerframeCompute::Uses & */, PerframeComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerframeComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({1, 1, 1});

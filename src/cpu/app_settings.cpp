@@ -352,10 +352,10 @@ void AppSettings::reset_default() {
     sun_angular_radius = 0.25f;
     recompute_sun_direction();
 
-    auto_exposure.histogram_clip_low = 0.2f;
+    auto_exposure.histogram_clip_low = 0.1f;
     auto_exposure.histogram_clip_high = 0.1f;
     auto_exposure.speed = 3.0f;
-    auto_exposure.ev_shift = 0.0f;
+    auto_exposure.ev_shift = -2.5f;
 }
 
 void AppSettings::recompute_sun_direction() {

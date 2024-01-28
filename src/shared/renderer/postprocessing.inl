@@ -95,7 +95,7 @@ inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, da
             daxa::TaskViewVariant{std::pair{CompositingCompute::ssao_image_id, ssao_image}},
             daxa::TaskViewVariant{std::pair{CompositingCompute::dst_image_id, output_image}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* CompositingCompute::Uses &uses */, CompositingComputePush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CompositingComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(CompositingCompute::dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
@@ -121,7 +121,7 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::composited_image_id, antialiased_image}},
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::render_image, output_image}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* PostprocessingRaster::Uses &uses */, PostprocessingRasterPush &push, NoTaskInfo const &) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, PostprocessingRasterPush &push, NoTaskInfo const &) {
             auto render_image = ti.get(PostprocessingRaster::render_image).ids[0];
             auto const image_info = ti.device.info_image(render_image).value();
             auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
@@ -153,7 +153,7 @@ inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
             daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.task_debug_texture}},
             daxa::TaskViewVariant{std::pair{DebugImageRaster::render_image, output_image}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* DebugImageRaster::Uses &uses */, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {
             auto render_image = ti.get(DebugImageRaster::render_image).ids[0];
             auto const image_info = ti.device.info_image(render_image).value();
             auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({

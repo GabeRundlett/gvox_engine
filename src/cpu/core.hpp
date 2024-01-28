@@ -433,7 +433,7 @@ struct AsyncPipelineManager {
 };
 
 template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
-using TaskCallback = void(daxa::TaskInterface const &ti, typename PipelineT::PipelineT &pipeline /*, typename TaskHeadT::Uses &uses*/, PushT &push, InfoT const &info);
+using TaskCallback = void(daxa::TaskInterface const &ti, typename PipelineT::PipelineT &pipeline, PushT &push, InfoT const &info);
 
 struct NoTaskInfo {
 };

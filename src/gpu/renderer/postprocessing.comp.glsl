@@ -186,7 +186,6 @@ daxa_f32 computeExposure(daxa_f32 averageLuminance) {
 }
 
 daxa_f32vec3 color_correct(daxa_f32vec3 x) {
-    x = x * 0.2;
     agx(x);
     agxLook(x);
     agxEotf(x);

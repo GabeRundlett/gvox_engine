@@ -102,7 +102,7 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* VoxelParticleSimCompute::Uses &uses */, VoxelParticleSimComputePush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelParticleSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
@@ -152,7 +152,7 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::render_image, raster_color_image}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::depth_image_id, raster_depth_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* VoxelParticleRaster::Uses &uses */, VoxelParticleRasterPush &push, NoTaskInfo const &) {
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, VoxelParticleRasterPush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(VoxelParticleRaster::render_image).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {{.image_view = ti.get(VoxelParticleRaster::render_image).ids[0].default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
