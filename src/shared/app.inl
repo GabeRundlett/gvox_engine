@@ -23,13 +23,13 @@
 #include <shared/renderer/fsr.inl>
 
 #if StartupComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute, 2 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_HEAD_END
 struct StartupComputePush {
-    StartupCompute uses;
+    DAXA_TH_BLOB(StartupCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(StartupComputePush, push)
@@ -40,7 +40,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 #endif
 
 #if PerframeComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(PerframeCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(PerframeCompute, 4 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -48,7 +48,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelPar
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_HEAD_END
 struct PerframeComputePush {
-    PerframeCompute uses;
+    DAXA_TH_BLOB(PerframeCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(PerframeComputePush, push)
@@ -61,11 +61,11 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 #endif
 
 #if TestComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TestCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(TestCompute, 1)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
 DAXA_DECL_TASK_HEAD_END
 struct TestComputePush {
-    TestCompute uses;
+    DAXA_TH_BLOB(TestCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
@@ -87,14 +87,14 @@ inline void test_compute(RecordContext &record_ctx) {
 
     record_ctx.add(ComputeTask<TestCompute, TestComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"test.comp.glsl"},
-        .uses = {
-            .data = test_buffer,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{TestCompute::data, test_buffer}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TestCompute::Uses &, TestComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* TestCompute::Uses & */, TestComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
             auto volume_size = uint32_t(8 * 64);
-            ti.get_recorder().dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
+            ti.recorder.dispatch({(volume_size + 7) / 8, (volume_size + 7) / 8, (volume_size + 7) / 8});
         },
     });
 }
@@ -260,16 +260,16 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             });
             temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
             temp_task_graph.add_task({
-                .uses = {
-                    daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_blue_noise_vec2_image},
+                .attachments = {
+                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_blue_noise_vec2_image),
                 },
-                .task = [this](daxa::TaskInterface ti) {
-                    auto staging_buffer = ti.get_device().create_buffer({
+                .task = [this](daxa::TaskInterface const &ti) {
+                    auto staging_buffer = ti.device.create_buffer({
                         .size = static_cast<daxa_u32>(128 * 128 * 4 * 64 * 1),
                         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = ti.get_device().get_host_address_as<uint8_t>(staging_buffer).value();
+                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
                     auto *stbn_zip = unzOpen("assets/STBN.zip");
                     for (auto i = 0; i < 64; ++i) {
                         [[maybe_unused]] int err = 0;
@@ -313,12 +313,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
                         load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
                     }
 
-                    auto &recorder = ti.get_recorder();
-                    recorder.pipeline_barrier({
+                    ti.recorder.pipeline_barrier({
                         .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                     });
-                    recorder.destroy_buffer_deferred(staging_buffer);
-                    recorder.copy_buffer_to_image({
+                    ti.recorder.destroy_buffer_deferred(staging_buffer);
+                    ti.recorder.copy_buffer_to_image({
                         .buffer = staging_buffer,
                         .buffer_offset = (size_t{128} * 128 * 4 * 64) * 0,
                         .image = task_blue_noise_vec2_image.get_state().images[0],
@@ -365,25 +364,24 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             task_debug_texture.set_images({.images = std::array{gpu_resources.debug_texture}});
             temp_task_graph.use_persistent_image(task_debug_texture);
             temp_task_graph.add_task({
-                .uses = {
-                    daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_debug_texture},
+                .attachments = {
+                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_debug_texture),
                 },
-                .task = [&, this](daxa::TaskInterface ti) {
-                    auto staging_buffer = ti.get_device().create_buffer({
+                .task = [&, this](daxa::TaskInterface const &ti) {
+                    auto staging_buffer = ti.device.create_buffer({
                         .size = size,
                         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = ti.get_device().get_host_address_as<uint8_t>(staging_buffer).value();
+                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
                     std::copy(temp_data + 0, temp_data + size, buffer_ptr);
                     FreeImage_Unload(fi_bitmap);
 
-                    auto &recorder = ti.get_recorder();
-                    recorder.pipeline_barrier({
+                    ti.recorder.pipeline_barrier({
                         .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
                     });
-                    recorder.destroy_buffer_deferred(staging_buffer);
-                    recorder.copy_buffer_to_image({
+                    ti.recorder.destroy_buffer_deferred(staging_buffer);
+                    ti.recorder.copy_buffer_to_image({
                         .buffer = staging_buffer,
                         .image = task_debug_texture.get_state().images[0],
                         .image_extent = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
@@ -582,12 +580,11 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         voxel_world.record_startup(record_ctx);
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_globals_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_globals_buffer),
             },
-            .task = [this](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
-                recorder.clear_buffer({
+            .task = [this](daxa::TaskInterface const &ti) {
+                ti.recorder.clear_buffer({
                     .buffer = task_globals_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(GpuGlobals),
@@ -599,15 +596,15 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         record_ctx.add(ComputeTask<StartupCompute, StartupComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"app.comp.glsl"},
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .globals = task_globals_buffer,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{StartupCompute::gpu_input, task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{StartupCompute::globals, task_globals_buffer}},
+                VOXELS_BUFFER_USES_ASSIGN(StartupCompute, voxel_world.buffers),
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, StartupCompute::Uses &, StartupComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch({1, 1, 1});
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* StartupCompute::Uses & */, StartupComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({1, 1, 1});
             },
         });
     }
@@ -642,20 +639,19 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{task_input_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_input_buffer),
             },
-            .task = [this](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
-                auto staging_input_buffer = ti.get_device().create_buffer({
+            .task = [this](daxa::TaskInterface const &ti) {
+                auto staging_input_buffer = ti.device.create_buffer({
                     .size = sizeof(GpuInput),
                     .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_input_buffer",
                 });
-                recorder.destroy_buffer_deferred(staging_input_buffer);
-                auto *buffer_ptr = ti.get_device().get_host_address_as<GpuInput>(staging_input_buffer).value();
+                ti.recorder.destroy_buffer_deferred(staging_input_buffer);
+                auto *buffer_ptr = ti.device.get_host_address_as<GpuInput>(staging_input_buffer).value();
                 *buffer_ptr = gpu_input;
-                recorder.copy_buffer_to_buffer({
+                ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_input_buffer,
                     .dst_buffer = task_input_buffer.get_state().buffers[0],
                     .size = sizeof(GpuInput),
@@ -667,17 +663,17 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         // TODO: Refactor this. I hate that due to these tasks, I have to call this "use_buffers" thing above.
         record_ctx.add(ComputeTask<PerframeCompute, PerframeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"app.comp.glsl"},
-            .uses = {
-                .gpu_input = task_input_buffer,
-                .gpu_output = task_output_buffer,
-                .globals = task_globals_buffer,
-                .simulated_voxel_particles = particles.task_simulated_voxel_particles_buffer,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_world.buffers),
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_input, task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_output, task_output_buffer}},
+                daxa::TaskViewVariant{std::pair{PerframeCompute::globals, task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{PerframeCompute::simulated_voxel_particles, particles.task_simulated_voxel_particles_buffer}},
+                VOXELS_BUFFER_USES_ASSIGN(PerframeCompute, voxel_world.buffers),
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerframeCompute::Uses &, PerframeComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch({1, 1, 1});
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* PerframeCompute::Uses & */, PerframeComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({1, 1, 1});
             },
         });
 
@@ -714,19 +710,18 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         }
 
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{task_output_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::HOST_TRANSFER_WRITE>{task_staging_output_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, task_output_buffer),
+                daxa::inl_atch(daxa::TaskBufferAccess::HOST_TRANSFER_WRITE, task_staging_output_buffer),
             },
-            .task = [this](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
+            .task = [this](daxa::TaskInterface const &ti) {
                 auto output_buffer = task_output_buffer.get_state().buffers[0];
                 auto staging_output_buffer = gpu_resources.staging_output_buffer;
                 auto frame_index = gpu_input.frame_index + 1;
-                auto *buffer_ptr = ti.get_device().get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer).value();
+                auto *buffer_ptr = ti.device.get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer).value();
                 daxa_u32 const offset = frame_index % (FRAMES_IN_FLIGHT + 1);
                 gpu_output = (*buffer_ptr)[offset];
-                recorder.copy_buffer_to_buffer({
+                ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = output_buffer,
                     .dst_buffer = staging_output_buffer,
                     .size = sizeof(GpuOutput) * (FRAMES_IN_FLIGHT + 1),
@@ -736,7 +731,6 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 
         // test_compute(record_ctx);
-        
 
         needs_vram_calc = true;
     }

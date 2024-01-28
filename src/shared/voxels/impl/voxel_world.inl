@@ -4,7 +4,7 @@
 #include <shared/globals.inl>
 
 #if PerChunkComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -13,7 +13,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelLeafChunk), 
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_DECL_TASK_HEAD_END
 struct PerChunkComputePush {
-    PerChunkCompute uses;
+    DAXA_TH_BLOB(PerChunkCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(PerChunkComputePush, push)
@@ -27,7 +27,7 @@ daxa_ImageViewId value_noise_texture = push.uses.value_noise_texture;
 #endif
 
 #if ChunkEditComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
@@ -40,7 +40,7 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
 // DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), placed_voxel_particles)
 DAXA_DECL_TASK_HEAD_END
 struct ChunkEditComputePush {
-    ChunkEditCompute uses;
+    DAXA_TH_BLOB(ChunkEditCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
@@ -56,7 +56,7 @@ daxa_ImageViewId value_noise_texture = push.uses.value_noise_texture;
 #endif
 
 #if ChunkEditPostProcessComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditPostProcessCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditPostProcessCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
@@ -69,7 +69,7 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
 // DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), placed_voxel_particles)
 DAXA_DECL_TASK_HEAD_END
 struct ChunkEditPostProcessComputePush {
-    ChunkEditPostProcessCompute uses;
+    DAXA_TH_BLOB(ChunkEditPostProcessCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(ChunkEditPostProcessComputePush, push)
@@ -85,7 +85,7 @@ daxa_ImageViewId value_noise_texture = push.uses.value_noise_texture;
 #endif
 
 #if ChunkOptComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkOptCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkOptCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
@@ -93,7 +93,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(TempVoxelChunk), 
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelLeafChunk), voxel_chunks)
 DAXA_DECL_TASK_HEAD_END
 struct ChunkOptComputePush {
-    ChunkOptCompute uses;
+    DAXA_TH_BLOB(ChunkOptCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(ChunkOptComputePush, push)
@@ -106,7 +106,7 @@ daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 #endif
 
 #if ChunkAllocComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkAllocCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkAllocCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
@@ -115,7 +115,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelLeafChunk), 
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelMallocPageAllocator), voxel_malloc_page_allocator)
 DAXA_DECL_TASK_HEAD_END
 struct ChunkAllocComputePush {
-    ChunkAllocCompute uses;
+    DAXA_TH_BLOB(ChunkAllocCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(ChunkAllocComputePush, push)
@@ -192,17 +192,15 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
     void record_startup(RecordContext &record_ctx) {
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_globals_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.task_voxel_chunks_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.task_voxel_globals_buffer),
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.task_voxel_chunks_buffer),
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_malloc.task_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_leaf_chunk_malloc.task_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_parent_chunk_malloc.task_element_buffer),
             },
-            .task = [this](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
-
-                recorder.clear_buffer({
+            .task = [this](daxa::TaskInterface const &ti) {
+                ti.recorder.clear_buffer({
                     .buffer = buffers.task_voxel_globals_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(VoxelWorldGlobals),
@@ -211,31 +209,30 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
                 auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
                 chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
-                recorder.clear_buffer({
+                ti.recorder.clear_buffer({
                     .buffer = buffers.task_voxel_chunks_buffer.get_state().buffers[0],
                     .offset = 0,
                     .size = sizeof(VoxelLeafChunk) * chunk_n,
                     .clear_value = 0,
                 });
 
-                buffers.voxel_malloc.clear_buffers(recorder);
-                // buffers.voxel_leaf_chunk_malloc.clear_buffers(recorder);
-                // buffers.voxel_parent_chunk_malloc.clear_buffers(recorder);
+                buffers.voxel_malloc.clear_buffers(ti.recorder);
+                // buffers.voxel_leaf_chunk_malloc.clear_buffers(ti.recorder);
+                // buffers.voxel_parent_chunk_malloc.clear_buffers(ti.recorder);
             },
             .name = "clear chunk editor",
         });
 
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_allocator_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_allocator_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_allocator_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_malloc.task_allocator_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_leaf_chunk_malloc.task_allocator_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_parent_chunk_malloc.task_allocator_buffer),
             },
-            .task = [this](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
-                buffers.voxel_malloc.init(ti.get_device(), recorder);
-                // buffers.voxel_leaf_chunk_malloc.init(ti.get_device(), recorder);
-                // buffers.voxel_parent_chunk_malloc.init(ti.get_device(), recorder);
+            .task = [this](daxa::TaskInterface const &ti) {
+                buffers.voxel_malloc.init(ti.device, ti.recorder);
+                // buffers.voxel_leaf_chunk_malloc.init(ti.device, ti.recorder);
+                // buffers.voxel_parent_chunk_malloc.init(ti.device, ti.recorder);
             },
             .name = "Initialize",
         });
@@ -262,26 +259,25 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
         // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
         temp_task_graph.add_task({
-            .uses = {
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_malloc.task_old_element_buffer},
-                daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_malloc.task_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_leaf_chunk_malloc.task_old_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_leaf_chunk_malloc.task_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_READ>{buffers.voxel_parent_chunk_malloc.task_old_element_buffer},
-                // daxa::TaskBufferUse<daxa::TaskBufferAccess::TRANSFER_WRITE>{buffers.voxel_parent_chunk_malloc.task_element_buffer},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_malloc.task_old_element_buffer),
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_malloc.task_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_leaf_chunk_malloc.task_old_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_leaf_chunk_malloc.task_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_parent_chunk_malloc.task_old_element_buffer),
+                // daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_parent_chunk_malloc.task_element_buffer),
             },
-            .task = [this, &needs_vram_calc](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
+            .task = [this, &needs_vram_calc](daxa::TaskInterface const &ti) {
                 if (buffers.voxel_malloc.needs_realloc()) {
-                    buffers.voxel_malloc.realloc(ti.get_device(), recorder);
+                    buffers.voxel_malloc.realloc(ti.device, ti.recorder);
                     needs_vram_calc = true;
                 }
                 // if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_leaf_chunk_malloc.realloc(ti.get_device(), recorder);
+                //     buffers.voxel_leaf_chunk_malloc.realloc(ti.device, ti.recorder);
                 //     needs_vram_calc = true;
                 // }
                 // if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_parent_chunk_malloc.realloc(ti.get_device(), recorder);
+                //     buffers.voxel_parent_chunk_malloc.realloc(ti.device, ti.recorder);
                 //     needs_vram_calc = true;
                 // }
             },
@@ -300,19 +296,19 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
     void record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
         record_ctx.add(ComputeTask<PerChunkCompute, PerChunkComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .gvox_model = task_gvox_model_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
-                .value_noise_texture = task_value_noise_image.view({.layer_count = 256}),
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::gvox_model, task_gvox_model_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerChunkCompute::Uses &, PerChunkComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* PerChunkCompute::Uses & */, PerChunkComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
                 auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
-                ti.get_recorder().dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
+                ti.recorder.dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
             },
         });
 
@@ -323,23 +319,23 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
         record_ctx.add(ComputeTask<ChunkEditCompute, ChunkEditComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .gvox_model = task_gvox_model_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
-                .voxel_malloc_page_allocator = buffers.voxel_malloc.task_allocator_buffer,
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
-                // .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                // .placed_voxel_particles = task_placed_voxel_particles_buffer,
-                .value_noise_texture = task_value_noise_image.view({.layer_count = 256}),
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::gvox_model, task_gvox_model_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_malloc_page_allocator, buffers.voxel_malloc.task_allocator_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
+                // daxa::TaskViewVariant{std::pair{ChunkEditCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
+                // daxa::TaskViewVariant{std::pair{ChunkEditCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkEditCompute::Uses &uses, ChunkEditComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch_indirect({
-                    .indirect_buffer = uses.globals.buffer(),
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkEditCompute::Uses &uses */, ChunkEditComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(ChunkEditCompute::globals).ids[0],
                     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
                 });
             },
@@ -347,23 +343,23 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
         record_ctx.add(ComputeTask<ChunkEditPostProcessCompute, ChunkEditPostProcessComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .gvox_model = task_gvox_model_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
-                .voxel_malloc_page_allocator = buffers.voxel_malloc.task_allocator_buffer,
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
-                // .simulated_voxel_particles = task_simulated_voxel_particles_buffer,
-                // .placed_voxel_particles = task_placed_voxel_particles_buffer,
-                .value_noise_texture = task_value_noise_image.view({.layer_count = 256}),
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gvox_model, task_gvox_model_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_malloc_page_allocator, buffers.voxel_malloc.task_allocator_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
+                // daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
+                // daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkEditPostProcessCompute::Uses &uses, ChunkEditPostProcessComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch_indirect({
-                    .indirect_buffer = uses.globals.buffer(),
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkEditPostProcessCompute::Uses &uses */, ChunkEditPostProcessComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(ChunkEditPostProcessCompute::globals).ids[0],
                     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
                 });
             },
@@ -372,18 +368,18 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         record_ctx.add(ComputeTask<ChunkOptCompute, ChunkOptComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .extra_defines = {{"CHUNK_OPT_STAGE", "0"}},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkOptCompute::Uses &uses, ChunkOptComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch_indirect({
-                    .indirect_buffer = uses.globals.buffer(),
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkOptCompute::Uses &uses */, ChunkOptComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(ChunkOptCompute::globals).ids[0],
                     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch),
                 });
             },
@@ -392,18 +388,18 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
         record_ctx.add(ComputeTask<ChunkOptCompute, ChunkOptComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .extra_defines = {{"CHUNK_OPT_STAGE", "1"}},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkOptCompute::Uses &uses, ChunkOptComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch_indirect({
-                    .indirect_buffer = uses.globals.buffer(),
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkOptCompute::Uses &uses */, ChunkOptComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(ChunkOptCompute::globals).ids[0],
                     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch),
                 });
             },
@@ -411,19 +407,19 @@ struct VoxelWorld : AppUi::DebugDisplayProvider {
 
         record_ctx.add(ComputeTask<ChunkAllocCompute, ChunkAllocComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                .voxel_globals = buffers.task_voxel_globals_buffer,
-                .temp_voxel_chunks = task_temp_voxel_chunks_buffer,
-                .voxel_chunks = buffers.task_voxel_chunks_buffer,
-                .voxel_malloc_page_allocator = buffers.voxel_malloc.task_allocator_buffer,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_malloc_page_allocator, buffers.voxel_malloc.task_allocator_buffer}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkAllocCompute::Uses &uses, ChunkAllocComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch_indirect({
-                    .indirect_buffer = uses.globals.buffer(),
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ChunkAllocCompute::Uses &uses */, ChunkAllocComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(ChunkAllocCompute::globals).ids[0],
                     // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
                     .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
                 });

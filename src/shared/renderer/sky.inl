@@ -3,7 +3,7 @@
 #include <shared/core.inl>
 
 #if SkyTransmittanceComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
@@ -17,7 +17,7 @@ daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
 #endif
 #endif
 #if SkyMultiscatteringComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, multiscattering_lut)
@@ -33,7 +33,7 @@ daxa_ImageViewId multiscattering_lut = push.uses.multiscattering_lut;
 #endif
 #endif
 #if SkySkyComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
@@ -51,7 +51,7 @@ daxa_ImageViewId sky_lut = push.uses.sky_lut;
 #endif
 #endif
 #if SkyCubeComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(SkyCubeCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyCubeCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
@@ -69,7 +69,7 @@ daxa_ImageViewId sky_cube = push.uses.sky_cube;
 #endif
 #endif
 #if IblCubeComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(IblCubeCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(IblCubeCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, CUBE, ibl_cube)
@@ -129,19 +129,19 @@ struct SkyRenderer {
         auto ibl_cube = task_ibl_cube.view().view({.layer_count = 6});
 
         record_ctx.task_graph.add_task({
-            .uses = {
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_READ>{input_sky_cube},
-                daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{sky_cube},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, input_sky_cube),
+                daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, sky_cube),
             },
-            .task = [=](daxa::TaskInterface ti) {
-                ti.get_recorder().copy_image_to_image({
-                    .src_image = ti.uses[input_sky_cube].image(),
-                    .src_image_layout = ti.uses[input_sky_cube].layout(),
-                    .dst_image = ti.uses[sky_cube].image(),
-                    .dst_image_layout = ti.uses[sky_cube].layout(),
+            .task = [=](daxa::TaskInterface const &ti) {
+                ti.recorder.copy_image_to_image({
+                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
+                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
+                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0],
+                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
                     .src_slice = {.layer_count = 6},
                     .dst_slice = {.layer_count = 6},
-                    .extent = ti.get_device().info_image(ti.uses[input_sky_cube].image()).value().size,
+                    .extent = ti.device.info_image(ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0]).value().size,
                 });
             },
             .name = "transfer sky cube",
@@ -149,15 +149,15 @@ struct SkyRenderer {
 
         record_ctx.add(ComputeTask<IblCubeCompute, IblCubeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"convolve_cube.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .sky_cube = sky_cube,
-                .ibl_cube = ibl_cube,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{IblCubeCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{IblCubeCompute::sky_cube, sky_cube}},
+                daxa::TaskViewVariant{std::pair{IblCubeCompute::ibl_cube, ibl_cube}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, IblCubeCompute::Uses &, IblCubeComputePush &push, NoTaskInfo const &) {
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
-                ti.get_recorder().dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* IblCubeCompute::Uses & */, IblCubeComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
             },
         });
     }
@@ -186,41 +186,41 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
 
     record_ctx.add(ComputeTask<SkyTransmittanceCompute, SkyTransmittanceComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
-        .uses = {
-            .gpu_input = record_ctx.task_input_buffer,
-            .transmittance_lut = transmittance_lut,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::transmittance_lut, transmittance_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyTransmittanceCompute::Uses &, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
-            ti.get_recorder().dispatch({(SKY_TRANSMITTANCE_RES.x + 7) / 8, (SKY_TRANSMITTANCE_RES.y + 3) / 4});
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyTransmittanceCompute::Uses & */, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({(SKY_TRANSMITTANCE_RES.x + 7) / 8, (SKY_TRANSMITTANCE_RES.y + 3) / 4});
         },
     });
     record_ctx.add(ComputeTask<SkyMultiscatteringCompute, SkyMultiscatteringComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
-        .uses = {
-            .gpu_input = record_ctx.task_input_buffer,
-            .transmittance_lut = transmittance_lut,
-            .multiscattering_lut = multiscattering_lut,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::transmittance_lut, transmittance_lut}},
+            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::multiscattering_lut, multiscattering_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyMultiscatteringCompute::Uses &, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
-            ti.get_recorder().dispatch({SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y});
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyMultiscatteringCompute::Uses & */, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y});
         },
     });
     record_ctx.add(ComputeTask<SkySkyCompute, SkySkyComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
-        .uses = {
-            .gpu_input = record_ctx.task_input_buffer,
-            .transmittance_lut = transmittance_lut,
-            .multiscattering_lut = multiscattering_lut,
-            .sky_lut = sky_lut,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{SkySkyCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkySkyCompute::transmittance_lut, transmittance_lut}},
+            daxa::TaskViewVariant{std::pair{SkySkyCompute::multiscattering_lut, multiscattering_lut}},
+            daxa::TaskViewVariant{std::pair{SkySkyCompute::sky_lut, sky_lut}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkySkyCompute::Uses &, SkySkyComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
-            ti.get_recorder().dispatch({(SKY_SKY_RES.x + 7) / 8, (SKY_SKY_RES.y + 3) / 4});
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkySkyCompute::Uses & */, SkySkyComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({(SKY_SKY_RES.x + 7) / 8, (SKY_SKY_RES.y + 3) / 4});
         },
     });
 
@@ -238,16 +238,16 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
 
     record_ctx.add(ComputeTask<SkyCubeCompute, SkyCubeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
-        .uses = {
-            .gpu_input = record_ctx.task_input_buffer,
-            .transmittance_lut = transmittance_lut,
-            .sky_lut = sky_lut,
-            .sky_cube = sky_cube,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{SkyCubeCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyCubeCompute::transmittance_lut, transmittance_lut}},
+            daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_lut, sky_lut}},
+            daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_cube, sky_cube}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyCubeCompute::Uses &, SkyCubeComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
-            ti.get_recorder().dispatch({(SKY_CUBE_RES + 7) / 8, (SKY_CUBE_RES + 7) / 8, 6});
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* SkyCubeCompute::Uses & */, SkyCubeComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({(SKY_CUBE_RES + 7) / 8, (SKY_CUBE_RES + 7) / 8, 6});
         },
     });
 
@@ -264,15 +264,15 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
     ibl_cube = ibl_cube.view({.layer_count = 6});
     record_ctx.add(ComputeTask<IblCubeCompute, IblCubeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"convolve_cube.comp.glsl"},
-        .uses = {
-            .gpu_input = record_ctx.task_input_buffer,
-            .sky_cube = sky_cube,
-            .ibl_cube = ibl_cube,
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{IblCubeCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{IblCubeCompute::sky_cube, sky_cube}},
+            daxa::TaskViewVariant{std::pair{IblCubeCompute::ibl_cube, ibl_cube}},
         },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, IblCubeCompute::Uses &, IblCubeComputePush &push, NoTaskInfo const &) {
-            ti.get_recorder().set_pipeline(pipeline);
-            ti.get_recorder().push_constant(push);
-            ti.get_recorder().dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* IblCubeCompute::Uses & */, IblCubeComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
         },
     });
 

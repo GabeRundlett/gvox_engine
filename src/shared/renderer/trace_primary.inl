@@ -3,14 +3,14 @@
 #include <shared/core.inl>
 
 #if TraceDepthPrepassComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 3 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, render_depth_prepass_image)
 DAXA_DECL_TASK_HEAD_END
 struct TraceDepthPrepassComputePush {
-    TraceDepthPrepassCompute uses;
+    DAXA_TH_BLOB(TraceDepthPrepassCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
@@ -22,7 +22,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 #endif
 
 #if TracePrimaryComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute, 7 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -33,7 +33,7 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_i
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct TracePrimaryComputePush {
-    TracePrimaryCompute uses;
+    DAXA_TH_BLOB(TracePrimaryCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
@@ -49,7 +49,7 @@ daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
 #endif
 
 #if CompositeParticlesComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, g_buffer_image_id)
@@ -61,7 +61,7 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct CompositeParticlesComputePush {
-    CompositeParticlesCompute uses;
+    DAXA_TH_BLOB(CompositeParticlesCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
@@ -129,63 +129,63 @@ struct GbufferRenderer {
 
         record_ctx.add(ComputeTask<TraceDepthPrepassCompute, TraceDepthPrepassComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                .render_depth_prepass_image = depth_prepass_image,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::globals, record_ctx.task_globals_buffer}},
+                VOXELS_BUFFER_USES_ASSIGN(TraceDepthPrepassCompute, voxel_buffers),
+                daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::render_depth_prepass_image, depth_prepass_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceDepthPrepassCompute::Uses &uses, TraceDepthPrepassComputePush &push, NoTaskInfo const &) {
-                auto const &image_info = ti.get_device().info_image(uses.render_depth_prepass_image.image()).value();
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TraceDepthPrepassCompute::Uses &uses */, TraceDepthPrepassComputePush &push, NoTaskInfo const &) {
+                auto const &image_info = ti.device.info_image(ti.get(TraceDepthPrepassCompute::render_depth_prepass_image).ids[0]).value();
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
                 // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+                ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
 
         record_ctx.add(ComputeTask<TracePrimaryCompute, TracePrimaryComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
-                VOXELS_BUFFER_USES_ASSIGN(voxel_buffers),
-                .blue_noise_vec2 = record_ctx.task_blue_noise_vec2_image,
-                .debug_texture = record_ctx.task_debug_texture,
-                .render_depth_prepass_image = depth_prepass_image,
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .velocity_image_id = velocity_image,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::globals, record_ctx.task_globals_buffer}},
+                VOXELS_BUFFER_USES_ASSIGN(TracePrimaryCompute, voxel_buffers),
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::debug_texture, record_ctx.task_debug_texture}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::render_depth_prepass_image, depth_prepass_image}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::velocity_image_id, velocity_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryCompute::Uses &uses, TracePrimaryComputePush &push, NoTaskInfo const &) {
-                auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TracePrimaryCompute::Uses &uses */, TracePrimaryComputePush &push, NoTaskInfo const &) {
+                auto const &image_info = ti.device.info_image(ti.get(TracePrimaryCompute::g_buffer_image_id).ids[0]).value();
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
                 // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+                ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
 
         record_ctx.add(ComputeTask<CompositeParticlesCompute, CompositeParticlesComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .globals = record_ctx.task_globals_buffer,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::globals, record_ctx.task_globals_buffer}},
 
-                .g_buffer_image_id = gbuffer_depth.gbuffer,
-                .velocity_image_id = velocity_image,
-                .vs_normal_image_id = gbuffer_depth.geometric_normal,
-                .depth_image_id = depth_image,
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::velocity_image_id, velocity_image}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::vs_normal_image_id, gbuffer_depth.geometric_normal}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::depth_image_id, depth_image}},
 
-                .simulated_voxel_particles = simulated_voxel_particles_buffer,
-                .particles_image_id = particles_image,
-                .particles_depth_image_id = particles_depth_image,
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::simulated_voxel_particles, simulated_voxel_particles_buffer}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_image_id, particles_image}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_depth_image_id, particles_depth_image}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CompositeParticlesCompute::Uses &uses, CompositeParticlesComputePush &push, NoTaskInfo const &) {
-                auto const &image_info = ti.get_device().info_image(uses.g_buffer_image_id.image()).value();
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* CompositeParticlesCompute::Uses &uses */, CompositeParticlesComputePush &push, NoTaskInfo const &) {
+                auto const &image_info = ti.device.info_image(ti.get(CompositeParticlesCompute::g_buffer_image_id).ids[0]).value();
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
                 // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-                ti.get_recorder().dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+                ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
 

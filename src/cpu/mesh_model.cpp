@@ -184,15 +184,14 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         auto task_image_mip_view = texture->task_image.view().view({.base_mip_level = 0, .level_count = 4});
 
         mip_task_list.add_task({
-            .uses = {
-                daxa::ImageTransferWrite<daxa::ImageViewType::REGULAR_2D>{task_image_mip_view},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image_mip_view),
             },
             .task = [texture_staging_buffer, task_image_mip_view, sx, sy](daxa::TaskInterface const &ti) {
-                auto &cmd_list = ti.get_recorder();
-                cmd_list.copy_buffer_to_image({
+                ti.recorder.copy_buffer_to_image({
                     .buffer = texture_staging_buffer,
-                    .image = ti.uses[task_image_mip_view].image(),
-                    .image_layout = ti.uses[task_image_mip_view].layout(),
+                    .image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
+                    .image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
                     .image_offset = {0, 0, 0},
                     .image_extent = {sx, sy, 1},
                 });
@@ -203,25 +202,24 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
             auto view_a = texture->task_image.view().view({.base_mip_level = i});
             auto view_b = texture->task_image.view().view({.base_mip_level = i + 1});
             mip_task_list.add_task({
-                .uses = {
-                    daxa::ImageTransferRead<daxa::ImageViewType::REGULAR_2D>{view_a},
-                    daxa::ImageTransferWrite<daxa::ImageViewType::REGULAR_2D>{view_b},
+                .attachments = {
+                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, view_a),
+                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, view_b),
                 },
-                .task = [=, &device](daxa::TaskInterface const &runtime) {
-                    auto &cmd_list = runtime.get_recorder();
-                    auto image_a = runtime.uses[view_a].image();
-                    auto image_b = runtime.uses[view_b].image();
+                .task = [=, &device](daxa::TaskInterface const &ti) {
+                    auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
+                    auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
                     auto image_info = device.info_image(image_a).value();
                     auto mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, static_cast<int32_t>(image_info.size.x)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.y)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.z))};
                     for (uint32_t j = 0; j < i; ++j) {
                         mip_size = {std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
                     }
                     auto next_mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
-                    cmd_list.blit_image_to_image({
+                    ti.recorder.blit_image_to_image({
                         .src_image = image_a,
-                        .src_image_layout = runtime.uses[view_a].layout(),
+                        .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
                         .dst_image = image_b,
-                        .dst_image_layout = runtime.uses[view_b].layout(),
+                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
                         .src_slice = {
                             .mip_level = i,
                             .base_array_layer = 0,
@@ -241,8 +239,8 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
             });
         }
         mip_task_list.add_task({
-            .uses = {
-                daxa::ImageFragmentShaderSampled<daxa::ImageViewType::REGULAR_2D>{texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})},
+            .attachments = {
+                daxa::inl_atch(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
             },
             .task = [](daxa::TaskInterface const &) {},
             .name = "Transition",

@@ -41,23 +41,21 @@ namespace {
             .device = device,
             .name = "temp_task_graph",
         });
-        auto uses = std::vector<daxa::GenericTaskResourceUse>{};
+        auto uses = std::vector<daxa::TaskAttachmentInfo>{};
         auto views = std::vector<daxa::TaskImageView>{};
-        uses.reserve(task_images.size());
-        views.reserve(task_images.size());
+        auto use_count = task_images.size();
+        uses.reserve(use_count);
         for (auto const &task_image : task_images) {
             temp_task_graph.use_persistent_image(task_image);
-            uses.push_back(daxa::TaskImageUse<daxa::TaskImageAccess::TRANSFER_WRITE>{task_image});
-            views.push_back(task_image);
+            uses.push_back(daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image));
         }
         temp_task_graph.add_task({
-            .uses = std::move(uses),
-            .task = [&views](daxa::TaskInterface ti) {
-                auto &recorder = ti.get_recorder();
-                for (auto const &view : views) {
-                    recorder.clear_image({
-                        .dst_image_layout = ti.uses[view].layout(),
-                        .dst_image = ti.uses[view].image(),
+            .attachments = std::move(uses),
+            .task = [use_count](daxa::TaskInterface const &ti) {
+                for (uint8_t i = 0; i < use_count; ++i) {
+                    ti.recorder.clear_image({
+                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{i}).layout,
+                        .dst_image = ti.get(daxa::TaskImageAttachmentIndex{i}).ids[0],
                     });
                 }
             },

@@ -3,12 +3,12 @@
 #include <shared/core.inl>
 
 #if BlurComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(BlurCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(BlurCompute, 2)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
 DAXA_DECL_TASK_HEAD_END
 struct BlurComputePush {
-    BlurCompute uses;
+    DAXA_TH_BLOB(BlurCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(BlurComputePush, push)
@@ -18,16 +18,16 @@ daxa_ImageViewId output_tex = push.uses.output_tex;
 #endif
 
 #if RevBlurComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(RevBlurCompute)
+DAXA_DECL_TASK_HEAD_BEGIN(RevBlurCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tail_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
 DAXA_DECL_TASK_HEAD_END
 struct RevBlurComputePush {
-    RevBlurCompute uses;
     daxa_u32vec4 output_extent;
     daxa_f32 self_weight;
+    DAXA_TH_BLOB(RevBlurCompute, uses)
 };
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(RevBlurComputePush, push)
@@ -75,18 +75,18 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
     struct BlurTaskInfo {
         daxa_u32 mip_i;
     };
-    auto blur_dispatch = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, BlurCompute::Uses &uses, BlurComputePush &push, BlurTaskInfo const &info) {
-        auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
+    auto blur_dispatch = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* BlurCompute::Uses &uses */, BlurComputePush &push, BlurTaskInfo const &info) {
+        auto const &image_info = ti.device.info_image(ti.get(BlurCompute::output_tex).ids[0]).value();
         auto downscale_factor = 1u << info.mip_i;
-        ti.get_recorder().set_pipeline(pipeline);
-        ti.get_recorder().push_constant(push);
-        ti.get_recorder().dispatch({((image_info.size.x + downscale_factor - 1) / downscale_factor + 63) / 64, (image_info.size.y + downscale_factor - 1) / downscale_factor});
+        ti.recorder.set_pipeline(pipeline);
+        set_push_constant(ti, push);
+        ti.recorder.dispatch({((image_info.size.x + downscale_factor - 1) / downscale_factor + 63) / 64, (image_info.size.y + downscale_factor - 1) / downscale_factor});
     };
     record_ctx.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
         .source = daxa::ShaderFile{"blur.comp.glsl"},
-        .uses = {
-            .input_tex = input_image,
-            .output_tex = output.view({.base_mip_level = 0, .level_count = 1}),
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{BlurCompute::input_tex, input_image}},
+            daxa::TaskViewVariant{std::pair{BlurCompute::output_tex, output.view({.base_mip_level = 0, .level_count = 1})}},
         },
         .callback_ = blur_dispatch,
         .info = {
@@ -100,9 +100,9 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
         auto dst = output.view({.base_mip_level = mip_i + 1, .level_count = 1});
         record_ctx.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
             .source = daxa::ShaderFile{"blur.comp.glsl"},
-            .uses = {
-                .input_tex = src,
-                .output_tex = dst,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{BlurCompute::input_tex, src}},
+                daxa::TaskViewVariant{std::pair{BlurCompute::output_tex, dst}},
             },
             .callback_ = blur_dispatch,
             .info = {
@@ -141,20 +141,20 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView inpu
         };
         record_ctx.add(ComputeTask<RevBlurCompute, RevBlurComputePush, RevBlurTaskInfo>{
             .source = daxa::ShaderFile{"blur.comp.glsl"},
-            .uses = {
-                .gpu_input = record_ctx.task_input_buffer,
-                .input_tail_tex = tail,
-                .input_tex = src,
-                .output_tex = dst,
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tail_tex, tail}},
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tex, src}},
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::output_tex, dst}},
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RevBlurCompute::Uses &uses, RevBlurComputePush &push, RevBlurTaskInfo const &info) {
-                auto const &image_info = ti.get_device().info_image(uses.output_tex.image()).value();
-                push.output_extent = {image_info.size.x / info.downsample_amount, image_info.size.y / info.downsample_amount};
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* RevBlurCompute::Uses &uses */, RevBlurComputePush &push, RevBlurTaskInfo const &info) {
+                auto const &image_info = ti.device.info_image(ti.get(RevBlurCompute::output_tex).ids[0]).value();
+                push.output_extent = {image_info.size.x / info.downsample_amount, image_info.size.y / info.downsample_amount, 1};
                 push.self_weight = info.self_weight;
-                ti.get_recorder().set_pipeline(pipeline);
-                ti.get_recorder().push_constant(push);
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
                 // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-                ti.get_recorder().dispatch({(push.output_extent.x + 7) / 8, (push.output_extent.y + 7) / 8});
+                ti.recorder.dispatch({(push.output_extent.x + 7) / 8, (push.output_extent.y + 7) / 8});
             },
             .info = {
                 .downsample_amount = downsample_amount,

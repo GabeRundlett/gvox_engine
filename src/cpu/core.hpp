@@ -433,52 +433,77 @@ struct AsyncPipelineManager {
 };
 
 template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
-using TaskCallback = void(daxa::TaskInterface const &ti, typename PipelineT::PipelineT &pipeline, typename TaskHeadT::Uses &uses, PushT &push, InfoT const &info);
+using TaskCallback = void(daxa::TaskInterface const &ti, typename PipelineT::PipelineT &pipeline /*, typename TaskHeadT::Uses &uses*/, PushT &push, InfoT const &info);
 
 struct NoTaskInfo {
 };
 
+template <typename PushT>
+constexpr auto push_constant_size() -> uint32_t {
+    return static_cast<uint32_t>(((sizeof(PushT) & ~0x3) + 7) & ~7);
+}
+
+template <typename PushT>
+void set_push_constant(daxa::TaskInterface const &ti, PushT push) {
+    uint32_t offset = 0;
+    if constexpr (push_constant_size<PushT>() != 0) {
+        ti.recorder.push_constant(push);
+        offset = push_constant_size<PushT>();
+    }
+    // ti.copy_task_head_to(&push.views);
+    ti.recorder.push_constant_vptr({ti.attachment_shader_data.data(), ti.attachment_shader_data.size(), offset});
+}
+
+template <typename PushT>
+void set_push_constant(daxa::TaskInterface const &ti, daxa::RenderCommandRecorder &render_recorder, PushT push) {
+    uint32_t offset = 0;
+    if constexpr (sizeof(PushT) >= 4) {
+        render_recorder.push_constant(push);
+        offset = sizeof(PushT);
+    }
+    render_recorder.push_constant_vptr({ti.attachment_shader_data.data(), ti.attachment_shader_data.size(), offset});
+}
+
 template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
-struct Task {
+struct Task : TaskHeadT {
     daxa::ShaderSource source;
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::Uses uses{};
+    TaskHeadT::Views views{};
     TaskCallback<TaskHeadT, PushT, InfoT, PipelineT> *callback_{};
     InfoT info{};
     // Not set by user
-    std::string_view name = TaskHeadT::NAME;
+    // std::string_view name = TaskHeadT::NAME;
     std::shared_ptr<PipelineT> pipeline;
     void callback(daxa::TaskInterface const &ti) {
         auto push = PushT{};
-        ti.copy_task_head_to(&push.uses);
         if (!pipeline->is_valid()) {
             return;
         }
-        callback_(ti, pipeline->get(), uses, push, info);
+        callback_(ti, pipeline->get(), push, info);
     }
 };
 
 template <typename TaskHeadT, typename PushT, typename InfoT>
-struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> {
+struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> : TaskHeadT {
     daxa::ShaderSource vert_source;
     daxa::ShaderSource frag_source;
     std::vector<daxa::RenderAttachment> color_attachments{};
     daxa::Optional<daxa::DepthTestInfo> depth_test{};
     daxa::RasterizerInfo raster{};
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::Uses uses{};
+    TaskHeadT::Views views{};
     TaskCallback<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> *callback_{};
     InfoT info{};
     // Not set by user
-    std::string_view name = TaskHeadT::NAME;
+    // std::string_view name = TaskHeadT::NAME;
     std::shared_ptr<AsyncManagedRasterPipeline> pipeline;
     void callback(daxa::TaskInterface const &ti) {
         auto push = PushT{};
-        ti.copy_task_head_to(&push.uses);
+        // ti.copy_task_head_to(&push.uses);
         if (!pipeline->is_valid()) {
             return;
         }
-        callback_(ti, pipeline->get(), uses, push, info);
+        callback_(ti, pipeline->get(), push, info);
     }
 };
 
@@ -506,10 +531,11 @@ struct RecordContext {
 
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
     auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, std::string const &shader_id) {
+        auto push_constant_size = static_cast<uint32_t>(::push_constant_size<PushT>() + TaskHeadT::attachment_shader_data_size());
         if constexpr (std::is_same_v<PipelineT, AsyncManagedComputePipeline>) {
             auto pipe_iter = compute_pipelines->find(shader_id);
             if (pipe_iter == compute_pipelines->end()) {
-                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
+                task.extra_defines.push_back({std::string{TaskHeadT::name()} + "Shader", "1"});
                 auto emplace_result = compute_pipelines->emplace(
                     shader_id,
                     std::make_shared<AsyncManagedComputePipeline>(pipeline_manager->add_compute_pipeline({
@@ -517,8 +543,8 @@ struct RecordContext {
                             .source = task.source,
                             .compile_options = {.defines = task.extra_defines},
                         },
-                        .push_constant_size = sizeof(PushT),
-                        .name = std::string{TaskHeadT::NAME},
+                        .push_constant_size = push_constant_size,
+                        .name = std::string{TaskHeadT::name()},
                     })));
                 pipe_iter = emplace_result.first;
             }
@@ -528,7 +554,7 @@ struct RecordContext {
             // TODO: if we found a pipeline, but it has differing info such as attachments or raster info,
             // we should destroy that old one and create a new one.
             if (pipe_iter == raster_pipelines->end()) {
-                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
+                task.extra_defines.push_back({std::string{TaskHeadT::name()} + "Shader", "1"});
                 auto emplace_result = raster_pipelines->emplace(
                     shader_id,
                     std::make_shared<AsyncManagedRasterPipeline>(pipeline_manager->add_raster_pipeline({
@@ -543,8 +569,8 @@ struct RecordContext {
                         .color_attachments = task.color_attachments,
                         .depth_test = task.depth_test,
                         .raster = task.raster,
-                        .push_constant_size = sizeof(PushT),
-                        .name = std::string{TaskHeadT::NAME},
+                        .push_constant_size = push_constant_size,
+                        .name = std::string{TaskHeadT::name()},
                     })));
                 pipe_iter = emplace_result.first;
             }
@@ -554,7 +580,7 @@ struct RecordContext {
 
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
     void add(Task<TaskHeadT, PushT, InfoT, PipelineT> &&task) {
-        auto shader_id = std::string{TaskHeadT::NAME};
+        auto shader_id = std::string{TaskHeadT::name()};
         for (auto const &define : task.extra_defines) {
             shader_id.append(define.name);
             shader_id.append(define.value);
