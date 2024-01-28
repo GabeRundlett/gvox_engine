@@ -153,7 +153,7 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::depth_image_id, raster_depth_image}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* VoxelParticleRaster::Uses &uses */, VoxelParticleRasterPush &push, NoTaskInfo const &) {
-                auto const &image_info = ti.device.info_image(ti.get(VoxelParticleRaster::render_image).ids[0]).value();
+                auto const image_info = ti.device.info_image(ti.get(VoxelParticleRaster::render_image).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {{.image_view = ti.get(VoxelParticleRaster::render_image).ids[0].default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
                     .depth_attachment = {{.image_view = ti.get(VoxelParticleRaster::depth_image_id).ids[0].default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},

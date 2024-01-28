@@ -64,7 +64,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::output_buffer, tmp_histogram}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* CalculateHistogramCompute::Uses &uses */, CalculateHistogramComputePush &push, CalculateHistogramTaskInfo const &info) {
-            auto const &image_info = ti.device.info_image(ti.get(CalculateHistogramCompute::input_tex).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(CalculateHistogramCompute::input_tex).ids[0]).value();
             push.input_extent = {(image_info.size.x + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level, (image_info.size.y + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level};
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);

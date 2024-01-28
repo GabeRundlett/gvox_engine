@@ -81,10 +81,10 @@ auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffe
             daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(velocity_use.view_ids[0]), &velocity_vk_image_view);
             daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(output_use.view_ids[0]), &output_vk_image_view);
 
-            auto const &color_extent = device.info_image(color_use.ids[0]).value().size;
-            auto const &depth_extent = device.info_image(depth_use.ids[0]).value().size;
-            auto const &velocity_extent = device.info_image(velocity_use.ids[0]).value().size;
-            auto const &output_extent = device.info_image(output_use.ids[0]).value().size;
+            auto const color_extent = device.info_image(color_use.ids[0]).value().size;
+            auto const depth_extent = device.info_image(depth_use.ids[0]).value().size;
+            auto const velocity_extent = device.info_image(velocity_use.ids[0]).value().size;
+            auto const output_extent = device.info_image(output_use.ids[0]).value().size;
 
             auto const color_format = (VkFormat)device.info_image(color_use.ids[0]).value().format;
             auto const depth_format = (VkFormat)device.info_image(depth_use.ids[0]).value().format;

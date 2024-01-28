@@ -96,7 +96,7 @@ inline auto composite(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, da
             daxa::TaskViewVariant{std::pair{CompositingCompute::dst_image_id, output_image}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline /* CompositingCompute::Uses &uses */, CompositingComputePush &push, NoTaskInfo const &) {
-            auto const &image_info = ti.device.info_image(ti.get(CompositingCompute::dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(CompositingCompute::dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
@@ -123,7 +123,7 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* PostprocessingRaster::Uses &uses */, PostprocessingRasterPush &push, NoTaskInfo const &) {
             auto render_image = ti.get(PostprocessingRaster::render_image).ids[0];
-            auto const &image_info = ti.device.info_image(render_image).value();
+            auto const image_info = ti.device.info_image(render_image).value();
             auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                 .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
                 .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
@@ -155,7 +155,7 @@ inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline /* DebugImageRaster::Uses &uses */, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {
             auto render_image = ti.get(DebugImageRaster::render_image).ids[0];
-            auto const &image_info = ti.device.info_image(render_image).value();
+            auto const image_info = ti.device.info_image(render_image).value();
             auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                 .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
                 .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},

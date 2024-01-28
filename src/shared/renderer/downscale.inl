@@ -42,7 +42,7 @@ inline auto extract_downscaled_depth(RecordContext &record_ctx, daxa::TaskImageV
             daxa::TaskViewVariant{std::pair{DownscaleCompute::dst_image_id, output_tex}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* DownscaleCompute::Uses &uses */, DownscaleComputePush &push, NoTaskInfo const &) {
-            auto const &image_info = ti.device.info_image(ti.get(DownscaleCompute::dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(DownscaleCompute::dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
@@ -71,7 +71,7 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &record_c
             daxa::TaskViewVariant{std::pair{DownscaleCompute::dst_image_id, output_tex}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* DownscaleCompute::Uses &uses */, DownscaleComputePush &push, NoTaskInfo const &) {
-            auto const &image_info = ti.device.info_image(ti.get(DownscaleCompute::dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(DownscaleCompute::dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});

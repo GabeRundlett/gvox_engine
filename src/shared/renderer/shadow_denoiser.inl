@@ -114,7 +114,7 @@ struct ShadowDenoiser {
                 daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::output_tex, bitpacked_shadows_image}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ShadowBitPackCompute::Uses &uses */, ShadowBitPackComputePush &push, ShadowBitPackComputeInfo const &info) {
-                auto const &image_info = ti.device.info_image(ti.get(ShadowBitPackCompute::input_tex).ids[0]).value();
+                auto const image_info = ti.device.info_image(ti.get(ShadowBitPackCompute::input_tex).ids[0]).value();
                 push.input_tex_size = daxa_f32vec4{float(image_info.size.x), float(image_info.size.y), 0.0f, 0.0f};
                 push.input_tex_size.z = 1.0f / push.input_tex_size.x;
                 push.input_tex_size.w = 1.0f / push.input_tex_size.y;
@@ -188,8 +188,8 @@ struct ShadowDenoiser {
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::meta_output_tex, metadata_image}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ShadowTemporalFilterCompute::Uses &uses */, ShadowTemporalFilterComputePush &push, ShadowBitPackComputeInfo const &info) {
-                auto const &image_info = ti.device.info_image(ti.get(ShadowTemporalFilterCompute::output_moments_tex).ids[0]).value();
-                auto const &input_image_info = ti.device.info_image(ti.get(ShadowTemporalFilterCompute::shadow_mask_tex).ids[0]).value();
+                auto const image_info = ti.device.info_image(ti.get(ShadowTemporalFilterCompute::output_moments_tex).ids[0]).value();
+                auto const input_image_info = ti.device.info_image(ti.get(ShadowTemporalFilterCompute::shadow_mask_tex).ids[0]).value();
                 push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
                 push.input_tex_size.z = 1.0f / push.input_tex_size.x;
                 push.input_tex_size.w = 1.0f / push.input_tex_size.y;
@@ -209,8 +209,8 @@ struct ShadowDenoiser {
             daxa_u32vec2 bitpacked_shadow_mask_extent;
         };
         auto shadow_spatial_task_callback = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* ShadowSpatialFilterCompute::Uses &uses */, ShadowSpatialFilterComputePush &push, ShadowSpatialFilterComputeInfo const &info) {
-            auto const &image_info = ti.device.info_image(ti.get(ShadowSpatialFilterCompute::output_tex).ids[0]).value();
-            auto const &input_image_info = ti.device.info_image(ti.get(ShadowSpatialFilterCompute::input_tex).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(ShadowSpatialFilterCompute::output_tex).ids[0]).value();
+            auto const input_image_info = ti.device.info_image(ti.get(ShadowSpatialFilterCompute::input_tex).ids[0]).value();
             push.step_size = info.step_size;
             push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
             push.input_tex_size.z = 1.0f / push.input_tex_size.x;

@@ -48,7 +48,7 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.task_resources.output_resource}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline/* TraceSecondaryCompute::Uses &uses */, TraceSecondaryComputePush &push, NoTaskInfo const &) {
-            auto const &image_info = ti.device.info_image(ti.get(TraceSecondaryCompute::g_buffer_image_id).ids[0]).value();
+            auto const image_info = ti.device.info_image(ti.get(TraceSecondaryCompute::g_buffer_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
