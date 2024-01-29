@@ -45,7 +45,7 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
             VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.task_resources.output_resource}},
+            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.current()}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceSecondaryComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(TraceSecondaryCompute::g_buffer_image_id).ids[0]).value();

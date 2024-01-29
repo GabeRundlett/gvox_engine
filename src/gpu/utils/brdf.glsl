@@ -51,7 +51,7 @@ BrdfSample BrdfSample_invalid() {
     res.approx_roughness = 0;
     return res;
 }
-bool is_valid(BrdfSample self) {
+bool is_valid(inout BrdfSample self) {
     return self.wi.z > 1e-6;
 }
 
@@ -60,7 +60,7 @@ struct DiffuseBrdf {
     // vec3 emission;
 };
 
-BrdfSample sample_brdf(DiffuseBrdf self, vec3 _wo, vec2 urand) {
+BrdfSample sample_brdf(inout DiffuseBrdf self, vec3 _wo, vec2 urand) {
     float phi = urand.x * M_TAU;
     float cos_theta = sqrt(max(0.0, 1.0 - urand.y));
     float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
@@ -79,7 +79,7 @@ BrdfSample sample_brdf(DiffuseBrdf self, vec3 _wo, vec2 urand) {
     return res;
 }
 
-BrdfValue evaluate(DiffuseBrdf self, vec3 _wo, vec3 wi) {
+BrdfValue evaluate(inout DiffuseBrdf self, vec3 _wo, vec3 wi) {
     BrdfValue res;
     res.pdf = select(wi.z > 0.0, M_FRAC_1_PI, 0.0);
     res.value_over_pdf = select(wi.z > 0.0, self.albedo, vec3(0.0));
@@ -88,7 +88,7 @@ BrdfValue evaluate(DiffuseBrdf self, vec3 _wo, vec3 wi) {
     return res;
 }
 
-vec2 wi_to_primary_sample_space(DiffuseBrdf self, vec3 wi) {
+vec2 wi_to_primary_sample_space(inout DiffuseBrdf self, vec3 wi) {
     const float cos_theta = wi.z;
     // cos_theta = sqrt(max(0.0, 1.0 - urand.y));
     // cos_theta * cos_theta = 1.0 - urand.y
@@ -171,7 +171,7 @@ float SpecularBrdf_pdf_ggx_vn(float a2, vec3 wo, vec3 h) {
     return g1 * d * max(0.f, dot(wo, h)) / wo.z;
 }
 
-NdfSample sample_ndf(SpecularBrdf self, vec2 urand) {
+NdfSample sample_ndf(inout SpecularBrdf self, vec2 urand) {
     const float a2 = self.roughness * self.roughness;
 
     const float cos2_theta = (1 - urand.x) / (1 - urand.x + a2 * urand.x);
@@ -189,7 +189,7 @@ NdfSample sample_ndf(SpecularBrdf self, vec2 urand) {
 
 // From https://github.com/NVIDIAGameWorks/Falcor/blob/c0729e806045731d71cfaae9d31a992ac62070e7/Source/Falcor/Experimental/Scene/Material/Microfacet.slang
 // https://jcgt.org/published/0007/04/01/paper.pdf
-NdfSample sample_vndf(SpecularBrdf self, float alpha, vec3 wo, vec2 urand) {
+NdfSample sample_vndf(inout SpecularBrdf self, float alpha, vec3 wo, vec2 urand) {
     float alpha_x = alpha, alpha_y = alpha;
     float a2 = alpha_x * alpha_y;
 
@@ -221,7 +221,7 @@ NdfSample sample_vndf(SpecularBrdf self, float alpha, vec3 wo, vec2 urand) {
     return res;
 }
 
-BrdfSample sample_brdf(SpecularBrdf self, vec3 wo, vec2 urand) {
+BrdfSample sample_brdf(inout SpecularBrdf self, vec3 wo, vec2 urand) {
 #if USE_GGX_VNDF_SAMPLING
     NdfSample ndf_sample = sample_vndf(self, self.roughness, wo, urand);
 #else
@@ -263,7 +263,7 @@ BrdfSample sample_brdf(SpecularBrdf self, vec3 wo, vec2 urand) {
     return res;
 }
 
-BrdfValue evaluate(SpecularBrdf self, vec3 wo, vec3 wi) {
+BrdfValue evaluate(inout SpecularBrdf self, vec3 wo, vec3 wi) {
     if (wi.z <= 0.0 || wo.z <= 0.0) {
         return BrdfValue_invalid();
     }

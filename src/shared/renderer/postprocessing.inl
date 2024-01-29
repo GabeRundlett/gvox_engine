@@ -119,7 +119,7 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.task_resources.output_resource.view()}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtr_tex, rtr}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtdgi_tex, rtdgi}},
@@ -135,8 +135,8 @@ inline auto light_gbuffer(
             ti.recorder.set_pipeline(pipeline);
             push.debug_shading_mode = 0;
             push.debug_show_wrc = 0;
-            push.output_tex_size.x = image_info.size.x;
-            push.output_tex_size.y = image_info.size.y;
+            push.output_tex_size.x = static_cast<float>(image_info.size.x);
+            push.output_tex_size.y = static_cast<float>(image_info.size.y);
             push.output_tex_size.z = 1.0f / push.output_tex_size.x;
             push.output_tex_size.w = 1.0f / push.output_tex_size.y;
             set_push_constant(ti, push);
@@ -287,8 +287,8 @@ struct PostProcessor {
             histogram = *device.get_host_address_as<std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT>>(histogram_buffer).value();
 
             // operate on histogram
-            auto outlier_frac_lo = std::min<double>(auto_exposure_settings.histogram_clip_low, 1.0f);
-            auto outlier_frac_hi = std::min<double>(auto_exposure_settings.histogram_clip_high, 1.0f - outlier_frac_lo);
+            auto outlier_frac_lo = std::min<double>(auto_exposure_settings.histogram_clip_low, 1.0);
+            auto outlier_frac_hi = std::min<double>(auto_exposure_settings.histogram_clip_high, 1.0 - outlier_frac_lo);
 
             auto total_entry_count = std::accumulate(histogram.begin(), histogram.end(), 0);
             auto reject_lo_entry_count = static_cast<uint32_t>(total_entry_count * outlier_frac_lo);
@@ -333,7 +333,7 @@ struct PostProcessor {
         record_ctx.task_graph.use_persistent_buffer(task_histogram_buffer);
         auto blur_pyramid = ::blur_pyramid(record_ctx, input_image, image_size);
         calculate_luminance_histogram(record_ctx, blur_pyramid, task_histogram_buffer, image_size);
-        auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, blur_pyramid, image_size);
+        // auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, blur_pyramid, image_size);
         return blur_pyramid;
     }
 };

@@ -31,6 +31,9 @@ struct PingPongImage_impl {
     static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
         return TaskResourceType(TaskResourceInfoType{.initial_images = {std::array{rsrc_id}}, .name = name});
     }
+    static void swap(TaskResourceType &resource_a, TaskResourceType &resource_b) {
+        resource_a.swap_images(resource_b);
+    }
 };
 
 struct PingPongBuffer_impl {
@@ -47,6 +50,9 @@ struct PingPongBuffer_impl {
     }
     static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
         return TaskResourceType(TaskResourceInfoType{.initial_buffers = {std::array{rsrc_id}}, .name = name});
+    }
+    static void swap(TaskResourceType &resource_a, TaskResourceType &resource_b) {
+        resource_a.swap_buffers(resource_b);
     }
 };
 
@@ -87,6 +93,15 @@ struct PingPongResource {
     Resources resources;
     TaskResources task_resources;
 
+    void swap() {
+        Impl::swap(task_resources.output_resource, task_resources.history_resource);
+    }
+
+    auto current() -> TaskResourceType & { return task_resources.output_resource; }
+    auto history() -> TaskResourceType & { return task_resources.history_resource; }
+    auto current() const -> TaskResourceType const & { return task_resources.output_resource; }
+    auto history() const -> TaskResourceType const & { return task_resources.history_resource; }
+
     auto get(daxa::Device a_device, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
         if (!resources.device.is_valid()) {
             resources.device = a_device;
@@ -102,7 +117,7 @@ struct PingPongResource {
             task_resources.output_resource = Impl::create_task_resource(resources.resource_a, std::string(a_info.name.view()));
             task_resources.history_resource = Impl::create_task_resource(resources.resource_b, std::string(a_info.name.view()) + "_hist");
         }
-        return {task_resources.output_resource, task_resources.history_resource};
+        return {current(), history()};
     }
 };
 
@@ -440,7 +455,7 @@ struct NoTaskInfo {
 
 template <typename PushT>
 constexpr auto push_constant_size() -> uint32_t {
-    return static_cast<uint32_t>(((sizeof(PushT) & ~0x3) + 7) & ~7);
+    return static_cast<uint32_t>(((sizeof(PushT) & ~0x3u) + 7u) & ~7u);
 }
 
 template <typename PushT>
@@ -513,6 +528,13 @@ using ComputeTask = Task<TaskHeadT, PushT, InfoT, AsyncManagedComputePipeline>;
 template <typename TaskHeadT, typename PushT, typename InfoT>
 using RasterTask = Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline>;
 
+struct TemporalBuffer {
+    daxa::BufferId buffer_id;
+    daxa::TaskBuffer task_buffer;
+};
+
+using TemporalBuffers = std::unordered_map<std::string, TemporalBuffer>;
+
 struct RecordContext {
     daxa::Device device;
     daxa::TaskGraph task_graph;
@@ -528,6 +550,7 @@ struct RecordContext {
 
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> *compute_pipelines;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> *raster_pipelines;
+    TemporalBuffers *temporal_buffers;
 
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
     auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, std::string const &shader_id) {
@@ -588,5 +611,26 @@ struct RecordContext {
         auto pipe_iter = find_or_add_pipeline<TaskHeadT, PushT, InfoT, PipelineT>(task, shader_id);
         task.pipeline = pipe_iter->second;
         task_graph.add_task(std::move(task));
+    }
+
+    auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer {
+        auto id = std::string{info.name.view()};
+        auto iter = temporal_buffers->find(id);
+
+        if (iter == temporal_buffers->end()) {
+            auto result = TemporalBuffer{};
+            result.buffer_id = device.create_buffer(info);
+            result.task_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{result.buffer_id}}, .name = id});
+            task_graph.use_persistent_buffer(result.task_buffer);
+            auto emplace_result = temporal_buffers->emplace(id, result);
+            iter = emplace_result.first;
+        } else {
+            auto existing_info = device.info_buffer(iter->second.buffer_id).value();
+            if (existing_info.size != info.size) {
+                AppUi::Console::s_instance->add_log(std::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
+            }
+        }
+
+        return iter->second;
     }
 };

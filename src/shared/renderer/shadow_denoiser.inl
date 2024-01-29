@@ -89,8 +89,8 @@ struct ShadowDenoiser {
     PingPongImage ping_pong_accum_image;
 
     void next_frame() {
-        ping_pong_moments_image.task_resources.output_resource.swap_images(ping_pong_moments_image.task_resources.history_resource);
-        ping_pong_accum_image.task_resources.output_resource.swap_images(ping_pong_accum_image.task_resources.history_resource);
+        ping_pong_moments_image.swap();
+        ping_pong_accum_image.swap();
     }
 
     auto denoise_shadow_mask(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView shadow_mask, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
@@ -230,7 +230,7 @@ struct ShadowDenoiser {
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, spatial_input_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.task_resources.output_resource}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::output_tex, accum_image}},
             },
             .callback_ = shadow_spatial_task_callback,
@@ -248,7 +248,7 @@ struct ShadowDenoiser {
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, accum_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.task_resources.output_resource}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::output_tex, shadow_denoise_intermediary_1}},
             },
             .callback_ = shadow_spatial_task_callback,
@@ -266,7 +266,7 @@ struct ShadowDenoiser {
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, shadow_denoise_intermediary_1}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.task_resources.output_resource}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::output_tex, spatial_input_image}},
             },
             .callback_ = shadow_spatial_task_callback,

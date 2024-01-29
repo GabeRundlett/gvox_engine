@@ -37,6 +37,11 @@ struct MouseInput {
     daxa_f32vec2 scroll_delta;
 };
 
+struct IrcacheCascadeConstants {
+    daxa_i32vec4 origin;
+    daxa_i32vec4 voxels_scrolled_this_frame;
+};
+
 struct GpuInput {
     daxa_u32vec2 frame_dim;
     daxa_u32vec2 rounded_frame_dim;
@@ -58,6 +63,8 @@ struct GpuInput {
     daxa_SamplerId sampler_lnc;
     daxa_SamplerId sampler_llc;
     daxa_SamplerId sampler_llr;
+    daxa_f32vec3 ircache_grid_center;
+    IrcacheCascadeConstants ircache_cascades[12];
     SkySettings sky_settings;
     MouseInput mouse;
     daxa_u32 actions[GAME_ACTION_LAST + 1];

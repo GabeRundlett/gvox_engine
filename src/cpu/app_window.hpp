@@ -79,11 +79,11 @@ struct AppWindow {
             fi_bitmap = temp;
         }
         FreeImage_FlipVertical(fi_bitmap);
-        images[0].width = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap));
-        images[0].height = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap));
+        images[0].width = static_cast<int32_t>(FreeImage_GetWidth(fi_bitmap));
+        images[0].height = static_cast<int32_t>(FreeImage_GetHeight(fi_bitmap));
         images[0].pixels = FreeImage_GetBits(fi_bitmap);
         assert(images[0].pixels != nullptr && "Failed to load image");
-        for (auto &pix : std::span(reinterpret_cast<std::array<uint8_t, 4> *>(images[0].pixels), images[0].width * images[0].height)) {
+        for (auto &pix : std::span(reinterpret_cast<std::array<uint8_t, 4> *>(images[0].pixels), static_cast<size_t>(images[0].width) * static_cast<size_t>(images[0].height))) {
             std::swap(pix[0], pix[2]);
         }
         glfwSetWindowIcon(glfw_window_ptr, 1, images);

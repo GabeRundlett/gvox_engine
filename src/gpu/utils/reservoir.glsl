@@ -44,7 +44,7 @@ daxa_u32vec2 Reservoir1spp_as_raw(inout Reservoir1spp self) {
     return daxa_u32vec2(self.payload, packHalf2x16(daxa_f32vec2(self.M, self.W)));
 }
 
-bool Reservoir1spp_update(inout Reservoir1spp self, float w, uint sample_payload, inout uint rng) {
+bool update(inout Reservoir1spp self, float w, uint sample_payload, inout uint rng) {
     self.w_sum += w;
     self.M += 1;
     const float dart = uint_to_u01_float(hash1_mut(rng));
@@ -68,7 +68,7 @@ bool Reservoir1spp_update_with_stream(
     inout uint rng) {
     stream_state.M_sum += r.M;
 
-    if (Reservoir1spp_update(self, p_q * weight * r.W * r.M, sample_payload, rng)) {
+    if (update(self, p_q * weight * r.W * r.M, sample_payload, rng)) {
         stream_state.p_q_sel = p_q;
         return true;
     } else {

@@ -3,6 +3,7 @@
 
 #if LightGbufferComputeShader
 
+#include <utils/rt.glsl>
 #include <utils/sky.glsl>
 #include <utils/gbuffer.glsl>
 

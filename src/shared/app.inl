@@ -22,6 +22,8 @@
 #include <shared/renderer/blur.inl>
 #include <shared/renderer/fsr.inl>
 
+#include <shared/renderer/ircache.inl>
+
 #if StartupComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute, 2 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
@@ -207,6 +209,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
+    IrcacheRenderer ircache_renderer;
 
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
@@ -557,6 +560,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             taa_renderer.next_frame();
         }
         shadow_denoiser.next_frame();
+        ircache_renderer.next_frame();
     }
 
     void dynamic_buffers_realloc(daxa::Device &device) {
@@ -679,6 +683,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         particles.simulate(record_ctx, voxel_world.buffers);
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
+        auto ircache_state = ircache_renderer.prepare(record_ctx);
 
         auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
@@ -715,7 +720,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto antialiased_image = [&]() {
             if constexpr (ENABLE_TAA) {
-                return taa_renderer.render(record_ctx, debug_out_tex, gbuffer_depth.depth.task_resources.output_resource, reprojection_map);
+                return taa_renderer.render(record_ctx, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
             } else {
                 return fsr2_renderer->upscale(record_ctx, gbuffer_depth, debug_out_tex, reprojection_map);
             }

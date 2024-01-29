@@ -68,7 +68,7 @@ LayeredBrdf LayeredBrdf_from_gbuffer_ndotv(
     return res;
 }
 
-vec3 evaluate(LayeredBrdf self, vec3 wo, vec3 wi) {
+vec3 evaluate(inout LayeredBrdf self, vec3 wo, vec3 wi) {
     if (wo.z <= 0 || wi.z <= 0) {
         return vec3(0);
     }
@@ -90,7 +90,7 @@ vec3 evaluate(LayeredBrdf self, vec3 wo, vec3 wi) {
         diff.value * spec.transmission_fraction);
 }
 
-vec3 evaluate_directional_light(LayeredBrdf self, vec3 wo, vec3 wi) {
+vec3 evaluate_directional_light(inout LayeredBrdf self, vec3 wo, vec3 wi) {
     if (wo.z <= 0 || wi.z <= 0) {
         return vec3(0);
     }
@@ -121,7 +121,7 @@ vec3 evaluate_directional_light(LayeredBrdf self, vec3 wo, vec3 wi) {
         diff.value * spec.transmission_fraction);
 }
 
-BrdfSample sample_brdf(LayeredBrdf self, vec3 wo, vec3 urand) {
+BrdfSample sample_brdf(inout LayeredBrdf self, vec3 wo, vec3 urand) {
 #if LAYERED_BRDF_FORCE_DIFFUSE_ONLY
     return sample_brdf(self.diffuse_brdf, wo, urand.xy);
 #endif

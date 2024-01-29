@@ -30,6 +30,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AsyncPipelineManager main_pipeline_manager;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;
+    TemporalBuffers temporal_buffers;
 
     AppUi ui;
     AppAudio audio;

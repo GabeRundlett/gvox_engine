@@ -92,7 +92,7 @@ struct SsaoRenderer {
     PingPongImage ping_pong_ssao_image;
 
     void next_frame() {
-        ping_pong_ssao_image.task_resources.output_resource.swap_images(ping_pong_ssao_image.task_resources.history_resource);
+        ping_pong_ssao_image.swap();
     }
 
     auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
@@ -167,7 +167,7 @@ struct SsaoRenderer {
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::gpu_input, record_ctx.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::depth_image_id, gbuffer_depth.depth.task_resources.output_resource}},
+                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::depth_image_id, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::src_image_id, ssao_image1}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::dst_image_id, ssao_image2}},
             },

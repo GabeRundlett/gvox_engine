@@ -205,9 +205,9 @@ struct TaaRenderer {
     PingPongImage ping_pong_smooth_var_image;
 
     void next_frame() {
-        ping_pong_taa_col_image.task_resources.output_resource.swap_images(ping_pong_taa_col_image.task_resources.history_resource);
-        ping_pong_taa_vel_image.task_resources.output_resource.swap_images(ping_pong_taa_vel_image.task_resources.history_resource);
-        ping_pong_smooth_var_image.task_resources.output_resource.swap_images(ping_pong_smooth_var_image.task_resources.history_resource);
+        ping_pong_taa_col_image.swap();
+        ping_pong_taa_vel_image.swap();
+        ping_pong_smooth_var_image.swap();
     }
 
     auto render(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa::TaskImageView depth_image, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {

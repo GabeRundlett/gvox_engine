@@ -159,6 +159,9 @@ VoxelApp::~VoxelApp() {
     device.wait_idle();
     device.collect_garbage();
     gpu_app.destroy(device);
+    for (auto const &[id, temporal_buffer] : temporal_buffers) {
+        device.destroy_buffer(temporal_buffer.buffer_id);
+    }
 }
 
 // [Main loop]
@@ -551,7 +554,7 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
         .base_info = {
             .name_str = "gpu_result",
             .create = [](GvoxAdapterContext *ctx, void const *user_state_ptr) -> void {
-                gvox_adapter_set_user_pointer(ctx, (void *)user_state_ptr);
+                gvox_adapter_set_user_pointer(ctx, const_cast<void *>(user_state_ptr));
             },
             .destroy = [](GvoxAdapterContext *) -> void {},
             .blit_begin = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {},
@@ -1047,6 +1050,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .task_swapchain_image = task_swapchain_image,
         .compute_pipelines = &this->compute_pipelines,
         .raster_pipelines = &this->raster_pipelines,
+        .temporal_buffers = &this->temporal_buffers,
     };
 
     // gpu_app.task_value_noise_image.view().view({});

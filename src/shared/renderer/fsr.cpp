@@ -55,7 +55,7 @@ auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffe
         .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
         .name = "fsr2_output_image",
     });
-    auto depth_image = gbuffer_depth.depth.task_resources.output_resource.view();
+    auto depth_image = gbuffer_depth.depth.current().view();
     record_ctx.task_graph.add_task({
         .attachments = {
             daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, color_image),
@@ -63,33 +63,41 @@ auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffe
             daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, velocity_image),
             daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_STORAGE_WRITE_ONLY, daxa::ImageViewType::REGULAR_2D, output_image),
         },
-        .task = [=](daxa::TaskInterface const &ti) {
+        .task = [=, this](daxa::TaskInterface const &ti) {
             auto const &color_use = ti.get(daxa::TaskImageAttachmentIndex{0});
             auto const &depth_use = ti.get(daxa::TaskImageAttachmentIndex{1});
             auto const &velocity_use = ti.get(daxa::TaskImageAttachmentIndex{2});
             auto const &output_use = ti.get(daxa::TaskImageAttachmentIndex{3});
 
+#define HANDLE_RES(x)                     \
+    {                                     \
+        auto res = (x);                   \
+        if (res != DAXA_RESULT_SUCCESS) { \
+            std::abort();                 \
+        }                                 \
+    }
+
             VkImage color_vk_image = {}, depth_vk_image = {}, velocity_vk_image = {}, output_vk_image = {};
-            daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageId>(color_use.ids[0]), &color_vk_image);
-            daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageId>(depth_use.ids[0]), &depth_vk_image);
-            daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageId>(velocity_use.ids[0]), &velocity_vk_image);
-            daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageId>(output_use.ids[0]), &output_vk_image);
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(color_use.ids[0]), &color_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(depth_use.ids[0]), &depth_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(velocity_use.ids[0]), &velocity_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(output_use.ids[0]), &output_vk_image));
 
             VkImageView color_vk_image_view = {}, depth_vk_image_view = {}, velocity_vk_image_view = {}, output_vk_image_view = {};
-            daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(color_use.view_ids[0]), &color_vk_image_view);
-            daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(depth_use.view_ids[0]), &depth_vk_image_view);
-            daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(velocity_use.view_ids[0]), &velocity_vk_image_view);
-            daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&device), std::bit_cast<daxa_ImageViewId>(output_use.view_ids[0]), &output_vk_image_view);
+            HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(color_use.view_ids[0]), &color_vk_image_view));
+            HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(depth_use.view_ids[0]), &depth_vk_image_view));
+            HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(velocity_use.view_ids[0]), &velocity_vk_image_view));
+            HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(output_use.view_ids[0]), &output_vk_image_view));
 
-            auto const color_extent = device.info_image(color_use.ids[0]).value().size;
-            auto const depth_extent = device.info_image(depth_use.ids[0]).value().size;
-            auto const velocity_extent = device.info_image(velocity_use.ids[0]).value().size;
-            auto const output_extent = device.info_image(output_use.ids[0]).value().size;
+            auto const color_extent = ti.device.info_image(color_use.ids[0]).value().size;
+            auto const depth_extent = ti.device.info_image(depth_use.ids[0]).value().size;
+            auto const velocity_extent = ti.device.info_image(velocity_use.ids[0]).value().size;
+            auto const output_extent = ti.device.info_image(output_use.ids[0]).value().size;
 
-            auto const color_format = (VkFormat)device.info_image(color_use.ids[0]).value().format;
-            auto const depth_format = (VkFormat)device.info_image(depth_use.ids[0]).value().format;
-            auto const velocity_format = (VkFormat)device.info_image(velocity_use.ids[0]).value().format;
-            auto const output_format = (VkFormat)device.info_image(output_use.ids[0]).value().format;
+            auto const color_format = static_cast<VkFormat>(ti.device.info_image(color_use.ids[0]).value().format);
+            auto const depth_format = static_cast<VkFormat>(ti.device.info_image(depth_use.ids[0]).value().format);
+            auto const velocity_format = static_cast<VkFormat>(ti.device.info_image(velocity_use.ids[0]).value().format);
+            auto const output_format = static_cast<VkFormat>(ti.device.info_image(output_use.ids[0]).value().format);
 
             wchar_t fsr_input_color[] = L"FSR2_InputColor";
             wchar_t fsr_input_depth[] = L"FSR2_InputDepth";

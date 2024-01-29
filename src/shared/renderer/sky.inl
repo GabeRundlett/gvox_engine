@@ -124,7 +124,6 @@ struct SkyRenderer {
     }
 
     void render(RecordContext &record_ctx, daxa::TaskImageView input_sky_cube) {
-        input_sky_cube = input_sky_cube;
         auto sky_cube = task_sky_cube.view().view({.layer_count = 6});
         auto ibl_cube = task_ibl_cube.view().view({.layer_count = 6});
 
