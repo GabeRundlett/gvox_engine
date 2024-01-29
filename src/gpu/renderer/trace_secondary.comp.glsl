@@ -11,11 +11,11 @@ vec3 sample_sun_direction(vec2 urand) {
 #if !PER_VOXEL_NORMALS
     float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
     if (sun_angular_radius_cos < 1.0) {
-        const mat3 basis = build_orthonormal_basis(normalize(SUN_DIR));
+        const mat3 basis = build_orthonormal_basis(normalize(SUN_DIRECTION));
         return basis * uniform_sample_cone(urand, sun_angular_radius_cos);
     }
 #endif
-    return SUN_DIR;
+    return SUN_DIRECTION;
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;

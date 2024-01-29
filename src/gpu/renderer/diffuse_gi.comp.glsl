@@ -189,7 +189,7 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
 
         daxa_f32vec3 sun_radiance = daxa_f32vec3(1); // SUN_COL;
         {
-            const daxa_f32vec3 to_light_norm = SUN_DIR;
+            const daxa_f32vec3 to_light_norm = SUN_DIRECTION;
             ray_pos += to_light_norm * 1.0e-4;
             VoxelTraceResult sun_trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
             const bool is_shadowed = (sun_trace_result.dist != outgoing_ray.TMax);
@@ -726,7 +726,7 @@ void main() {
             const float allowed_luminance_increment = 10.0;
             r.W *= clamp(lum_old / max(1e-8, lum_new) * allowed_luminance_increment, 0.01, 1.0);
 
-            safeImageStoreU(reservoir_tex, daxa_i32vec2(px), daxa_u32vec4(Reservoir1spp_as_raw(r), 0, 0));
+            safeImageStoreU(reservoir_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(r), 0, 0));
         }
     }
 
@@ -1073,7 +1073,7 @@ void main() {
         hit_normal_sel = result.hit_normal_ws;
         // prev_sample_valid = result.prev_sample_valid;
 
-        Reservoir1spp_init_with_stream(reservoir, p_q, inv_pdf_q, stream_state, reservoir_payload);
+        init_with_stream(reservoir, p_q, inv_pdf_q, stream_state, reservoir_payload);
 
         float rl = mix(safeTexelFetch(candidate_history_tex, daxa_i32vec2(px), 0).y, sqrt(hit_t), 0.05);
         safeImageStore(candidate_out_tex, daxa_i32vec2(px), daxa_f32vec4(sqrt(hit_t), rl, 0, 0));
@@ -1296,9 +1296,9 @@ void main() {
                 center_M = r.M;
             }
 
-            if (Reservoir1spp_update_with_stream(reservoir,
-                                                 r, p_q, jacobian * visibility,
-                                                 stream_state, reservoir_payload, rng)) {
+            if (update_with_stream(reservoir,
+                                   r, p_q, jacobian * visibility,
+                                   stream_state, reservoir_payload, rng)) {
                 outgoing_dir = dir_to_sample_hit;
                 src_px_sel = rpx;
                 radiance_sel = prev_rad.rgb;
@@ -1308,7 +1308,7 @@ void main() {
             }
         }
 
-        Reservoir1spp_finish_stream(reservoir, stream_state);
+        finish_stream(reservoir, stream_state);
         reservoir.W = min(reservoir.W, RESTIR_RESERVOIR_W_CLAMP);
     }
 
@@ -1329,7 +1329,7 @@ void main() {
     safeImageStore(ray_orig_output_tex, daxa_i32vec2(px), daxa_f32vec4(ray_orig_sel_ws, 0.0));
     safeImageStore(hit_normal_output_tex, daxa_i32vec2(px), encode_hit_normal_and_dot(hit_normal_ws_dot));
     safeImageStore(ray_output_tex, daxa_i32vec2(px), daxa_f32vec4(ray_hit_sel_ws - ray_orig_sel_ws, length(ray_hit_sel_ws - refl_ray_origin_ws)));
-    safeImageStoreU(reservoir_out_tex, daxa_i32vec2(px), daxa_u32vec4(Reservoir1spp_as_raw(reservoir), 0, 0));
+    safeImageStoreU(reservoir_out_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(reservoir), 0, 0));
 
     TemporalReservoirOutput res_packed;
     res_packed.depth = depth;
@@ -1654,18 +1654,18 @@ void main() {
             visibility = 1;
         }
 
-        if (Reservoir1spp_update_with_stream(reservoir,
-                                             r, p_q, visibility * jacobian,
-                                             stream_state, r.payload, rng)) {
+        if (update_with_stream(reservoir,
+                               r, p_q, visibility * jacobian,
+                               stream_state, r.payload, rng)) {
             dir_sel = dir_to_sample_hit;
             radiance_output = sample_radiance;
         }
     }
 
-    Reservoir1spp_finish_stream(reservoir, stream_state);
+    finish_stream(reservoir, stream_state);
     reservoir.W = min(reservoir.W, RESTIR_RESERVOIR_W_CLAMP);
 
-    safeImageStoreU(reservoir_output_tex, daxa_i32vec2(px), daxa_u32vec4(Reservoir1spp_as_raw(reservoir), 0, 0));
+    safeImageStoreU(reservoir_output_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(reservoir), 0, 0));
 
     if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
         safeImageStore(bounced_radiance_output_tex, daxa_i32vec2(px), daxa_f32vec4(radiance_output, 0.0));

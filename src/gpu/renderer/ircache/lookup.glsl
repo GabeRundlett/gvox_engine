@@ -206,12 +206,7 @@ float eval_sh_nope(vec4 sh, vec3 normal) {
 #define eval_sh eval_sh_nope
 #endif
 
-vec3 lookup(IrcacheLookupParams self,
-            // daxa_RWBufferPtr(uvec2) ircache_grid_meta_buf, daxa_BufferPtr(uint) ircache_meta_buf,
-            // daxa_BufferPtr(uint) ircache_pool_buf, daxa_RWBufferPtr(uint) ircache_life_buf,
-            // daxa_RWBufferPtr(uint) ircache_entry_cell_buf, daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf,
-            // daxa_BufferPtr(vec4) ircache_irradiance_buf, daxa_BufferPtr(uint) ircache_reposition_proposal_count_buf,
-            inout uint rng) {
+vec3 lookup(IrcacheLookupParams self, inout uint rng) {
     IrcacheLookupMaybeAllocate lookup = lookup_maybe_allocate(self, ircache_grid_meta_buf, ircache_meta_buf, ircache_pool_buf, ircache_life_buf, ircache_entry_cell_buf, ircache_reposition_proposal_buf, rng);
 
     if (lookup.just_allocated) {
@@ -240,12 +235,12 @@ vec3 lookup(IrcacheLookupParams self,
                 for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
                     const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + octa_idx].xy));
+                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + octa_idx]).xy));
                     const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
                     const float wt = dot(dir, self.normal_ws);
                     if (wt > 0.0) {
-                        const vec4 contrib = ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx];
+                        const vec4 contrib = deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx]);
                         irradiance += contrib.rgb * wt * contrib.w;
                         weight_sum += wt;
                     }

@@ -48,8 +48,6 @@ void main() {
     GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), daxa_i32vec2(px), 0));
     const float depth = uintBitsToFloat(gbuffer_packed.data0.z);
 
-    const vec3 SUN_DIRECTION = SUN_DIR;
-
     if (depth == 0.0) {
         // Render the sun disk
 
@@ -107,7 +105,7 @@ void main() {
 
     LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
     const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z);
-    const vec3 light_radiance = shadow_mask * sun_color_in_direction(SUN_DIR);
+    const vec3 light_radiance = shadow_mask * sun_color_in_direction(SUN_DIRECTION);
     vec3 total_radiance = brdf_value * light_radiance;
 
     total_radiance += gbuffer.emissive;

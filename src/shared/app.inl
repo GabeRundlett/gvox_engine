@@ -685,7 +685,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         particles.simulate(record_ctx, voxel_world.buffers);
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
         auto ircache_state = ircache_renderer.prepare(record_ctx);
-
+        auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_world.buffers, sky_cube);
+        ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
         auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);

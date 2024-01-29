@@ -40,7 +40,7 @@ Reservoir1spp Reservoir1spp_from_raw(daxa_u32vec2 raw) {
     return res;
 }
 
-daxa_u32vec2 Reservoir1spp_as_raw(inout Reservoir1spp self) {
+daxa_u32vec2 as_raw(inout Reservoir1spp self) {
     return daxa_u32vec2(self.payload, packHalf2x16(daxa_f32vec2(self.M, self.W)));
 }
 
@@ -58,7 +58,7 @@ bool update(inout Reservoir1spp self, float w, uint sample_payload, inout uint r
     }
 }
 
-bool Reservoir1spp_update_with_stream(
+bool update_with_stream(
     inout Reservoir1spp self,
     Reservoir1spp r,
     float p_q,
@@ -76,7 +76,7 @@ bool Reservoir1spp_update_with_stream(
     }
 }
 
-void Reservoir1spp_init_with_stream(
+void init_with_stream(
     inout Reservoir1spp self,
     float p_q,
     float weight,
@@ -91,7 +91,7 @@ void Reservoir1spp_init_with_stream(
     stream_state.M_sum = self.M;
 }
 
-void Reservoir1spp_finish_stream(inout Reservoir1spp self, Reservoir1sppStreamState state) {
+void finish_stream(inout Reservoir1spp self, Reservoir1sppStreamState state) {
     self.M = state.M_sum;
     self.W = self.w_sum / (max(1e-8, self.M * state.p_q_sel));
 }

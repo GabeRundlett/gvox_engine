@@ -14,7 +14,7 @@ struct GbufferData {
     float metalness;
 };
 
-GbufferData unpack(inout GbufferDataPacked self) {
+GbufferData unpack(GbufferDataPacked self) {
     GbufferData res;
     Voxel voxel = unpack_voxel(PackedVoxel(self.data0.x));
     res.albedo = voxel.color;

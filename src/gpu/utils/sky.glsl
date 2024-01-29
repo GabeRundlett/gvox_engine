@@ -2,10 +2,10 @@
 
 #include <shared/core.inl>
 
-#define SUN_DIR deref(gpu_input).sky_settings.sun_direction
+#define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
 const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin blackbody
-#define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIR) * SUN_INTENSITY)
+#define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIRECTION) * SUN_INTENSITY)
 #define ATMOSPHERE_CAMERA_HEIGHT 3.0
 
 daxa_f32vec3 get_sky_world_camera_position() {
