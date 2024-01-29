@@ -64,7 +64,7 @@ struct GpuInput {
     daxa_SamplerId sampler_llc;
     daxa_SamplerId sampler_llr;
     daxa_f32vec3 ircache_grid_center;
-    IrcacheCascadeConstants ircache_cascades[12];
+    IrcacheCascadeConstants ircache_cascades[IRCACHE_CASCADE_COUNT];
     SkySettings sky_settings;
     MouseInput mouse;
     daxa_u32 actions[GAME_ACTION_LAST + 1];

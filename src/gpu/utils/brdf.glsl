@@ -82,7 +82,7 @@ BrdfSample sample_brdf(inout DiffuseBrdf self, vec3 _wo, vec2 urand) {
 BrdfValue evaluate(inout DiffuseBrdf self, vec3 _wo, vec3 wi) {
     BrdfValue res;
     res.pdf = select(wi.z > 0.0, M_FRAC_1_PI, 0.0);
-    res.value_over_pdf = select(wi.z > 0.0, self.albedo, vec3(0.0));
+    res.value_over_pdf = select(bvec3(wi.z > 0.0), self.albedo, vec3(0.0));
     res.value = res.value_over_pdf * res.pdf;
     res.transmission_fraction = vec3(0.0);
     return res;
@@ -197,7 +197,7 @@ NdfSample sample_vndf(inout SpecularBrdf self, float alpha, vec3 wo, vec2 urand)
     vec3 Vh = normalize(vec3(alpha_x * wo.x, alpha_y * wo.y, wo.z));
 
     // Construct orthonormal basis (Vh,T1,T2).
-    vec3 T1 = select((Vh.z < 0.9999f), normalize(cross(vec3(0, 0, 1), Vh)), vec3(1, 0, 0)); // TODO: fp32 precision
+    vec3 T1 = select(bvec3(Vh.z < 0.9999f), normalize(cross(vec3(0, 0, 1), Vh)), vec3(1, 0, 0)); // TODO: fp32 precision
     vec3 T2 = cross(Vh, T1);
 
     // Parameterization of the projected area of the hemisphere.

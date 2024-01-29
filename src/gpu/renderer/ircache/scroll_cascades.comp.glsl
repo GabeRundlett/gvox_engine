@@ -31,7 +31,7 @@ void main() {
     uint dst_cell_idx = cell_idx(IrcacheCoord_from_coord_cascade(dst_vx, cascade));
 
     ivec3 scroll_by =
-        select(IRCACHE_FREEZE, (0).xxx, deref(gpu_input).ircache_cascades[cascade].voxels_scrolled_this_frame.xyz);
+        select(bvec3(IRCACHE_FREEZE), (0).xxx, deref(gpu_input).ircache_cascades[cascade].voxels_scrolled_this_frame.xyz);
 
     if (!all(lessThan(uvec3(dst_vx - scroll_by), uvec3(IRCACHE_CASCADE_SIZE)))) {
         // If this entry is about to get overwritten, deallocate it.

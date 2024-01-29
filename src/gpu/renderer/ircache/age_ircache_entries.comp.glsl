@@ -50,7 +50,7 @@ void main() {
 
 #if IRCACHE_USE_POSITION_VOTING
 #if 0
-                    uint rng = hash2(uint2(entry_idx, frame_constants.frame_index));
+                    uint rng = hash2(uvec2(entry_idx, frame_constants.frame_index));
                     const float dart = uint_to_u01_float(hash1_mut(rng));
                     const float prob = 0.02;
 

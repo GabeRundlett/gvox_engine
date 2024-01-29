@@ -108,3 +108,46 @@ daxa_f32vec3 unpack_normal_11_10_11(float pckd) {
                          2.0 -
                      1.0);
 }
+
+vec2 octa_wrap(vec2 v) {
+    return (1.0 - abs(v.yx)) * (step(0.0.xx, v.xy) * 2.0 - 1.0);
+}
+
+vec2 octa_encode(vec3 n) {
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    if (n.z < 0.0) {
+        n.xy = octa_wrap(n.xy);
+    }
+    n.xy = n.xy * 0.5 + 0.5;
+    return n.xy;
+}
+
+vec3 octa_decode(vec2 f) {
+    f = f * 2.0 - 1.0;
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float t = clamp(-n.z, 0.0, 1.0);
+    // n.xy += select(n.xy >= 0.0, -t, t);
+    n.xy -= (step(0.0, n.xy) * 2 - 1) * t;
+    return normalize(n);
+}
+
+struct Vertex {
+    vec3 position;
+    vec3 normal;
+};
+
+Vertex unpack_vertex(VertexPacked p) {
+    Vertex res;
+    res.position = p.data0.xyz;
+    res.normal = unpack_normal_11_10_11(p.data0.w);
+    return res;
+}
+
+VertexPacked pack_vertex(Vertex v) {
+    VertexPacked p;
+    p.data0.xyz = v.position;
+    p.data0.w = pack_normal_11_10_11(v.normal);
+    return p;
+}

@@ -66,5 +66,4 @@ uvec2 FFX_DNSR_Shadows_RemapLane8x8(uint lane) {
     return uvec2(FFX_DNSR_Shadows_BitfieldInsert(FFX_DNSR_Shadows_BitfieldExtract(lane, 2u, 3u), lane, 1u), FFX_DNSR_Shadows_BitfieldInsert(FFX_DNSR_Shadows_BitfieldExtract(lane, 3u, 3u), FFX_DNSR_Shadows_BitfieldExtract(lane, 1u, 2u), 2u));
 }
 
-#define select(cond, a, b) ((cond) ? (a) : (b))
-#define rcp(x) (1.0 / x)
+#include <utils/common.glsl>

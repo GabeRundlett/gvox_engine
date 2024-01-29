@@ -1,11 +1,23 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/utils/prefix_scan.inl>
 
 struct VertexPacked {
     daxa_f32vec4 data0;
 };
 DAXA_DECL_BUFFER_PTR(VertexPacked)
+struct IrcacheBuffers {
+    daxa_RWBufferPtr(daxa_u32vec2) ircache_grid_meta_buf;
+    daxa_BufferPtr(daxa_u32) ircache_meta_buf;
+    daxa_BufferPtr(daxa_u32) ircache_pool_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_life_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf;
+    daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf;
+    daxa_BufferPtr(daxa_f32vec4) ircache_irradiance_buf;
+    daxa_BufferPtr(daxa_u32) ircache_reposition_proposal_count_buf;
+};
+DAXA_DECL_BUFFER_PTR(IrcacheBuffers)
 
 #if ClearIrcachePoolComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ClearIrcachePoolCompute, 2)
@@ -117,6 +129,10 @@ daxa_RWBufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_ent
 #include <array>
 #include <glm/glm.hpp>
 
+struct IrcacheIrradiancePendingSummation {
+    daxa::TaskBufferView indirect_args_buf;
+};
+
 struct IrcacheRenderState {
     daxa::TaskBufferView ircache_meta_buf;
 
@@ -135,7 +151,29 @@ struct IrcacheRenderState {
     daxa::TaskBufferView ircache_reposition_proposal_buf;
     daxa::TaskBufferView ircache_reposition_proposal_count_buf;
 
+    daxa::TaskBufferView ircache_buffers;
+
     bool pending_irradiance_sum;
+
+    auto trace_irradiance(RecordContext &record_ctx, daxa::TaskImageView sky_cube) -> IrcacheIrradiancePendingSummation {
+        // auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
+        //     .size = static_cast<daxa_u32>(sizeof(uint32_t) * 4) * 4,
+        //     .name = "ircache.indirect_args_buf",
+        // });
+
+        // record_ctx.add(ComputeTask<IrcachePrepareAgeDispatchCompute, IrcachePrepareAgeDispatchComputePush, NoTaskInfo>{
+        //     .source = daxa::ShaderFile{"ircache/prepare_age_dispatch_args.comp.glsl"},
+        //     .views = std::array{
+        //         daxa::TaskViewVariant{std::pair{IrcachePrepareAgeDispatchCompute::ircache_meta_buf, ircache_meta_buf}},
+        //         daxa::TaskViewVariant{std::pair{IrcachePrepareAgeDispatchCompute::dispatch_args, indirect_args_buf}},
+        //     },
+        //     .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, IrcachePrepareAgeDispatchComputePush &push, NoTaskInfo const &) {
+        //         ti.recorder.set_pipeline(pipeline);
+        //         set_push_constant(ti, push);
+        //         ti.recorder.dispatch({1, 1, 1});
+        //     },
+        // });
+    }
 };
 
 inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBufferView {
@@ -156,20 +194,39 @@ struct IrcacheRenderer {
 
     PingPongBuffer ping_pong_ircache_grid_meta_buf;
 
-    void update_eye_position(glm::vec3 eye_position) {
+    void update_eye_position(GpuInput &gpu_input, GpuOutput const &gpu_output) {
         if (!this->enable_scroll) {
             return;
         }
 
-        this->grid_center = eye_position;
+        gpu_input.ircache_grid_center = daxa_f32vec3{
+            gpu_output.player_pos.x + gpu_output.player_unit_offset.x,
+            gpu_output.player_pos.y + gpu_output.player_unit_offset.y,
+            gpu_output.player_pos.z + gpu_output.player_unit_offset.z,
+        };
+
+        this->grid_center = glm::vec3(gpu_input.ircache_grid_center.x, gpu_input.ircache_grid_center.y, gpu_input.ircache_grid_center.z);
 
         for (size_t cascade = 0; cascade < IRCACHE_CASCADE_COUNT; ++cascade) {
             auto cell_diameter = IRCACHE_GRID_CELL_DIAMETER * static_cast<float>(1 << cascade);
-            auto cascade_center = glm::ivec3(glm::floor(eye_position / cell_diameter));
+            auto cascade_center = glm::ivec3(glm::floor(this->grid_center / cell_diameter));
             auto cascade_origin = cascade_center - glm::ivec3(IRCACHE_CASCADE_SIZE / 2);
 
             this->prev_scroll[cascade] = this->cur_scroll[cascade];
             this->cur_scroll[cascade] = cascade_origin;
+
+            gpu_input.ircache_cascades[cascade].origin = {
+                this->cur_scroll[cascade].x,
+                this->cur_scroll[cascade].y,
+                this->cur_scroll[cascade].z,
+                0,
+            };
+            gpu_input.ircache_cascades[cascade].voxels_scrolled_this_frame = {
+                this->cur_scroll[cascade].x - this->prev_scroll[cascade].x,
+                this->cur_scroll[cascade].y - this->prev_scroll[cascade].y,
+                this->cur_scroll[cascade].z - this->prev_scroll[cascade].z,
+                0,
+            };
         }
     }
 
@@ -329,6 +386,8 @@ struct IrcacheRenderer {
             },
         });
 
+        inclusive_prefix_scan_u32_1m(record_ctx, entry_occupancy_buf);
+
         record_ctx.add(ComputeTask<IrcacheCompactEntriesCompute, IrcacheCompactEntriesComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"ircache/ircache_compact_entries.comp.glsl"},
             .views = std::array{
@@ -346,6 +405,49 @@ struct IrcacheRenderer {
                     .offset = 0,
                 });
             },
+        });
+
+        state.ircache_buffers = record_ctx.task_graph.create_transient_buffer({
+            .size = static_cast<daxa_u32>(sizeof(IrcacheBuffers)),
+            .name = "ircache.buffers",
+        });
+        record_ctx.task_graph.add_task({
+            .attachments = {
+                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, state.ircache_buffers),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_grid_meta_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_meta_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_pool_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_life_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_entry_cell_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_irradiance_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_count_buf),
+            },
+            .task = [this](daxa::TaskInterface const &ti) {
+                auto staging_buffer = ti.device.create_buffer({
+                    .size = sizeof(IrcacheBuffers),
+                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "staging_buffer",
+                });
+                ti.recorder.destroy_buffer_deferred(staging_buffer);
+                auto *buffer_ptr = ti.device.get_host_address_as<IrcacheBuffers>(staging_buffer).value();
+                *buffer_ptr = {
+                    .ircache_grid_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0]).value(),
+                    .ircache_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{2}).ids[0]).value(),
+                    .ircache_pool_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{3}).ids[0]).value(),
+                    .ircache_life_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{4}).ids[0]).value(),
+                    .ircache_entry_cell_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{5}).ids[0]).value(),
+                    .ircache_reposition_proposal_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{6}).ids[0]).value(),
+                    .ircache_irradiance_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{7}).ids[0]).value(),
+                    .ircache_reposition_proposal_count_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{8}).ids[0]).value(),
+                };
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).ids[0],
+                    .size = sizeof(IrcacheBuffers),
+                });
+            },
+            .name = "UploadIrcacheBuffers",
         });
 
         return state;

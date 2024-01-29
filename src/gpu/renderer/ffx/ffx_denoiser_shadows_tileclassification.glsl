@@ -360,8 +360,7 @@ void FFX_DNSR_Shadows_TileClassification(uint group_index, uvec2 gid) {
         {
             // bool is_disoccluded = FFX_DNSR_Shadows_IsDisoccluded(did, depth, velocity);
             bool is_disoccluded = dot(quad_reproj_valid, 1.0.xxxx) < 4.0;
-            previous_moments = select(is_disoccluded, vec4(0.0f, 0.0f, 0.0f, 0.0f) // Can't trust previous moments on disocclusion
-                                      ,
+            previous_moments = select(bvec4(is_disoccluded), vec4(0.0f, 0.0f, 0.0f, 0.0f), // Can't trust previous moments on disocclusion
                                       FFX_DNSR_Shadows_ReadPreviousMomentsBuffer(history_uv));
 
             const float old_m = previous_moments.x;

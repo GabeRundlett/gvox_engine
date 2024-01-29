@@ -621,7 +621,6 @@ struct RecordContext {
             auto result = TemporalBuffer{};
             result.buffer_id = device.create_buffer(info);
             result.task_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{result.buffer_id}}, .name = id});
-            task_graph.use_persistent_buffer(result.task_buffer);
             auto emplace_result = temporal_buffers->emplace(id, result);
             iter = emplace_result.first;
         } else {
@@ -630,6 +629,7 @@ struct RecordContext {
                 AppUi::Console::s_instance->add_log(std::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
             }
         }
+        task_graph.use_persistent_buffer(iter->second.task_buffer);
 
         return iter->second;
     }

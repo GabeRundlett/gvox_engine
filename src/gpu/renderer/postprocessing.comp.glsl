@@ -8,13 +8,7 @@
 #include <utils/gbuffer.glsl>
 
 #include <utils/layered_brdf.glsl>
-
-#define SHADING_MODE_DEFAULT 0
-#define SHADING_MODE_NO_TEXTURES 1
-#define SHADING_MODE_DIFFUSE_GI 2
-#define SHADING_MODE_REFLECTIONS 3
-#define SHADING_MODE_RTX_OFF 4
-#define SHADING_MODE_IRCACHE 5
+#include <renderer/ircache/lookup.glsl>
 
 #define USE_RTDGI true
 #define USE_RTR true
@@ -154,6 +148,36 @@ void main() {
     // temporal_output_tex[px] = vec4(total_radiance, 1.0);
 
     vec3 output_ = total_radiance;
+
+    uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
+    if (push.debug_shading_mode == SHADING_MODE_IRCACHE) {
+        output_ = lookup(IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal), rng);
+
+        if (px.y < 50) {
+            const uint entry_count = deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]);
+            const uint entry_alloc_count = deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]);
+
+            const float u = float(px.x + 0.5) * push.output_tex_size.z;
+
+            const uint MAX_ENTRY_COUNT = 64 * 1024;
+
+            if (px.y < 25) {
+                if (entry_alloc_count > u * MAX_ENTRY_COUNT) {
+                    output_ = vec3(0.05, 1, .2) * 4;
+                }
+            } else {
+                if (entry_count > u * MAX_ENTRY_COUNT) {
+                    output_ = vec3(1, 0.1, 0.05) * 4;
+                }
+            }
+
+            // Ticks every 16k
+            if (fract(u * 16) < push.output_tex_size.z * 32) {
+                output_ = vec3(1, 1, 0) * 10;
+            }
+        }
+    }
+
     output_ *= deref(gpu_input).pre_exposure;
 
     // output_ = gbuffer.albedo;

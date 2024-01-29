@@ -4,9 +4,17 @@
 
 #include <shared/renderer/blur.inl>
 #include <shared/renderer/calculate_histogram.inl>
+#include <shared/renderer/ircache.inl>
+
+#define SHADING_MODE_DEFAULT 0
+#define SHADING_MODE_NO_TEXTURES 1
+#define SHADING_MODE_DIFFUSE_GI 2
+#define SHADING_MODE_REFLECTIONS 3
+#define SHADING_MODE_RTX_OFF 4
+#define SHADING_MODE_IRCACHE 5
 
 #if LightGbufferComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 12)
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 21)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
@@ -22,6 +30,17 @@ DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheBuffers), ircache_buffers)
+
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_grid_meta_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_meta_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_pool_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_life_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_entry_cell_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_irradiance_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_count_buf)
+
 DAXA_DECL_TASK_HEAD_END
 struct LightGbufferComputePush {
     daxa_f32vec4 output_tex_size;
@@ -45,6 +64,17 @@ daxa_ImageViewId unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
 daxa_ImageViewId sky_cube_tex = push.uses.sky_cube_tex;
 daxa_ImageViewId sky_lut = push.uses.sky_lut;
 daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;
+
+daxa_RWBufferPtr(daxa_u32vec2) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
+daxa_BufferPtr(daxa_u32) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;
+daxa_BufferPtr(daxa_u32) ircache_pool_buf = deref(ircache_buffers).ircache_pool_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_life_buf = deref(ircache_buffers).ircache_life_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;
+daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = deref(ircache_buffers).ircache_reposition_proposal_buf;
+daxa_BufferPtr(daxa_f32vec4) ircache_irradiance_buf = deref(ircache_buffers).ircache_irradiance_buf;
+daxa_BufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache_buffers).ircache_reposition_proposal_count_buf;
+
 #endif
 #endif
 
@@ -98,7 +128,7 @@ inline auto light_gbuffer(
     daxa::TaskImageView shadow_mask,
     daxa::TaskImageView rtr,
     daxa::TaskImageView rtdgi,
-    // ircache: &mut IrcacheRenderState,
+    IrcacheRenderState &ircache,
     // wrc: &WrcRenderState,
     // temporal_output: &mut rg::Handle<Image>,
     // output: &mut rg::Handle<Image>,
@@ -129,11 +159,22 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_cube_tex, convolved_sky_cube}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_lut, sky_lut}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
+
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_buffers, ircache.ircache_buffers}},
+
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_grid_meta_buf, ircache.ircache_grid_meta_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_meta_buf, ircache.ircache_meta_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_pool_buf, ircache.ircache_pool_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_life_buf, ircache.ircache_life_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_entry_cell_buf, ircache.ircache_entry_cell_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_reposition_proposal_buf, ircache.ircache_reposition_proposal_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_irradiance_buf, ircache.ircache_irradiance_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_reposition_proposal_count_buf, ircache.ircache_reposition_proposal_count_buf}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::gbuffer_tex).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
-            push.debug_shading_mode = 0;
+            push.debug_shading_mode = SHADING_MODE_DEFAULT;
             push.debug_show_wrc = 0;
             push.output_tex_size.x = static_cast<float>(image_info.size.x);
             push.output_tex_size.y = static_cast<float>(image_info.size.y);

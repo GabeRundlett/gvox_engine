@@ -1,6 +1,8 @@
 #include <utils/math.glsl>
 #include "ircache_constants.glsl"
 
+#define IRCACHE_USE_NORMAL_BASED_CELL_OFFSET true
+
 struct IrcacheCoord {
     uvec3 coord;
     uint cascade;
@@ -59,7 +61,7 @@ IrcacheCoord ws_pos_to_ircache_coord(daxa_BufferPtr(GpuInput) gpu_input, vec3 po
     const ivec3 cascade_origin = deref(gpu_input).ircache_cascades[cascade].origin.xyz;
 
     cell_offset +=
-        select(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET, normal * cell_diameter * 0.5, 0.0.xxx);
+        select(bvec3(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET), normal * cell_diameter * 0.5, 0.0.xxx);
 
     ivec3 coord = ivec3(floor((pos + cell_offset) / cell_diameter)) - cascade_origin;
 

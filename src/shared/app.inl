@@ -528,6 +528,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.pre_exposure = post_processor.exposure_state.pre_mult;
         gpu_input.pre_exposure_prev = post_processor.exposure_state.pre_mult_prev;
         gpu_input.pre_exposure_delta = post_processor.exposure_state.pre_mult_delta;
+        ircache_renderer.update_eye_position(gpu_input, gpu_output);
 
         if constexpr (!ENABLE_TAA) {
             fsr2_renderer->next_frame();
@@ -710,7 +711,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             denoised_shadow_mask,
             rtr,
             rtdgi,
-            // mut ircache_state,
+            ircache_state,
             // wrc,
             sky_cube,
             ibl_cube,
