@@ -14,7 +14,7 @@ struct IrcacheLookup {
     uint count;
 };
 
-IrcacheLookup ircache_lookup(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferPtr(uvec2) ircache_grid_meta_buf, vec3 pt_ws, vec3 normal_ws, vec3 jitter) {
+IrcacheLookup ircache_lookup(vec3 pt_ws, vec3 normal_ws, vec3 jitter) {
     IrcacheLookup result;
     result.count = 0;
 
@@ -71,9 +71,6 @@ IrcacheLookupParams with_stochastic_interpolation(inout IrcacheLookupParams self
 
 IrcacheLookupMaybeAllocate lookup_maybe_allocate(
     inout IrcacheLookupParams self,
-    daxa_RWBufferPtr(uvec2) ircache_grid_meta_buf, daxa_BufferPtr(uint) ircache_meta_buf,
-    daxa_BufferPtr(uint) ircache_pool_buf, daxa_RWBufferPtr(uint) ircache_life_buf,
-    daxa_RWBufferPtr(uint) ircache_entry_cell_buf, daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf,
     inout uint rng) {
     bool allocated_by_us = false;
     bool just_allocated = false;
@@ -134,7 +131,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
     }
 #endif
 
-    IrcacheLookup lookup = ircache_lookup(gpu_input, ircache_grid_meta_buf, self.pt_ws, self.normal_ws, jitter);
+    IrcacheLookup lookup = ircache_lookup(self.pt_ws, self.normal_ws, jitter);
 
     const uint cascade = ws_pos_to_ircache_coord(gpu_input, self.pt_ws, self.normal_ws, jitter).cascade;
     const float cell_diameter = ircache_grid_cell_diameter_in_cascade(cascade);
@@ -207,7 +204,7 @@ float eval_sh_nope(vec4 sh, vec3 normal) {
 #endif
 
 vec3 lookup(IrcacheLookupParams self, inout uint rng) {
-    IrcacheLookupMaybeAllocate lookup = lookup_maybe_allocate(self, ircache_grid_meta_buf, ircache_meta_buf, ircache_pool_buf, ircache_life_buf, ircache_entry_cell_buf, ircache_reposition_proposal_buf, rng);
+    IrcacheLookupMaybeAllocate lookup = lookup_maybe_allocate(self, rng);
 
     if (lookup.just_allocated) {
         return 0.0.xxx;

@@ -1,3 +1,5 @@
+#define VOXEL_TRACE_WORLDSPACE true
+
 #include <shared/app.inl>
 
 #include <utils/math.glsl>

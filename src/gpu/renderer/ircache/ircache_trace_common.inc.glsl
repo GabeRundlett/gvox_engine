@@ -11,6 +11,7 @@
 #define SUN_COLOR vec3(1)
 #include <utils/sky.glsl>
 
+#define VOXEL_TRACE_WORLDSPACE true
 #include <voxels/core.glsl>
 
 bool rt_is_shadowed(RayDesc ray) {

@@ -5,6 +5,10 @@
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
 
+#if !defined(VOXEL_TRACE_WORLDSPACE)
+#define VOXEL_TRACE_WORLDSPACE false
+#endif
+
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {
     // const daxa_u32 lod_index = 7;
 
@@ -24,6 +28,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         daxa_f32 voxel_scl = daxa_f32(VOXEL_SCL) / daxa_f32(1 << lod_index);
         daxa_f32vec3 offset = daxa_f32vec3((deref(info.ptrs.globals).offset) & ((1 << (lod_index + 3)) - 1)) + daxa_f32vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
         ray_pos += offset;
+#if VOXEL_TRACE_WORLDSPACE
+        ray_pos -= deref(globals).player.player_unit_offset;
+#endif
 
         BoundingBox b;
         b.bound_min = daxa_f32vec3(0.0);
@@ -65,6 +72,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
                 result.nrm = vec3(0, 0, 1);
             }
             ray_pos -= offset;
+#if VOXEL_TRACE_WORLDSPACE
+            ray_pos += deref(globals).player.player_unit_offset;
+#endif
             return result;
         }
 
@@ -75,6 +85,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
                 result.dist = 0.0;
             }
             ray_pos -= offset;
+#if VOXEL_TRACE_WORLDSPACE
+            ray_pos += deref(globals).player.player_unit_offset;
+#endif
             return result;
         }
 
@@ -86,6 +99,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         if (lod == 0) {
             result.dist = 0.0;
             ray_pos -= offset;
+#if VOXEL_TRACE_WORLDSPACE
+            ray_pos += deref(globals).player.player_unit_offset;
+#endif
             return result;
         }
         daxa_f32 cell_size = daxa_f32(1l << (lod - 1)) / voxel_scl;
@@ -133,6 +149,9 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
             t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 / voxel_scl);
         }
         ray_pos -= offset;
+#if VOXEL_TRACE_WORLDSPACE
+        ray_pos += deref(globals).player.player_unit_offset;
+#endif
 
         if (hit_surface) {
 

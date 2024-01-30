@@ -73,10 +73,6 @@ void main() {
         return;
     }
 
-    vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
-    vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
-    pt_ws /= pt_ws.w;
-
     const vec3 to_light_norm = SUN_DIRECTION;
 
     float shadow_mask = texelFetch(daxa_texture2D(shadow_mask_tex), daxa_i32vec2(px), 0).x;
@@ -147,10 +143,14 @@ void main() {
 
     vec3 output_ = total_radiance;
 
+    vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
+    vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
+    pt_ws /= pt_ws.w;
+    pt_ws.xyz += deref(globals).player.player_unit_offset;
     uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
     if (push.debug_shading_mode == SHADING_MODE_IRCACHE) {
-        output_ = lookup(IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal), rng);
-
+        IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
+        output_ = lookup(ircache_params, rng);
         if (px.y < 50) {
             const uint entry_count = deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]);
             const uint entry_alloc_count = deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]);

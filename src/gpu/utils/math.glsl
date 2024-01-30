@@ -523,7 +523,7 @@ ViewRayContext vrc_from_uv_and_biased_depth(daxa_RWBufferPtr(GpuGlobals) globals
 
 daxa_f32vec3 get_eye_position(daxa_RWBufferPtr(GpuGlobals) globals) {
     daxa_f32vec4 eye_pos_h = deref(globals).player.cam.view_to_world * daxa_f32vec4(0, 0, 0, 1);
-    return eye_pos_h.xyz / eye_pos_h.w;
+    return eye_pos_h.xyz / eye_pos_h.w + deref(globals).player.player_unit_offset;
 }
 daxa_f32vec3 direction_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
     return (deref(globals).player.cam.view_to_world * daxa_f32vec4(v, 0)).xyz;
