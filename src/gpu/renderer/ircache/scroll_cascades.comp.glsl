@@ -5,11 +5,11 @@
 #include "ircache_grid.glsl"
 
 void deallocate_cell(uint cell_idx) {
-    const uvec2 meta = deref(ircache_grid_meta_buf[cell_idx]);
+    const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
 
-    if ((meta.y & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
+    if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
         // Clear the just-nuked entry
-        const uint entry_idx = meta.x;
+        const uint entry_idx = cell.entry_index;
 
         deref(ircache_life_buf[entry_idx]) = IRCACHE_ENTRY_LIFE_RECYCLED;
 
@@ -17,7 +17,7 @@ void deallocate_cell(uint cell_idx) {
             deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + i]) = 0.0.xxxx;
         }
 
-        uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]), -1);
+        uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
         deref(ircache_pool_buf[entry_alloc_count - 1]) = entry_idx;
     }
 }
@@ -43,15 +43,15 @@ void main() {
     if (all(lessThan(src_vx, uvec3(IRCACHE_CASCADE_SIZE)))) {
         const uint src_cell_idx = cell_idx(IrcacheCoord_from_coord_cascade(src_vx, cascade));
 
-        const uvec2 cell_meta = deref(ircache_grid_meta_buf[src_cell_idx]);
-        deref(ircache_grid_meta_buf2[dst_cell_idx]) = cell_meta;
+        const IrcacheCell cell = deref(ircache_grid_meta_buf[src_cell_idx]);
+        deref(ircache_grid_meta_buf2[dst_cell_idx]) = cell;
 
         // Update the cell idx in the `ircache_entry_cell_buf`
-        if ((cell_meta.y & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
-            const uint entry_idx = cell_meta.x;
+        if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
+            const uint entry_idx = cell.entry_index;
             deref(ircache_entry_cell_buf[entry_idx]) = dst_cell_idx;
         }
     } else {
-        deref(ircache_grid_meta_buf2[dst_cell_idx]) = (0).xx;
+        deref(ircache_grid_meta_buf2[dst_cell_idx]) = IrcacheCell(0, 0);
     }
 }

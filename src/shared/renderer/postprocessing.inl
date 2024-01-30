@@ -66,8 +66,8 @@ daxa_ImageViewId sky_lut = push.uses.sky_lut;
 daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
 daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;
 
-daxa_RWBufferPtr(daxa_u32vec2) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
-daxa_BufferPtr(daxa_u32) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;
+daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
+daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;
 daxa_BufferPtr(daxa_u32) ircache_pool_buf = deref(ircache_buffers).ircache_pool_buf;
 daxa_RWBufferPtr(daxa_u32) ircache_life_buf = deref(ircache_buffers).ircache_life_buf;
 daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;

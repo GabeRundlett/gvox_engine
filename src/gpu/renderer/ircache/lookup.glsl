@@ -21,10 +21,10 @@ IrcacheLookup ircache_lookup(vec3 pt_ws, vec3 normal_ws, vec3 jitter) {
     const IrcacheCoord rcoord = ws_pos_to_ircache_coord(gpu_input, pt_ws, normal_ws, jitter);
     const uint cell_idx = cell_idx(rcoord);
 
-    const uvec2 cell_meta = deref(ircache_grid_meta_buf[cell_idx]);
+    const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
 
-    if ((cell_meta.y & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
-        const uint entry_idx = cell_meta.x;
+    if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
+        const uint entry_idx = cell.entry_index;
         result.entry_idx[result.count] = entry_idx;
         result.weight[result.count] = 1;
         result.count = 1;
@@ -94,8 +94,8 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
             self.query_rank >= IRCACHE_ENTRY_RANK_COUNT || (any(was_just_scrolled_in) && self.query_rank > 0);
 
         const uint cell_idx = cell_idx(rcoord);
-        const uvec2 cell_meta = deref(ircache_grid_meta_buf[cell_idx]);
-        const uint entry_flags = cell_meta.y;
+        const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
+        const uint entry_flags = cell.flags;
 
         just_allocated = (entry_flags & IRCACHE_ENTRY_META_JUST_ALLOCATED) != 0;
 
@@ -103,7 +103,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
             if ((entry_flags & IRCACHE_ENTRY_META_OCCUPIED) == 0) {
                 // Allocate
 
-                uint prev = atomicOr(deref(ircache_grid_meta_buf[cell_idx]).y, IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED);
+                uint prev = atomicOr(deref(ircache_grid_meta_buf[cell_idx]).flags, IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED);
                 // ircache_grid_meta_buf.InterlockedOr(
                 //     sizeof(uvec2) * cell_idx + sizeof(uint),
                 //     IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED,
@@ -114,17 +114,16 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
                     just_allocated = true;
                     allocated_by_us = true;
 
-                    uint alloc_idx = atomicAdd(deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]), 1);
+                    uint alloc_idx = atomicAdd(deref(ircache_meta_buf).alloc_count, 1);
 
                     uint entry_idx = deref(ircache_pool_buf[alloc_idx]);
-                    // ircache_meta_buf.InterlockedMax(IRCACHE_META_ENTRY_COUNT, entry_idx + 1);
-                    atomicMax(deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]), entry_idx + 1);
+                    atomicMax(deref(ircache_meta_buf).entry_count, entry_idx + 1);
 
                     // Clear dead state, mark used.
 
                     deref(ircache_life_buf[entry_idx]) = ircache_entry_life_for_rank(self.query_rank);
                     deref(ircache_entry_cell_buf[entry_idx]) = cell_idx;
-                    deref(ircache_grid_meta_buf[cell_idx]).x = entry_idx;
+                    deref(ircache_grid_meta_buf[cell_idx]).entry_index = entry_idx;
                 }
             }
         }
@@ -280,7 +279,7 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
 #endif
             }
 
-            // irradiance_sum = (entry_idx % 64) / 63.0;
+            // irradiance_sum = vec3(entry_idx % 64) / 63.0;
         }
 
     return irradiance_sum;

@@ -11,7 +11,7 @@ void age_ircache_entry(uint entry_idx) {
 
         // TODO: just `Store` it (AMD doesn't like it unless it's a byte address buffer)
         const uint cell_idx = deref(ircache_entry_cell_buf[entry_idx]);
-        atomicAnd(deref(ircache_grid_meta_buf[2 * cell_idx + 1]), ~IRCACHE_ENTRY_META_JUST_ALLOCATED);
+        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags, ~IRCACHE_ENTRY_META_JUST_ALLOCATED);
     } else {
         deref(ircache_life_buf[entry_idx]) = IRCACHE_ENTRY_LIFE_RECYCLED;
         // onoz, we killed it!
@@ -21,12 +21,12 @@ void age_ircache_entry(uint entry_idx) {
             deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + i]) = 0.0.xxxx;
         }
 
-        uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]), -1);
+        uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
         deref(ircache_pool_buf[entry_alloc_count - 1]) = entry_idx;
 
         // TODO: just `Store` it (AMD doesn't like it unless it's a byte address buffer)
         const uint cell_idx = deref(ircache_entry_cell_buf[entry_idx]);
-        atomicAnd(deref(ircache_grid_meta_buf[2 * cell_idx + 1]),
+        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags,
                   ~(IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED));
     }
 }
@@ -38,7 +38,7 @@ bool ircache_entry_life_needs_aging(uint life) {
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint entry_idx = gl_GlobalInvocationID.x;
-    const uint total_entry_count = deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]);
+    const uint total_entry_count = deref(ircache_meta_buf).entry_count;
 
     if (!IRCACHE_FREEZE) {
         if (entry_idx < total_entry_count) {

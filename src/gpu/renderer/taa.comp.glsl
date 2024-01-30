@@ -3,6 +3,9 @@
 #include <utils/math.glsl>
 #include <utils/safety.glsl>
 
+#include <utils/color/srgb.glsl>
+#include <utils/color/ycbcr.glsl>
+
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
 
@@ -46,10 +49,6 @@ float perceptual_to_linear(float a) {
 
 float max_3(float a, float b, float c) {
     return max(a, max(b, c));
-}
-
-daxa_f32vec3 square(daxa_f32vec3 x) {
-    return pow(x, daxa_f32vec3(2.0));
 }
 
 daxa_f32vec3 decode_rgb(daxa_f32vec3 v) {

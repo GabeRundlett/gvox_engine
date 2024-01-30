@@ -8,6 +8,8 @@
 #include <utils/gbuffer.glsl>
 
 #include <utils/layered_brdf.glsl>
+
+// #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 #include <renderer/ircache/lookup.glsl>
 
 #define USE_RTDGI true
@@ -17,6 +19,8 @@
 
 #define USE_DIFFUSE_GI_FOR_ROUGH_SPEC false
 #define USE_DIFFUSE_GI_FOR_ROUGH_SPEC_MIN_ROUGHNESS 0.7
+
+#define FORCE_IRCACHE_DEBUG true
 
 // #include "inc/atmosphere.hlsl"
 // #include "inc/sun.hlsl"
@@ -33,6 +37,36 @@ void main() {
 
     if (any(greaterThanEqual(px, uvec2(push.output_tex_size.xy)))) {
         return;
+    }
+
+    if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
+        if (px.y < 50) {
+            vec3 output_ = vec3(0);
+            const uint entry_count = deref(ircache_meta_buf).entry_count;
+            const uint entry_alloc_count = deref(ircache_meta_buf).alloc_count;
+
+            const float u = float(px.x + 0.5) * push.output_tex_size.z;
+
+            const uint MAX_ENTRY_COUNT = 64 * 1024;
+
+            if (px.y < 25) {
+                if (entry_alloc_count > u * MAX_ENTRY_COUNT) {
+                    output_ = vec3(0.05, 1, .2) * 4;
+                }
+            } else {
+                if (entry_count > u * MAX_ENTRY_COUNT) {
+                    output_ = vec3(1, 0.1, 0.05) * 4;
+                }
+            }
+
+            // Ticks every 16k
+            if (fract(u * 16) < push.output_tex_size.z * 32) {
+                output_ = vec3(1, 1, 0) * 10;
+            }
+
+            imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+            return;
+        }
     }
 
     RayDesc outgoing_ray;
@@ -114,6 +148,8 @@ void main() {
         }
     }
 
+    // gi_irradiance += vec3(1.0);
+
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY) {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo;
     } else {
@@ -148,32 +184,9 @@ void main() {
     pt_ws /= pt_ws.w;
     pt_ws.xyz += deref(globals).player.player_unit_offset;
     uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
-    if (push.debug_shading_mode == SHADING_MODE_IRCACHE) {
+    if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
         IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
         output_ = lookup(ircache_params, rng);
-        if (px.y < 50) {
-            const uint entry_count = deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]);
-            const uint entry_alloc_count = deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]);
-
-            const float u = float(px.x + 0.5) * push.output_tex_size.z;
-
-            const uint MAX_ENTRY_COUNT = 64 * 1024;
-
-            if (px.y < 25) {
-                if (entry_alloc_count > u * MAX_ENTRY_COUNT) {
-                    output_ = vec3(0.05, 1, .2) * 4;
-                }
-            } else {
-                if (entry_count > u * MAX_ENTRY_COUNT) {
-                    output_ = vec3(1, 0.1, 0.05) * 4;
-                }
-            }
-
-            // Ticks every 16k
-            if (fract(u * 16) < push.output_tex_size.z * 32) {
-                output_ = vec3(1, 1, 0) * 10;
-            }
-        }
     }
 
     output_ *= deref(gpu_input).pre_exposure;

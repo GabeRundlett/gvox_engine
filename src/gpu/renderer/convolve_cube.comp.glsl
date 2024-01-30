@@ -34,5 +34,5 @@ void main() {
         result += texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), input_dir);
     }
 
-    imageStore(daxa_imageCube(ibl_cube), ivec3(px), result / sample_count);
+    imageStore(daxa_image2DArray(ibl_cube), ivec3(px), result / sample_count);
 }

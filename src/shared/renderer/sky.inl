@@ -72,7 +72,7 @@ daxa_ImageViewId sky_cube = push.uses.sky_cube;
 DAXA_DECL_TASK_HEAD_BEGIN(IblCubeCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, CUBE, ibl_cube)
+DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D_ARRAY, ibl_cube)
 DAXA_DECL_TASK_HEAD_END
 struct IblCubeComputePush {
     IblCubeCompute uses;

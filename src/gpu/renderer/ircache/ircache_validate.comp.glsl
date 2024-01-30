@@ -40,7 +40,7 @@ void main() {
 // ray count for multiple dispatches (???)
 // Search for c804a814-fdc8-4843-b2c8-9d0674c10a6f for other occurences.
 #if 1
-    const uint alloc_count = deref(ircache_meta_buf[IRCACHE_META_TRACING_ALLOC_COUNT_INDEX]);
+    const uint alloc_count = deref(ircache_meta_buf).tracing_alloc_count;
     if (dispatch_idx >= alloc_count * IRCACHE_VALIDATION_SAMPLES_PER_FRAME) {
         return;
     }

@@ -9,7 +9,7 @@ void main() {
         return;
     }
 
-    const uint total_alloc_count = deref(ircache_meta_buf[IRCACHE_META_TRACING_ALLOC_COUNT_INDEX]);
+    const uint total_alloc_count = deref(ircache_meta_buf).tracing_alloc_count;
     if (dispatch_idx >= total_alloc_count) {
         return;
     }

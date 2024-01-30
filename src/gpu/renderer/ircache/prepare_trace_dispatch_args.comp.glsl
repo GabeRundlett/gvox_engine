@@ -3,10 +3,10 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    const uint entry_count = deref(ircache_meta_buf[IRCACHE_META_ENTRY_COUNT_INDEX]);
-    const uint alloc_count = deref(ircache_meta_buf[IRCACHE_META_ALLOC_COUNT_INDEX]);
+    const uint entry_count = deref(ircache_meta_buf).entry_count;
+    const uint alloc_count = deref(ircache_meta_buf).alloc_count;
 
-    deref(ircache_meta_buf[IRCACHE_META_TRACING_ALLOC_COUNT_INDEX]) = alloc_count;
+    deref(ircache_meta_buf).tracing_alloc_count = alloc_count;
 
     // Reset, sum up irradiance
     deref(dispatch_args[2]) = uvec4((alloc_count + 63) / 64, 1, 1, 0);
@@ -28,11 +28,11 @@ void main() {
 #endif
 
     // Main ray tracing
-    deref(dispatch_args[0]) = uvec4(main_rt_samples, 1, 1, 0);
+    deref(dispatch_args[0]) = uvec4((main_rt_samples + 31) / 32, 1, 1, 0);
 
     // Accessibility tracing
-    deref(dispatch_args[1]) = uvec4(accessibility_rt_samples, 1, 1, 0);
+    deref(dispatch_args[1]) = uvec4((accessibility_rt_samples + 31) / 32, 1, 1, 0);
 
     // Validity check
-    deref(dispatch_args[3]) = uvec4(validity_rt_samples, 1, 1, 0);
+    deref(dispatch_args[3]) = uvec4((validity_rt_samples + 31) / 32, 1, 1, 0);
 }
