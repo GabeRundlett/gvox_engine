@@ -60,8 +60,11 @@ IrcacheCoord ws_pos_to_ircache_coord(daxa_BufferPtr(GpuInput) gpu_input, vec3 po
 
     const ivec3 cascade_origin = deref(gpu_input).ircache_cascades[cascade].origin.xyz;
 
+    // NOTE(grundlett): offset with 0.413 as a random number as opposed to 0.5.
+    // With the cells lining up with voxels, 0.5 often results in samples being
+    // right on the edge between two cells, so we get bad artifacts.
     cell_offset +=
-        select(bvec3(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET), normal * cell_diameter * 0.5, 0.0.xxx);
+        select(bvec3(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET), normal * cell_diameter * 0.413, 0.0.xxx);
 
     ivec3 coord = ivec3(floor((pos + cell_offset) / cell_diameter)) - cascade_origin;
 

@@ -92,16 +92,6 @@ GbufferRaytrace with_cull_back_faces(inout GbufferRaytrace self, bool v) {
 }
 
 GbufferPathVertex trace(GbufferRaytrace self, VoxelBufferPtrs voxels_buffer_ptrs) {
-    GbufferRayPayload payload = GbufferRayPayload_new_miss();
-    payload.ray_cone = self.ray_cone;
-    payload.path_length = self.path_length;
-
-    // uint trace_flags = 0;
-    // if (self.cull_back_faces) {
-    //     trace_flags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-    // }
-    // TraceRay(acceleration_structure, trace_flags, 0xff, 0, 0, 0, self.ray, payload);
-
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(voxels_buffer_ptrs, self.ray.Direction, MAX_STEPS, self.ray.TMax, self.ray.TMin, true), self.ray.Origin);
     const bool is_hit = trace_result.dist < self.ray.TMax;
 
@@ -109,7 +99,9 @@ GbufferPathVertex trace(GbufferRaytrace self, VoxelBufferPtrs voxels_buffer_ptrs
         GbufferPathVertex res;
         res.is_hit = true;
         res.position = self.ray.Origin;
-        res.gbuffer_packed = payload.gbuffer_packed;
+        res.gbuffer_packed.data0 = uvec4(0);
+        res.gbuffer_packed.data0.x = trace_result.voxel_data.data;
+        res.gbuffer_packed.data0.y = nrm_to_u16(trace_result.nrm);
         res.ray_t = trace_result.dist;
         return res;
     } else {
