@@ -2,6 +2,8 @@
 #include "ircache_constants.glsl"
 #include <utils/random.glsl>
 
+// #extension GL_EXT_debug_printf : enable
+
 void age_ircache_entry(uint entry_idx) {
     const uint prev_age = deref(ircache_life_buf[entry_idx]);
     const uint new_age = prev_age + 1;

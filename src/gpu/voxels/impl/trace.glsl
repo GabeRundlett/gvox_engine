@@ -6,7 +6,7 @@
 #include <voxels/impl/voxels.glsl>
 
 #if !defined(VOXEL_TRACE_WORLDSPACE)
-#define VOXEL_TRACE_WORLDSPACE false
+#define VOXEL_TRACE_WORLDSPACE 0
 #endif
 
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {

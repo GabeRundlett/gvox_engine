@@ -5,9 +5,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     daxa_u32 particle_index = gl_GlobalInvocationID.x;
     SimulatedVoxelParticle self = deref(simulated_voxel_particles[particle_index]);
-    // if (self.flags == 0) {
-    //     return;
-    // }
 
     bool should_place = false;
     particle_update(self, VOXELS_BUFFER_PTRS, gpu_input, should_place);
@@ -40,6 +37,10 @@ void main() {
             // atomicMax(deref(globals).voxel_particles_state.place_bounds_max.y, my_voxel_i.y);
             // atomicMax(deref(globals).voxel_particles_state.place_bounds_max.z, my_voxel_i.z);
         }
+    }
+
+    if (self.flags == 0) {
+        return;
     }
 
     daxa_u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;

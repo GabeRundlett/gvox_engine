@@ -1,4 +1,4 @@
-#define VOXEL_TRACE_WORLDSPACE true
+#define VOXEL_TRACE_WORLDSPACE 1
 // Trace rays between the previous ReSTIR ircache trace origins and the newly proposed ones,
 // reducing the memory of reservoirs that are inaccessible now.
 //

@@ -9,7 +9,7 @@
 
 #include <utils/layered_brdf.glsl>
 
-// #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
+#define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 #include <renderer/ircache/lookup.glsl>
 
 #define USE_RTDGI true
@@ -150,13 +150,13 @@ void main() {
 
     // gi_irradiance += vec3(1.0);
 
-    if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY) {
+    if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY != 0) {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo;
     } else {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo * brdf.energy_preservation.preintegrated_transmission_fraction;
     }
 
-    if (USE_RTR && !LAYERED_BRDF_FORCE_DIFFUSE_ONLY && push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
+    if (USE_RTR && LAYERED_BRDF_FORCE_DIFFUSE_ONLY == 0 && push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
         vec3 rtr_radiance;
 
         if (!RTR_RENDER_SCALED_BY_FG) {

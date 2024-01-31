@@ -1,7 +1,7 @@
 #include <utils/math.glsl>
 #include "ircache_constants.glsl"
 
-#define IRCACHE_USE_NORMAL_BASED_CELL_OFFSET true
+#define IRCACHE_USE_NORMAL_BASED_CELL_OFFSET 1
 
 struct IrcacheCoord {
     uvec3 coord;
@@ -40,7 +40,7 @@ IrcacheCoord ws_pos_to_ircache_coord(daxa_BufferPtr(GpuInput) gpu_input, vec3 po
     vec3 center = deref(gpu_input).ircache_grid_center.xyz;
 
     uint reserved_cells =
-        select(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET,
+        select(IRCACHE_USE_NORMAL_BASED_CELL_OFFSET != 0,
                // Make sure we can actually offset towards the edge of a cascade.
                1,
                // Business as usual

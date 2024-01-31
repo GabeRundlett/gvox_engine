@@ -1,15 +1,17 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/ircache.inl>
 
 #if VoxelParticleSimComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), rendered_voxel_particles)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), placed_voxel_particles)
+IRCACHE_USE_BUFFERS()
 DAXA_DECL_TASK_HEAD_END
 struct VoxelParticleSimComputePush {
     DAXA_TH_BLOB(VoxelParticleSimCompute, uses)
@@ -22,6 +24,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_RWBufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
 daxa_RWBufferPtr(daxa_u32) placed_voxel_particles = push.uses.placed_voxel_particles;
+IRCACHE_USE_BUFFERS_PUSH_USES()
 #endif
 #endif
 
@@ -88,7 +91,9 @@ struct VoxelParticles {
         record_ctx.task_graph.use_persistent_buffer(task_placed_voxel_particles_buffer);
     }
 
-    void simulate(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_world_buffers) {
+    void simulate(RecordContext &record_ctx,
+                  IrcacheRenderState &ircache,
+                  VoxelWorld::Buffers &voxel_world_buffers) {
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
         }
@@ -101,6 +106,7 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
+                IRCACHE_BUFFER_USES_ASSIGN(VoxelParticleSimCompute, ircache),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelParticleSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);

@@ -271,7 +271,7 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
                         const float dart = uint_to_u01_float(hash1_mut(rng));
                         const float prob = 1.0 / (prev_vote_count + 1.0);
 
-                        if (!IRCACHE_USE_UNIFORM_VOTING || dart <= prob) {
+                        if (IRCACHE_USE_UNIFORM_VOTING == 0 || dart <= prob) {
                             deref(ircache_reposition_proposal_buf[entry_idx]) = pack_vertex(lookup.proposal);
                         }
                     }

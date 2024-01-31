@@ -21,16 +21,65 @@ struct IrcacheCell {
 };
 DAXA_DECL_BUFFER_PTR(IrcacheCell)
 struct IrcacheBuffers {
+    daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf;
     daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf;
-    daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf;
-    daxa_BufferPtr(daxa_u32) ircache_pool_buf;
-    daxa_RWBufferPtr(daxa_u32) ircache_life_buf;
     daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf;
+    daxa_RWBufferPtr(VertexPacked) ircache_spatial_buf;
+    daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf;
+    daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_life_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_pool_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_entry_indirection_buf;
     daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf;
-    daxa_BufferPtr(daxa_f32vec4) ircache_irradiance_buf;
-    daxa_BufferPtr(daxa_u32) ircache_reposition_proposal_count_buf;
+    daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf;
 };
 DAXA_DECL_BUFFER_PTR(IrcacheBuffers)
+
+#define IRCACHE_BUFFER_USE_N 12
+
+#define IRCACHE_USE_BUFFERS()                                                                \
+    DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheBuffers), ircache_buffers) \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_meta_buf)                              \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_grid_meta_buf)                         \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_entry_cell_buf)                        \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_spatial_buf)                           \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_irradiance_buf)                        \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_aux_buf)                               \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_life_buf)                              \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_pool_buf)                              \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_entry_indirection_buf)                 \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_buf)               \
+    DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_count_buf)
+
+#define IRCACHE_USE_BUFFERS_PUSH_USES()                                                                         \
+    daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;                                 \
+    daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;                            \
+    daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;                      \
+    daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;                       \
+    daxa_RWBufferPtr(VertexPacked) ircache_spatial_buf = deref(ircache_buffers).ircache_spatial_buf;                         \
+    daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = deref(ircache_buffers).ircache_irradiance_buf;                   \
+    daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = deref(ircache_buffers).ircache_aux_buf;                                 \
+    daxa_RWBufferPtr(daxa_u32) ircache_life_buf = deref(ircache_buffers).ircache_life_buf;                                   \
+    daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = deref(ircache_buffers).ircache_pool_buf;                                   \
+    daxa_RWBufferPtr(daxa_u32) ircache_entry_indirection_buf = deref(ircache_buffers).ircache_entry_indirection_buf;         \
+    daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = deref(ircache_buffers).ircache_reposition_proposal_buf; \
+    daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache_buffers).ircache_reposition_proposal_count_buf;
+
+#define IRCACHE_BUFFER_USES_ASSIGN(TaskHeadName, ircache)                                                                         \
+    daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_buffers, ircache.ircache_buffers}},                                     \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_meta_buf, ircache.ircache_meta_buf}},                               \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_grid_meta_buf, ircache.ircache_grid_meta_buf}},                     \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_entry_cell_buf, ircache.ircache_entry_cell_buf}},                   \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_spatial_buf, ircache.ircache_spatial_buf}},                         \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_irradiance_buf, ircache.ircache_irradiance_buf}},                   \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_aux_buf, ircache.ircache_aux_buf}},                                 \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_life_buf, ircache.ircache_life_buf}},                               \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_pool_buf, ircache.ircache_pool_buf}},                               \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_entry_indirection_buf, ircache.ircache_entry_indirection_buf}},     \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::ircache_reposition_proposal_buf, ircache.ircache_reposition_proposal_buf}}, \
+        daxa::TaskViewVariant {                                                                                                   \
+        std::pair { TaskHeadName::ircache_reposition_proposal_count_buf, ircache.ircache_reposition_proposal_count_buf }          \
+    }
 
 #if ClearIrcachePoolComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ClearIrcachePoolCompute, 2)
@@ -724,13 +773,16 @@ struct IrcacheRenderer {
         record_ctx.task_graph.add_task({
             .attachments = {
                 daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, state.ircache_buffers),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_grid_meta_buf),
                 daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_meta_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_pool_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_life_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_grid_meta_buf),
                 daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_entry_cell_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_spatial_buf),
                 daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_irradiance_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_aux_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_life_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_pool_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_entry_indirection_buf),
+                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_buf),
                 daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_count_buf),
             },
             .task = [this](daxa::TaskInterface const &ti) {
@@ -742,14 +794,17 @@ struct IrcacheRenderer {
                 ti.recorder.destroy_buffer_deferred(staging_buffer);
                 auto *buffer_ptr = ti.device.get_host_address_as<IrcacheBuffers>(staging_buffer).value();
                 *buffer_ptr = {
-                    .ircache_grid_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0]).value(),
-                    .ircache_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{2}).ids[0]).value(),
-                    .ircache_pool_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{3}).ids[0]).value(),
-                    .ircache_life_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{4}).ids[0]).value(),
-                    .ircache_entry_cell_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{5}).ids[0]).value(),
-                    .ircache_reposition_proposal_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{6}).ids[0]).value(),
-                    .ircache_irradiance_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{7}).ids[0]).value(),
-                    .ircache_reposition_proposal_count_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{8}).ids[0]).value(),
+                    .ircache_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0]).value(),
+                    .ircache_grid_meta_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{2}).ids[0]).value(),
+                    .ircache_entry_cell_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{3}).ids[0]).value(),
+                    .ircache_spatial_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{4}).ids[0]).value(),
+                    .ircache_irradiance_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{5}).ids[0]).value(),
+                    .ircache_aux_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{6}).ids[0]).value(),
+                    .ircache_life_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{7}).ids[0]).value(),
+                    .ircache_pool_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{8}).ids[0]).value(),
+                    .ircache_entry_indirection_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{9}).ids[0]).value(),
+                    .ircache_reposition_proposal_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{10}).ids[0]).value(),
+                    .ircache_reposition_proposal_count_buf = ti.device.get_device_address(ti.get(daxa::TaskBufferAttachmentIndex{11}).ids[0]).value(),
                 };
                 ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_buffer,

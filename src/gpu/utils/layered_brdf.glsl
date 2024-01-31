@@ -5,8 +5,8 @@
 #include "brdf.glsl"
 #include "brdf_lut.glsl"
 
-#define LAYERED_BRDF_FORCE_DIFFUSE_ONLY false
-#define LAYERED_BRDF_FORCE_SPECULAR_ONLY false
+#define LAYERED_BRDF_FORCE_DIFFUSE_ONLY 0
+#define LAYERED_BRDF_FORCE_SPECULAR_ONLY 0
 
 // Metalness other than 0.0 and 1.0 loses energy due to the way diffuse albedo
 // is spread between the specular and diffuse layers. Scaling both the specular

@@ -40,6 +40,8 @@ void main() {
 
 #include <utils/sky.glsl>
 
+#include <renderer/ircache/lookup.glsl>
+
 #define PIXEL_I gl_GlobalInvocationID.xy
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -133,6 +135,11 @@ void main() {
         output_value.y = nrm_to_u16(trace_result.nrm);
         vs_nrm = (deref(globals).player.cam.world_to_view * daxa_f32vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+
+        uint rng = hash3(uvec3(PIXEL_I, deref(gpu_input).frame_index));
+        vec3 pt_ws = ray_pos + deref(globals).player.player_unit_offset;
+        IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, trace_result.nrm);
+        vec3 irradiance = lookup(ircache_params, rng);
     }
     output_value.z = floatBitsToUint(depth);
 
@@ -162,7 +169,7 @@ void main() {
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
 
-    if (particles_depth > depth) {
+    if (particles_depth > 0 || particles_depth > depth) {
         depth = particles_depth;
         nrm = vec3(0, 0, 1);
         vs_velocity = vec3(0);

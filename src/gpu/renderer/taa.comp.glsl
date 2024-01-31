@@ -73,7 +73,7 @@ daxa_f32vec3 encode_rgb(daxa_f32vec3 v) {
 
 // Optimization: Try to skip velocity dilation if velocity diff is small
 // around the pixel.
-#define APPROX_SKIP_DILATION true
+#define APPROX_SKIP_DILATION 1
 
 daxa_f32vec4 fetch_history(daxa_f32vec2 uv) {
     daxa_f32vec4 h = textureLod(daxa_sampler2D(history_tex, deref(gpu_input).sampler_lnc), uv, 0);
