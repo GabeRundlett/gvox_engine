@@ -368,8 +368,9 @@ void brushgen_b(in out Voxel voxel) {
         // }
         // voxel.color = daxa_f32vec3(rand(), rand(), rand());
         // voxel.color = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
-        voxel.color = daxa_f32vec3(0.1, 0.3, 0.8);
+        voxel.color = daxa_f32vec3(0.9, 0.1, 0.1);
         voxel.material_type = 1;
+        voxel.roughness = 0.2;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }
     if (sd < 2.5 / VOXEL_SCL) {

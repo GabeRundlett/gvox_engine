@@ -46,7 +46,7 @@ uint pack_rgb(vec3 f) {
 PackedVoxel pack_voxel(Voxel v) {
     PackedVoxel result;
 
-    uint packed_roughness = pack_unit(v.roughness, 4);
+    uint packed_roughness = pack_unit(sqrt(v.roughness), 4);
     uint packed_normal = octahedral_8(v.normal);
     uint packed_color = pack_rgb(v.color);
 
@@ -63,7 +63,7 @@ Voxel unpack_voxel(PackedVoxel v) {
     uint packed_normal = (v.data >> 6) & ((1 << 8) - 1);
     uint packed_color = (v.data >> 14);
 
-    result.roughness = unpack_unit(packed_roughness, 4);
+    result.roughness = pow(unpack_unit(packed_roughness, 4), 2.0);
     result.normal = i_octahedral_8(packed_normal);
     result.color = unpack_rgb(packed_color);
 
