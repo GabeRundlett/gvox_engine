@@ -157,11 +157,12 @@ void main() {
 
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     vec3 vs_velocity = texelFetch(daxa_texture2D(velocity_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).xyz;
-    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
-    float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
 
+#if MAX_RENDERED_VOXEL_PARTICLES > 0
+    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
+    float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
     if (particles_depth > 0 || particles_depth > depth) {
         depth = particles_depth;
         nrm = vec3(0, 0, 1);
@@ -182,6 +183,7 @@ void main() {
         g_buffer_value.x = particle.packed_voxel.data;
         g_buffer_value.y = nrm_to_u16(nrm);
     }
+#endif
     g_buffer_value.z = floatBitsToUint(depth);
     vec3 vs_nrm = (deref(globals).player.cam.world_to_view * daxa_f32vec4(nrm, 0)).xyz;
 

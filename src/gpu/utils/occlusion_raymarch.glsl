@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utils/math.glsl>
+#include <utils/downscale.glsl>
 
 struct OcclusionScreenRayMarch {
     uint max_sample_count;
@@ -20,16 +21,16 @@ struct OcclusionScreenRayMarch {
     daxa_ImageViewIndex fullres_color_bounce_tex;
 };
 
-void OcclusionScreenRayMarch_with_color_bounce(inout OcclusionScreenRayMarch self, daxa_ImageViewIndex _fullres_color_bounce_tex) {
+void with_color_bounce(inout OcclusionScreenRayMarch self, daxa_ImageViewIndex _fullres_color_bounce_tex) {
     self.use_color_bounce = true;
     self.fullres_color_bounce_tex = _fullres_color_bounce_tex;
 }
 
-void OcclusionScreenRayMarch_with_max_sample_count(OcclusionScreenRayMarch self, uint _max_sample_count) {
+void with_max_sample_count(OcclusionScreenRayMarch self, uint _max_sample_count) {
     self.max_sample_count = _max_sample_count;
 }
 
-void OcclusionScreenRayMarch_with_halfres_depth(
+void with_halfres_depth(
     inout OcclusionScreenRayMarch self,
     daxa_f32vec2 _halfres_depth_tex_size,
     daxa_ImageViewIndex _halfres_depth_tex) {
@@ -38,7 +39,7 @@ void OcclusionScreenRayMarch_with_halfres_depth(
     self.halfres_depth_tex = _halfres_depth_tex;
 }
 
-void OcclusionScreenRayMarch_with_fullres_depth(
+void with_fullres_depth(
     inout OcclusionScreenRayMarch self,
     daxa_ImageViewIndex _fullres_depth_tex) {
     self.use_halfres_depth = false;
@@ -62,18 +63,16 @@ OcclusionScreenRayMarch OcclusionScreenRayMarch_create(
     return res;
 }
 
-void OcclusionScreenRayMarch_march(
+void march(
     daxa_BufferPtr(GpuInput) gpu_input,
     daxa_RWBufferPtr(GpuGlobals) globals,
-    inout OcclusionScreenRayMarch self,
+    OcclusionScreenRayMarch self,
     inout float visibility,
     inout daxa_f32vec3 sample_radiance) {
-#if 0
-    const daxa_f32vec2 raymarch_end_uv = cs_to_uv(position_world_to_clip(globals, self.raymarch_end_ws).xy);
-    const daxa_f32vec2 raymarch_uv_delta = raymarch_end_uv - self.raymarch_start_uv;
-    const daxa_f32vec2 raymarch_len_px = raymarch_uv_delta * daxa_f32vec2(float(self.use_halfres_depth ? self.halfres_depth_tex_size : self.fullres_depth_tex_size));
+    const vec2 raymarch_end_uv = cs_to_uv(position_world_to_clip(globals, self.raymarch_end_ws).xy);
+    const vec2 raymarch_uv_delta = raymarch_end_uv - self.raymarch_start_uv;
+    const vec2 raymarch_len_px = raymarch_uv_delta * select(bvec2(self.use_halfres_depth), self.halfres_depth_tex_size, self.fullres_depth_tex_size);
 
-    const daxa_u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
     const uint MIN_PX_PER_STEP = 2;
 
     const int k_count = min(int(self.max_sample_count), int(floor(length(raymarch_len_px) / MIN_PX_PER_STEP)));
@@ -81,33 +80,33 @@ void OcclusionScreenRayMarch_march(
     // Depth values only have the front; assume a certain thickness.
     const float Z_LAYER_THICKNESS = 0.05;
 
-    // const daxa_f32vec3 raymarch_start_cs = view_ray_context.ray_hit_cs.xyz;
-    const daxa_f32vec3 raymarch_end_cs = position_world_to_clip(globals, self.raymarch_end_ws).xyz;
+    // const vec3 raymarch_start_cs = view_ray_context.ray_hit_cs.xyz;
+    const vec3 raymarch_end_cs = position_world_to_clip(globals, self.raymarch_end_ws).xyz;
     const float depth_step_per_px = (raymarch_end_cs.z - self.raymarch_start_cs.z) / length(raymarch_len_px);
     const float depth_step_per_z = (raymarch_end_cs.z - self.raymarch_start_cs.z) / length(raymarch_end_cs.xy - self.raymarch_start_cs.xy);
 
     float t_step = 1.0 / k_count;
     float t = 0.5 * t_step;
     for (int k = 0; k < k_count; ++k) {
-        const daxa_f32vec3 interp_pos_cs = mix(self.raymarch_start_cs, raymarch_end_cs, t);
+        const vec3 interp_pos_cs = mix(self.raymarch_start_cs, raymarch_end_cs, t);
 
         // The point-sampled UV could end up with a quite different depth value
         // than the one interpolated along the ray (which is not quantized).
         // This finds a conservative bias for the comparison.
-        const daxa_f32vec2 uv_at_interp = cs_to_uv(interp_pos_cs.xy);
+        const vec2 uv_at_interp = cs_to_uv(interp_pos_cs.xy);
 
-        daxa_u32vec2 px_at_interp;
+        uvec2 px_at_interp;
         float depth_at_interp;
 
         if (self.use_halfres_depth) {
-            px_at_interp = (daxa_u32vec2(floor(uv_at_interp * self.fullres_depth_tex_size - HALFRES_SUBSAMPLE_OFFSET)) & ~1u) + HALFRES_SUBSAMPLE_OFFSET;
+            px_at_interp = (uvec2(floor(uv_at_interp * self.fullres_depth_tex_size - HALFRES_SUBSAMPLE_OFFSET)) & ~1u) + HALFRES_SUBSAMPLE_OFFSET;
             depth_at_interp = texelFetch(daxa_texture2D(self.halfres_depth_tex), daxa_i32vec2(px_at_interp >> 1u), 0).r;
         } else {
-            px_at_interp = daxa_u32vec2(floor(uv_at_interp * self.fullres_depth_tex_size));
+            px_at_interp = uvec2(floor(uv_at_interp * self.fullres_depth_tex_size));
             depth_at_interp = texelFetch(daxa_texture2D(self.fullres_depth_tex), daxa_i32vec2(px_at_interp), 0).r;
         }
 
-        const daxa_f32vec2 quantized_cs_at_interp = uv_to_cs((px_at_interp + 0.5) / self.fullres_depth_tex_size);
+        const vec2 quantized_cs_at_interp = uv_to_cs((px_at_interp + 0.5) / self.fullres_depth_tex_size);
 
         const float biased_interp_z = self.raymarch_start_cs.z + depth_step_per_z * length(quantized_cs_at_interp - self.raymarch_start_cs.xy);
 
@@ -120,16 +119,18 @@ void OcclusionScreenRayMarch_march(
                 depth_diff);
 
             // if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
-            //     const daxa_f32vec3 hit_radiance = textureLod(daxa_sampler2D(self.fullres_color_bounce_tex, deref(gpu_input).sampler_llc), cs_to_uv(interp_pos_cs.xy), 0).rgb;
-            //     const daxa_f32vec3 prev_sample_radiance = sample_radiance;
-            //     sample_radiance = mix(sample_radiance, hit_radiance, hit);
+            //     const vec3 hit_radiance = fullres_color_bounce_tex.SampleLevel(sampler_llc, cs_to_uv(interp_pos_cs.xy), 0).rgb;
+            //     const vec3 prev_sample_radiance = sample_radiance;
+
+            //     sample_radiance = lerp(sample_radiance, hit_radiance, hit);
+
             //     // Heuristic: don't allow getting _brighter_ from accidental
             //     // hits reused from neighbors. This can cause some darkening,
             //     // but also fixes reduces noise (expecting to hit dark, hitting bright),
             //     // and improves a few cases that otherwise look unshadowed.
             //     visibility *= min(1.0, sRGB_to_luminance(prev_sample_radiance) / sRGB_to_luminance(sample_radiance));
             // } else {
-                visibility *= 1.0 - hit;
+            visibility *= 1.0 - hit;
             // }
 
             if (depth_diff > Z_LAYER_THICKNESS) {
@@ -141,5 +142,4 @@ void OcclusionScreenRayMarch_march(
 
         t += t_step;
     }
-#endif
 }

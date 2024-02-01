@@ -720,20 +720,20 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
             .name = "rtr",
         });
-        auto rtdgi = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "rtdgi",
-        });
-        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 2>{rtr, rtdgi});
+        // auto rtdgi = record_ctx.task_graph.create_transient_image({
+        //     .format = daxa::Format::R16G16B16A16_SFLOAT,
+        //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        //     .name = "rtdgi",
+        // });
+        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 2>{rtr});
 
         auto debug_out_tex = light_gbuffer(
             record_ctx,
             gbuffer_depth,
             denoised_shadow_mask,
             rtr,
-            rtdgi,
-            // rtdgi_irradiance,
+            // rtdgi,
+            rtdgi_irradiance,
             ircache_state,
             // wrc,
             sky_cube,
