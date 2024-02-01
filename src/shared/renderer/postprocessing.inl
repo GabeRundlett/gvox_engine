@@ -17,19 +17,19 @@
 DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 21)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
 // DEFINE_IRCACHE_BINDINGS(5, 6, 7, 8, 9, 10, 11, 12, 13)
 // DEFINE_WRC_BINDINGS(14)
-// DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+// DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheBuffers), ircache_buffers)
 
 DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_grid_meta_buf)
@@ -52,18 +52,18 @@ struct LightGbufferComputePush {
 DAXA_DECL_PUSH_CONSTANT(LightGbufferComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId gbuffer_tex = push.uses.gbuffer_tex;
-daxa_ImageViewId depth_tex = push.uses.depth_tex;
-daxa_ImageViewId shadow_mask_tex = push.uses.shadow_mask_tex;
-daxa_ImageViewId rtr_tex = push.uses.rtr_tex;
-daxa_ImageViewId rtdgi_tex = push.uses.rtdgi_tex;
+daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
+daxa_ImageViewIndex rtr_tex = push.uses.rtr_tex;
+daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
 // IRCACHE and WRC
-// daxa_ImageViewId temporal_output_tex = push.uses.temporal_output_tex;
-daxa_ImageViewId output_tex = push.uses.output_tex;
-daxa_ImageViewId unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
-daxa_ImageViewId sky_cube_tex = push.uses.sky_cube_tex;
-daxa_ImageViewId sky_lut = push.uses.sky_lut;
-daxa_ImageViewId transmittance_lut = push.uses.transmittance_lut;
+// daxa_ImageViewIndex temporal_output_tex = push.uses.temporal_output_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
+daxa_ImageViewIndex unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;
 
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
@@ -81,8 +81,8 @@ daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache
 #if PostprocessingRasterShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster, 3)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, composited_image_id)
-DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
+DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, composited_image_id)
+DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct PostprocessingRasterPush {
     DAXA_TH_BLOB(PostprocessingRaster, uses)
@@ -90,17 +90,17 @@ struct PostprocessingRasterPush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId composited_image_id = push.uses.composited_image_id;
-daxa_ImageViewId render_image = push.uses.render_image;
+daxa_ImageViewIndex composited_image_id = push.uses.composited_image_id;
+daxa_ImageViewIndex render_image = push.uses.render_image;
 #endif
 #endif
 
 #if DebugImageRasterShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster, 4)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
-DAXA_TH_IMAGE_ID(FRAGMENT_SHADER_SAMPLED, REGULAR_2D_ARRAY, cube_image_id)
-DAXA_TH_IMAGE_ID(COLOR_ATTACHMENT, REGULAR_2D, render_image)
+DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
+DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D_ARRAY, cube_image_id)
+DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct DebugImageRasterPush {
     daxa_u32 type;
@@ -111,9 +111,9 @@ struct DebugImageRasterPush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(DebugImageRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId image_id = push.uses.image_id;
-daxa_ImageViewId cube_image_id = push.uses.cube_image_id;
-daxa_ImageViewId render_image = push.uses.render_image;
+daxa_ImageViewIndex image_id = push.uses.image_id;
+daxa_ImageViewIndex cube_image_id = push.uses.cube_image_id;
+daxa_ImageViewIndex render_image = push.uses.render_image;
 #endif
 #endif
 
@@ -176,10 +176,7 @@ inline auto light_gbuffer(
             ti.recorder.set_pipeline(pipeline);
             push.debug_shading_mode = SHADING_MODE_DEFAULT;
             push.debug_show_wrc = 0;
-            push.output_tex_size.x = static_cast<float>(image_info.size.x);
-            push.output_tex_size.y = static_cast<float>(image_info.size.y);
-            push.output_tex_size.z = 1.0f / push.output_tex_size.x;
-            push.output_tex_size.w = 1.0f / push.output_tex_size.y;
+            push.output_tex_size = extent_inv_extent_2d(image_info);
             set_push_constant(ti, push);
             // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});

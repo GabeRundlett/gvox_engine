@@ -21,7 +21,7 @@ struct MeshRasterPush {
     daxa_BufferPtr(MeshVertex) vertex_buffer;
     daxa_BufferPtr(daxa_f32vec3) normal_buffer;
     daxa_RWBufferPtr(daxa_u32) voxel_buffer;
-    daxa_ImageViewId texture_id;
+    daxa_ImageViewIndex texture_id;
     daxa_SamplerId texture_sampler;
 };
 

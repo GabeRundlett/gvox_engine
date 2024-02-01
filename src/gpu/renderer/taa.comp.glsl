@@ -100,7 +100,7 @@ daxa_f32vec4 fetch_reproj(daxa_i32vec2 px) {
 }
 
 #define REMAP_FUNC HistoryRemap_remap
-daxa_f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewId tex, in daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize, bool useCornerTaps) { // , Remap remap = IdentityImageRemap::create()
+daxa_f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewIndex tex, in daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize, bool useCornerTaps) { // , Remap remap = IdentityImageRemap::create()
     // https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
 
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
@@ -169,7 +169,7 @@ daxa_f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewId tex, in daxa_Sa
 }
 #undef REMAP_FUNC
 
-daxa_f32vec4 image_sample_catmull_rom_5tap(daxa_ImageViewId tex, daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize) { // , Remap remap = IdentityImageRemap::create()
+daxa_f32vec4 image_sample_catmull_rom_5tap(daxa_ImageViewIndex tex, daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize) { // , Remap remap = IdentityImageRemap::create()
     return image_sample_catmull_rom_approx(
         tex, linearSampler, uv, texSize, false);
 }
@@ -658,7 +658,7 @@ struct UnjitterSettings {
 
 #define REMAP_FUNC HistoryRemap_remap
 UnjitteredSampleInfo sample_image_unjitter_taa(
-    daxa_ImageViewId img,
+    daxa_ImageViewIndex img,
     daxa_i32vec2 output_px,
     daxa_f32vec2 output_tex_size,
     daxa_f32vec2 sample_offset_pixels,

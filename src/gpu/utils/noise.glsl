@@ -2,7 +2,7 @@
 
 #include <utils/math.glsl>
 
-daxa_f32vec4 noise(daxa_ImageViewId noise_texture, daxa_SamplerId noise_sampler, daxa_f32vec3 x) {
+daxa_f32vec4 noise(daxa_ImageViewIndex noise_texture, daxa_SamplerId noise_sampler, daxa_f32vec3 x) {
     const daxa_f32 offset = 1.0 / 512.0;
     daxa_f32vec4 gz0 = textureGather(daxa_sampler2DArray(noise_texture, noise_sampler), vec3(x.xy / 256.0, (int(floor(x.z)) + 0) & 0xff));
     daxa_f32vec4 gz1 = textureGather(daxa_sampler2DArray(noise_texture, noise_sampler), vec3(x.xy / 256.0, (int(floor(x.z)) + 1) & 0xff));
@@ -39,7 +39,7 @@ struct FractalNoiseConfig {
     daxa_u32 octaves;
 };
 
-daxa_f32vec4 fractal_noise(daxa_ImageViewId noise_texture, daxa_SamplerId noise_sampler, daxa_f32vec3 pos, FractalNoiseConfig config) {
+daxa_f32vec4 fractal_noise(daxa_ImageViewIndex noise_texture, daxa_SamplerId noise_sampler, daxa_f32vec3 pos, FractalNoiseConfig config) {
     const daxa_f32 scale = config.scale;
     daxa_f32 a = 0.0;
     daxa_f32 b = 0.5;

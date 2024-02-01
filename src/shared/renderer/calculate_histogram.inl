@@ -9,7 +9,7 @@
 #if CalculateHistogramComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateHistogramCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), output_buffer)
 DAXA_DECL_TASK_HEAD_END
 struct CalculateHistogramComputePush {
@@ -19,7 +19,7 @@ struct CalculateHistogramComputePush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(CalculateHistogramComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId input_tex = push.uses.input_tex;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
 daxa_RWBufferPtr(daxa_u32) output_buffer = push.uses.output_buffer;
 #endif
 #endif
@@ -40,7 +40,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
 
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, tmp_histogram),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, tmp_histogram),
         },
         .task = [=](daxa::TaskInterface const &ti) {
             ti.recorder.clear_buffer({
@@ -78,8 +78,8 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
 
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, tmp_histogram),
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, dst_histogram),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, tmp_histogram),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, dst_histogram),
         },
         .task = [=](daxa::TaskInterface const &ti) {
             ti.recorder.copy_buffer_to_buffer({

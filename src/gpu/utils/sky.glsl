@@ -262,7 +262,7 @@ daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams para
 }
 
 daxa_f32vec3 get_sun_illuminance(
-    daxa_ImageViewId _transmittance,
+    daxa_ImageViewIndex _transmittance,
     daxa_f32vec3 view_direction,
     daxa_f32 height,
     daxa_f32 zenith_cos_angle,
@@ -287,7 +287,7 @@ daxa_f32vec3 get_sun_illuminance(
 }
 
 daxa_f32vec3 get_atmosphere_illuminance_along_ray(
-    daxa_ImageViewId _skyview,
+    daxa_ImageViewIndex _skyview,
     daxa_f32vec3 ray,
     daxa_f32vec3 world_camera_position,
     daxa_f32vec3 sun_direction,
@@ -332,7 +332,7 @@ struct AtmosphereLightingInfo {
     daxa_f32vec3 sun_direct_illuminance;
 };
 
-AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewId _skyview, daxa_ImageViewId _transmittance, daxa_f32vec3 view_direction, daxa_f32vec3 normal) {
+AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, daxa_f32vec3 view_direction, daxa_f32vec3 normal) {
     const daxa_f32vec3 world_camera_position = get_sky_world_camera_position();
     const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 
@@ -357,4 +357,15 @@ AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewId _skyview, daxa_I
         atmosphere_normal_illuminance,
         atmosphere_view_illuminance,
         direct_sun_illuminance);
+}
+
+vec3 sample_sun_direction(vec2 urand, bool soft) {
+    if (soft && PER_VOXEL_NORMALS == 0) {
+        float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
+        if (sun_angular_radius_cos < 1.0) {
+            const mat3 basis = build_orthonormal_basis(normalize(SUN_DIRECTION));
+            return basis * uniform_sample_cone(urand, sun_angular_radius_cos);
+        }
+    }
+    return SUN_DIRECTION;
 }

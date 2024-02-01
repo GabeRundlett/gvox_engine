@@ -185,7 +185,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
 
         mip_task_list.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image_mip_view),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image_mip_view),
             },
             .task = [texture_staging_buffer, task_image_mip_view, sx, sy](daxa::TaskInterface const &ti) {
                 ti.recorder.copy_buffer_to_image({
@@ -203,8 +203,8 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
             auto view_b = texture->task_image.view().view({.base_mip_level = i + 1});
             mip_task_list.add_task({
                 .attachments = {
-                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, view_a),
-                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, view_b),
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, view_a),
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, view_b),
                 },
                 .task = [=, &device](daxa::TaskInterface const &ti) {
                     auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
@@ -240,7 +240,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         }
         mip_task_list.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
+                daxa::inl_attachment(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
             },
             .task = [](daxa::TaskInterface const &) {},
             .name = "Transition",

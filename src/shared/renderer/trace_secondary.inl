@@ -6,11 +6,11 @@
 DAXA_DECL_TASK_HEAD_BEGIN(TraceSecondaryCompute, 6 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, shadow_mask)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, shadow_mask)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct TraceSecondaryComputePush {
     DAXA_TH_BLOB(TraceSecondaryCompute, uses)
@@ -19,11 +19,11 @@ struct TraceSecondaryComputePush {
 DAXA_DECL_PUSH_CONSTANT(TraceSecondaryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId shadow_mask = push.uses.shadow_mask;
+daxa_ImageViewIndex shadow_mask = push.uses.shadow_mask;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_ImageViewId blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 #endif
 #endif
 

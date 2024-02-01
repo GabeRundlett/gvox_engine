@@ -9,11 +9,11 @@
 DAXA_DECL_TASK_HEAD_BEGIN(TaaReprojectCompute, 7)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, reprojected_history_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, closest_velocity_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, closest_velocity_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaReprojectComputePush {
     daxa_f32vec2 input_tex_size;
@@ -24,21 +24,21 @@ struct TaaReprojectComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaReprojectComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId history_tex = push.uses.history_tex;
-daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
-daxa_ImageViewId depth_image = push.uses.depth_image;
-daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
-daxa_ImageViewId closest_velocity_img = push.uses.closest_velocity_img;
+daxa_ImageViewIndex history_tex = push.uses.history_tex;
+daxa_ImageViewIndex reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewIndex closest_velocity_img = push.uses.closest_velocity_img;
 #endif
 #endif
 #if TaaFilterInputComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterInputCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_deviation_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_input_deviation_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaFilterInputComputePush {
     daxa_f32vec2 input_tex_size;
@@ -49,18 +49,18 @@ struct TaaFilterInputComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaFilterInputComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId input_image = push.uses.input_image;
-daxa_ImageViewId depth_image = push.uses.depth_image;
-daxa_ImageViewId filtered_input_img = push.uses.filtered_input_img;
-daxa_ImageViewId filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+daxa_ImageViewIndex input_image = push.uses.input_image;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewIndex filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
 #endif
 #endif
 #if TaaFilterHistoryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaFilterHistoryCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, filtered_history_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaFilterHistoryComputePush {
     daxa_f32vec2 input_tex_size;
@@ -71,24 +71,24 @@ struct TaaFilterHistoryComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaFilterHistoryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
-daxa_ImageViewId filtered_history_img = push.uses.filtered_history_img;
+daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewIndex filtered_history_img = push.uses.filtered_history_img;
 #endif
 #endif
 #if TaaInputProbComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaInputProbCompute, 12)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_deviation_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_history_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, input_prob_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_input_deviation_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, filtered_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, input_prob_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaInputProbComputePush {
     daxa_f32vec2 input_tex_size;
@@ -99,24 +99,24 @@ struct TaaInputProbComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaInputProbComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId input_image = push.uses.input_image;
-daxa_ImageViewId filtered_input_img = push.uses.filtered_input_img;
-daxa_ImageViewId filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
-daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
-daxa_ImageViewId filtered_history_img = push.uses.filtered_history_img;
-daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
-daxa_ImageViewId depth_image = push.uses.depth_image;
-daxa_ImageViewId smooth_var_history_tex = push.uses.smooth_var_history_tex;
-daxa_ImageViewId velocity_history_tex = push.uses.velocity_history_tex;
-daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
+daxa_ImageViewIndex input_image = push.uses.input_image;
+daxa_ImageViewIndex filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewIndex filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewIndex filtered_history_img = push.uses.filtered_history_img;
+daxa_ImageViewIndex reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex smooth_var_history_tex = push.uses.smooth_var_history_tex;
+daxa_ImageViewIndex velocity_history_tex = push.uses.velocity_history_tex;
+daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
 #endif
 #endif
 #if TaaProbFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilterCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered1_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered1_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaProbFilterComputePush {
     daxa_f32vec2 input_tex_size;
@@ -127,16 +127,16 @@ struct TaaProbFilterComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaProbFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
-daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
+daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
+daxa_ImageViewIndex prob_filtered1_img = push.uses.prob_filtered1_img;
 #endif
 #endif
 #if TaaProbFilter2ComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaProbFilter2Compute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prob_filtered1_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered2_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prob_filtered1_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, prob_filtered2_img)
 DAXA_DECL_TASK_HEAD_END
 struct TaaProbFilter2ComputePush {
     daxa_f32vec2 input_tex_size;
@@ -147,26 +147,26 @@ struct TaaProbFilter2ComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaProbFilter2ComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId prob_filtered1_img = push.uses.prob_filtered1_img;
-daxa_ImageViewId prob_filtered2_img = push.uses.prob_filtered2_img;
+daxa_ImageViewIndex prob_filtered1_img = push.uses.prob_filtered1_img;
+daxa_ImageViewIndex prob_filtered2_img = push.uses.prob_filtered2_img;
 #endif
 #endif
 #if TaaComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TaaCompute, 14)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, closest_velocity_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, this_frame_output_img)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, smooth_var_output_tex)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_velocity_output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_history_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_map)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, closest_velocity_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, smooth_var_history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_prob_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, this_frame_output_img)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, smooth_var_output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, temporal_velocity_output_tex)
 DAXA_DECL_TASK_HEAD_END
 struct TaaComputePush {
     daxa_f32vec2 input_tex_size;
@@ -177,18 +177,18 @@ struct TaaComputePush {
 DAXA_DECL_PUSH_CONSTANT(TaaComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId input_image = push.uses.input_image;
-daxa_ImageViewId reprojected_history_img = push.uses.reprojected_history_img;
-daxa_ImageViewId reprojection_map = push.uses.reprojection_map;
-daxa_ImageViewId closest_velocity_img = push.uses.closest_velocity_img;
-daxa_ImageViewId velocity_history_tex = push.uses.velocity_history_tex;
-daxa_ImageViewId depth_image = push.uses.depth_image;
-daxa_ImageViewId smooth_var_history_tex = push.uses.smooth_var_history_tex;
-daxa_ImageViewId input_prob_img = push.uses.input_prob_img;
-daxa_ImageViewId temporal_output_tex = push.uses.temporal_output_tex;
-daxa_ImageViewId this_frame_output_img = push.uses.this_frame_output_img;
-daxa_ImageViewId smooth_var_output_tex = push.uses.smooth_var_output_tex;
-daxa_ImageViewId temporal_velocity_output_tex = push.uses.temporal_velocity_output_tex;
+daxa_ImageViewIndex input_image = push.uses.input_image;
+daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewIndex reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewIndex closest_velocity_img = push.uses.closest_velocity_img;
+daxa_ImageViewIndex velocity_history_tex = push.uses.velocity_history_tex;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex smooth_var_history_tex = push.uses.smooth_var_history_tex;
+daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
+daxa_ImageViewIndex temporal_output_tex = push.uses.temporal_output_tex;
+daxa_ImageViewIndex this_frame_output_img = push.uses.this_frame_output_img;
+daxa_ImageViewIndex smooth_var_output_tex = push.uses.smooth_var_output_tex;
+daxa_ImageViewIndex temporal_velocity_output_tex = push.uses.temporal_velocity_output_tex;
 #endif
 #endif
 

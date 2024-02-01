@@ -58,10 +58,10 @@ auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffe
     auto depth_image = gbuffer_depth.depth.current().view();
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, color_image),
-            daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, depth_image),
-            daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, velocity_image),
-            daxa::inl_atch(daxa::TaskImageAccess::COMPUTE_SHADER_STORAGE_WRITE_ONLY, daxa::ImageViewType::REGULAR_2D, output_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, color_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, depth_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, velocity_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_STORAGE_WRITE_ONLY, daxa::ImageViewType::REGULAR_2D, output_image),
         },
         .task = [=, this](daxa::TaskInterface const &ti) {
             auto const &color_use = ti.get(daxa::TaskImageAttachmentIndex{0});

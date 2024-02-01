@@ -41,7 +41,7 @@ namespace {
         auto use_count = task_image_views.size();
         uses.reserve(use_count);
         for (auto const &task_image : task_image_views) {
-            uses.push_back(daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image));
+            uses.push_back(daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image));
         }
         task_graph.add_task({
             .attachments = std::move(uses),
@@ -71,6 +71,15 @@ namespace {
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});
+    }
+
+    auto extent_inv_extent_2d(daxa::ImageInfo const &image_info) -> daxa_f32vec4 {
+        auto result = daxa_f32vec4{};
+        result.x = static_cast<float>(image_info.size.x);
+        result.y = static_cast<float>(image_info.size.y);
+        result.z = 1.0f / result.x;
+        result.w = 1.0f / result.y;
+        return result;
     }
 } // namespace
 

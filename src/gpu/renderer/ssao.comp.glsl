@@ -13,7 +13,7 @@ daxa_f32vec4 output_tex_size;
 #define USE_SSGI_FACING_CORRECTION 1
 #define USE_AO_ONLY 1
 
-#define WORLDSPACE_SSAO 1
+#define WORLDSPACE_SSAO 0
 
 #if WORLDSPACE_SSAO
 #define SSGI_KERNEL_RADIUS 5
@@ -92,7 +92,7 @@ void main() {
     daxa_u32vec2 px = gl_GlobalInvocationID.xy;
     output_tex_size.xy = deref(gpu_input).frame_dim;
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-    daxa_u32vec2 offset = get_downscale_offset(gpu_input);
+    daxa_u32vec2 offset = HALFRES_SUBSAMPLE_OFFSET;
     daxa_f32vec2 uv = get_uv(px * SHADING_SCL + offset, output_tex_size);
     output_tex_size *= vec4((1.0 / SHADING_SCL).xx, SHADING_SCL.xx);
 

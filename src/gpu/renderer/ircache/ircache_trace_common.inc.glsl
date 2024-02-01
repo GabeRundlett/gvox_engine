@@ -83,7 +83,6 @@ IrcacheTraceResult ircache_trace(Vertex entry, DiffuseBrdf brdf, SampleParams sa
         gbuffer_raytrace_ = with_cone(gbuffer_raytrace_, RayCone_from_spread_angle(0.1));
         gbuffer_raytrace_ = with_cull_back_faces(gbuffer_raytrace_, false);
         gbuffer_raytrace_ = with_path_length(gbuffer_raytrace_, path_length + 1); // +1 because this is indirect light
-        gbuffer_raytrace_ = with_cull_back_faces(gbuffer_raytrace_, false);
         const GbufferPathVertex primary_hit = trace(gbuffer_raytrace_, VOXELS_BUFFER_PTRS);
 
         if (primary_hit.is_hit) {
@@ -170,7 +169,8 @@ IrcacheTraceResult ircache_trace(Vertex entry, DiffuseBrdf brdf, SampleParams sa
             // }
 
             if (SAMPLE_IRCACHE_AT_LAST_VERTEX && path_length + 1 == MAX_PATH_LENGTH) {
-                IrcacheLookupParams new_params = IrcacheLookupParams_create(entry.position, primary_hit.position, gbuffer.normal);
+                IrcacheLookupParams new_params = IrcacheLookupParams_create(
+                    entry.position, primary_hit.position, gbuffer.normal);
                 new_params = with_query_rank(new_params, 1 + ircache_entry_life_to_rank(life));
                 irradiance_sum += lookup(new_params, rng) * throughput * gbuffer.albedo;
             }

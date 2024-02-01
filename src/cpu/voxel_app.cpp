@@ -385,8 +385,8 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
     task_list.use_persistent_buffer(task_staging_voxel_buffer);
     task_list.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_gpu_input_buffer),
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_vertex_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_gpu_input_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_vertex_buffer),
         },
         .task = [&](daxa::TaskInterface const &ti) {
             {
@@ -433,7 +433,7 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
     });
     task_list.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_voxel_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_voxel_buffer),
         },
         .task = [&](daxa::TaskInterface const &ti) {
             ti.recorder.clear_buffer({
@@ -447,8 +447,8 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
     });
     task_list.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::COMPUTE_SHADER_READ, task_gpu_input_buffer),
-            daxa::inl_atch(daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE, task_vertex_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::COMPUTE_SHADER_READ, task_gpu_input_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE, task_vertex_buffer),
         },
         .task = [&](daxa::TaskInterface const &ti) {
             for (auto const &mesh : mesh_model.meshes) {
@@ -472,10 +472,10 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
     });
     task_list.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_gpu_input_buffer),
-            daxa::inl_atch(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_vertex_buffer),
-            daxa::inl_atch(daxa::TaskBufferAccess::FRAGMENT_SHADER_WRITE, task_voxel_buffer),
-            daxa::inl_atch(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, task_image_id.view().view({.base_mip_level = 0, .level_count = 4})),
+            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_gpu_input_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_vertex_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_WRITE, task_voxel_buffer),
+            daxa::inl_attachment(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, task_image_id.view().view({.base_mip_level = 0, .level_count = 4})),
         },
         .task = [&](daxa::TaskInterface const &ti) {
             auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({.render_area = {.width = mesh_gpu_input.size.x, .height = mesh_gpu_input.size.y}});
@@ -491,7 +491,7 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
                         .vertex_buffer = device.get_device_address(mesh.vertex_buffer).value(),
                         .normal_buffer = device.get_device_address(mesh.normal_buffer).value(),
                         .voxel_buffer = device.get_device_address(voxel_buffer).value(),
-                        .texture_id = mesh.textures[0]->image_id.default_view(),
+                        .texture_id = {.value = static_cast<uint32_t>(mesh.textures[0]->image_id.default_view().index)},
                         .texture_sampler = texture_sampler,
                     });
                 renderpass_recorder.draw({.vertex_count = static_cast<u32>(mesh.verts.size())});
@@ -502,8 +502,8 @@ auto VoxelApp::open_mesh_model() -> GvoxModelData {
     });
     task_list.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, task_voxel_buffer),
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_staging_voxel_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, task_voxel_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_staging_voxel_buffer),
         },
         .task = [&](daxa::TaskInterface const &ti) {
             ti.recorder.copy_buffer_to_buffer({
@@ -870,7 +870,7 @@ void VoxelApp::update_seeded_value_noise() {
     temp_task_graph.use_persistent_image(gpu_app.task_value_noise_image);
     temp_task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, gpu_app.task_value_noise_image.view().view({.layer_count = 256})),
+            daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, gpu_app.task_value_noise_image.view().view({.layer_count = 256})),
         },
         .task = [this](daxa::TaskInterface const &ti) {
             auto staging_buffer = device.create_buffer({
@@ -954,7 +954,7 @@ void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
     temp_task_graph.use_persistent_buffer(gpu_app.task_gvox_model_buffer);
     temp_task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_app.task_gvox_model_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_app.task_gvox_model_buffer),
         },
         .task = [this](daxa::TaskInterface const &ti) {
             if (!gpu_app.prev_gvox_model_buffer.is_empty()) {
@@ -1059,7 +1059,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
 
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_atch(daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
         },
         .task = [this](daxa::TaskInterface const &ti) {
             imgui_renderer.record_commands(ImGui::GetDrawData(), ti.recorder, swapchain_image, window_size.x, window_size.y);

@@ -105,18 +105,6 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
             particle_spawn(self, gl_GlobalInvocationID.x);
         }
     } else {
-#if VoxelParticleSimComputeShader
-        uint dispatch_idx = gl_GlobalInvocationID.x;
-        if (dispatch_idx < deref(ircache_meta_buf).tracing_alloc_count) {
-            self.flags = PARTICLE_ALIVE_FLAG;
-            const uint entry_idx = deref(ircache_entry_indirection_buf[dispatch_idx]);
-            VertexPacked packed_entry = deref(ircache_spatial_buf[entry_idx]);
-            const Vertex entry = unpack_vertex(packed_entry);
-            self.pos = entry.position;
-        } else {
-            self.flags = 0;
-        }
-#endif
         self.vel = vec3(0);
     }
 }

@@ -12,15 +12,15 @@ struct OcclusionScreenRayMarch {
 
     bool use_halfres_depth;
     daxa_f32vec2 halfres_depth_tex_size;
-    daxa_ImageViewId halfres_depth_tex;
+    daxa_ImageViewIndex halfres_depth_tex;
 
-    daxa_ImageViewId fullres_depth_tex;
+    daxa_ImageViewIndex fullres_depth_tex;
 
     bool use_color_bounce;
-    daxa_ImageViewId fullres_color_bounce_tex;
+    daxa_ImageViewIndex fullres_color_bounce_tex;
 };
 
-void OcclusionScreenRayMarch_with_color_bounce(inout OcclusionScreenRayMarch self, daxa_ImageViewId _fullres_color_bounce_tex) {
+void OcclusionScreenRayMarch_with_color_bounce(inout OcclusionScreenRayMarch self, daxa_ImageViewIndex _fullres_color_bounce_tex) {
     self.use_color_bounce = true;
     self.fullres_color_bounce_tex = _fullres_color_bounce_tex;
 }
@@ -32,7 +32,7 @@ void OcclusionScreenRayMarch_with_max_sample_count(OcclusionScreenRayMarch self,
 void OcclusionScreenRayMarch_with_halfres_depth(
     inout OcclusionScreenRayMarch self,
     daxa_f32vec2 _halfres_depth_tex_size,
-    daxa_ImageViewId _halfres_depth_tex) {
+    daxa_ImageViewIndex _halfres_depth_tex) {
     self.use_halfres_depth = true;
     self.halfres_depth_tex_size = _halfres_depth_tex_size;
     self.halfres_depth_tex = _halfres_depth_tex;
@@ -40,7 +40,7 @@ void OcclusionScreenRayMarch_with_halfres_depth(
 
 void OcclusionScreenRayMarch_with_fullres_depth(
     inout OcclusionScreenRayMarch self,
-    daxa_ImageViewId _fullres_depth_tex) {
+    daxa_ImageViewIndex _fullres_depth_tex) {
     self.use_halfres_depth = false;
     self.fullres_depth_tex = _fullres_depth_tex;
 }

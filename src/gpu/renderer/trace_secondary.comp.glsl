@@ -7,17 +7,6 @@
 
 #if TraceSecondaryComputeShader
 
-vec3 sample_sun_direction(vec2 urand) {
-#if !PER_VOXEL_NORMALS
-    float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
-    if (sun_angular_radius_cos < 1.0) {
-        const mat3 basis = build_orthonormal_basis(normalize(SUN_DIRECTION));
-        return basis * uniform_sample_cone(urand, sun_angular_radius_cos);
-    }
-#endif
-    return SUN_DIRECTION;
-}
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).frame_dim, 0, 0);
@@ -43,7 +32,7 @@ void main() {
 
     daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, deref(gpu_input).frame_index) & ivec3(127, 127, 63), 0).yz * 255.0 / 256.0 + 0.5 / 256.0;
 
-    daxa_f32vec3 ray_dir = sample_sun_direction(blue_noise);
+    daxa_f32vec3 ray_dir = sample_sun_direction(blue_noise, true);
 
     uint hit = 0;
     if (depth != 0.0) {

@@ -20,7 +20,7 @@ RayCone RayCone_from_width_spread_angle(float width, float spread_angle) {
     return res;
 }
 
-RayCone propagate(inout RayCone self, float surface_spread_angle, float hit_t) {
+RayCone propagate(RayCone self, float surface_spread_angle, float hit_t) {
     RayCone res;
     res.width = self.spread_angle * hit_t + self.width;
     res.spread_angle = self.spread_angle + surface_spread_angle;

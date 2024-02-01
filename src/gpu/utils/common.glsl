@@ -15,27 +15,27 @@ float length_squared(vec2 v) { return dot(v, v); }
 float length_squared(vec3 v) { return dot(v, v); }
 float length_squared(vec4 v) { return dot(v, v); }
 
-daxa_f32 saturate(daxa_f32 x) { return clamp(x, 0.0, 1.0); }
-daxa_f32vec2 saturate(daxa_f32vec2 x) { return clamp(x, daxa_f32vec2(0.0), daxa_f32vec2(1.0)); }
-daxa_f32vec3 saturate(daxa_f32vec3 x) { return clamp(x, daxa_f32vec3(0.0), daxa_f32vec3(1.0)); }
-daxa_f32vec4 saturate(daxa_f32vec4 x) { return clamp(x, daxa_f32vec4(0.0), daxa_f32vec4(1.0)); }
-daxa_f32 nonzero_sign(daxa_f32 x) {
+float saturate(float x) { return clamp(x, 0.0, 1.0); }
+vec2 saturate(vec2 x) { return clamp(x, vec2(0.0), vec2(1.0)); }
+vec3 saturate(vec3 x) { return clamp(x, vec3(0.0), vec3(1.0)); }
+vec4 saturate(vec4 x) { return clamp(x, vec4(0.0), vec4(1.0)); }
+float nonzero_sign(float x) {
     if (x < 0.0)
         return -1.0;
     return 1.0;
 }
-daxa_f32vec2 nonzero_sign(daxa_f32vec2 x) {
-    return daxa_f32vec2(nonzero_sign(x.x), nonzero_sign(x.y));
+vec2 nonzero_sign(vec2 x) {
+    return vec2(nonzero_sign(x.x), nonzero_sign(x.y));
 }
-daxa_f32vec3 nonzero_sign(daxa_f32vec3 x) {
-    return daxa_f32vec3(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z));
+vec3 nonzero_sign(vec3 x) {
+    return vec3(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z));
 }
-daxa_f32vec4 nonzero_sign(daxa_f32vec4 x) {
-    return daxa_f32vec4(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z), nonzero_sign(x.w));
+vec4 nonzero_sign(vec4 x) {
+    return vec4(nonzero_sign(x.x), nonzero_sign(x.y), nonzero_sign(x.z), nonzero_sign(x.w));
 }
-daxa_f32 deg2rad(daxa_f32 d) {
+float deg2rad(float d) {
     return d * M_PI / 180.0;
 }
-daxa_f32 rad2deg(daxa_f32 r) {
+float rad2deg(float r) {
     return r * 180.0 / M_PI;
 }

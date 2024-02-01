@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utils/common.glsl>
+
 float sRGB_to_luminance(vec3 col) {
     return dot(col, vec3(0.2126, 0.7152, 0.0722));
 }

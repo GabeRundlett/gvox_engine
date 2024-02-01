@@ -55,23 +55,23 @@
 #define USE_SPLIT_RT_NEAR_FIELD 1
 const bool USE_SHARPENING_HISTORY_FETCH = true;
 
-daxa_f32vec4 decode_hit_normal_and_dot(daxa_f32vec4 val) {
-    return daxa_f32vec4(val.xyz * 2 - 1, val.w);
+vec4 decode_hit_normal_and_dot(vec4 val) {
+    return vec4(val.xyz * 2 - 1, val.w);
 }
 
-daxa_f32vec4 encode_hit_normal_and_dot(daxa_f32vec4 val) {
-    return daxa_f32vec4(val.xyz * 0.5 + 0.5, val.w);
+vec4 encode_hit_normal_and_dot(vec4 val) {
+    return vec4(val.xyz * 0.5 + 0.5, val.w);
 }
 
 struct TemporalReservoirOutput {
     float depth;
-    daxa_f32vec3 ray_hit_offset_ws;
+    vec3 ray_hit_offset_ws;
     float luminance;
-    daxa_f32vec3 hit_normal_ws;
+    vec3 hit_normal_ws;
 };
 
-TemporalReservoirOutput TemporalReservoirOutput_from_raw(daxa_u32vec4 raw) {
-    daxa_f32vec4 ray_hit_offset_and_luminance = daxa_f32vec4(
+TemporalReservoirOutput TemporalReservoirOutput_from_raw(uvec4 raw) {
+    vec4 ray_hit_offset_and_luminance = vec4(
         unpackHalf2x16(raw.y),
         unpackHalf2x16(raw.z));
 
@@ -83,24 +83,24 @@ TemporalReservoirOutput TemporalReservoirOutput_from_raw(daxa_u32vec4 raw) {
     return res;
 }
 
-daxa_u32vec4 TemporalReservoirOutput_as_raw(inout TemporalReservoirOutput self) {
-    daxa_u32vec4 raw;
+uvec4 TemporalReservoirOutput_as_raw(inout TemporalReservoirOutput self) {
+    uvec4 raw;
     raw.x = floatBitsToUint(self.depth);
     raw.y = packHalf2x16(self.ray_hit_offset_ws.xy);
-    raw.z = packHalf2x16(daxa_f32vec2(self.ray_hit_offset_ws.z, self.luminance));
+    raw.z = packHalf2x16(vec2(self.ray_hit_offset_ws.z, self.luminance));
     raw.w = floatBitsToUint(pack_normal_11_10_11(self.hit_normal_ws));
     return raw;
 }
 
-// daxa_f32vec2 r2_sequence(uint i) {
+// vec2 r2_sequence(uint i) {
 //     const float a1 = 1.0 / M_PLASTIC;
 //     const float a2 = 1.0 / (M_PLASTIC * M_PLASTIC);
-//     return fract(daxa_f32vec2(a1, a2) * daxa_f32vec2(i) + 0.5);
+//     return fract(vec2(a1, a2) * vec2(i) + 0.5);
 // }
-daxa_f32vec4 blue_noise_for_pixel(daxa_ImageViewId blue_noise_image, daxa_u32vec2 px, uint n) {
-    // const daxa_u32vec2 tex_dims = daxa_u32vec2(128, 128);
-    // const daxa_u32vec2 offset = daxa_u32vec2(r2_sequence(n) * tex_dims);
-    daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_image), ivec3(px, n) & ivec3(127, 127, 63), 0).xy;
+vec4 blue_noise_for_pixel(daxa_ImageViewIndex blue_noise_image, uvec2 px, uint n) {
+    // const uvec2 tex_dims = uvec2(128, 128);
+    // const uvec2 offset = uvec2(r2_sequence(n) * tex_dims);
+    vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_image), ivec3(px, n) & ivec3(127, 127, 63), 0).xy;
     return blue_noise.xyxy;
 }
 
@@ -133,35 +133,35 @@ bool is_rtdgi_tracing_frame() {
 #include <utils/sky.glsl>
 
 struct TraceResult {
-    daxa_f32vec3 out_value;
-    daxa_f32vec3 hit_normal_ws;
+    vec3 out_value;
+    vec3 hit_normal_ws;
     float hit_t;
     float pdf;
     bool is_hit;
 };
 
-TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng, RayDesc outgoing_ray) {
-    daxa_f32vec3 total_radiance = 0.0.xxx;
-    daxa_f32vec3 hit_normal_ws = -outgoing_ray.Direction;
+TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgoing_ray) {
+    vec3 total_radiance = 0.0.xxx;
+    vec3 hit_normal_ws = -outgoing_ray.Direction;
 
     float hit_t = outgoing_ray.TMax;
     float pdf = max(0.0, 1.0 / (dot(normal_ws, outgoing_ray.Direction) * 2.0 * M_PI));
 
-    daxa_f32vec3 ray_pos = outgoing_ray.Origin;
+    vec3 ray_pos = outgoing_ray.Origin;
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, outgoing_ray.Direction, MAX_STEPS, outgoing_ray.TMax, 0.0, true), ray_pos);
 
     TraceResult result;
     result.is_hit = (trace_result.dist != outgoing_ray.TMax);
 
     if (result.is_hit) {
-        // total_radiance += daxa_f32vec3(0);
+        // total_radiance += vec3(0);
         hit_t = trace_result.dist;
         hit_normal_ws = trace_result.nrm;
-        daxa_f32vec3 hit_albedo = uint_rgba8_to_f32vec4(trace_result.voxel_data).rgb;
+        vec3 hit_albedo = uint_rgba8_to_f32vec4(trace_result.voxel_data).rgb;
 
         // Project the sample into clip space, and check if it's on-screen
-        const daxa_f32vec3 primary_hit_cs = position_world_to_sample(globals, ray_pos);
-        const daxa_f32vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
+        const vec3 primary_hit_cs = position_world_to_sample(globals, ray_pos);
+        const vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
         const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0).r;
         bool is_on_screen =
             true &&
@@ -173,7 +173,7 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
             ;
 
         // If it is on-screen, we'll try to use its reprojected radiance from the previous frame
-        daxa_f32vec4 reprojected_radiance = daxa_f32vec4(0);
+        vec4 reprojected_radiance = vec4(0);
         if (is_on_screen) {
             reprojected_radiance =
                 textureLod(daxa_sampler2D(reprojected_gi_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0) * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA;
@@ -184,19 +184,19 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
 
         // gbuffer.roughness = lerp(gbuffer.roughness, 1.0, ROUGHNESS_BIAS);
         const daxa_f32mat3x3 tangent_to_world = tbn_from_normal(hit_normal_ws);
-        const daxa_f32vec3 wo = (-outgoing_ray.Direction * tangent_to_world);
+        const vec3 wo = (-outgoing_ray.Direction * tangent_to_world);
         // const LayeredBrdf brdf = LayeredBrdf::from_gbuffer_ndotv(gbuffer, wo.z);
 
-        daxa_f32vec3 sun_radiance = daxa_f32vec3(1); // SUN_COL;
+        vec3 sun_radiance = vec3(1); // SUN_COL;
         {
-            const daxa_f32vec3 to_light_norm = SUN_DIRECTION;
+            const vec3 to_light_norm = SUN_DIRECTION;
             ray_pos += to_light_norm * 1.0e-4;
             VoxelTraceResult sun_trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, to_light_norm, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
             const bool is_shadowed = (sun_trace_result.dist != outgoing_ray.TMax);
 
-            const daxa_f32vec3 wi = (to_light_norm * tangent_to_world);
-            const daxa_f32vec3 brdf_value = max(daxa_f32vec3(0.0), dot(hit_normal_ws, to_light_norm)); // brdf.evaluate(wo, wi) * max(0.0, wi.z);
-            const daxa_f32vec3 light_radiance = select(is_shadowed, daxa_f32vec3(0.0), sun_radiance);
+            const vec3 wi = (to_light_norm * tangent_to_world);
+            const vec3 brdf_value = max(vec3(0.0), dot(hit_normal_ws, to_light_norm)); // brdf.evaluate(wo, wi) * max(0.0, wi.z);
+            const vec3 light_radiance = select(is_shadowed, vec3(0.0), sun_radiance);
             total_radiance += brdf_value * light_radiance;
         }
 
@@ -208,7 +208,7 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
 #endif
         } else {
             // if (USE_IRCACHE) {
-            //     const daxa_f32vec3 gi = IrcacheLookupParams::create(
+            //     const vec3 gi = IrcacheLookupParams::create(
             //         outgoing_ray.Origin,
             //         primary_hit.position,
             //         gbuffer.normal)
@@ -221,7 +221,7 @@ TraceResult do_the_thing(daxa_u32vec2 px, daxa_f32vec3 normal_ws, inout uint rng
         // total_radiance += sample_sky_ambient(outgoing_ray.Direction);
     }
 
-    daxa_f32vec3 out_value = total_radiance;
+    vec3 out_value = total_radiance;
 
     result.out_value = out_value;
     result.hit_t = hit_t;
@@ -239,33 +239,33 @@ DAXA_DECL_PUSH_CONSTANT(RtdgiTemporalPush, push)
 
 #define linear_to_working linear_rgb_to_crunched_luma_chroma
 #define working_to_linear crunched_luma_chroma_to_linear_rgb
-float working_luma(daxa_f32vec3 v) { return v.x; }
+float working_luma(vec3 v) { return v.x; }
 
 #define USE_TEMPORAL_FILTER 1
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
 #if !USE_TEMPORAL_FILTER
-    safeImageStore(output_tex, daxa_i32vec2(px), max(0.0, safeTexelFetch(input_tex, daxa_i32vec2(px), 0)));
-    safeImageStore(history_output_tex, daxa_i32vec2(px), daxa_f32vec4(max(0.0, safeTexelFetch(input_tex, daxa_i32vec2(px), 0).rgb), 32));
+    safeImageStore(output_tex, ivec2(px), max(0.0, safeTexelFetch(input_tex, ivec2(px), 0)));
+    safeImageStore(history_output_tex, ivec2(px), vec4(max(0.0, safeTexelFetch(input_tex, ivec2(px), 0).rgb), 32));
     return;
 #endif
 
-    daxa_f32vec2 uv = get_uv(px, push.output_tex_size);
+    vec2 uv = get_uv(px, push.output_tex_size);
 
-    daxa_f32vec4 center = linear_to_working(safeTexelFetch(input_tex, daxa_i32vec2(px), 0));
-    daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(px), 0);
+    vec4 center = linear_to_working(safeTexelFetch(input_tex, ivec2(px), 0));
+    vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(px), 0);
 
-    const daxa_f32vec4 history_mult = daxa_f32vec4((FRAME_CONSTANTS_PRE_EXPOSURE_DELTA).xxx, 1);
-    daxa_f32vec4 history = linear_to_working(safeTexelFetch(history_tex, daxa_i32vec2(px), 0) * history_mult);
+    const vec4 history_mult = vec4((FRAME_CONSTANTS_PRE_EXPOSURE_DELTA).xxx, 1);
+    vec4 history = linear_to_working(safeTexelFetch(history_tex, ivec2(px), 0) * history_mult);
 
-    // safeImageStore(output_tex, daxa_i32vec2(px), center);
+    // safeImageStore(output_tex, ivec2(px), center);
     // return;
 
 #if 1
-    daxa_f32vec4 vsum = 0.0.xxxx;
-    daxa_f32vec4 vsum2 = 0.0.xxxx;
+    vec4 vsum = 0.0.xxxx;
+    vec4 vsum2 = 0.0.xxxx;
     float wsum = 0.0;
     float hist_diff = 0.0;
     float hist_vsum = 0.0;
@@ -277,8 +277,8 @@ void main() {
     {
         for (int y = -k; y <= k; ++y) {
             for (int x = -k; x <= k; ++x) {
-                daxa_f32vec4 neigh = linear_to_working(safeTexelFetch(input_tex, daxa_i32vec2(px + daxa_i32vec2(x, y)), 0));
-                daxa_f32vec4 hist_neigh = linear_to_working(safeTexelFetch(history_tex, daxa_i32vec2(px + daxa_i32vec2(x, y)), 0) * history_mult);
+                vec4 neigh = linear_to_working(safeTexelFetch(input_tex, ivec2(px + ivec2(x, y)), 0));
+                vec4 hist_neigh = linear_to_working(safeTexelFetch(history_tex, ivec2(px + ivec2(x, y)), 0) * history_mult);
 
                 float neigh_luma = working_luma(neigh.rgb);
                 float hist_luma = working_luma(hist_neigh.rgb);
@@ -298,22 +298,22 @@ void main() {
         }
     }
 
-    daxa_f32vec4 ex = vsum / wsum;
-    daxa_f32vec4 ex2 = vsum2 / wsum;
-    daxa_f32vec4 dev = sqrt(max(0.0.xxxx, ex2 - ex * ex));
+    vec4 ex = vsum / wsum;
+    vec4 ex2 = vsum2 / wsum;
+    vec4 dev = sqrt(max(0.0.xxxx, ex2 - ex * ex));
 
     hist_diff /= wsum;
     hist_vsum /= wsum;
     hist_vsum2 /= wsum;
     // dev_sum /= wsum;
 
-    const daxa_f32vec2 moments_history =
-        textureLod(daxa_sampler2D(variance_history_tex, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).xy * daxa_f32vec2(FRAME_CONSTANTS_PRE_EXPOSURE_DELTA, FRAME_CONSTANTS_PRE_EXPOSURE_DELTA * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA);
+    const vec2 moments_history =
+        textureLod(daxa_sampler2D(variance_history_tex, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).xy * vec2(FRAME_CONSTANTS_PRE_EXPOSURE_DELTA, FRAME_CONSTANTS_PRE_EXPOSURE_DELTA * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA);
 
     // const float center_luma = working_luma(center.rgb);
     const float center_luma = working_luma(center.rgb) + (hist_vsum - working_luma(ex.rgb)); // - 0.5 * working_luma(control_variate.rgb));
-    const daxa_f32vec2 current_moments = daxa_f32vec2(center_luma, center_luma * center_luma);
-    safeImageStore(variance_history_output_tex, daxa_i32vec2(px), daxa_f32vec4(max(daxa_f32vec2(0.0), mix(moments_history, current_moments, daxa_f32vec2(0.25))), 0.0, 0.0));
+    const vec2 current_moments = vec2(center_luma, center_luma * center_luma);
+    safeImageStore(variance_history_output_tex, ivec2(px), vec4(max(vec2(0.0), mix(moments_history, current_moments, vec2(0.25))), 0.0, 0.0));
     const float center_temporal_dev = sqrt(max(0.0, moments_history.y - moments_history.x * moments_history.x));
 
     float center_dev = center.a;
@@ -332,7 +332,7 @@ void main() {
     // Temporal variance estimate with spatial colors
     // dev.rgb *= center_dev / max(1e-8, working_luma(dev.rgb));
 
-    daxa_f32vec3 hist_dev = daxa_f32vec3(sqrt(abs(hist_vsum2 - hist_vsum * hist_vsum)));
+    vec3 hist_dev = vec3(sqrt(abs(hist_vsum2 - hist_vsum * hist_vsum)));
     // dev.rgb *= 0.1 / max(1e-5, clamp(hist_dev, dev.rgb * 0.1, dev.rgb * 10.0));
 
     // float temporal_change = abs(hist_vsum - working_luma(ex.rgb)) / max(1e-8, hist_vsum + working_luma(ex.rgb));
@@ -342,30 +342,30 @@ void main() {
     // temporal_change = WaveActiveSum(temporal_change) / WaveActiveSum(1);
 #endif
 
-    const float rt_invalid = saturate(sqrt(safeTexelFetch(rt_history_invalidity_tex, daxa_i32vec2(px / 2), 0).x) * 4);
+    const float rt_invalid = saturate(sqrt(safeTexelFetch(rt_history_invalidity_tex, ivec2(px / 2), 0).x) * 4);
     const float current_sample_count = history.a;
 
     float clamp_box_size = 1 * mix(0.25, 2.0, 1.0 - rt_invalid) * mix(0.333, 1.0, saturate(reproj.w)) * 2;
     clamp_box_size = max(clamp_box_size, 0.5);
 
-    daxa_f32vec4 nmin = center - dev * clamp_box_size;
-    daxa_f32vec4 nmax = center + dev * clamp_box_size;
+    vec4 nmin = center - dev * clamp_box_size;
+    vec4 nmax = center + dev * clamp_box_size;
 
 #if 0
     {
-    	daxa_f32vec4 nmin2 = center;
-    	daxa_f32vec4 nmax2 = center;
+    	vec4 nmin2 = center;
+    	vec4 nmax2 = center;
 
     	{const int k = 2;
         for (int y = -k; y <= k; ++y) {
             for (int x = -k; x <= k; ++x) {
-                daxa_f32vec4 neigh = linear_to_working(safeTexelFetch(input_tex, daxa_i32vec2(px + daxa_i32vec2(x, y)), 0));
+                vec4 neigh = linear_to_working(safeTexelFetch(input_tex, ivec2(px + ivec2(x, y)), 0));
     			nmin2 = min(nmin2, neigh);
                 nmax2 = max(nmax2, neigh);
             }
         }}
 
-        daxa_f32vec3 nmid = mix(nmin2.rgb, nmax2.rgb, 0.5);
+        vec3 nmid = mix(nmin2.rgb, nmax2.rgb, 0.5);
         nmin2.rgb = mix(nmid, nmin2.rgb, 1.0);
         nmax2.rgb = mix(nmid, nmax2.rgb, 1.0);
 
@@ -375,16 +375,16 @@ void main() {
 #endif
 
 #if 1
-    daxa_f32vec4 clamped_history = daxa_f32vec4(clamp(history.rgb, nmin.rgb, nmax.rgb), history.a);
+    vec4 clamped_history = vec4(clamp(history.rgb, nmin.rgb, nmax.rgb), history.a);
 #else
-    daxa_f32vec4 clamped_history = daxa_f32vec4(
+    vec4 clamped_history = vec4(
         soft_color_clamp(center.rgb, history.rgb, ex.rgb, clamp_box_size * dev.rgb),
         history.a);
 #endif
 
-    /*const daxa_f32vec3 history_dist = abs(history.rgb - ex.rgb) / max(0.1, dev.rgb * 0.5);
-    const daxa_f32vec3 closest_pt = clamp(history.rgb, center.rgb - dev.rgb * 0.5, center.rgb + dev.rgb * 0.5);
-    clamped_history = daxa_f32vec4(
+    /*const vec3 history_dist = abs(history.rgb - ex.rgb) / max(0.1, dev.rgb * 0.5);
+    const vec3 closest_pt = clamp(history.rgb, center.rgb - dev.rgb * 0.5, center.rgb + dev.rgb * 0.5);
+    clamped_history = vec4(
         mix(history.rgb, closest_pt, mix(0.1, 1.0, smoothstep(1.0, 3.0, history_dist))),
         history.a
     );*/
@@ -403,12 +403,12 @@ void main() {
     // hax
     // max_sample_count = 32;
 
-    daxa_f32vec3 res = mix(clamped_history.rgb, center.rgb, 1.0 / (1.0 + min(max_sample_count, current_sample_count)));
-    // daxa_f32vec3 res = mix(clamped_history.rgb, center.rgb, 1.0 / 32);
+    vec3 res = mix(clamped_history.rgb, center.rgb, 1.0 / (1.0 + min(max_sample_count, current_sample_count)));
+    // vec3 res = mix(clamped_history.rgb, center.rgb, 1.0 / 32);
 
     const float output_sample_count = min(current_sample_count, max_sample_count) + 1;
-    daxa_f32vec4 output_ = working_to_linear(daxa_f32vec4(res, output_sample_count));
-    safeImageStore(history_output_tex, daxa_i32vec2(px), output_);
+    vec4 output_ = working_to_linear(vec4(res, output_sample_count));
+    safeImageStore(history_output_tex, ivec2(px), output_);
 
     // output_ = smoothstep(1.0, 3.0, history_dist);
     // output_ = abs(history.rgb - ex.rgb);
@@ -438,7 +438,7 @@ void main() {
     // output_ = max_sample_count / 32.0;
     // output_.rgb = temporal_change * 0.1;
     // output_.rgb = variance_adjusted_temporal_change * 0.1;
-    // output_.rgb = safeTexelFetch(rt_history_invalidity_tex, daxa_i32vec2(px / 2), 0);
+    // output_.rgb = safeTexelFetch(rt_history_invalidity_tex, ivec2(px / 2), 0);
     // output_.rgb = mix(output_.rgb, rt_invalid, 0.9);
     // output_.rgb = mix(output_.rgb, pow(output_sample_count / 32.0, 4), 0.9);
     // output_.r = 1-reproj.w;
@@ -446,10 +446,10 @@ void main() {
     float temp_var = saturate(
         output_sample_count * mix(1.0, 0.5, rt_invalid) * smoothstep(0.3, 0, temporal_change) / 32.0);
 
-    safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(output_.rgb, temp_var));
+    safeImageStore(output_tex, ivec2(px), vec4(output_.rgb, temp_var));
 
-    // safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(output_.rgb, output_sample_count));
-    // safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(output_.rgb, 1.0 - rt_invalid));
+    // safeImageStore(output_tex, ivec2(px), vec4(output_.rgb, output_sample_count));
+    // safeImageStore(output_tex, ivec2(px), vec4(output_.rgb, 1.0 - rt_invalid));
 }
 #endif
 
@@ -464,31 +464,31 @@ float rcp(float x) { return 1.0 / x; }
 // since this does not feed into subsequent passes, but want to minimize noise.
 //
 // https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/
-daxa_f32vec3 crunch(daxa_f32vec3 v) {
+vec3 crunch(vec3 v) {
     return v * rcp(max_3(v.r, v.g, v.b) + 1.0);
 }
-daxa_f32vec3 uncrunch(daxa_f32vec3 v) {
+vec3 uncrunch(vec3 v) {
     return v * rcp(1.0 - max_3(v.r, v.g, v.b));
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
 #if 0
-        safeImageStore(output_tex, daxa_i32vec2(px), safeTexelFetch(input_tex, daxa_i32vec2(px), 0));
+        safeImageStore(output_tex, ivec2(px), safeTexelFetch(input_tex, ivec2(px), 0));
         return;
 #endif
 
-    daxa_f32vec4 sum = daxa_f32vec4(0);
+    vec4 sum = vec4(0);
 
-    const float center_validity = safeTexelFetch(input_tex, daxa_i32vec2(px), 0).a;
-    const float center_depth = safeTexelFetch(depth_tex, daxa_i32vec2(px), 0).r;
-    const float center_ssao = safeTexelFetch(ssao_tex, daxa_i32vec2(px), 0).r;
-    const daxa_f32vec3 center_value = safeTexelFetch(input_tex, daxa_i32vec2(px), 0).rgb;
-    const daxa_f32vec3 center_normal_vs = safeTexelFetch(geometric_normal_tex, daxa_i32vec2(px), 0).xyz * 2.0 - 1.0;
+    const float center_validity = safeTexelFetch(input_tex, ivec2(px), 0).a;
+    const float center_depth = safeTexelFetch(depth_tex, ivec2(px), 0).r;
+    const float center_ssao = safeTexelFetch(ssao_tex, ivec2(px), 0).r;
+    const vec3 center_value = safeTexelFetch(input_tex, ivec2(px), 0).rgb;
+    const vec3 center_normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(px), 0).xyz * 2.0 - 1.0;
 
     if (center_validity == 1) {
-        safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(center_value, 1.0));
+        safeImageStore(output_tex, ivec2(px), vec4(center_value, 1.0));
         return;
     }
 
@@ -505,7 +505,7 @@ void main() {
     const uint sample_count = clamp(uint(exp2(4.0 * square(1.0 - center_validity))), 2, MAX_SAMPLE_COUNT);
 
     {
-        sum += daxa_f32vec4(crunch(center_value), 1);
+        sum += vec4(crunch(center_value), 1);
 
         const float RADIUS_SAMPLE_MULT = MAX_RADIUS_PX / pow(float(MAX_SAMPLE_COUNT - 1), KERNEL_SHARPNESS);
 
@@ -514,13 +514,13 @@ void main() {
             const float ang = (sample_i + ang_off) * GOLDEN_ANGLE;
 
             float radius = pow(float(sample_i), KERNEL_SHARPNESS) * RADIUS_SAMPLE_MULT;
-            daxa_f32vec2 sample_offset = daxa_f32vec2(cos(ang), sin(ang)) * radius;
-            const daxa_i32vec2 sample_px = daxa_i32vec2(daxa_f32vec2(px) + sample_offset);
+            vec2 sample_offset = vec2(cos(ang), sin(ang)) * radius;
+            const ivec2 sample_px = ivec2(vec2(px) + sample_offset);
 
-            const float sample_depth = safeTexelFetch(depth_tex, daxa_i32vec2(sample_px), 0).r;
-            const daxa_f32vec3 sample_val = safeTexelFetch(input_tex, daxa_i32vec2(sample_px), 0).rgb;
-            const float sample_ssao = safeTexelFetch(ssao_tex, daxa_i32vec2(sample_px), 0).r;
-            const daxa_f32vec3 sample_normal_vs = safeTexelFetch(geometric_normal_tex, daxa_i32vec2(sample_px), 0).xyz * 2.0 - 1.0;
+            const float sample_depth = safeTexelFetch(depth_tex, ivec2(sample_px), 0).r;
+            const vec3 sample_val = safeTexelFetch(input_tex, ivec2(sample_px), 0).rgb;
+            const float sample_ssao = safeTexelFetch(ssao_tex, ivec2(sample_px), 0).r;
+            const vec3 sample_normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(sample_px), 0).xyz * 2.0 - 1.0;
 
             if (sample_depth != 0 && sample_i < sample_count) {
                 float wt = 1;
@@ -531,15 +531,15 @@ void main() {
                 wt *= exp2(-20.0 * abs(sample_ssao - center_ssao));
 #endif
 
-                sum += daxa_f32vec4(crunch(sample_val), 1.0) * wt;
+                sum += vec4(crunch(sample_val), 1.0) * wt;
             }
         }
     }
 
     float norm_factor = 1.0 / max(1e-5, sum.a);
-    daxa_f32vec3 filtered = uncrunch(sum.rgb * norm_factor);
+    vec3 filtered = uncrunch(sum.rgb * norm_factor);
 
-    safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(filtered, 1.0));
+    safeImageStore(output_tex, ivec2(px), vec4(filtered, 1.0));
 }
 #endif
 
@@ -554,57 +554,57 @@ DAXA_DECL_PUSH_CONSTANT(RtdgiPush, push)
 //     return res;
 // }
 
-daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {
+vec4 HistoryRemap_remap(vec4 v) {
     return v;
 }
 
-daxa_f32vec4 cubic_hermite(daxa_f32vec4 A, daxa_f32vec4 B, daxa_f32vec4 C, daxa_f32vec4 D, float t) {
+vec4 cubic_hermite(vec4 A, vec4 B, vec4 C, vec4 D, float t) {
     float t2 = t * t;
     float t3 = t * t * t;
-    daxa_f32vec4 a = -A / 2.0 + (3.0 * B) / 2.0 - (3.0 * C) / 2.0 + D / 2.0;
-    daxa_f32vec4 b = A - (5.0 * B) / 2.0 + 2.0 * C - D / 2.0;
-    daxa_f32vec4 c = -A / 2.0 + C / 2.0;
-    daxa_f32vec4 d = B;
+    vec4 a = -A / 2.0 + (3.0 * B) / 2.0 - (3.0 * C) / 2.0 + D / 2.0;
+    vec4 b = A - (5.0 * B) / 2.0 + 2.0 * C - D / 2.0;
+    vec4 c = -A / 2.0 + C / 2.0;
+    vec4 d = B;
 
     return a * t3 + b * t2 + c * t + d;
 }
 
 #define REMAP_FUNC HistoryRemap_remap
-daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewId img, daxa_f32vec2 P, daxa_f32vec4 img_size) {
+vec4 image_sample_catmull_rom(daxa_ImageViewIndex img, vec2 P, vec4 img_size) {
     // https://www.shadertoy.com/view/MllSzX
 
-    daxa_f32vec2 pixel = P * img_size.xy + 0.5;
-    daxa_f32vec2 c_onePixel = img_size.zw;
-    daxa_f32vec2 c_twoPixels = c_onePixel * 2.0;
+    vec2 pixel = P * img_size.xy + 0.5;
+    vec2 c_onePixel = img_size.zw;
+    vec2 c_twoPixels = c_onePixel * 2.0;
 
-    daxa_f32vec2 frc = fract(pixel);
-    // pixel = floor(pixel) / output_tex_size.xy - daxa_f32vec2(c_onePixel/2.0);
-    daxa_i32vec2 ipixel = daxa_i32vec2(pixel) - 1;
+    vec2 frc = fract(pixel);
+    // pixel = floor(pixel) / output_tex_size.xy - vec2(c_onePixel/2.0);
+    ivec2 ipixel = ivec2(pixel) - 1;
 
-    daxa_f32vec4 C00 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, -1), 0));
-    daxa_f32vec4 C10 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, -1), 0));
-    daxa_f32vec4 C20 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, -1), 0));
-    daxa_f32vec4 C30 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, -1), 0));
+    vec4 C00 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, -1), 0));
+    vec4 C10 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, -1), 0));
+    vec4 C20 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, -1), 0));
+    vec4 C30 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, -1), 0));
 
-    daxa_f32vec4 C01 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 0), 0));
-    daxa_f32vec4 C11 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 0), 0));
-    daxa_f32vec4 C21 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 0), 0));
-    daxa_f32vec4 C31 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 0), 0));
+    vec4 C01 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 0), 0));
+    vec4 C11 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 0), 0));
+    vec4 C21 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 0), 0));
+    vec4 C31 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 0), 0));
 
-    daxa_f32vec4 C02 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 1), 0));
-    daxa_f32vec4 C12 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 1), 0));
-    daxa_f32vec4 C22 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 1), 0));
-    daxa_f32vec4 C32 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 1), 0));
+    vec4 C02 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 1), 0));
+    vec4 C12 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 1), 0));
+    vec4 C22 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 1), 0));
+    vec4 C32 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 1), 0));
 
-    daxa_f32vec4 C03 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 2), 0));
-    daxa_f32vec4 C13 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 2), 0));
-    daxa_f32vec4 C23 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 2), 0));
-    daxa_f32vec4 C33 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 2), 0));
+    vec4 C03 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 2), 0));
+    vec4 C13 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 2), 0));
+    vec4 C23 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 2), 0));
+    vec4 C33 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 2), 0));
 
-    daxa_f32vec4 CP0X = cubic_hermite(C00, C10, C20, C30, frc.x);
-    daxa_f32vec4 CP1X = cubic_hermite(C01, C11, C21, C31, frc.x);
-    daxa_f32vec4 CP2X = cubic_hermite(C02, C12, C22, C32, frc.x);
-    daxa_f32vec4 CP3X = cubic_hermite(C03, C13, C23, C33, frc.x);
+    vec4 CP0X = cubic_hermite(C00, C10, C20, C30, frc.x);
+    vec4 CP1X = cubic_hermite(C01, C11, C21, C31, frc.x);
+    vec4 CP2X = cubic_hermite(C02, C12, C22, C32, frc.x);
+    vec4 CP3X = cubic_hermite(C03, C13, C23, C33, frc.x);
 
     return cubic_hermite(CP0X, CP1X, CP2X, CP3X, frc.y);
 }
@@ -612,27 +612,27 @@ daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewId img, daxa_f32vec2 P, daxa
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    daxa_f32vec2 uv = get_uv(px, push.output_tex_size);
+    uvec2 px = gl_GlobalInvocationID.xy;
+    vec2 uv = get_uv(px, push.output_tex_size);
 
-    daxa_f32vec4 center = safeTexelFetch(input_tex, daxa_i32vec2(px), 0);
-    daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(px), 0);
-    daxa_f32vec2 prev_uv = uv + reproj.xy;
+    vec4 center = safeTexelFetch(input_tex, ivec2(px), 0);
+    vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(px), 0);
+    vec2 prev_uv = uv + reproj.xy;
 
     uint quad_reproj_valid_packed = uint(reproj.z * 15.0 + 0.5);
 
     // For the sharpening (4x4) kernel, we need to know whether our neighbors are valid too,
     // as otherwise we end up over-sharpening with fake history (moving edges rather than scene features).
-    daxa_f32vec2 uv_offset = 0.5 * sign(prev_uv) * push.output_tex_size.zw;
-    const daxa_u32vec4 reproj_valid_neigh =
-        daxa_u32vec4(textureGather(daxa_sampler2D(reprojection_tex, deref(gpu_input).sampler_nnc), uv, 2) * 15.0 + 0.5);
+    vec2 uv_offset = 0.5 * sign(prev_uv) * push.output_tex_size.zw;
+    const uvec4 reproj_valid_neigh =
+        uvec4(textureGather(daxa_sampler2D(reprojection_tex, deref(gpu_input).sampler_nnc), uv, 2) * 15.0 + 0.5);
 
-    daxa_f32vec4 history = 0.0.xxxx;
+    vec4 history = 0.0.xxxx;
 
     if (0 == quad_reproj_valid_packed) {
         // Everything invalid
     } else if (15 == quad_reproj_valid_packed) {
-        if (USE_SHARPENING_HISTORY_FETCH && all(bvec4(reproj_valid_neigh == daxa_u32vec4(15)))) {
+        if (USE_SHARPENING_HISTORY_FETCH && all(bvec4(reproj_valid_neigh == uvec4(15)))) {
             history = max(0.0.xxxx, image_sample_catmull_rom(
                                         input_tex,
                                         prev_uv,
@@ -643,22 +643,22 @@ void main() {
     } else {
         // Only some samples are valid. Only include those, and don't do a sharpening fetch here.
 
-        daxa_f32vec4 quad_reproj_valid = daxa_f32vec4((quad_reproj_valid_packed & daxa_u32vec4(1, 2, 4, 8)) != daxa_f32vec4(0.0));
+        vec4 quad_reproj_valid = vec4((quad_reproj_valid_packed & uvec4(1, 2, 4, 8)) != uvec4(0.0));
 
         const Bilinear bilinear = get_bilinear_filter(prev_uv, push.output_tex_size.xy);
-        daxa_f32vec4 s00 = safeTexelFetch(input_tex, daxa_i32vec2(daxa_i32vec2(bilinear.origin) + daxa_i32vec2(0, 0)), 0);
-        daxa_f32vec4 s10 = safeTexelFetch(input_tex, daxa_i32vec2(daxa_i32vec2(bilinear.origin) + daxa_i32vec2(1, 0)), 0);
-        daxa_f32vec4 s01 = safeTexelFetch(input_tex, daxa_i32vec2(daxa_i32vec2(bilinear.origin) + daxa_i32vec2(0, 1)), 0);
-        daxa_f32vec4 s11 = safeTexelFetch(input_tex, daxa_i32vec2(daxa_i32vec2(bilinear.origin) + daxa_i32vec2(1, 1)), 0);
+        vec4 s00 = safeTexelFetch(input_tex, ivec2(ivec2(bilinear.origin) + ivec2(0, 0)), 0);
+        vec4 s10 = safeTexelFetch(input_tex, ivec2(ivec2(bilinear.origin) + ivec2(1, 0)), 0);
+        vec4 s01 = safeTexelFetch(input_tex, ivec2(ivec2(bilinear.origin) + ivec2(0, 1)), 0);
+        vec4 s11 = safeTexelFetch(input_tex, ivec2(ivec2(bilinear.origin) + ivec2(1, 1)), 0);
 
-        daxa_f32vec4 weights = get_bilinear_custom_weights(bilinear, quad_reproj_valid);
+        vec4 weights = get_bilinear_custom_weights(bilinear, quad_reproj_valid);
 
-        if (dot(weights, daxa_f32vec4(1.0)) > 1e-5) {
+        if (dot(weights, vec4(1.0)) > 1e-5) {
             history = apply_bilinear_custom_weights(s00, s10, s01, s11, weights, true);
         }
     }
 
-    safeImageStore(output_tex, daxa_i32vec2(px), history);
+    safeImageStore(output_tex, ivec2(px), history);
 }
 #endif
 
@@ -667,27 +667,27 @@ DAXA_DECL_PUSH_CONSTANT(RtdgiRestirTemporalPush, push)
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    const daxa_u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
-    const daxa_i32vec2 hi_px_offset = daxa_i32vec2(HALFRES_SUBSAMPLE_OFFSET);
-    const daxa_u32vec2 hi_px = px * SHADING_SCL + hi_px_offset;
+    uvec2 px = gl_GlobalInvocationID.xy;
+    const uvec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
+    const ivec2 hi_px_offset = ivec2(HALFRES_SUBSAMPLE_OFFSET);
+    const uvec2 hi_px = px * SHADING_SCL + hi_px_offset;
 
-    if (0.0 == safeTexelFetch(depth_tex, daxa_i32vec2(hi_px), 0).r) {
-        safeImageStore(rt_history_invalidity_out_tex, daxa_i32vec2(px), daxa_f32vec4(1.0));
+    if (0.0 == safeTexelFetch(depth_tex, ivec2(hi_px), 0).r) {
+        safeImageStore(rt_history_invalidity_out_tex, ivec2(px), vec4(1.0));
         return;
     }
 
     float invalidity = 0.0;
 
     if (RESTIR_USE_PATH_VALIDATION && is_rtdgi_validation_frame()) {
-        const daxa_f32vec3 normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(px), 0).xyz;
-        const daxa_f32vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+        const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
+        const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
 
-        const daxa_f32vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, daxa_i32vec2(px), 0).xyz;
-        const daxa_f32vec3 prev_hit_pos = safeTexelFetch(reservoir_ray_history_tex, daxa_i32vec2(px), 0).xyz + prev_ray_orig;
+        const vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz;
+        const vec3 prev_hit_pos = safeTexelFetch(reservoir_ray_history_tex, ivec2(px), 0).xyz + prev_ray_orig;
 
-        const daxa_f32vec4 prev_radiance_packed = safeTexelFetch(irradiance_history_tex, daxa_i32vec2(px), 0);
-        const daxa_f32vec3 prev_radiance = max(0.0.xxx, prev_radiance_packed.rgb);
+        const vec4 prev_radiance_packed = safeTexelFetch(irradiance_history_tex, ivec2(px), 0);
+        const vec3 prev_radiance = max(0.0.xxx, prev_radiance_packed.rgb);
 
         RayDesc prev_ray;
         prev_ray.Direction = normalize(prev_hit_pos - prev_ray_orig);
@@ -696,12 +696,12 @@ void main() {
         prev_ray.TMax = SKY_DIST;
 
         // TODO: frame index
-        uint rng = hash3(daxa_u32vec3(px, 0));
+        uint rng = hash3(uvec3(px, 0));
 
         TraceResult result = do_the_thing(px, normal_ws, rng, prev_ray);
-        const daxa_f32vec3 new_radiance = max(0.0.xxx, result.out_value);
+        const vec3 new_radiance = max(0.0.xxx, result.out_value);
 
-        const float rad_diff = length(abs(prev_radiance - new_radiance) / max(daxa_f32vec3(1e-3), prev_radiance + new_radiance));
+        const float rad_diff = length(abs(prev_radiance - new_radiance) / max(vec3(1e-3), prev_radiance + new_radiance));
         invalidity = smoothstep(0.1, 0.5, rad_diff / length(1.0.xxx));
 
         const float prev_hit_dist = length(prev_hit_pos - prev_ray_orig);
@@ -710,13 +710,13 @@ void main() {
         // If the hit is different, it's possible that the previous origin point got obscured
         // by something, in which case we want M-clamping to take care of it instead.
         if (abs(result.hit_t - prev_hit_dist) / (prev_hit_dist + prev_hit_dist) < 0.2) {
-            safeImageStore(irradiance_history_tex, daxa_i32vec2(px), daxa_f32vec4(new_radiance, prev_radiance_packed.a));
+            safeImageStore(irradiance_history_tex, ivec2(px), vec4(new_radiance, prev_radiance_packed.a));
 
             // When we update the radiance, we might end up with fairly low probability
             // rays hitting the bright spots by chance. The PDF division compounded
             // by the increase in radiance causes fireflies to appear.
             // As a HACK, we will clamp that by scaling down the `M` factor then.
-            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_tex, daxa_i32vec2(px), 0).xy);
+            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_tex, ivec2(px), 0).xy);
             const float lum_old = sRGB_to_luminance(prev_radiance);
             const float lum_new = sRGB_to_luminance(new_radiance);
             r.M *= clamp(lum_old / max(1e-8, lum_new), 0.03, 1.0);
@@ -726,11 +726,11 @@ void main() {
             const float allowed_luminance_increment = 10.0;
             r.W *= clamp(lum_old / max(1e-8, lum_new) * allowed_luminance_increment, 0.01, 1.0);
 
-            safeImageStoreU(reservoir_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(r), 0, 0));
+            safeImageStoreU(reservoir_tex, ivec2(px), uvec4(as_raw(r), 0, 0));
         }
     }
 
-    safeImageStore(rt_history_invalidity_out_tex, daxa_i32vec2(px), daxa_f32vec4(invalidity, 0, 0, 0));
+    safeImageStore(rt_history_invalidity_out_tex, ivec2(px), vec4(invalidity, 0, 0, 0));
 }
 #endif
 
@@ -738,27 +738,27 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirTemporalPush, push)
 
-daxa_f32vec3 rtdgi_candidate_ray_dir(daxa_u32vec2 px, daxa_f32mat3x3 tangent_to_world) {
-    daxa_f32vec2 urand = blue_noise_for_pixel(blue_noise_vec2, px, deref(gpu_input).frame_index).xy;
-    daxa_f32vec3 wi = uniform_sample_hemisphere(urand);
+vec3 rtdgi_candidate_ray_dir(uvec2 px, daxa_f32mat3x3 tangent_to_world) {
+    vec2 urand = blue_noise_for_pixel(blue_noise_vec2, px, deref(gpu_input).frame_index).xy;
+    vec3 wi = uniform_sample_hemisphere(urand);
     return tangent_to_world * wi;
 }
 
-void rtdgi_trace_job(daxa_u32vec2 px) {
-    const daxa_u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
-    const daxa_i32vec2 hi_px_offset = daxa_i32vec2(HALFRES_SUBSAMPLE_OFFSET);
-    const daxa_u32vec2 hi_px = px * SHADING_SCL + hi_px_offset;
+void rtdgi_trace_job(uvec2 px) {
+    const uvec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
+    const ivec2 hi_px_offset = ivec2(HALFRES_SUBSAMPLE_OFFSET);
+    const uvec2 hi_px = px * SHADING_SCL + hi_px_offset;
 
-    float depth = safeTexelFetch(depth_tex, daxa_i32vec2(hi_px), 0).r;
+    float depth = safeTexelFetch(depth_tex, ivec2(hi_px), 0).r;
 
     if (0.0 == depth) {
-        safeImageStore(candidate_irradiance_out_tex, daxa_i32vec2(px), daxa_f32vec4(0));
-        safeImageStore(candidate_normal_out_tex, daxa_i32vec2(px), daxa_f32vec4(0, 0, 1, 0));
-        safeImageStore(rt_history_invalidity_out_tex, daxa_i32vec2(px), daxa_f32vec4(0));
+        safeImageStore(candidate_irradiance_out_tex, ivec2(px), vec4(0));
+        safeImageStore(candidate_normal_out_tex, ivec2(px), vec4(0, 0, 1, 0));
+        safeImageStore(rt_history_invalidity_out_tex, ivec2(px), vec4(0));
         return;
     }
 
-    const daxa_f32vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
+    const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
     const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv_to_ss(gpu_input, uv, push.gbuffer_tex_size), depth);
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.gbuffer_tex_size.w * 0.5);
@@ -769,10 +769,10 @@ void rtdgi_trace_job(daxa_u32vec2 px) {
     //     if (is_rtdgi_tracing_frame()) {
     // #endif
     {
-        const daxa_f32vec3 normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(px), 0).xyz;
-        const daxa_f32vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+        const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
+        const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
         const daxa_f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);
-        const daxa_f32vec3 outgoing_dir = rtdgi_candidate_ray_dir(px, tangent_to_world);
+        const vec3 outgoing_dir = rtdgi_candidate_ray_dir(px, tangent_to_world);
 
         RayDesc outgoing_ray;
         outgoing_ray.Direction = outgoing_dir;
@@ -785,36 +785,36 @@ void rtdgi_trace_job(daxa_u32vec2 px) {
             outgoing_ray.TMax = NEAR_FIELD_FADE_OUT_END;
         }
 
-        uint rng = hash3(daxa_u32vec3(px, deref(gpu_input).frame_index & 31));
+        uint rng = hash3(uvec3(px, deref(gpu_input).frame_index & 31));
         TraceResult result = do_the_thing(px, normal_ws, rng, outgoing_ray);
 
 #if RTDGI_INTERLEAVED_VALIDATION_ALWAYS_TRACE_NEAR_FIELD
         if (!is_rtdgi_tracing_frame() && !result.is_hit) {
             // If we were only tracing short rays, make sure we don't try to output
             // sky color upon misses.
-            result.out_value = daxa_f32vec3(0.0);
+            result.out_value = vec3(0.0);
             result.hit_t = SKY_DIST;
         }
 #endif
 
-        const daxa_f32vec3 hit_offset_ws = outgoing_ray.Direction * result.hit_t;
+        const vec3 hit_offset_ws = outgoing_ray.Direction * result.hit_t;
 
         const float cos_theta = dot(normalize(outgoing_dir - ray_dir_ws(view_ray_context)), normal_ws);
-        safeImageStore(candidate_irradiance_out_tex, daxa_i32vec2(px), daxa_f32vec4(result.out_value, rtr_encode_cos_theta_for_fp16(cos_theta)));
-        safeImageStore(candidate_hit_out_tex, daxa_i32vec2(px), daxa_f32vec4(hit_offset_ws, result.pdf * select(is_rtdgi_tracing_frame(), 1, -1)));
-        safeImageStore(candidate_normal_out_tex, daxa_i32vec2(px), daxa_f32vec4(direction_world_to_view(globals, result.hit_normal_ws), 0));
+        safeImageStore(candidate_irradiance_out_tex, ivec2(px), vec4(result.out_value, rtr_encode_cos_theta_for_fp16(cos_theta)));
+        safeImageStore(candidate_hit_out_tex, ivec2(px), vec4(hit_offset_ws, result.pdf * select(is_rtdgi_tracing_frame(), 1, -1)));
+        safeImageStore(candidate_normal_out_tex, ivec2(px), vec4(direction_world_to_view(globals, result.hit_normal_ws), 0));
     }
     //  else {
-    //     const daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(hi_px), 0);
-    //     const daxa_i32vec2 reproj_px = floor(px + gbuffer_tex_size.xy * reproj.xy / 2 + 0.5);
-    //     safeImageStore(candidate_irradiance_out_tex, daxa_i32vec2(px), 0.0);
-    //     safeImageStore(candidate_hit_out_tex, daxa_i32vec2(px), 0.0);
-    //     safeImageStore(candidate_normal_out_tex, daxa_i32vec2(px), 0.0);
+    //     const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(hi_px), 0);
+    //     const ivec2 reproj_px = floor(px + gbuffer_tex_size.xy * reproj.xy / 2 + 0.5);
+    //     safeImageStore(candidate_irradiance_out_tex, ivec2(px), 0.0);
+    //     safeImageStore(candidate_hit_out_tex, ivec2(px), 0.0);
+    //     safeImageStore(candidate_normal_out_tex, ivec2(px), 0.0);
     // }
 
-    const daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(hi_px), 0);
-    const daxa_i32vec2 reproj_px = daxa_i32vec2(floor(daxa_f32vec2(px) + push.gbuffer_tex_size.xy * reproj.xy / 2.0 + 0.5));
-    safeImageStore(rt_history_invalidity_out_tex, daxa_i32vec2(px), safeTexelFetch(rt_history_invalidity_in_tex, daxa_i32vec2(reproj_px), 0));
+    const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(hi_px), 0);
+    const ivec2 reproj_px = ivec2(floor(vec2(px) + push.gbuffer_tex_size.xy * reproj.xy / 2.0 + 0.5));
+    safeImageStore(rt_history_invalidity_out_tex, ivec2(px), safeTexelFetch(rt_history_invalidity_in_tex, ivec2(reproj_px), 0));
 }
 
 #define ONE_JOB_PER_THREAD 1
@@ -822,16 +822,16 @@ void rtdgi_trace_job(daxa_u32vec2 px) {
 #if ONE_JOB_PER_THREAD
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
     rtdgi_trace_job(px);
 }
 #elif FOUR_JOBS_PER_THREAD
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
     for (daxa_u32 yi = 0; yi < 2; ++yi) {
         for (daxa_u32 xi = 0; xi < 2; ++xi) {
-            rtdgi_trace_job(px * 2 + daxa_u32vec2(xi, yi));
+            rtdgi_trace_job(px * 2 + uvec2(xi, yi));
         }
     }
 }
@@ -849,7 +849,7 @@ void main() {
         if (job_index >= 256) {
             break;
         }
-        daxa_u32vec2 px = gl_WorkGroupID.xy * 16 + daxa_u32vec2(job_index % 16, job_index / 16);
+        uvec2 px = gl_WorkGroupID.xy * 16 + uvec2(job_index % 16, job_index / 16);
         rtdgi_trace_job(px);
     }
 }
@@ -865,21 +865,21 @@ DAXA_DECL_PUSH_CONSTANT(RtdgiRestirResolvePush, push)
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    daxa_f32vec2 invalid_blurred = daxa_f32vec2(0);
+    uvec2 px = gl_GlobalInvocationID.xy;
+    vec2 invalid_blurred = vec2(0);
 
-    const float center_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(px), 0).r;
-    const daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(px * 2), 0);
+    const float center_depth = safeTexelFetch(half_depth_tex, ivec2(px), 0).r;
+    const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(px * 2), 0);
 
     if (RESTIR_USE_PATH_VALIDATION) {
         {
             const int k = 2;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    const daxa_i32vec2 offset = daxa_i32vec2(x, y);
+                    const ivec2 offset = ivec2(x, y);
                     // float w = 1;
-                    float w = exp2(-0.1 * dot(daxa_f32vec2(offset), daxa_f32vec2(offset)));
-                    invalid_blurred += daxa_f32vec2(safeTexelFetch(input_tex, daxa_i32vec2(px + offset), 0).x, 1) * w;
+                    float w = exp2(-0.1 * dot(vec2(offset), vec2(offset)));
+                    invalid_blurred += vec2(safeTexelFetch(input_tex, ivec2(px + offset), 0).x, 1) * w;
                 }
             }
         }
@@ -888,7 +888,7 @@ void main() {
         invalid_blurred.x = mix(invalid_blurred.x, subgroupBroadcast(invalid_blurred.x, gl_SubgroupInvocationID ^ 16), 0.5);
         // invalid_blurred.x = mix(invalid_blurred.x, WaveActiveSum(invalid_blurred.x) / 64.0, 0.25);
 
-        const daxa_f32vec2 reproj_rand_offset = daxa_f32vec2(0.0);
+        const vec2 reproj_rand_offset = vec2(0.0);
 
         invalid_blurred.x = smoothstep(0.0, 1.0, invalid_blurred.x);
     }
@@ -903,11 +903,11 @@ void main() {
         const int k = 2;
         for (int y = 0; y <= k; ++y) {
             for (int x = 1; x <= k; ++x) {
-                const daxa_i32vec2 offset = daxa_i32vec2(x, y);
-                const daxa_i32vec2 sample_px = daxa_i32vec2(px) * 2 + offset;
-                const daxa_i32vec2 sample_px_half = daxa_i32vec2(px) + offset / 2;
-                const daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(sample_px), 0);
-                const float sample_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(sample_px_half), 0).r;
+                const ivec2 offset = ivec2(x, y);
+                const ivec2 sample_px = ivec2(px) * 2 + offset;
+                const ivec2 sample_px_half = ivec2(px) + offset / 2;
+                const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(sample_px), 0);
+                const float sample_depth = safeTexelFetch(half_depth_tex, ivec2(sample_px_half), 0).r;
 
                 if (reproj.w < 0 || inverse_depth_relative_diff(center_depth, sample_depth) > 0.1) {
                     edge = 0;
@@ -933,107 +933,107 @@ void main() {
 
     // invalid_blurred.x = 1;;
 
-    const daxa_f32vec2 reproj_px = px + push.gbuffer_tex_size.xy * reproj.xy / 2 + 0.5;
+    const vec2 reproj_px = px + push.gbuffer_tex_size.xy * reproj.xy / 2 + 0.5;
     float history = 0;
 
     const int sample_count = 8;
-    float ang_off = uint_to_u01_float(hash3(daxa_u32vec3(px, deref(gpu_input).frame_index))) * M_PI * 2;
+    float ang_off = uint_to_u01_float(hash3(uvec3(px, deref(gpu_input).frame_index))) * M_PI * 2;
 
     for (uint sample_i = 0; sample_i < sample_count; ++sample_i) {
         float ang = (sample_i + ang_off) * GOLDEN_ANGLE;
         float radius = float(sample_i) * 1.0;
-        daxa_f32vec2 sample_offset = daxa_f32vec2(cos(ang), sin(ang)) * radius;
-        const daxa_i32vec2 sample_px = daxa_i32vec2(reproj_px + sample_offset);
-        history += safeTexelFetch(history_tex, daxa_i32vec2(sample_px), 0).x;
+        vec2 sample_offset = vec2(cos(ang), sin(ang)) * radius;
+        const ivec2 sample_px = ivec2(reproj_px + sample_offset);
+        history += safeTexelFetch(history_tex, ivec2(sample_px), 0).x;
     }
 
     history /= sample_count;
 
     /*float history = (
-        safeTexelFetch(history_tex, daxa_i32vec2(reproj_px), 0) +
-        safeTexelFetch(history_tex, daxa_i32vec2(reproj_px + daxa_i32vec2(-4, 0)), 0) +
-        safeTexelFetch(history_tex, daxa_i32vec2(reproj_px + daxa_i32vec2(4, 0)), 0) +
-        safeTexelFetch(history_tex, daxa_i32vec2(reproj_px + daxa_i32vec2(0, 4)), 0) +
-        safeTexelFetch(history_tex, daxa_i32vec2(reproj_px + daxa_i32vec2(0, -4)), 0)
+        safeTexelFetch(history_tex, ivec2(reproj_px), 0) +
+        safeTexelFetch(history_tex, ivec2(reproj_px + ivec2(-4, 0)), 0) +
+        safeTexelFetch(history_tex, ivec2(reproj_px + ivec2(4, 0)), 0) +
+        safeTexelFetch(history_tex, ivec2(reproj_px + ivec2(0, 4)), 0) +
+        safeTexelFetch(history_tex, ivec2(reproj_px + ivec2(0, -4)), 0)
     ) / 5;*/
 
-    // float history = safeTexelFetch(history_tex, daxa_i32vec2(reproj_px), 0);
+    // float history = safeTexelFetch(history_tex, ivec2(reproj_px), 0);
 
-    safeImageStore(output_tex, daxa_i32vec2(px), daxa_f32vec4(max(history * 0.75, invalid_blurred.x),
+    safeImageStore(output_tex, ivec2(px), vec4(max(history * 0.75, invalid_blurred.x),
                                                               // invalid_blurred.x,
-                                                              safeTexelFetch(input_tex, daxa_i32vec2(px), 0).x, 0.0, 0.0));
+                                                              safeTexelFetch(input_tex, ivec2(px), 0).x, 0.0, 0.0));
 }
 #endif
 
 #if RTDGI_RESTIR_TEMPORAL_COMPUTE
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirTemporalPush, push)
 
-daxa_u32vec2 reservoir_payload_to_px(uint payload) {
-    return daxa_u32vec2(payload & 0xffff, payload >> 16);
+uvec2 reservoir_payload_to_px(uint payload) {
+    return uvec2(payload & 0xffff, payload >> 16);
 }
 
 struct TraceResult {
-    daxa_f32vec3 out_value;
-    daxa_f32vec3 hit_normal_ws;
+    vec3 out_value;
+    vec3 hit_normal_ws;
     float inv_pdf;
     // bool prev_sample_valid;
 };
 
-TraceResult do_the_thing(daxa_u32vec2 px, inout uint rng, RayDesc outgoing_ray, daxa_f32vec3 primary_hit_normal) {
-    const daxa_f32vec4 candidate_radiance_inv_pdf = safeTexelFetch(candidate_radiance_tex, daxa_i32vec2(px), 0);
+TraceResult do_the_thing(uvec2 px, inout uint rng, RayDesc outgoing_ray, vec3 primary_hit_normal) {
+    const vec4 candidate_radiance_inv_pdf = safeTexelFetch(candidate_radiance_tex, ivec2(px), 0);
     TraceResult result;
     result.out_value = candidate_radiance_inv_pdf.rgb;
     result.inv_pdf = 1;
-    result.hit_normal_ws = direction_view_to_world(globals, safeTexelFetch(candidate_normal_tex, daxa_i32vec2(px), 0).xyz);
+    result.hit_normal_ws = direction_view_to_world(globals, safeTexelFetch(candidate_normal_tex, ivec2(px), 0).xyz);
     return result;
 }
 
-daxa_i32vec2 get_rpx_offset(uint sample_i, uint frame_index) {
-    const daxa_i32vec2 offsets[4] = {
-        daxa_i32vec2(-1, -1),
-        daxa_i32vec2(1, 1),
-        daxa_i32vec2(-1, 1),
-        daxa_i32vec2(1, -1),
+ivec2 get_rpx_offset(uint sample_i, uint frame_index) {
+    const ivec2 offsets[4] = {
+        ivec2(-1, -1),
+        ivec2(1, 1),
+        ivec2(-1, 1),
+        ivec2(1, -1),
     };
 
-    const daxa_i32vec2 reservoir_px_offset_base =
+    const ivec2 reservoir_px_offset_base =
         offsets[frame_index & 3] + offsets[(sample_i + (frame_index ^ 1)) & 3];
 
-    return select(sample_i == 0, daxa_i32vec2(0), daxa_i32vec2(reservoir_px_offset_base));
+    return select(sample_i == 0, ivec2(0), ivec2(reservoir_px_offset_base));
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    const daxa_i32vec2 hi_px_offset = daxa_i32vec2(get_downscale_offset(gpu_input));
-    const daxa_u32vec2 hi_px = px * 2 + hi_px_offset;
+    uvec2 px = gl_GlobalInvocationID.xy;
+    const ivec2 hi_px_offset = ivec2(get_downscale_offset(gpu_input));
+    const uvec2 hi_px = px * 2 + hi_px_offset;
 
-    float depth = safeTexelFetch(depth_tex, daxa_i32vec2(hi_px), 0).r;
+    float depth = safeTexelFetch(depth_tex, ivec2(hi_px), 0).r;
 
     if (0.0 == depth) {
-        safeImageStore(radiance_out_tex, daxa_i32vec2(px), daxa_f32vec4(0.0.xxx, -SKY_DIST));
-        safeImageStore(hit_normal_output_tex, daxa_i32vec2(px), 0.0.xxxx);
-        safeImageStoreU(reservoir_out_tex, daxa_i32vec2(px), daxa_u32vec4(0));
+        safeImageStore(radiance_out_tex, ivec2(px), vec4(0.0.xxx, -SKY_DIST));
+        safeImageStore(hit_normal_output_tex, ivec2(px), 0.0.xxxx);
+        safeImageStoreU(reservoir_out_tex, ivec2(px), uvec4(0));
         return;
     }
 
-    const daxa_f32vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
+    const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
     const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
-    const daxa_f32vec3 normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(px), 0).xyz;
-    const daxa_f32vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+    const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
+    const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
     const daxa_f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);
-    const daxa_f32vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
+    const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
 
-    const daxa_f32vec3 hit_offset_ws = safeTexelFetch(candidate_hit_tex, daxa_i32vec2(px), 0).xyz;
-    daxa_f32vec3 outgoing_dir = normalize(hit_offset_ws);
+    const vec3 hit_offset_ws = safeTexelFetch(candidate_hit_tex, ivec2(px), 0).xyz;
+    vec3 outgoing_dir = normalize(hit_offset_ws);
 
-    uint rng = hash3(daxa_u32vec3(px, deref(gpu_input).frame_index));
+    uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
 
-    daxa_u32vec2 src_px_sel = px;
-    daxa_f32vec3 radiance_sel = daxa_f32vec3(0);
-    daxa_f32vec3 ray_orig_sel_ws = daxa_f32vec3(0);
-    daxa_f32vec3 ray_hit_sel_ws = daxa_f32vec3(1);
-    daxa_f32vec3 hit_normal_sel = daxa_f32vec3(1);
+    uvec2 src_px_sel = px;
+    vec3 radiance_sel = vec3(0);
+    vec3 ray_orig_sel_ws = vec3(0);
+    vec3 ray_hit_sel_ws = vec3(1);
+    vec3 hit_normal_sel = vec3(1);
     // bool prev_sample_valid = false;
 
     Reservoir1sppStreamState stream_state = Reservoir1sppStreamState_create();
@@ -1075,11 +1075,11 @@ void main() {
 
         init_with_stream(reservoir, p_q, inv_pdf_q, stream_state, reservoir_payload);
 
-        float rl = mix(safeTexelFetch(candidate_history_tex, daxa_i32vec2(px), 0).y, sqrt(hit_t), 0.05);
-        safeImageStore(candidate_out_tex, daxa_i32vec2(px), daxa_f32vec4(sqrt(hit_t), rl, 0, 0));
+        float rl = mix(safeTexelFetch(candidate_history_tex, ivec2(px), 0).y, sqrt(hit_t), 0.05);
+        safeImageStore(candidate_out_tex, ivec2(px), vec4(sqrt(hit_t), rl, 0, 0));
     }
 
-    const float rt_invalidity = sqrt(saturate(safeTexelFetch(rt_invalidity_tex, daxa_i32vec2(px), 0).y));
+    const float rt_invalidity = sqrt(saturate(safeTexelFetch(rt_invalidity_tex, ivec2(px), 0).y));
 
     const bool use_resampling = DIFFUSE_GI_USE_RESTIR != 0;
     // const bool use_resampling = false;
@@ -1098,29 +1098,29 @@ void main() {
             // so we want to be rather conservative.
             && stream_state.M_sum < 1.25 * RESTIR_TEMPORAL_M_CLAMP;
             ++sample_i) {
-            const daxa_i32vec2 rpx_offset = get_rpx_offset(sample_i, deref(gpu_input).frame_index);
-            if (sample_i > 0 && all(bvec2(rpx_offset == daxa_i32vec2(0)))) {
+            const ivec2 rpx_offset = get_rpx_offset(sample_i, deref(gpu_input).frame_index);
+            if (sample_i > 0 && all(bvec2(rpx_offset == ivec2(0)))) {
                 // No point using the center sample twice
                 continue;
             }
 
-            const daxa_f32vec4 reproj = safeTexelFetch(reprojection_tex, daxa_i32vec2(hi_px + rpx_offset * 2), 0);
+            const vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(hi_px + rpx_offset * 2), 0);
 
             // Can't use linear interpolation, but we can interpolate stochastically instead
-            // const daxa_f32vec2 reproj_rand_offset = daxa_f32vec2(uint_to_u01_float(hash1_mut(rng)), uint_to_u01_float(hash1_mut(rng))) - 0.5;
+            // const vec2 reproj_rand_offset = vec2(uint_to_u01_float(hash1_mut(rng)), uint_to_u01_float(hash1_mut(rng))) - 0.5;
             // Or not at all.
-            const daxa_f32vec2 reproj_rand_offset = daxa_f32vec2(0.0);
+            const vec2 reproj_rand_offset = vec2(0.0);
 
-            const daxa_u32vec2 xor_seq[4] = {
-                daxa_u32vec2(3, 3),
-                daxa_u32vec2(2, 1),
-                daxa_u32vec2(1, 2),
-                daxa_u32vec2(3, 3),
+            const uvec2 xor_seq[4] = {
+                uvec2(3, 3),
+                uvec2(2, 1),
+                uvec2(1, 2),
+                uvec2(3, 3),
             };
-            const daxa_u32vec2 permutation_xor_val =
+            const uvec2 permutation_xor_val =
                 xor_seq[deref(gpu_input).frame_index & 3];
 
-            const daxa_i32vec2 permuted_reproj_px = daxa_i32vec2(floor(
+            const ivec2 permuted_reproj_px = ivec2(floor(
                 select(sample_i == 0, px
                        // My poor approximation of permutation sampling.
                        // https://twitter.com/more_fps/status/1457749362025459715
@@ -1133,36 +1133,36 @@ void main() {
                        ((px + rpx_offset) ^ permutation_xor_val)) +
                 push.gbuffer_tex_size.xy * reproj.xy * 0.5 + reproj_rand_offset + 0.5));
 
-            const daxa_i32vec2 rpx = permuted_reproj_px + rpx_offset;
-            const daxa_u32vec2 rpx_hi = rpx * 2 + hi_px_offset;
+            const ivec2 rpx = permuted_reproj_px + rpx_offset;
+            const uvec2 rpx_hi = rpx * 2 + hi_px_offset;
 
-            const daxa_i32vec2 permuted_neighbor_px = daxa_i32vec2(floor(
+            const ivec2 permuted_neighbor_px = ivec2(floor(
                 select(sample_i == 0, px
                        // ditto
                        ,
                        ((px + rpx_offset) ^ permutation_xor_val)) +
                 0.5));
 
-            const daxa_i32vec2 neighbor_px = permuted_neighbor_px + rpx_offset;
-            const daxa_u32vec2 neighbor_px_hi = neighbor_px * 2 + hi_px_offset;
+            const ivec2 neighbor_px = permuted_neighbor_px + rpx_offset;
+            const uvec2 neighbor_px_hi = neighbor_px * 2 + hi_px_offset;
 
             // WRONG. needs previous normal
-            // const daxa_f32vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(rpx), 0);
+            // const vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(rpx), 0);
             // // Note: also doing this for sample 0, as under extreme aliasing,
             // // we can easily get bad samples in.
             // if (dot(sample_normal_vs, normal_vs) < 0.7) {
             //     continue;
             // }
 
-            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_history_tex, daxa_i32vec2(rpx), 0).xy);
-            const daxa_u32vec2 spx = reservoir_payload_to_px(r.payload);
+            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_history_tex, ivec2(rpx), 0).xy);
+            const uvec2 spx = reservoir_payload_to_px(r.payload);
 
             float visibility = 1;
             // float relevance = select(sample_i == 0, 1, 0.5);
             float relevance = 1;
 
-            // const daxa_f32vec2 sample_uv = get_uv(rpx_hi, push.gbuffer_tex_size);
-            const float sample_depth = safeTexelFetch(depth_tex, daxa_i32vec2(neighbor_px_hi), 0).r;
+            // const vec2 sample_uv = get_uv(rpx_hi, push.gbuffer_tex_size);
+            const float sample_depth = safeTexelFetch(depth_tex, ivec2(neighbor_px_hi), 0).r;
 
             // WRONG: needs previous depth
             // if (length(prev_ray_orig_and_dist.xyz - refl_ray_origin_ws) > 0.1 * -view_ray_context.ray_hit_vs().z) {
@@ -1170,7 +1170,7 @@ void main() {
             //     continue;
             // }
 
-            const daxa_f32vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, daxa_i32vec2(spx), 0).xyz;
+            const vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, ivec2(spx), 0).xyz;
             if (length(prev_ray_orig - refl_ray_origin_ws) > 0.1 * -ray_hit_vs(view_ray_context).z) {
                 // Reject disocclusions
                 continue;
@@ -1196,7 +1196,7 @@ void main() {
             }
 #endif
 
-            const daxa_f32vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(neighbor_px), 0).rgb;
+            const vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(neighbor_px), 0).rgb;
             const float normal_similarity_dot = max(0.0, dot(sample_normal_vs, normal_vs));
 
 // Increases noise, but prevents leaking in areas of geometric complexity
@@ -1213,28 +1213,28 @@ void main() {
             // TODO: this needs fixing with reprojection
             // const ViewRayContext sample_ray_ctx = ViewRayContext::from_uv_and_depth(sample_uv, sample_depth);
 
-            const daxa_f32vec4 sample_hit_ws_and_dist = safeTexelFetch(ray_history_tex, daxa_i32vec2(spx), 0) + daxa_f32vec4(prev_ray_orig, 0.0);
-            const daxa_f32vec3 sample_hit_ws = sample_hit_ws_and_dist.xyz;
-            // const daxa_f32vec3 prev_dir_to_sample_hit_unnorm_ws = sample_hit_ws - sample_ray_ctx.ray_hit_ws();
-            // const daxa_f32vec3 prev_dir_to_sample_hit_ws = normalize(prev_dir_to_sample_hit_unnorm_ws);
+            const vec4 sample_hit_ws_and_dist = safeTexelFetch(ray_history_tex, ivec2(spx), 0) + vec4(prev_ray_orig, 0.0);
+            const vec3 sample_hit_ws = sample_hit_ws_and_dist.xyz;
+            // const vec3 prev_dir_to_sample_hit_unnorm_ws = sample_hit_ws - sample_ray_ctx.ray_hit_ws();
+            // const vec3 prev_dir_to_sample_hit_ws = normalize(prev_dir_to_sample_hit_unnorm_ws);
             const float prev_dist = sample_hit_ws_and_dist.w;
 
             // Note: `hit_normal_history_tex` is not reprojected.
-            const daxa_f32vec4 sample_hit_normal_ws_dot = decode_hit_normal_and_dot(safeTexelFetch(hit_normal_history_tex, daxa_i32vec2(spx), 0));
+            const vec4 sample_hit_normal_ws_dot = decode_hit_normal_and_dot(safeTexelFetch(hit_normal_history_tex, ivec2(spx), 0));
 
             /*if (sample_i > 0 && !(prev_dist > 1e-4)) {
                 continue;
             }*/
 
-            const daxa_f32vec3 dir_to_sample_hit_unnorm = sample_hit_ws - refl_ray_origin_ws;
+            const vec3 dir_to_sample_hit_unnorm = sample_hit_ws - refl_ray_origin_ws;
             const float dist_to_sample_hit = length(dir_to_sample_hit_unnorm);
-            const daxa_f32vec3 dir_to_sample_hit = normalize(dir_to_sample_hit_unnorm);
+            const vec3 dir_to_sample_hit = normalize(dir_to_sample_hit_unnorm);
 
             const float center_to_hit_vis = -dot(sample_hit_normal_ws_dot.xyz, dir_to_sample_hit);
             // const float prev_to_hit_vis = -dot(sample_hit_normal_ws_dot.xyz, prev_dir_to_sample_hit_ws);
 
-            const daxa_f32vec4 prev_rad =
-                safeTexelFetch(radiance_history_tex, daxa_i32vec2(spx), 0) * daxa_f32vec4((FRAME_CONSTANTS_PRE_EXPOSURE_DELTA).xxx, 1);
+            const vec4 prev_rad =
+                safeTexelFetch(radiance_history_tex, ivec2(spx), 0) * vec4((FRAME_CONSTANTS_PRE_EXPOSURE_DELTA).xxx, 1);
 
             // From the ReSTIR paper:
             // With temporal reuse, the number of candidates M contributing to the
@@ -1323,20 +1323,20 @@ void main() {
     outgoing_ray.Origin = refl_ray_origin_ws;
     outgoing_ray.TMin = 0;
 
-    const daxa_f32vec4 hit_normal_ws_dot = daxa_f32vec4(hit_normal_sel, -dot(hit_normal_sel, outgoing_ray.Direction));
+    const vec4 hit_normal_ws_dot = vec4(hit_normal_sel, -dot(hit_normal_sel, outgoing_ray.Direction));
 
-    safeImageStore(radiance_out_tex, daxa_i32vec2(px), daxa_f32vec4(radiance_sel, dot(normal_ws, outgoing_ray.Direction)));
-    safeImageStore(ray_orig_output_tex, daxa_i32vec2(px), daxa_f32vec4(ray_orig_sel_ws, 0.0));
-    safeImageStore(hit_normal_output_tex, daxa_i32vec2(px), encode_hit_normal_and_dot(hit_normal_ws_dot));
-    safeImageStore(ray_output_tex, daxa_i32vec2(px), daxa_f32vec4(ray_hit_sel_ws - ray_orig_sel_ws, length(ray_hit_sel_ws - refl_ray_origin_ws)));
-    safeImageStoreU(reservoir_out_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(reservoir), 0, 0));
+    safeImageStore(radiance_out_tex, ivec2(px), vec4(radiance_sel, dot(normal_ws, outgoing_ray.Direction)));
+    safeImageStore(ray_orig_output_tex, ivec2(px), vec4(ray_orig_sel_ws, 0.0));
+    safeImageStore(hit_normal_output_tex, ivec2(px), encode_hit_normal_and_dot(hit_normal_ws_dot));
+    safeImageStore(ray_output_tex, ivec2(px), vec4(ray_hit_sel_ws - ray_orig_sel_ws, length(ray_hit_sel_ws - refl_ray_origin_ws)));
+    safeImageStoreU(reservoir_out_tex, ivec2(px), uvec4(as_raw(reservoir), 0, 0));
 
     TemporalReservoirOutput res_packed;
     res_packed.depth = depth;
     res_packed.ray_hit_offset_ws = ray_hit_sel_ws - ray_hit_ws(view_ray_context);
     res_packed.luminance = max(0.0, sRGB_to_luminance(radiance_sel));
     res_packed.hit_normal_ws = hit_normal_ws_dot.xyz;
-    safeImageStoreU(temporal_reservoir_packed_tex, daxa_i32vec2(px), TemporalReservoirOutput_as_raw(res_packed));
+    safeImageStoreU(temporal_reservoir_packed_tex, ivec2(px), TemporalReservoirOutput_as_raw(res_packed));
 }
 #endif
 
@@ -1346,8 +1346,8 @@ DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialPush, push)
 #define USE_SSAO_WEIGHING 1
 #define ALLOW_REUSE_OF_BACKFACING 1
 
-daxa_u32vec2 reservoir_payload_to_px(uint payload) {
-    return daxa_u32vec2(payload & 0xffff, payload >> 16);
+uvec2 reservoir_payload_to_px(uint payload) {
+    return uvec2(payload & 0xffff, payload >> 16);
 }
 
 // Two-thirds of SmeLU
@@ -1357,30 +1357,30 @@ float normal_inluence_nonlinearity(float x, float b) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    const daxa_u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
-    const daxa_u32vec2 hi_px = px * 2 + HALFRES_SUBSAMPLE_OFFSET;
-    float depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(px), 0).r;
+    uvec2 px = gl_GlobalInvocationID.xy;
+    const uvec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
+    const uvec2 hi_px = px * 2 + HALFRES_SUBSAMPLE_OFFSET;
+    float depth = safeTexelFetch(half_depth_tex, ivec2(px), 0).r;
 
     const uint seed = deref(gpu_input).frame_index + push.spatial_reuse_pass_idx * 123;
-    uint rng = hash3(daxa_u32vec3(px, seed));
+    uint rng = hash3(uvec3(px, seed));
 
-    const daxa_f32vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
+    const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
     const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
 
-    const daxa_f32vec3 center_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(px), 0).rgb;
-    const daxa_f32vec3 center_normal_ws = direction_view_to_world(globals, center_normal_vs);
-    const float center_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(px), 0).r;
-    const float center_ssao = safeTexelFetch(half_ssao_tex, daxa_i32vec2(px), 0).r;
+    const vec3 center_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).rgb;
+    const vec3 center_normal_ws = direction_view_to_world(globals, center_normal_vs);
+    const float center_depth = safeTexelFetch(half_depth_tex, ivec2(px), 0).r;
+    const float center_ssao = safeTexelFetch(half_ssao_tex, ivec2(px), 0).r;
 
     Reservoir1sppStreamState stream_state = Reservoir1sppStreamState_create();
     Reservoir1spp reservoir = Reservoir1spp_create();
 
-    daxa_f32vec3 dir_sel = daxa_f32vec3(1);
+    vec3 dir_sel = vec3(1);
 
     float sample_radius_offset = uint_to_u01_float(hash1_mut(rng));
 
-    Reservoir1spp center_r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_input_tex, daxa_i32vec2(px), 0).xy);
+    Reservoir1spp center_r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_input_tex, ivec2(px), 0).xy);
 
     float kernel_tightness = 1.0 - center_ssao;
 
@@ -1406,11 +1406,11 @@ void main() {
         max_kernel_radius = 8;
     }
 
-    const daxa_f32vec2 dist_to_edge_xy = min(daxa_f32vec2(px), push.output_tex_size.xy - px);
+    const vec2 dist_to_edge_xy = min(vec2(px), push.output_tex_size.xy - px);
     const float allow_edge_overstep = select(center_r.M < 10, 100.0, 1.25);
     // const float allow_edge_overstep = 1.25;
-    const daxa_f32vec2 kernel_radius = min(daxa_f32vec2(max_kernel_radius), dist_to_edge_xy * allow_edge_overstep);
-    // const daxa_f32vec2 kernel_radius = max_kernel_radius;
+    const vec2 kernel_radius = min(vec2(max_kernel_radius), dist_to_edge_xy * allow_edge_overstep);
+    // const vec2 kernel_radius = max_kernel_radius;
 
     uint sample_count = select(DIFFUSE_GI_USE_RESTIR != 0, select(push.spatial_reuse_pass_idx == 0, SAMPLE_COUNT_PASS0, SAMPLE_COUNT_PASS1), 1);
 
@@ -1418,35 +1418,35 @@ void main() {
     // Scrambling angles here would be nice, but results in bad cache thrashing.
     // Quantizing the offsets results in mild cache abuse, and fixes most of the artifacts
     // (flickering near edges, e.g. under sofa in the UE5 archviz apartment scene).
-    const daxa_u32vec2 ang_offset_seed = select(push.spatial_reuse_pass_idx == 0, (px >> 3), (px >> 2));
+    const uvec2 ang_offset_seed = select(push.spatial_reuse_pass_idx == 0, (px >> 3), (px >> 2));
 #else
     // Haha, cache go brrrrrrr.
-    const daxa_u32vec2 ang_offset_seed = px;
+    const uvec2 ang_offset_seed = px;
 #endif
 
     float ang_offset = uint_to_u01_float(hash3(
-                           daxa_u32vec3(ang_offset_seed, deref(gpu_input).frame_index * 2 + push.spatial_reuse_pass_idx))) *
+                           uvec3(ang_offset_seed, deref(gpu_input).frame_index * 2 + push.spatial_reuse_pass_idx))) *
                        M_PI * 2;
 
     if (!RESTIR_USE_SPATIAL) {
         sample_count = 1;
     }
 
-    daxa_f32vec3 radiance_output = daxa_f32vec3(0);
+    vec3 radiance_output = vec3(0);
 
     for (uint sample_i = 0; sample_i < sample_count; ++sample_i) {
         // float ang = M_PI / 2;
         float ang = (sample_i + ang_offset) * GOLDEN_ANGLE;
-        daxa_f32vec2 radius =
-            select(0 == sample_i, daxa_f32vec2(0), (pow(float(sample_i + sample_radius_offset) / sample_count, 0.5) * kernel_radius));
-        daxa_i32vec2 rpx_offset = daxa_i32vec2(daxa_f32vec2(cos(ang), sin(ang)) * radius);
+        vec2 radius =
+            select(0 == sample_i, vec2(0), (pow(float(sample_i + sample_radius_offset) / sample_count, 0.5) * kernel_radius));
+        ivec2 rpx_offset = ivec2(vec2(cos(ang), sin(ang)) * radius);
 
         const bool is_center_sample = sample_i == 0;
         // const bool is_center_sample = all(rpx_offset == 0);
 
-        const daxa_i32vec2 rpx = daxa_i32vec2(px) + rpx_offset;
+        const ivec2 rpx = ivec2(px) + rpx_offset;
 
-        const daxa_u32vec2 reservoir_raw = safeTexelFetchU(reservoir_input_tex, daxa_i32vec2(rpx), 0).xy;
+        const uvec2 reservoir_raw = safeTexelFetchU(reservoir_input_tex, ivec2(rpx), 0).xy;
         if (0 == reservoir_raw.x) {
             // Invalid reprojectoin
             continue;
@@ -1456,9 +1456,9 @@ void main() {
 
         r.M = min(r.M, 500);
 
-        const daxa_u32vec2 spx = reservoir_payload_to_px(r.payload);
+        const uvec2 spx = reservoir_payload_to_px(r.payload);
 
-        const TemporalReservoirOutput spx_packed = TemporalReservoirOutput_from_raw(safeTexelFetchU(temporal_reservoir_packed_tex, daxa_i32vec2(spx), 0));
+        const TemporalReservoirOutput spx_packed = TemporalReservoirOutput_from_raw(safeTexelFetchU(temporal_reservoir_packed_tex, ivec2(spx), 0));
         const float reused_luminance = spx_packed.luminance;
 
         float visibility = 1;
@@ -1474,13 +1474,13 @@ void main() {
         // Consider for example merging a pixel with itself (no offset) multiple times over; we want
         // the jacobian to be 1.0 in that case, and not to reflect wherever its ray originally came from.
 
-        const daxa_i32vec2 sample_offset = daxa_i32vec2(px) - daxa_i32vec2(rpx);
-        const float sample_dist2 = dot(daxa_f32vec2(sample_offset), daxa_f32vec2(sample_offset));
-        const daxa_f32vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(rpx), 0).rgb;
+        const ivec2 sample_offset = ivec2(px) - ivec2(rpx);
+        const float sample_dist2 = dot(vec2(sample_offset), vec2(sample_offset));
+        const vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(rpx), 0).rgb;
 
-        daxa_f32vec3 sample_radiance;
+        vec3 sample_radiance;
         if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
-            sample_radiance = safeTexelFetch(bounced_radiance_input_tex, daxa_i32vec2(rpx), 0).rgb;
+            sample_radiance = safeTexelFetch(bounced_radiance_input_tex, ivec2(rpx), 0).rgb;
         }
 
         const float normal_similarity_dot = dot(sample_normal_vs, center_normal_vs);
@@ -1491,16 +1491,16 @@ void main() {
         relevance *= max(0, normal_similarity_dot);
 #endif
 
-        const float sample_ssao = safeTexelFetch(half_ssao_tex, daxa_i32vec2(rpx), 0).r;
+        const float sample_ssao = safeTexelFetch(half_ssao_tex, ivec2(rpx), 0).r;
 
 #if USE_SSAO_WEIGHING
         relevance *= 1 - abs(sample_ssao - center_ssao);
 #endif
 
-        const daxa_f32vec2 rpx_uv = get_uv(
+        const vec2 rpx_uv = get_uv(
             rpx * 2 + HALFRES_SUBSAMPLE_OFFSET,
             push.gbuffer_tex_size);
-        const float rpx_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(rpx), 0).r;
+        const float rpx_depth = safeTexelFetch(half_depth_tex, ivec2(rpx), 0).r;
 
         if (rpx_depth == 0.0) {
             continue;
@@ -1508,23 +1508,23 @@ void main() {
 
         const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(globals, rpx_uv, rpx_depth);
 
-        const daxa_f32vec2 spx_uv = get_uv(
+        const vec2 spx_uv = get_uv(
             spx * 2 + HALFRES_SUBSAMPLE_OFFSET,
             push.gbuffer_tex_size);
         const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(globals, spx_uv, spx_packed.depth);
-        const daxa_f32vec3 sample_hit_ws = spx_packed.ray_hit_offset_ws + ray_hit_ws(spx_ray_ctx);
+        const vec3 sample_hit_ws = spx_packed.ray_hit_offset_ws + ray_hit_ws(spx_ray_ctx);
 
-        const daxa_f32vec3 reused_dir_to_sample_hit_unnorm_ws = sample_hit_ws - ray_hit_ws(rpx_ray_ctx);
+        const vec3 reused_dir_to_sample_hit_unnorm_ws = sample_hit_ws - ray_hit_ws(rpx_ray_ctx);
 
         // const float reused_luminance = sample_hit_ws_and_luminance.a;
 
         // Note: we want the neighbor's sample, which might have been resampled already.
         const float reused_dist = length(reused_dir_to_sample_hit_unnorm_ws);
-        const daxa_f32vec3 reused_dir_to_sample_hit_ws = reused_dir_to_sample_hit_unnorm_ws / reused_dist;
+        const vec3 reused_dir_to_sample_hit_ws = reused_dir_to_sample_hit_unnorm_ws / reused_dist;
 
-        const daxa_f32vec3 dir_to_sample_hit_unnorm = sample_hit_ws - ray_hit_ws(view_ray_context);
+        const vec3 dir_to_sample_hit_unnorm = sample_hit_ws - ray_hit_ws(view_ray_context);
         const float dist_to_sample_hit = length(dir_to_sample_hit_unnorm);
-        const daxa_f32vec3 dir_to_sample_hit = normalize(dir_to_sample_hit_unnorm);
+        const vec3 dir_to_sample_hit = normalize(dir_to_sample_hit_unnorm);
 
         // Reject neighbors with vastly different depths
         if (!is_center_sample) {
@@ -1539,7 +1539,7 @@ void main() {
 
         // Raymarch to check occlusion
         if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH && (push.perform_occlusion_raymarch != 0)) {
-            const daxa_f32vec2 ray_orig_uv = spx_uv;
+            const vec2 ray_orig_uv = spx_uv;
 
             // const float surface_offset_len = length(spx_ray_ctx.ray_hit_vs() - view_ray_context.ray_hit_vs());
             const float surface_offset_len = length(
@@ -1552,8 +1552,8 @@ void main() {
 
             // Trace towards the hit point.
 
-            const daxa_f32vec3 raymarch_dir_unnorm_ws = sample_hit_ws - ray_hit_ws(view_ray_context);
-            const daxa_f32vec3 raymarch_end_ws =
+            const vec3 raymarch_dir_unnorm_ws = sample_hit_ws - ray_hit_ws(view_ray_context);
+            const vec3 raymarch_end_ws =
                 ray_hit_ws(view_ray_context)
                 // TODO: what's a good max distance to raymarch?
                 + raymarch_dir_unnorm_ws * min(1.0, MAX_RAYMARCH_DIST_MULT * surface_offset_len / length(raymarch_dir_unnorm_ws));
@@ -1574,7 +1574,7 @@ void main() {
             OcclusionScreenRayMarch_march(gpu_input, globals, raymarch, visibility, sample_radiance);
         }
 
-        const daxa_f32vec3 sample_hit_normal_ws = spx_packed.hit_normal_ws;
+        const vec3 sample_hit_normal_ws = spx_packed.hit_normal_ws;
 
         // phi_2^r in the ReSTIR GI paper
         const float center_to_hit_vis = -dot(sample_hit_normal_ws, dir_to_sample_hit);
@@ -1665,10 +1665,10 @@ void main() {
     finish_stream(reservoir, stream_state);
     reservoir.W = min(reservoir.W, RESTIR_RESERVOIR_W_CLAMP);
 
-    safeImageStoreU(reservoir_output_tex, daxa_i32vec2(px), daxa_u32vec4(as_raw(reservoir), 0, 0));
+    safeImageStoreU(reservoir_output_tex, ivec2(px), uvec4(as_raw(reservoir), 0, 0));
 
     if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
-        safeImageStore(bounced_radiance_output_tex, daxa_i32vec2(px), daxa_f32vec4(radiance_output, 0.0));
+        safeImageStore(bounced_radiance_output_tex, ivec2(px), vec4(radiance_output, 0.0));
     }
 }
 #endif
@@ -1681,41 +1681,41 @@ float ggx_ndf_unnorm(float a2, float cos_theta) {
     return a2 / (denom_sqrt * denom_sqrt);
 }
 
-daxa_u32vec2 reservoir_payload_to_px(uint payload) {
-    return daxa_u32vec2(payload & 0xffff, payload >> 16);
+uvec2 reservoir_payload_to_px(uint payload) {
+    return uvec2(payload & 0xffff, payload >> 16);
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    const daxa_u32vec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
-    const daxa_i32vec2 hi_px_offset = daxa_i32vec2(HALFRES_SUBSAMPLE_OFFSET);
+    uvec2 px = gl_GlobalInvocationID.xy;
+    const uvec2 HALFRES_SUBSAMPLE_OFFSET = get_downscale_offset(gpu_input);
+    const ivec2 hi_px_offset = ivec2(HALFRES_SUBSAMPLE_OFFSET);
 
-    float depth = safeTexelFetch(depth_tex, daxa_i32vec2(px), 0).r;
+    float depth = safeTexelFetch(depth_tex, ivec2(px), 0).r;
     if (0 == depth) {
-        safeImageStore(irradiance_output_tex, daxa_i32vec2(px), daxa_f32vec4(0));
+        safeImageStore(irradiance_output_tex, ivec2(px), vec4(0));
         return;
     }
 
     const uint seed = deref(gpu_input).frame_index;
-    uint rng = hash3(daxa_u32vec3(px, seed));
+    uint rng = hash3(uvec3(px, seed));
 
-    const daxa_f32vec2 uv = get_uv(px, push.gbuffer_tex_size);
+    const vec2 uv = get_uv(px, push.gbuffer_tex_size);
     const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
 
-    daxa_u32vec4 g_buffer_value = safeTexelFetchU(gbuffer_tex, daxa_i32vec2(px), 0);
-    daxa_f32vec3 gbuffer_nrm = u16_to_nrm(g_buffer_value.y);
+    uvec4 g_buffer_value = safeTexelFetchU(gbuffer_tex, ivec2(px), 0);
+    vec3 gbuffer_nrm = u16_to_nrm(g_buffer_value.y);
 
-    const daxa_f32vec3 center_normal_ws = gbuffer_nrm;
-    const daxa_f32vec3 center_normal_vs = direction_world_to_view(globals, center_normal_ws);
+    const vec3 center_normal_ws = gbuffer_nrm;
+    const vec3 center_normal_vs = direction_world_to_view(globals, center_normal_ws);
     const float center_depth = depth;
-    const float center_ssao = safeTexelFetch(ssao_tex, daxa_i32vec2(px), 0).r;
+    const float center_ssao = safeTexelFetch(ssao_tex, ivec2(px), 0).r;
 
-    // const daxa_f32vec3 center_bent_normal_ws = normalize(direction_view_to_world(globals, safeTexelFetch(ssao_tex, daxa_i32vec2(px * 2), 0).gba));
+    // const vec3 center_bent_normal_ws = normalize(direction_view_to_world(globals, safeTexelFetch(ssao_tex, ivec2(px * 2), 0).gba));
 
     const uint frame_hash = hash1(deref(gpu_input).frame_index);
     const uint px_idx_in_quad = (((px.x & 1) | (px.y & 1) * 2) + frame_hash) & 3;
-    const daxa_f32vec4 blue = blue_noise_for_pixel(blue_noise_vec2, px, deref(gpu_input).frame_index) * M_TAU;
+    const vec4 blue = blue_noise_for_pixel(blue_noise_vec2, px, deref(gpu_input).frame_index) * M_TAU;
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.output_tex_size.w * 0.5);
     const float NEAR_FIELD_FADE_OUT_START = NEAR_FIELD_FADE_OUT_END * 0.5;
@@ -1728,31 +1728,31 @@ void main() {
     const float near_field_influence = select(is_rtdgi_tracing_frame(), center_ssao, 0);
 #endif
 
-    daxa_f32vec3 total_irradiance = daxa_f32vec3(0.0);
+    vec3 total_irradiance = vec3(0.0);
     bool sharpen_gi_kernel = false;
 
     {
         float w_sum = 0;
-        daxa_f32vec3 weighted_irradiance = daxa_f32vec3(0.0);
+        vec3 weighted_irradiance = vec3(0.0);
 
         for (uint sample_i = 0; sample_i < select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, 4, 1); ++sample_i) {
             const float ang = (sample_i + blue.x) * GOLDEN_ANGLE + (px_idx_in_quad / 4.0) * M_TAU;
             const float radius =
                 select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, (pow(float(sample_i), 0.666) * 1.0 + 0.4), 0.0);
-            const daxa_f32vec2 reservoir_px_offset = daxa_f32vec2(cos(ang), sin(ang)) * radius;
-            const daxa_i32vec2 rpx = daxa_i32vec2(floor(daxa_f32vec2(px) * 0.5 + reservoir_px_offset));
+            const vec2 reservoir_px_offset = vec2(cos(ang), sin(ang)) * radius;
+            const ivec2 rpx = ivec2(floor(vec2(px) * 0.5 + reservoir_px_offset));
 
-            const daxa_f32vec2 rpx_uv = get_uv(
+            const vec2 rpx_uv = get_uv(
                 rpx * 2 + HALFRES_SUBSAMPLE_OFFSET,
                 push.gbuffer_tex_size);
-            const float rpx_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(rpx), 0).r;
+            const float rpx_depth = safeTexelFetch(half_depth_tex, ivec2(rpx), 0).r;
             const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(globals, rpx_uv, rpx_depth);
 
             if (USE_SPLIT_RT_NEAR_FIELD != 0) {
-                const daxa_f32vec3 hit_ws = safeTexelFetch(candidate_hit_tex, daxa_i32vec2(rpx), 0).xyz + ray_hit_ws(rpx_ray_ctx);
-                const daxa_f32vec3 sample_offset = hit_ws - ray_hit_ws(view_ray_context);
+                const vec3 hit_ws = safeTexelFetch(candidate_hit_tex, ivec2(rpx), 0).xyz + ray_hit_ws(rpx_ray_ctx);
+                const vec3 sample_offset = hit_ws - ray_hit_ws(view_ray_context);
                 const float sample_dist = length(sample_offset);
-                const daxa_f32vec3 sample_dir = sample_offset / sample_dist;
+                const vec3 sample_dir = sample_offset / sample_dist;
 
                 const float geometric_term =
                     // TODO: fold the 2 into the PDF
@@ -1761,11 +1761,11 @@ void main() {
                 const float atten = smoothstep(NEAR_FIELD_FADE_OUT_END, NEAR_FIELD_FADE_OUT_START, sample_dist);
                 sharpen_gi_kernel = sharpen_gi_kernel || (atten > 0.9);
 
-                daxa_f32vec3 contribution = safeTexelFetch(candidate_radiance_tex, daxa_i32vec2(rpx), 0).rgb * geometric_term;
+                vec3 contribution = safeTexelFetch(candidate_radiance_tex, ivec2(rpx), 0).rgb * geometric_term;
                 contribution *= mix(0.0, atten, near_field_influence);
 
-                daxa_f32vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(rpx), 0).rgb;
-                const float sample_ssao = safeTexelFetch(ssao_tex, daxa_i32vec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
+                vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(rpx), 0).rgb;
+                const float sample_ssao = safeTexelFetch(ssao_tex, ivec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
 
                 float w = 1;
                 w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
@@ -1781,7 +1781,7 @@ void main() {
 
     {
         float w_sum = 0;
-        daxa_f32vec3 weighted_irradiance = daxa_f32vec3(0);
+        vec3 weighted_irradiance = vec3(0);
 
         const float kernel_scale = select(sharpen_gi_kernel, 0.5, 1.0);
 
@@ -1790,37 +1790,37 @@ void main() {
             const float radius =
                 select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, (pow(float(sample_i), 0.666) * 1.0 * kernel_scale + 0.4 * kernel_scale), 0.0);
 
-            const daxa_f32vec2 reservoir_px_offset = daxa_f32vec2(cos(ang), sin(ang)) * radius;
-            const daxa_i32vec2 rpx = daxa_i32vec2(floor(daxa_f32vec2(px) * 0.5 + reservoir_px_offset));
+            const vec2 reservoir_px_offset = vec2(cos(ang), sin(ang)) * radius;
+            const ivec2 rpx = ivec2(floor(vec2(px) * 0.5 + reservoir_px_offset));
 
-            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_input_tex, daxa_i32vec2(rpx), 0).xy);
-            const daxa_u32vec2 spx = reservoir_payload_to_px(r.payload);
+            Reservoir1spp r = Reservoir1spp_from_raw(safeTexelFetchU(reservoir_input_tex, ivec2(rpx), 0).xy);
+            const uvec2 spx = reservoir_payload_to_px(r.payload);
 
-            const TemporalReservoirOutput spx_packed = TemporalReservoirOutput_from_raw(safeTexelFetchU(temporal_reservoir_packed_tex, daxa_i32vec2(spx), 0));
+            const TemporalReservoirOutput spx_packed = TemporalReservoirOutput_from_raw(safeTexelFetchU(temporal_reservoir_packed_tex, ivec2(spx), 0));
 
-            const daxa_f32vec2 spx_uv = get_uv(
+            const vec2 spx_uv = get_uv(
                 spx * 2 + HALFRES_SUBSAMPLE_OFFSET,
                 push.gbuffer_tex_size);
             const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(globals, spx_uv, spx_packed.depth);
 
             {
                 const float spx_depth = spx_packed.depth;
-                const float rpx_depth = safeTexelFetch(half_depth_tex, daxa_i32vec2(rpx), 0).r;
+                const float rpx_depth = safeTexelFetch(half_depth_tex, ivec2(rpx), 0).r;
 
-                const daxa_f32vec3 hit_ws = spx_packed.ray_hit_offset_ws + ray_hit_ws(spx_ray_ctx);
-                const daxa_f32vec3 sample_offset = hit_ws - ray_hit_ws(view_ray_context);
+                const vec3 hit_ws = spx_packed.ray_hit_offset_ws + ray_hit_ws(spx_ray_ctx);
+                const vec3 sample_offset = hit_ws - ray_hit_ws(view_ray_context);
                 const float sample_dist = length(sample_offset);
-                const daxa_f32vec3 sample_dir = sample_offset / sample_dist;
+                const vec3 sample_dir = sample_offset / sample_dist;
 
                 const float geometric_term =
                     // TODO: fold the 2 into the PDF
                     2 * max(0.0, dot(center_normal_ws, sample_dir));
 
-                daxa_f32vec3 radiance;
+                vec3 radiance;
                 if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
-                    radiance = safeTexelFetch(bounced_radiance_input_tex, daxa_i32vec2(rpx), 0).rgb;
+                    radiance = safeTexelFetch(bounced_radiance_input_tex, ivec2(rpx), 0).rgb;
                 } else {
-                    radiance = safeTexelFetch(radiance_tex, daxa_i32vec2(spx), 0).rgb;
+                    radiance = safeTexelFetch(radiance_tex, ivec2(spx), 0).rgb;
                 }
 
                 if (USE_SPLIT_RT_NEAR_FIELD != 0) {
@@ -1828,10 +1828,10 @@ void main() {
                     radiance *= mix(1.0, atten, near_field_influence);
                 }
 
-                const daxa_f32vec3 contribution = radiance * geometric_term * r.W;
+                const vec3 contribution = radiance * geometric_term * r.W;
 
-                daxa_f32vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, daxa_i32vec2(spx), 0).rgb;
-                const float sample_ssao = safeTexelFetch(ssao_tex, daxa_i32vec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
+                vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(spx), 0).rgb;
+                const float sample_ssao = safeTexelFetch(ssao_tex, ivec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
 
                 float w = 1;
                 w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
@@ -1846,6 +1846,6 @@ void main() {
         total_irradiance += weighted_irradiance / max(1e-20, w_sum);
     }
 
-    safeImageStore(irradiance_output_tex, daxa_i32vec2(px), daxa_f32vec4(total_irradiance, 1));
+    safeImageStore(irradiance_output_tex, ivec2(px), vec4(total_irradiance, 1));
 }
 #endif

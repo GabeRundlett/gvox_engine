@@ -6,9 +6,9 @@
 DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, ssao_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, ssao_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct SsaoComputePush {
     DAXA_TH_BLOB(SsaoCompute, uses)
@@ -17,19 +17,19 @@ struct SsaoComputePush {
 DAXA_DECL_PUSH_CONSTANT(SsaoComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
-daxa_ImageViewId ssao_image_id = push.uses.ssao_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex ssao_image_id = push.uses.ssao_image_id;
 #endif
 #endif
 
 #if SsaoSpatialFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SsaoSpatialFilterCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct SsaoSpatialFilterComputePush {
     DAXA_TH_BLOB(SsaoSpatialFilterCompute, uses)
@@ -37,20 +37,20 @@ struct SsaoSpatialFilterComputePush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(SsaoSpatialFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
-daxa_ImageViewId src_image_id = push.uses.src_image_id;
-daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 #endif
 #endif
 
 #if SsaoUpscaleComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SsaoUpscaleCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct SsaoUpscaleComputePush {
     DAXA_TH_BLOB(SsaoUpscaleCompute, uses)
@@ -58,20 +58,20 @@ struct SsaoUpscaleComputePush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(SsaoUpscaleComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
-daxa_ImageViewId src_image_id = push.uses.src_image_id;
-daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 #endif
 #endif
 
 #if SsaoTemporalFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SsaoTemporalFilterCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct SsaoTemporalFilterComputePush {
     DAXA_TH_BLOB(SsaoTemporalFilterCompute, uses)
@@ -79,10 +79,10 @@ struct SsaoTemporalFilterComputePush {
 #if DAXA_SHADER
 DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewId reprojection_image_id = push.uses.reprojection_image_id;
-daxa_ImageViewId history_image_id = push.uses.history_image_id;
-daxa_ImageViewId src_image_id = push.uses.src_image_id;
-daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+daxa_ImageViewIndex reprojection_image_id = push.uses.reprojection_image_id;
+daxa_ImageViewIndex history_image_id = push.uses.history_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 #endif
 #endif
 

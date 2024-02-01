@@ -483,7 +483,7 @@ template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT
 struct Task : TaskHeadT {
     daxa::ShaderSource source;
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::Views views{};
+    TaskHeadT::AttachmentViews views{};
     TaskCallback<TaskHeadT, PushT, InfoT, PipelineT> *callback_{};
     InfoT info{};
     // Not set by user
@@ -506,7 +506,7 @@ struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> : TaskHeadT {
     daxa::Optional<daxa::DepthTestInfo> depth_test{};
     daxa::RasterizerInfo raster{};
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::Views views{};
+    TaskHeadT::AttachmentViews views{};
     TaskCallback<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> *callback_{};
     InfoT info{};
     // Not set by user

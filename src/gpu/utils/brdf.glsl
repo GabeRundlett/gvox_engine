@@ -51,7 +51,7 @@ BrdfSample BrdfSample_invalid() {
     res.approx_roughness = 0;
     return res;
 }
-bool is_valid(inout BrdfSample self) {
+bool is_valid(BrdfSample self) {
     return self.wi.z > 1e-6;
 }
 
@@ -60,7 +60,7 @@ struct DiffuseBrdf {
     // vec3 emission;
 };
 
-BrdfSample sample_brdf(inout DiffuseBrdf self, vec3 _wo, vec2 urand) {
+BrdfSample sample_brdf(DiffuseBrdf self, vec3 _wo, vec2 urand) {
     float phi = urand.x * M_TAU;
     float cos_theta = sqrt(max(0.0, 1.0 - urand.y));
     float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
@@ -79,7 +79,7 @@ BrdfSample sample_brdf(inout DiffuseBrdf self, vec3 _wo, vec2 urand) {
     return res;
 }
 
-BrdfValue evaluate(inout DiffuseBrdf self, vec3 _wo, vec3 wi) {
+BrdfValue evaluate(DiffuseBrdf self, vec3 _wo, vec3 wi) {
     BrdfValue res;
     res.pdf = select(wi.z > 0.0, M_FRAC_1_PI, 0.0);
     res.value_over_pdf = select(bvec3(wi.z > 0.0), self.albedo, vec3(0.0));
@@ -88,7 +88,7 @@ BrdfValue evaluate(inout DiffuseBrdf self, vec3 _wo, vec3 wi) {
     return res;
 }
 
-vec2 wi_to_primary_sample_space(inout DiffuseBrdf self, vec3 wi) {
+vec2 wi_to_primary_sample_space(DiffuseBrdf self, vec3 wi) {
     const float cos_theta = wi.z;
     // cos_theta = sqrt(max(0.0, 1.0 - urand.y));
     // cos_theta * cos_theta = 1.0 - urand.y
@@ -263,7 +263,7 @@ BrdfSample sample_brdf(inout SpecularBrdf self, vec3 wo, vec2 urand) {
     return res;
 }
 
-BrdfValue evaluate(inout SpecularBrdf self, vec3 wo, vec3 wi) {
+BrdfValue evaluate(SpecularBrdf self, vec3 wo, vec3 wi) {
     if (wi.z <= 0.0 || wo.z <= 0.0) {
         return BrdfValue_invalid();
     }

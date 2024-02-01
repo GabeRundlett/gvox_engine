@@ -14,6 +14,7 @@
 #include <shared/renderer/trace_primary.inl>
 #include <shared/renderer/calculate_reprojection_map.inl>
 #include <shared/renderer/ssao.inl>
+#include <shared/renderer/rtdgi.inl>
 #include <shared/renderer/trace_secondary.inl>
 #include <shared/renderer/shadow_denoiser.inl>
 #include <shared/renderer/taa.inl>
@@ -201,6 +202,7 @@ struct GpuResources {
 struct GpuApp : AppUi::DebugDisplayProvider {
     GbufferRenderer gbuffer_renderer;
     SsaoRenderer ssao_renderer;
+    RtdgiRenderer rtdgi_renderer;
     TaaRenderer taa_renderer;
     ShadowDenoiser shadow_denoiser;
     PostProcessor post_processor;
@@ -264,7 +266,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
             temp_task_graph.add_task({
                 .attachments = {
-                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_blue_noise_vec2_image),
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_blue_noise_vec2_image),
                 },
                 .task = [this](daxa::TaskInterface const &ti) {
                     auto staging_buffer = ti.device.create_buffer({
@@ -368,7 +370,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             temp_task_graph.use_persistent_image(task_debug_texture);
             temp_task_graph.add_task({
                 .attachments = {
-                    daxa::inl_atch(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_debug_texture),
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_debug_texture),
                 },
                 .task = [&, this](daxa::TaskInterface const &ti) {
                     auto staging_buffer = ti.device.create_buffer({
@@ -556,6 +558,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     void end_frame(AppUi &ui) {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
+        rtdgi_renderer.next_frame();
         post_processor.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
         if constexpr (ENABLE_TAA) {
             taa_renderer.next_frame();
@@ -586,7 +589,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         voxel_world.record_startup(record_ctx);
         record_ctx.task_graph.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_globals_buffer),
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_globals_buffer),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 ti.recorder.clear_buffer({
@@ -645,7 +648,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         record_ctx.task_graph.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, task_input_buffer),
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_input_buffer),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_input_buffer = ti.device.create_buffer({
@@ -686,14 +689,31 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_world.buffers, sky_cube);
         ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
 
-        particles.simulate(record_ctx, ircache_state, voxel_world.buffers);
+        particles.simulate(record_ctx, voxel_world.buffers);
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
         auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
-        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, ircache_state, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
+        auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
-        auto ssao_image = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
+
+        auto reprojected_rtdgi = rtdgi_renderer.reproject(record_ctx, reprojection_map);
+
+        auto ssgi_tex = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
         auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
         auto denoised_shadow_mask = shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
+
+        auto rtdgi_ = rtdgi_renderer.render(
+            record_ctx,
+            reprojected_rtdgi,
+            gbuffer_depth,
+            reprojection_map,
+            ibl_cube,
+            ircache_state,
+            // wrc,
+            voxel_world.buffers,
+            ssgi_tex);
+
+        auto &rtdgi_irradiance = rtdgi_.screen_irradiance_tex;
+        auto &rtdgi_candidates = rtdgi_.candidates;
 
         auto rtr = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -713,6 +733,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             denoised_shadow_mask,
             rtr,
             rtdgi,
+            // rtdgi_irradiance,
             ircache_state,
             // wrc,
             sky_cube,
@@ -743,8 +764,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         record_ctx.task_graph.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_READ, task_output_buffer),
-                daxa::inl_atch(daxa::TaskBufferAccess::HOST_TRANSFER_WRITE, task_staging_output_buffer),
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, task_output_buffer),
+                daxa::inl_attachment(daxa::TaskBufferAccess::HOST_TRANSFER_WRITE, task_staging_output_buffer),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto output_buffer = task_output_buffer.get_state().buffers[0];

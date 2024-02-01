@@ -6,11 +6,11 @@
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute, 7)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prev_depth_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prev_depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, velocity_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct CalculateReprojectionMapComputePush {
     DAXA_TH_BLOB(CalculateReprojectionMapCompute, uses)
@@ -19,11 +19,11 @@ struct CalculateReprojectionMapComputePush {
 DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
-daxa_ImageViewId prev_depth_image_id = push.uses.prev_depth_image_id;
-daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
-daxa_ImageViewId dst_image_id = push.uses.dst_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex prev_depth_image_id = push.uses.prev_depth_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 #endif
 #endif
 

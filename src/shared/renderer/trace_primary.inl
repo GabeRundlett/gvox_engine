@@ -8,7 +8,7 @@ DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 3 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, render_depth_prepass_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, render_depth_prepass_image)
 DAXA_DECL_TASK_HEAD_END
 struct TraceDepthPrepassComputePush {
     DAXA_TH_BLOB(TraceDepthPrepassCompute, uses)
@@ -17,22 +17,21 @@ struct TraceDepthPrepassComputePush {
 DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId render_depth_prepass_image = push.uses.render_depth_prepass_image;
+daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 #endif
 #endif
 
 #if TracePrimaryComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute, 7 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute, 7 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, debug_texture)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, render_depth_prepass_image)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
-IRCACHE_USE_BUFFERS()
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, debug_texture)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, render_depth_prepass_image)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct TracePrimaryComputePush {
     DAXA_TH_BLOB(TracePrimaryCompute, uses)
@@ -42,12 +41,11 @@ DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_ImageViewId blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewId debug_texture = push.uses.debug_texture;
-daxa_ImageViewId render_depth_prepass_image = push.uses.render_depth_prepass_image;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
-IRCACHE_USE_BUFFERS_PUSH_USES()
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex debug_texture = push.uses.debug_texture;
+daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 #endif
 #endif
 
@@ -55,13 +53,13 @@ IRCACHE_USE_BUFFERS_PUSH_USES()
 DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, velocity_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, vs_normal_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, velocity_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, depth_image_id)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_depth_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct CompositeParticlesComputePush {
     DAXA_TH_BLOB(CompositeParticlesCompute, uses)
@@ -70,13 +68,13 @@ struct CompositeParticlesComputePush {
 DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewId g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewId velocity_image_id = push.uses.velocity_image_id;
-daxa_ImageViewId vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewId depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_ImageViewId particles_image_id = push.uses.particles_image_id;
-daxa_ImageViewId particles_depth_image_id = push.uses.particles_depth_image_id;
+daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
+daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
 #endif
 #endif
 
@@ -89,7 +87,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, IrcacheRenderState &ircache, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
+    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
@@ -158,7 +156,6 @@ struct GbufferRenderer {
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::render_depth_prepass_image, depth_prepass_image}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::velocity_image_id, velocity_image}},
-                IRCACHE_BUFFER_USES_ASSIGN(TracePrimaryCompute, ircache),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(TracePrimaryCompute::g_buffer_image_id).ids[0]).value();

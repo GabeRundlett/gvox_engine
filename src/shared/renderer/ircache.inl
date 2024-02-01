@@ -253,7 +253,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheCell), ircache_grid_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VertexPacked), ircache_reposition_proposal_buf)
@@ -274,7 +274,7 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_ImageViewId sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
 daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
@@ -292,7 +292,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
-DAXA_TH_IMAGE_ID(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheCell), ircache_grid_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VertexPacked), ircache_reposition_proposal_buf)
@@ -313,7 +313,7 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_ImageViewId sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
 daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
@@ -772,18 +772,18 @@ struct IrcacheRenderer {
         });
         record_ctx.task_graph.add_task({
             .attachments = {
-                daxa::inl_atch(daxa::TaskBufferAccess::TRANSFER_WRITE, state.ircache_buffers),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_meta_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_grid_meta_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_entry_cell_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_spatial_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_irradiance_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_aux_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_life_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_pool_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_entry_indirection_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_buf),
-                daxa::inl_atch(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_count_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, state.ircache_buffers),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_meta_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_grid_meta_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_entry_cell_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_spatial_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_irradiance_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_aux_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_life_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_pool_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_entry_indirection_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_buf),
+                daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_reposition_proposal_count_buf),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({

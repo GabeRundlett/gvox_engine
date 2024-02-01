@@ -188,12 +188,14 @@ void brushgen_world_terrain(in out Voxel voxel) {
         voxel.material_type = 1;
         const bool SHOULD_COLOR_WORLD = true;
         voxel.normal = nrm;
+        voxel.roughness = 1.0;
         if (SHOULD_COLOR_WORLD) {
             daxa_f32 r = good_rand(-val);
             if (val > -0.002 && upwards > 0.65) {
                 voxel.color = pow(daxa_f32vec3(105, 126, 78) / 255.0, vec3(2.2));
                 if (r < 0.5) {
                     voxel.color *= 0.7;
+                    voxel.roughness = 0.7;
                 }
                 // Mix with biome color
                 voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
@@ -203,10 +205,12 @@ void brushgen_world_terrain(in out Voxel voxel) {
                     voxel.color.r *= 0.5;
                     voxel.color.g *= 0.5;
                     voxel.color.b *= 0.5;
+                    voxel.roughness = 0.99;
                 } else if (r < 0.52) {
                     voxel.color.r *= 1.5;
                     voxel.color.g *= 1.5;
                     voxel.color.b *= 1.5;
+                    voxel.roughness = 0.95;
                 }
             } else if (val < -0.01 && val > -0.07 && upwards > 0.2) {
                 voxel.color = daxa_f32vec3(0.17, 0.15, 0.07);
@@ -215,8 +219,10 @@ void brushgen_world_terrain(in out Voxel voxel) {
                     voxel.color.g *= 0.75;
                     voxel.color.b *= 0.75;
                 }
+                voxel.roughness = 0.6;
             } else {
                 voxel.color = daxa_f32vec3(0.11, 0.10, 0.07);
+                voxel.roughness = 0.9;
             }
         } else {
             voxel.color = daxa_f32vec3(0.25);
@@ -277,9 +283,11 @@ void brushgen_world_terrain(in out Voxel voxel) {
             if (tree.wood < 0) {
                 voxel.material_type = 1;
                 voxel.color = daxa_f32vec3(.68, .4, .15) * 0.16;
+                voxel.roughness = 0.99;
             } else if (tree.leaves < 0) {
                 voxel.material_type = 1;
                 voxel.color = forest_biome_color * 0.5;
+                voxel.roughness = 0.5;
             }
         }
     }
@@ -291,10 +299,12 @@ void brushgen_world(in out Voxel voxel) {
         if (mandelbulb((voxel_pos / 64 - 1) * 1, mandelbulb_color)) {
             voxel.color = daxa_f32vec3(0.02);
             voxel.material_type = 1;
+            voxel.roughness = 0.5;
         }
     } else if (false) { // Solid world
         voxel.material_type = 1;
         voxel.color = daxa_f32vec3(0.5, 0.1, 0.8);
+        voxel.roughness = 0.5;
     } else if (GEN_MODEL != 0) { // Model world
         daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
@@ -312,18 +322,21 @@ void brushgen_world(in out Voxel voxel) {
         if (voxel.material_type != 0) {
             voxel.normal = vec3(0, 0, 1);
         }
+        voxel.roughness = 0.5;
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)
         if (length(fract(voxel_pos / 8) - 0.5) < 0.15) {
             voxel.material_type = 1;
             voxel.color = daxa_f32vec3(0.1);
+            voxel.roughness = 0.5;
         }
     } else if (false) { // Checker board world
         daxa_u32vec3 voxel_i = daxa_u32vec3(voxel_pos / 8);
         if ((voxel_i.x + voxel_i.y + voxel_i.z) % 2 == 1) {
             voxel.material_type = 1;
             voxel.color = daxa_f32vec3(0.1);
+            voxel.roughness = 0.5;
         }
     }
 }
@@ -368,8 +381,8 @@ void brushgen_b(in out Voxel voxel) {
         // }
         // voxel.color = daxa_f32vec3(rand(), rand(), rand());
         // voxel.color = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
-        voxel.color = daxa_f32vec3(0.9, 0.1, 0.1);
         voxel.material_type = 1;
+        voxel.color = daxa_f32vec3(0.9, 0.05, 0.05);
         voxel.roughness = 0.2;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }

@@ -145,7 +145,7 @@ daxa_f32vec4 cubic_hermite(daxa_f32vec4 A, daxa_f32vec4 B, daxa_f32vec4 C, daxa_
 }
 
 #define REMAP_FUNC HistoryRemap_remap
-daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewId img, daxa_f32vec2 P, daxa_f32vec4 img_size) {
+daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewIndex img, daxa_f32vec2 P, daxa_f32vec4 img_size) {
     // https://www.shadertoy.com/view/MllSzX
 
     daxa_f32vec2 pixel = P * img_size.xy + 0.5;
