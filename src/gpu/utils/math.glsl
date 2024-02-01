@@ -469,6 +469,14 @@ struct ViewRayContext {
     daxa_f32vec4 ray_hit_ws_h;
 };
 
+vec3 biased_ray_origin_ws_modifier(vec3 origin, vec3 normal) {
+#if PER_VOXEL_NORMALS
+    return floor(origin * VOXEL_SCL) / VOXEL_SCL + normal * 1.5 / VOXEL_SCL;
+#else
+    return origin;
+#endif
+}
+
 daxa_f32vec3 ray_dir_vs(in ViewRayContext vrc) { return normalize(vrc.ray_dir_vs_h.xyz); }
 daxa_f32vec3 ray_dir_ws(in ViewRayContext vrc) { return normalize(vrc.ray_dir_ws_h.xyz); }
 daxa_f32vec3 ray_origin_vs(in ViewRayContext vrc) { return vrc.ray_origin_vs_h.xyz / vrc.ray_origin_vs_h.w; }
@@ -481,7 +489,8 @@ daxa_f32vec3 biased_secondary_ray_origin_ws(in ViewRayContext vrc) {
 daxa_f32vec3 biased_secondary_ray_origin_ws_with_normal(in ViewRayContext vrc, daxa_f32vec3 normal) {
     daxa_f32vec3 ws_abs = abs(ray_hit_ws(vrc));
     float max_comp = max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, -ray_hit_vs(vrc).z));
-    return ray_hit_ws(vrc) + (normal - ray_dir_ws(vrc)) * max(1e-4, max_comp * 1e-6);
+    vec3 origin = ray_hit_ws(vrc) + (normal - ray_dir_ws(vrc)) * max(1e-4, max_comp * 1e-6);
+    return biased_ray_origin_ws_modifier(origin, normal);
 }
 ViewRayContext vrc_from_uv(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec2 uv) {
     ViewRayContext res;
