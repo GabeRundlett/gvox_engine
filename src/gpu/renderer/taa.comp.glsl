@@ -183,6 +183,8 @@ void main() {
     daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).output_resolution.xy, 0, 0);
     output_tex_size.zw = 1.0 / output_tex_size.xy;
 
+    vec2 input_tex_size = output_tex_size.xy * deref(gpu_input).render_res_scl;
+
     daxa_f32vec2 uv = get_uv(px, output_tex_size);
     daxa_u32vec2 closest_px = reproj_px;
 
@@ -191,27 +193,27 @@ void main() {
     daxa_f32vec2 vel_min;
     daxa_f32vec2 vel_max;
     {
-        daxa_f32vec2 v = fetch_reproj(reproj_px + daxa_i32vec2(-1, -1)).xy;
+        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(-1, -1)).xy;
         vel_min = v;
         vel_max = v;
     }
     {
-        daxa_f32vec2 v = fetch_reproj(reproj_px + daxa_i32vec2(1, -1)).xy;
+        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(1, -1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
     {
-        daxa_f32vec2 v = fetch_reproj(reproj_px + daxa_i32vec2(-1, 1)).xy;
+        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(-1, 1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
     {
-        daxa_f32vec2 v = fetch_reproj(reproj_px + daxa_i32vec2(1, 1)).xy;
+        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(1, 1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
 
-    bool should_dilate = any((vel_max - vel_min) > 0.1 * max(1.0 / input_tex_size.xy, abs(vel_max + vel_min)));
+    uint should_dilate = uint(any(greaterThan(vel_max - vel_min, 0.1 * max(1.0 / input_tex_size.xy, abs(vel_max + vel_min)))));
 
     // Since we're only checking a few pixels, there's a chance we'll miss something.
     // Dilate in the wave to reduce the chance of that happening.
@@ -227,7 +229,7 @@ void main() {
     // only to return the same value.
     // Therefore, we predicate the search on there being any appreciable
     // velocity difference around the target pixel. This ends up being faster on average.
-    if (should_dilate)
+    if (should_dilate != 0)
 #endif
     {
         float reproj_depth = fetch_depth(daxa_i32vec2(reproj_px));

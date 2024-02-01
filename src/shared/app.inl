@@ -725,7 +725,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
         //     .name = "rtdgi",
         // });
-        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 2>{rtr});
+        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{rtr});
 
         auto debug_out_tex = light_gbuffer(
             record_ctx,
