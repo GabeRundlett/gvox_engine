@@ -8,11 +8,18 @@ struct VoxelWorldGlobals {
 };
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
+#define VOXEL_BUFFER_USE_N 1
+
 #define VOXELS_USE_BUFFERS(ptr_type, mode) \
     DAXA_TH_BUFFER_PTR(mode, ptr_type(VoxelWorldGlobals), voxel_globals)
 
-#define VOXELS_BUFFER_USES_ASSIGN(voxel_buffers) \
-    .voxel_globals = voxel_buffers.task_voxel_globals
+#define VOXELS_USE_BUFFERS_PUSH_USES(ptr_type) \
+    ptr_type(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+
+#define VOXELS_BUFFER_USES_ASSIGN(TaskHeadName, voxel_buffers)                      \
+    daxa::TaskViewVariant {                                                         \
+        std::pair { TaskHeadName::voxel_globals, voxel_buffers.task_voxel_globals } \
+    }
 
 struct VoxelWorldOutput {
     daxa_u32 _dummy;

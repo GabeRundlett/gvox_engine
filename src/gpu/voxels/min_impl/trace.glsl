@@ -3,6 +3,7 @@
 #include <shared/app.inl>
 
 #include <utils/math.glsl>
+#include <voxels/pack_unpack.glsl>
 
 vec2 opU(vec2 d1, vec2 d2) {
     return (d1.x < d2.x) ? d1 : d2;
@@ -47,7 +48,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
     result.dist = 0;
     result.nrm = -info.ray_dir;
     result.step_n = 0;
-    result.voxel_data = 0;
+    result.voxel_data = PackedVoxel(0);
     result.vel = daxa_f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
 
     daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
@@ -94,11 +95,14 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         result.dist = res.x;
         ray_pos += rd * result.dist;
 
-        result.nrm = map_nrm(ro + rd * t);
-        daxa_f32vec3 col = map_col(ray_pos, int(res.y));
-        daxa_u32 id = 1;
+        Voxel voxel;
+        voxel.color = map_col(ray_pos, int(res.y));
+        voxel.material_type = 1;
+        voxel.normal = map_nrm(ro + rd * t);
+        voxel.roughness = 0.1;
+        result.nrm = voxel.normal;
 
-        result.voxel_data = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
+        result.voxel_data = pack_voxel(voxel);
     }
 
     ray_pos -= offset;

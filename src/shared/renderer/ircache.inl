@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/voxels/voxels.inl>
 #include <shared/utils/prefix_scan.inl>
 
 struct VertexPacked {
