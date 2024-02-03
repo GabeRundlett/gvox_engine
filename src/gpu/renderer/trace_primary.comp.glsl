@@ -13,7 +13,7 @@ void main() {
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
     daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy * PREPASS_SCL, output_tex_size);
 
-    ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
+    ViewRayContext vrc = vrc_from_uv(globals, uv);
     daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
     daxa_f32vec3 ray_pos = cam_pos;
@@ -48,7 +48,7 @@ void main() {
     output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
     daxa_f32vec2 uv = get_uv(PIXEL_I, output_tex_size);
 
-    ViewRayContext vrc = vrc_from_uv(globals, uv_to_ss(gpu_input, uv, output_tex_size));
+    ViewRayContext vrc = vrc_from_uv(globals, uv);
     daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
 
@@ -90,21 +90,21 @@ void main() {
     daxa_f32vec3 vs_nrm = daxa_f32vec3(0);
     daxa_f32vec3 vs_velocity = daxa_f32vec3(0);
 
-    daxa_u32 thread2x2_root_index = gl_SubgroupInvocationID & (~(8 | 1));
-    bool is_valid = true;
-    if (trace_result.dist != MAX_DIST) {
-        daxa_u32 lod_index = 0;
-        daxa_u32vec3 chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-        PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
-        Voxel voxel = unpack_voxel(voxel_data);
-        is_valid = voxel.material_type == 0;
-    }
+    // bool is_valid = true;
+    // if (trace_result.dist != MAX_DIST) {
+    //     daxa_u32 lod_index = 0;
+    //     daxa_u32vec3 chunk_n = daxa_u32vec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    //     PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
+    //     Voxel voxel = unpack_voxel(voxel_data);
+    //     is_valid = voxel.material_type == 0;
+    // }
 #if !PER_VOXEL_NORMALS
     vec3 old_nrm = trace_result.nrm;
-    if (!is_valid) {
-        trace_result.nrm = vec3(0.0);
-    }
+    // if (!is_valid) {
+    //     trace_result.nrm = vec3(0.0);
+    // }
     vec3 valid_nrm = vec3(0);
+    daxa_u32 thread2x2_root_index = gl_SubgroupInvocationID & (~(8 | 1));
     valid_nrm.x += subgroupBroadcast(trace_result.nrm.x, thread2x2_root_index + 0);
     valid_nrm.y += subgroupBroadcast(trace_result.nrm.y, thread2x2_root_index + 0);
     valid_nrm.z += subgroupBroadcast(trace_result.nrm.z, thread2x2_root_index + 0);
@@ -117,9 +117,9 @@ void main() {
     valid_nrm.x += subgroupBroadcast(trace_result.nrm.x, thread2x2_root_index + 9);
     valid_nrm.y += subgroupBroadcast(trace_result.nrm.y, thread2x2_root_index + 9);
     valid_nrm.z += subgroupBroadcast(trace_result.nrm.z, thread2x2_root_index + 9);
-    if (!is_valid) {
-        trace_result.nrm = normalize(valid_nrm);
-    }
+    // if (!is_valid) {
+    //     trace_result.nrm = normalize(valid_nrm);
+    // }
     if (dot(valid_nrm, valid_nrm) == 0.0) {
         trace_result.nrm = old_nrm;
     }

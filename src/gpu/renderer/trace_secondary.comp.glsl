@@ -21,7 +21,7 @@ void main() {
     daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0);
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, output_tex_size), depth);
+    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv, depth);
     daxa_f32vec3 cam_dir = ray_dir_ws(vrc);
     daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
     daxa_f32vec3 ray_pos = biased_secondary_ray_origin_ws_with_normal(vrc, nrm);

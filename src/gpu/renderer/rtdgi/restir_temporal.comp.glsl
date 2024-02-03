@@ -74,7 +74,7 @@ void main() {
     }
 
     const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv_to_ss(gpu_input, uv, push.gbuffer_tex_size), depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
     const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
     const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
     const daxa_f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);

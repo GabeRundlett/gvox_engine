@@ -42,8 +42,7 @@ void main() {
     uint rng = hash3(uvec3(px, seed));
 
     vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    // uv = uv_to_ss(gpu_input, uv, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv_to_ss(gpu_input, uv, push.gbuffer_tex_size), depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
 
     const vec3 center_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).rgb;
     const vec3 center_normal_ws = direction_view_to_world(globals, center_normal_vs);

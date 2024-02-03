@@ -759,7 +759,7 @@ void rtdgi_trace_job(uvec2 px) {
     }
 
     const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv_to_ss(gpu_input, uv, push.gbuffer_tex_size), depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.gbuffer_tex_size.w * 0.5);
 
