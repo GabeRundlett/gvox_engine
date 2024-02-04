@@ -8,7 +8,6 @@
 
 #define USE_BLEND_RESULT 0
 
-#define SUN_COLOR vec3(1)
 #include <utils/sky.glsl>
 
 #define VOXEL_TRACE_WORLDSPACE 1
@@ -124,7 +123,7 @@ IrcacheTraceResult ircache_trace(Vertex entry, DiffuseBrdf brdf, SampleParams sa
             }
 
             const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi);
-            const vec3 light_radiance = select(bvec3(is_shadowed), vec3(0.0), SUN_COLOR);
+            const vec3 light_radiance = select(bvec3(is_shadowed), vec3(0.0), sun_color_in_direction(transmittance_lut, SUN_DIRECTION));
             irradiance_sum += throughput * brdf_value * light_radiance * max(0.0, wi.z);
 
             if (USE_EMISSIVE) {

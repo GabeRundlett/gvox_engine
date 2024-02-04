@@ -52,8 +52,8 @@ DAXA_DECL_BUFFER_PTR(IrcacheBuffers)
     DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_buf)               \
     DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_count_buf)
 
-#define IRCACHE_USE_BUFFERS_PUSH_USES()                                                                         \
-    daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;                                 \
+#define IRCACHE_USE_BUFFERS_PUSH_USES()                                                                                      \
+    daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;                                              \
     daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;                            \
     daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;                      \
     daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;                       \
@@ -249,12 +249,13 @@ daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry
 #endif
 #endif
 #if IrcacheValidateComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(IrcacheValidateCompute, 14 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(IrcacheValidateCompute, 15 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheCell), ircache_grid_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VertexPacked), ircache_reposition_proposal_buf)
@@ -276,6 +277,7 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
 daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
@@ -288,12 +290,13 @@ daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell
 #endif
 #endif
 #if TraceIrradianceComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TraceIrradianceCompute, 14 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceIrradianceCompute, 15 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheCell), ircache_grid_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VertexPacked), ircache_reposition_proposal_buf)
@@ -315,6 +318,7 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
 daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
@@ -381,7 +385,7 @@ struct IrcacheRenderState {
 
     bool pending_irradiance_sum;
 
-    auto trace_irradiance(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskImageView sky_cube) -> IrcacheIrradiancePendingSummation {
+    auto trace_irradiance(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
         auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
             .size = static_cast<daxa_u32>(sizeof(uint32_t) * 4) * 4,
             .name = "ircache.trace_indirect_args_buf",
@@ -451,6 +455,7 @@ struct IrcacheRenderState {
                 VOXELS_BUFFER_USES_ASSIGN(IrcacheValidateCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::sky_cube_tex, sky_cube}},
+                daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::transmittance_lut, transmittance_lut}},
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_grid_meta_buf, this->ircache_grid_meta_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_life_buf, this->ircache_life_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_reposition_proposal_buf, this->ircache_reposition_proposal_buf}},
@@ -480,6 +485,7 @@ struct IrcacheRenderState {
                 VOXELS_BUFFER_USES_ASSIGN(TraceIrradianceCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::sky_cube_tex, sky_cube}},
+                daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::transmittance_lut, transmittance_lut}},
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_grid_meta_buf, this->ircache_grid_meta_buf}},
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_life_buf, this->ircache_life_buf}},
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_reposition_proposal_buf, this->ircache_reposition_proposal_buf}},

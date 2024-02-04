@@ -1,5 +1,7 @@
 #pragma once
 
+#define GEN_MODEL 0
+
 daxa_b32 mandelbulb(in daxa_f32vec3 c, in out daxa_f32vec3 color) {
     daxa_f32vec3 z = c;
     daxa_u32 i = 0;
@@ -322,7 +324,7 @@ void brushgen_world(in out Voxel voxel) {
         if (voxel.material_type != 0) {
             voxel.normal = vec3(0, 0, 1);
         }
-        voxel.roughness = 0.1;
+        voxel.roughness = 0.9;
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)

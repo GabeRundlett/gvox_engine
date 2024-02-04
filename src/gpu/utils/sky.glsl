@@ -369,3 +369,19 @@ vec3 sample_sun_direction(vec2 urand, bool soft) {
     }
     return SUN_DIRECTION;
 }
+
+vec3 sun_color_in_direction(daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
+    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position();
+    const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+
+    const daxa_f32 atmosphere_intersection_distance = ray_sphere_intersect_nearest(
+        world_camera_position,
+        nrm,
+        daxa_f32vec3(0.0, 0.0, 0.0),
+        deref(gpu_input).sky_settings.atmosphere_bottom);
+
+    bool intersects_ground = atmosphere_intersection_distance >= 0.0;
+    const daxa_f32vec3 direct_sun_illuminance = intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(transmittance_lut, nrm, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
+
+    return direct_sun_illuminance;
+}

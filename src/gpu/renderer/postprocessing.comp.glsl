@@ -25,11 +25,6 @@
 // #include "inc/atmosphere.hlsl"
 // #include "inc/sun.hlsl"
 
-vec3 sun_color_in_direction(vec3 nrm) {
-    AtmosphereLightingInfo sun_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, nrm, vec3(0, 0, 1));
-    return sun_lighting.sun_direct_illuminance;
-}
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     uvec2 px = gl_GlobalInvocationID.xy;
@@ -98,7 +93,7 @@ void main() {
         vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, deref(gpu_input).sampler_llr), outgoing_ray.Direction).rgb;
         if (dot(outgoing_ray.Direction, SUN_DIRECTION) > sun_angular_radius_cos) {
             // TODO: what's the correct value?
-            output_ += 800.0 * sun_color_in_direction(outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
+            output_ += 800.0 * sun_color_in_direction(transmittance_lut, outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
         }
 
         output_ *= deref(gpu_input).pre_exposure;
@@ -135,7 +130,7 @@ void main() {
 
     LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
     const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z);
-    const vec3 light_radiance = shadow_mask * sun_color_in_direction(SUN_DIRECTION);
+    const vec3 light_radiance = shadow_mask * sun_color_in_direction(transmittance_lut, SUN_DIRECTION);
     vec3 total_radiance = brdf_value * light_radiance;
 
     total_radiance += gbuffer.emissive;
@@ -310,6 +305,8 @@ void main() {
 
 #if DebugImageRasterShader
 
+#include <utils/reservoir.glsl>
+
 layout(location = 0) out daxa_f32vec4 color;
 
 void main() {
@@ -342,6 +339,14 @@ void main() {
         int face = uv_i.x + uv_i.y * 3;
         daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * push.cube_size);
         tex_color = texelFetch(daxa_texture2DArray(cube_image_id), ivec3(in_pixel_i, face), 0).rgb * 0.05;
+    } else if (push.type == DEBUG_IMAGE_TYPE_RESERVOIR) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_texture2D(image_id), 0).xy);
+        Reservoir1spp r = Reservoir1spp_from_raw(texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0).xy);
+        tex_color = vec3(r.W);
+    } else if (push.type == DEBUG_IMAGE_TYPE_RTDGI_DEBUG) {
+        daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_texture2D(image_id), 0).xy);
+        vec4 value = texelFetch(daxa_texture2D(image_id), in_pixel_i, 0);
+        tex_color = vec3(value.rgb);
     }
 
     color = daxa_f32vec4(tex_color, 1.0);

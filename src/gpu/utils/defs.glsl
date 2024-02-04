@@ -1,6 +1,5 @@
 #pragma once
 
-#define GEN_MODEL 0
 #define VOXEL_ACCEL_UNIFORMITY 1
 #define ENABLE_DEPTH_PREPASS 1
 #define ENABLE_CHUNK_WRAPPING 0

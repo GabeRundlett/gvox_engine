@@ -352,6 +352,9 @@ void main() {
                 center_M = r.M;
             }
 
+            // TODO: Figure out how there could be hits closer than 1 voxel even on flat surfaces.
+            safeImageStore(rtdgi_debug_image, ivec2(px), vec4(vec3(dist_to_sample_hit < 1.0 / VOXEL_SCL), 1));
+
             if (update_with_stream(reservoir,
                                    r, p_q, jacobian * visibility,
                                    stream_state, reservoir_payload, rng)) {

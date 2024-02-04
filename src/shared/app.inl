@@ -686,7 +686,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         });
 
         auto ircache_state = ircache_renderer.prepare(record_ctx);
-        auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_world.buffers, sky_cube);
+        auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_world.buffers, sky_cube, transmittance_lut);
         ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
 
         particles.simulate(record_ctx, voxel_world.buffers);
@@ -707,6 +707,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             gbuffer_depth,
             reprojection_map,
             ibl_cube,
+            transmittance_lut,
             ircache_state,
             // wrc,
             voxel_world.buffers,

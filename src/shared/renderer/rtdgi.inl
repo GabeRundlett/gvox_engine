@@ -24,7 +24,7 @@ daxa_ImageViewIndex output_tex = push.uses.output_tex;
 #endif
 
 #if RtdgiValidateComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateCompute, 12 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateCompute, 13 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -36,6 +36,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, irradiance_history_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ray_orig_history_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, rt_history_invalidity_out_tex)
@@ -57,6 +58,7 @@ daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 IRCACHE_USE_BUFFERS_PUSH_USES()
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex irradiance_history_tex = push.uses.irradiance_history_tex;
 daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
 daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalidity_out_tex;
@@ -64,7 +66,7 @@ daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalid
 #endif
 
 #if RtdgiTraceComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceCompute, 14 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceCompute, 15 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -73,6 +75,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojected_gi_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ray_orig_history_tex)
@@ -96,6 +99,7 @@ daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
 daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
 daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 IRCACHE_USE_BUFFERS_PUSH_USES()
 daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
@@ -137,7 +141,7 @@ daxa_ImageViewIndex output_tex = push.uses.output_tex;
 #endif
 
 #if RtdgiRestirTemporalComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 22)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 23)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -160,6 +164,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, hit_normal_ou
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, reservoir_out_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, candidate_out_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, temporal_reservoir_packed_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, rtdgi_debug_image)
 DAXA_DECL_TASK_HEAD_END
 struct RtdgiRestirTemporalComputePush {
     daxa_f32vec4 gbuffer_tex_size;
@@ -189,6 +194,7 @@ daxa_ImageViewIndex hit_normal_output_tex = push.uses.hit_normal_output_tex;
 daxa_ImageViewIndex reservoir_out_tex = push.uses.reservoir_out_tex;
 daxa_ImageViewIndex candidate_out_tex = push.uses.candidate_out_tex;
 daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
+daxa_ImageViewIndex rtdgi_debug_image = push.uses.rtdgi_debug_image;
 #endif
 #endif
 
@@ -515,6 +521,7 @@ struct RtdgiRenderer {
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView reprojection_map,
         daxa::TaskImageView sky_cube,
+        daxa::TaskImageView transmittance_lut,
         IrcacheRenderState &ircache,
         VoxelWorld::Buffers &voxel_buffers,
         daxa::TaskImageView ssao_tex) -> RtdgiOutput {
@@ -666,6 +673,7 @@ struct RtdgiRenderer {
                     VOXELS_BUFFER_USES_ASSIGN(RtdgiValidateCompute, voxel_buffers),
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiValidateCompute, ircache),
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::sky_cube_tex, sky_cube}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::transmittance_lut, transmittance_lut}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::irradiance_history_tex, radiance_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::ray_orig_history_tex, ray_orig_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::rt_history_invalidity_out_tex, rt_history_validity_pre_input_tex}},
@@ -699,6 +707,7 @@ struct RtdgiRenderer {
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::reprojection_tex, reprojection_map}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::sky_cube_tex, sky_cube}},
+                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::transmittance_lut, transmittance_lut}},
                     VOXELS_BUFFER_USES_ASSIGN(RtdgiTraceCompute, voxel_buffers),
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiTraceCompute, ircache),
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::ray_orig_history_tex, ray_orig_history_tex}},
@@ -745,6 +754,12 @@ struct RtdgiRenderer {
 
             AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi temporal validate", .task_image_id = invalidity_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
+            auto rtdgi_debug_image = record_ctx.task_graph.create_transient_image({
+                .format = daxa::Format::R32G32B32A32_SFLOAT,
+                .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
+                .name = "rtdgi_debug_image",
+            });
+
             record_ctx.add(ComputeTask<RtdgiRestirTemporalCompute, RtdgiRestirTemporalComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"rtdgi/restir_temporal.comp.glsl"},
                 .views = std::array{
@@ -770,6 +785,7 @@ struct RtdgiRenderer {
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::reservoir_out_tex, reservoir_output_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::candidate_out_tex, candidate_output_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::temporal_reservoir_packed_tex, temporal_reservoir_packed_tex}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::rtdgi_debug_image, rtdgi_debug_image}},
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RtdgiRestirTemporalComputePush &push, NoTaskInfo const &) {
                     auto const image_info = ti.device.info_image(ti.get(RtdgiRestirTemporalCompute::depth_tex).ids[0]).value();
@@ -782,6 +798,7 @@ struct RtdgiRenderer {
             });
 
             AppUi::DebugDisplay::s_instance->passes.push_back({.name = "restir temporal", .task_image_id = radiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi debug", .task_image_id = rtdgi_debug_image, .type = DEBUG_IMAGE_TYPE_RTDGI_DEBUG});
 
             // return std::pair{radiance_output_tex, reservoir_output_tex};
             radiance_tex = radiance_output_tex;

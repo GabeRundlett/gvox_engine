@@ -7,7 +7,8 @@
 //#define RESTIR_RESERVOIR_W_CLAMP 1e5
 
 const bool RESTIR_USE_SPATIAL = true;
-const bool RESTIR_TEMPORAL_USE_PERMUTATIONS = true;
+// TODO(grundlett): figure out why permutations cause bogus
+const bool RESTIR_TEMPORAL_USE_PERMUTATIONS = false;
 const bool RESTIR_USE_PATH_VALIDATION = true;
 
 // Narrow down the spatial resampling kernel when M is already high.
