@@ -306,7 +306,7 @@ void brushgen_world(in out Voxel voxel) {
         voxel.color = daxa_f32vec3(0.5, 0.1, 0.8);
         voxel.roughness = 0.5;
     } else if (GEN_MODEL != 0) { // Model world
-        daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
+        daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel + ivec3(1000, 1000, 0), 0);
         // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         voxel.material_type = (packed_col_data >> 0x18) != 0 ? 1 : 0;
         // daxa_u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
@@ -322,7 +322,7 @@ void brushgen_world(in out Voxel voxel) {
         if (voxel.material_type != 0) {
             voxel.normal = vec3(0, 0, 1);
         }
-        voxel.roughness = 0.5;
+        voxel.roughness = 0.1;
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)

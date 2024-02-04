@@ -77,10 +77,10 @@ void main() {
         float w_sum = 0;
         vec3 weighted_irradiance = vec3(0.0);
 
-        for (uint sample_i = 0; sample_i < select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, 4, 1); ++sample_i) {
+        for (uint sample_i = 0; sample_i < select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER, 4, 1); ++sample_i) {
             const float ang = (sample_i + blue.x) * GOLDEN_ANGLE + (px_idx_in_quad / 4.0) * M_TAU;
             const float radius =
-                select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, (pow(float(sample_i), 0.666) * 1.0 + 0.4), 0.0);
+                select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER, (pow(float(sample_i), 0.666) * 1.0 + 0.4), 0.0);
             const vec2 reservoir_px_offset = vec2(cos(ang), sin(ang)) * radius;
             const ivec2 rpx = ivec2(floor(vec2(px) * 0.5 + reservoir_px_offset));
 
@@ -90,7 +90,7 @@ void main() {
             const float rpx_depth = safeTexelFetch(half_depth_tex, ivec2(rpx), 0).r;
             const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(globals, rpx_uv, rpx_depth);
 
-            if (USE_SPLIT_RT_NEAR_FIELD != 0) {
+            if (USE_SPLIT_RT_NEAR_FIELD) {
                 const vec3 hit_ws = safeTexelFetch(candidate_hit_tex, ivec2(rpx), 0).xyz + ray_hit_ws(rpx_ray_ctx);
                 const vec3 sample_offset = hit_ws - ray_hit_ws(view_ray_context);
                 const float sample_dist = length(sample_offset);
@@ -127,10 +127,10 @@ void main() {
 
         const float kernel_scale = select(sharpen_gi_kernel, 0.5, 1.0);
 
-        for (uint sample_i = 0; sample_i < select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, 4, 1); ++sample_i) {
+        for (uint sample_i = 0; sample_i < select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER, 4, 1); ++sample_i) {
             const float ang = (sample_i + blue.x) * GOLDEN_ANGLE + (px_idx_in_quad / 4.0) * M_TAU;
             const float radius =
-                select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER != 0, (pow(float(sample_i), 0.666) * 1.0 * kernel_scale + 0.4 * kernel_scale), 0.0);
+                select(RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER, (pow(float(sample_i), 0.666) * 1.0 * kernel_scale + 0.4 * kernel_scale), 0.0);
 
             const vec2 reservoir_px_offset = vec2(cos(ang), sin(ang)) * radius;
             const ivec2 rpx = ivec2(floor(vec2(px) * 0.5 + reservoir_px_offset));
@@ -165,7 +165,7 @@ void main() {
                     radiance = safeTexelFetch(radiance_tex, ivec2(spx), 0).rgb;
                 }
 
-                if (USE_SPLIT_RT_NEAR_FIELD != 0) {
+                if (USE_SPLIT_RT_NEAR_FIELD) {
                     const float atten = smoothstep(NEAR_FIELD_FADE_OUT_START, NEAR_FIELD_FADE_OUT_END, sample_dist);
                     radiance *= mix(1.0, atten, near_field_influence);
                 }

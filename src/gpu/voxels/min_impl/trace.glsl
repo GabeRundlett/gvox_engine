@@ -14,11 +14,11 @@ const float floor_z = -1.0;
 vec2 map(in vec3 pos) {
     vec2 res = vec2(pos.z - floor_z, 0.0);
     res = opU(res, vec2(sd_sphere(pos - vec3(+1.0, +1.0, 0.25 + floor_z), 0.25), 1.0));
-    res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
+    // res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
     res = opU(res, vec2(sd_box(pos - vec3(+2.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
-    res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
-    res = opU(res, vec2(sd_cylinder(pos - vec3(+2.0, +2.0, 0.25 + floor_z), 0.25, 0.25), 1.0));
-    res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), daxa_f32vec2(0.18, 0.07)), 1.0));
+    // res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
+    // res = opU(res, vec2(sd_cylinder(pos - vec3(+2.0, +2.0, 0.25 + floor_z), 0.25, 0.25), 1.0));
+    // res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), daxa_f32vec2(0.18, 0.07)), 1.0));
     return res;
 }
 

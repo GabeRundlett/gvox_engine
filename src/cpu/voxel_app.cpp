@@ -79,6 +79,7 @@ VoxelApp::VoxelApp()
                   },
                   // .write_out_preprocessed_code = ".out/",
                   // .write_out_shader_binary = ".out/",
+                  .spirv_cache_folder = ".out/spirv_cache",
                   .language = daxa::ShaderLanguage::GLSL,
                   .enable_debug_info = true,
               },

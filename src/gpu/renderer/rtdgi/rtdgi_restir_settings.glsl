@@ -18,7 +18,7 @@ const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE = !true;
 const bool RTDGI_RESTIR_USE_JACOBIAN_BASED_REJECTION = !true;
 #define RTDGI_RESTIR_JACOBIAN_BASED_REJECTION_VALUE 8
 
-#define RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER 1
+const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;
 
 // If `1`, every RTDGI_INTERLEAVED_VALIDATION_PERIOD-th frame is a validation one,
 // where new candidates are not suggested, but the reservoir picks are validated instead.
