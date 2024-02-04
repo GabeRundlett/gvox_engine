@@ -160,7 +160,7 @@ void main() {
 
                 vec3 radiance;
                 if (RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE) {
-                    // radiance = safeTexelFetch(bounced_radiance_input_tex, ivec2(rpx), 0).rgb;
+                    radiance = safeTexelFetch(bounced_radiance_input_tex, ivec2(rpx), 0).rgb;
                 } else {
                     radiance = safeTexelFetch(radiance_tex, ivec2(spx), 0).rgb;
                 }

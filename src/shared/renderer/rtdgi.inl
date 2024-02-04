@@ -234,7 +234,7 @@ daxa_ImageViewIndex bounced_radiance_output_tex = push.uses.bounced_radiance_out
 #endif
 
 #if RtdgiRestirResolveComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 14)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 15)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
@@ -248,7 +248,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ssao_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, candidate_radiance_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, candidate_hit_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, temporal_reservoir_packed_tex)
-// DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, bounced_radiance_input_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, bounced_radiance_input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, irradiance_output_tex)
 DAXA_DECL_TASK_HEAD_END
 struct RtdgiRestirResolveComputePush {
@@ -271,7 +271,7 @@ daxa_ImageViewIndex ssao_tex = push.uses.ssao_tex;
 daxa_ImageViewIndex candidate_radiance_tex = push.uses.candidate_radiance_tex;
 daxa_ImageViewIndex candidate_hit_tex = push.uses.candidate_hit_tex;
 daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
-// daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
+daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
 daxa_ImageViewIndex irradiance_output_tex = push.uses.irradiance_output_tex;
 #endif
 #endif
@@ -818,7 +818,6 @@ struct RtdgiRenderer {
             auto bounced_radiance_input_tex = radiance_tex;
 
             for (uint32_t spatial_reuse_pass_idx = 0; spatial_reuse_pass_idx < this->spatial_reuse_pass_count; ++spatial_reuse_pass_idx) {
-
                 auto perform_occulsion_raymarch =
                     (spatial_reuse_pass_idx + 1 == this->spatial_reuse_pass_count) ? 1u : 0u;
 
@@ -868,7 +867,11 @@ struct RtdgiRenderer {
 
                 std::swap(reservoir_output_tex0, reservoir_output_tex1);
                 std::swap(bounced_radiance_output_tex0, bounced_radiance_output_tex1);
+
+                reservoir_input_tex = reservoir_output_tex1;
+                bounced_radiance_input_tex = bounced_radiance_output_tex1;
             }
+            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "restir spatial", .task_image_id = bounced_radiance_input_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto irradiance_output_tex = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -892,7 +895,7 @@ struct RtdgiRenderer {
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::candidate_radiance_tex, candidate_radiance_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::candidate_hit_tex, candidate_hit_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::temporal_reservoir_packed_tex, temporal_reservoir_packed_tex}},
-                    // daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::bounced_radiance_input_tex, bounced_radiance_input_tex}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::bounced_radiance_input_tex, bounced_radiance_input_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::irradiance_output_tex, irradiance_output_tex}},
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RtdgiRestirResolveComputePush &push, NoTaskInfo const &) {

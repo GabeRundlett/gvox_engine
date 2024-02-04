@@ -132,7 +132,8 @@ auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffe
                 output_extent.x, output_extent.y,
                 output_format, fsr_output_upscaled_color, FFX_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            dispatch_description.jitterOffset.x = state.jitter.x;
+            // TODO: Investigate why x is inverted
+            dispatch_description.jitterOffset.x = -state.jitter.x;
             dispatch_description.jitterOffset.y = state.jitter.y;
             dispatch_description.motionVectorScale.x = static_cast<daxa_f32>(velocity_extent.x);
             dispatch_description.motionVectorScale.y = static_cast<daxa_f32>(velocity_extent.y);
