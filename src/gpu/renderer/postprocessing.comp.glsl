@@ -33,7 +33,7 @@ daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache
 #include <utils/layered_brdf.glsl>
 
 #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
-#include <renderer/ircache/lookup.glsl>
+#include <renderer/kajiya/ircache/lookup.glsl>
 
 #define USE_RTDGI true
 #define USE_RTR true
