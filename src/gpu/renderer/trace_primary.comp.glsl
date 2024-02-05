@@ -160,10 +160,12 @@ void main() {
     daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
     daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
 
+    daxa_f32vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
+
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
     uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
     float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), daxa_i32vec2(gl_GlobalInvocationID.xy), 0).r;
-    if (particles_depth > 0 || particles_depth > depth) {
+    if (particles_depth > depth) {
         depth = particles_depth;
         nrm = vec3(0, 0, 1);
         vs_velocity = vec3(0);
@@ -177,6 +179,24 @@ void main() {
         vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(pos, 1));
         vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+
+        ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv, particles_depth);
+        vec3 ppos = ray_hit_ws(vrc);
+        nrm = ppos - (pos + 0.5 / VOXEL_SCL);
+        ppos = abs(nrm);
+        if (ppos.x > ppos.y) {
+            if (ppos.x > ppos.z) {
+                nrm = vec3(sign(nrm.x), 0, 0);
+            } else {
+                nrm = vec3(0, 0, sign(nrm.z));
+            }
+        } else {
+            if (ppos.y > ppos.z) {
+                nrm = vec3(0, sign(nrm.y), 0);
+            } else {
+                nrm = vec3(0, 0, sign(nrm.z));
+            }
+        }
 
         // nrm = normalize(deref(globals).player.pos - pos);
 

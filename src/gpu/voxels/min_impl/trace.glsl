@@ -5,41 +5,53 @@
 #include <utils/math.glsl>
 #include <voxels/pack_unpack.glsl>
 
-vec2 opU(vec2 d1, vec2 d2) {
-    return (d1.x < d2.x) ? d1 : d2;
+float maxcomp(in vec3 p) { return max(p.x, max(p.y, p.z)); }
+float sdBox(vec3 p, vec3 b) {
+    vec3 di = abs(p) - b;
+    float mc = maxcomp(di);
+    return min(mc, length(max(di, 0.0)));
+    // return length(p + b);
 }
 
-const float floor_z = -1.0;
+vec2 iBox(in vec3 ro, in vec3 rd, in vec3 rad) {
+    vec3 m = 1.0 / rd;
+    vec3 n = m * ro;
+    vec3 k = abs(m) * rad;
+    vec3 t1 = -n - k;
+    vec3 t2 = -n + k;
+    return vec2(max(max(t1.x, t1.y), t1.z),
+                min(min(t2.x, t2.y), t2.z));
+}
 
-vec2 map(in vec3 pos) {
-    vec2 res = vec2(pos.z - floor_z, 0.0);
-    res = opU(res, vec2(sd_sphere(pos - vec3(+1.0, +1.0, 0.25 + floor_z), 0.25), 1.0));
-    // res = opU(res, vec2(sd_ellipsoid(pos - vec3(+1.0, +2.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
-    res = opU(res, vec2(sd_box(pos - vec3(+2.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25)), 1.0));
-    // res = opU(res, vec2(sd_box_frame(pos - vec3(+3.0, +1.0, 0.25 + floor_z), daxa_f32vec3(0.1, 0.2, 0.25), 0.02), 1.0));
-    // res = opU(res, vec2(sd_cylinder(pos - vec3(+2.0, +2.0, 0.25 + floor_z), 0.25, 0.25), 1.0));
-    // res = opU(res, vec2(sd_torus(pos.yzx - vec3(+3.0, 0.25 + floor_z, +1.0), daxa_f32vec2(0.18, 0.07)), 1.0));
+vec4 map(in vec3 p) {
+    float d = sdBox(p, vec3(1.0));
+    vec4 res = vec4(d, 1.0, 0.0, 0.0);
+
+    float s = 1.0;
+    for (int m = 0; m < 2; m++) {
+        vec3 a = mod(p * s, 2.0) - 1.0;
+        s *= 3.0;
+        vec3 r = abs(1.0 - 3.0 * abs(a));
+        float da = max(r.x, r.y);
+        float db = max(r.y, r.z);
+        float dc = max(r.z, r.x);
+        float c = (min(da, min(db, dc)) - 1.0) / s;
+
+        if (c > d) {
+            d = c;
+            res = vec4(d, min(res.y, 0.2 * da * db * dc), (1.0 + float(m)) / 4.0, 0.0);
+        }
+    }
+
     return res;
 }
 
-vec3 map_col(vec3 pos, int id) {
-    switch (id) {
-    case 0:
-        return daxa_f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
-    case 1:
-        return daxa_f32vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
-    default:
-        return daxa_f32vec3(0.0);
-    }
-}
-
 vec3 map_nrm(in vec3 pos) {
-    vec3 n = vec3(0.0);
-    for (int i = 0; i < 4; i++) {
-        vec3 e = 0.5773 * (2.0 * vec3((((i + 3) >> 1) & 1), ((i >> 1) & 1), (i & 1)) - 1.0);
-        n += e * map(pos + 0.0005 * e).x;
-    }
-    return normalize(n);
+    vec3 eps = vec3(.001, 0.0, 0.0);
+    return normalize(vec3(
+        map(pos + eps.xyy).x - map(pos - eps.xyy).x,
+        map(pos + eps.yxy).x - map(pos - eps.yxy).x,
+        map(pos + eps.yyx).x - map(pos - eps.yyx).x));
 }
 
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {
@@ -73,17 +85,10 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
     float tmin = 0.0;
     float tmax = info.max_dist;
 
-    // raytrace floor plane
-    float tp1 = (floor_z - ro.z) / rd.z;
-    if (tp1 > 0.0) {
-        tmax = min(tmax, tp1);
-        res = vec2(tp1, 0.0);
-    }
-
     float t = tmin;
     int i = 0;
     for (; i < info.max_steps && t < tmax; i++) {
-        vec2 h = map(ro + rd * t);
+        vec4 h = map(ro + rd * t);
         if (abs(h.x) < (0.0001 * t)) {
             res = vec2(t, h.y);
             break;
@@ -96,7 +101,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos
         ray_pos += rd * result.dist;
 
         Voxel voxel;
-        voxel.color = map_col(ray_pos, int(res.y));
+        voxel.color = vec3(0.5);
         voxel.material_type = 1;
         voxel.normal = map_nrm(ro + rd * t);
         voxel.roughness = 0.1;
