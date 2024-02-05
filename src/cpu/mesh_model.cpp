@@ -1,5 +1,3 @@
-#pragma once
-
 #include <cpu/mesh_model.hpp>
 
 #include <daxa/gpu_resources.hpp>

@@ -1,12 +1,19 @@
-#include <shared/app.inl>
+#include <shared/renderer/ssao.inl>
 
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <utils/safety.glsl>
 
 #if SsaoComputeShader
 
 #include <voxels/core.glsl>
 #include <utils/downscale.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(SsaoComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex ssao_image_id = push.uses.ssao_image_id;
 
 daxa_f32vec4 output_tex_size;
 
@@ -214,6 +221,13 @@ void main() {
 #endif
 #if SsaoSpatialFilterComputeShader
 
+DAXA_DECL_PUSH_CONSTANT(SsaoSpatialFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
+
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
 }
@@ -285,6 +299,13 @@ void main() {
 
 #endif
 #if SsaoUpscaleComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(SsaoUpscaleComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;
@@ -359,6 +380,13 @@ void main() {
 
 #endif
 #if SsaoTemporalFilterComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex reprojection_image_id = push.uses.reprojection_image_id;
+daxa_ImageViewIndex history_image_id = push.uses.history_image_id;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 
 float fetch_src(daxa_u32vec2 px) {
     return safeTexelFetch(src_image_id, daxa_i32vec2(px), 0).r;

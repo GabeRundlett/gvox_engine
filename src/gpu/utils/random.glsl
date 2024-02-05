@@ -102,3 +102,10 @@ daxa_f32vec2 rand_circle_pt(daxa_f32vec2 random_input) {
 daxa_f32vec2 rand_circle_pt() {
     return rand_circle_pt(daxa_f32vec2(rand(), rand()));
 }
+
+// Random noise
+daxa_f32vec3 hash33(daxa_f32vec3 p3) {
+    p3 = fract(p3 * vec3(.1031, .1030, .0973));
+    p3 += dot(p3, p3.yxz + 33.33);
+    return fract((p3.xxy + p3.yxx) * p3.zyx);
+}

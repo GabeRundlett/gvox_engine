@@ -8,7 +8,7 @@ const daxa_f32vec3 sun_color = daxa_f32vec3(255, 240, 233); // 5000 kelvin black
 #define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIRECTION) * SUN_INTENSITY)
 #define ATMOSPHERE_CAMERA_HEIGHT 3.0
 
-daxa_f32vec3 get_sky_world_camera_position() {
+daxa_f32vec3 get_sky_world_camera_position(daxa_BufferPtr(GpuInput) gpu_input) {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
     const daxa_f32vec3 camera_position = daxa_f32vec3(0.0, 0.0, ATMOSPHERE_CAMERA_HEIGHT);
@@ -262,6 +262,7 @@ daxa_f32vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams para
 }
 
 daxa_f32vec3 get_sun_illuminance(
+    daxa_BufferPtr(GpuInput) gpu_input,
     daxa_ImageViewIndex _transmittance,
     daxa_f32vec3 view_direction,
     daxa_f32 height,
@@ -287,6 +288,7 @@ daxa_f32vec3 get_sun_illuminance(
 }
 
 daxa_f32vec3 get_atmosphere_illuminance_along_ray(
+    daxa_BufferPtr(GpuInput) gpu_input,
     daxa_ImageViewIndex _skyview,
     daxa_f32vec3 ray,
     daxa_f32vec3 world_camera_position,
@@ -332,26 +334,28 @@ struct AtmosphereLightingInfo {
     daxa_f32vec3 sun_direct_illuminance;
 };
 
-AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, daxa_f32vec3 view_direction, daxa_f32vec3 normal) {
-    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position();
+AtmosphereLightingInfo get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, daxa_f32vec3 view_direction, daxa_f32vec3 normal) {
+    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
     const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 
     bool normal_ray_intersects_ground;
     bool view_ray_intersects_ground;
     const daxa_f32vec3 atmosphere_normal_illuminance = get_atmosphere_illuminance_along_ray(
+        gpu_input,
         _skyview,
         normal,
         world_camera_position,
         sun_direction,
         normal_ray_intersects_ground);
     const daxa_f32vec3 atmosphere_view_illuminance = get_atmosphere_illuminance_along_ray(
+        gpu_input,
         _skyview,
         view_direction,
         world_camera_position,
         sun_direction,
         view_ray_intersects_ground);
 
-    const daxa_f32vec3 direct_sun_illuminance = view_ray_intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(_transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
+    const daxa_f32vec3 direct_sun_illuminance = view_ray_intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(gpu_input, _transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
 
     return AtmosphereLightingInfo(
         atmosphere_normal_illuminance,
@@ -359,7 +363,9 @@ AtmosphereLightingInfo get_atmosphere_lighting(daxa_ImageViewIndex _skyview, dax
         direct_sun_illuminance);
 }
 
-vec3 sample_sun_direction(vec2 urand, bool soft) {
+vec3 sample_sun_direction(
+    daxa_BufferPtr(GpuInput) gpu_input,
+    vec2 urand, bool soft) {
     if (soft && PER_VOXEL_NORMALS == 0) {
         float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
         if (sun_angular_radius_cos < 1.0) {
@@ -370,8 +376,10 @@ vec3 sample_sun_direction(vec2 urand, bool soft) {
     return SUN_DIRECTION;
 }
 
-vec3 sun_color_in_direction(daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
-    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position();
+vec3 sun_color_in_direction(
+    daxa_BufferPtr(GpuInput) gpu_input,
+    daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
+    const daxa_f32vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
     const daxa_f32vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 
     const daxa_f32 atmosphere_intersection_distance = ray_sphere_intersect_nearest(
@@ -381,7 +389,7 @@ vec3 sun_color_in_direction(daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
         deref(gpu_input).sky_settings.atmosphere_bottom);
 
     bool intersects_ground = atmosphere_intersection_distance >= 0.0;
-    const daxa_f32vec3 direct_sun_illuminance = intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(transmittance_lut, nrm, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
+    const daxa_f32vec3 direct_sun_illuminance = intersects_ground ? daxa_f32vec3(0.0) : get_sun_illuminance(gpu_input, transmittance_lut, nrm, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
 
     return direct_sun_illuminance;
 }

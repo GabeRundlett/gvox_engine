@@ -1,9 +1,10 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
 #include <shared/renderer/ircache.inl>
 
-#if VoxelParticleSimComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -15,18 +16,7 @@ DAXA_DECL_TASK_HEAD_END
 struct VoxelParticleSimComputePush {
     DAXA_TH_BLOB(VoxelParticleSimCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(VoxelParticleSimComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_RWBufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
-daxa_RWBufferPtr(daxa_u32) placed_voxel_particles = push.uses.placed_voxel_particles;
-#endif
-#endif
 
-#if VoxelParticleRasterShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleRaster, 6)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -38,16 +28,6 @@ DAXA_DECL_TASK_HEAD_END
 struct VoxelParticleRasterPush {
     DAXA_TH_BLOB(VoxelParticleRaster, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(VoxelParticleRasterPush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_BufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
-daxa_ImageViewIndex render_image = push.uses.render_image;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

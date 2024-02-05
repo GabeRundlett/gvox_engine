@@ -2,8 +2,6 @@
 
 #extension GL_EXT_shader_atomic_int64 : require
 
-#include <shared/app.inl>
-
 #define UserAllocatorType VoxelMallocPageAllocator
 #define UserIndexType VoxelMalloc_PageIndex
 #include <utils/allocator.glsl>

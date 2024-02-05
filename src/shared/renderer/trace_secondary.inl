@@ -1,8 +1,8 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 
-#if TraceSecondaryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TraceSecondaryCompute, 6 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -15,17 +15,6 @@ DAXA_DECL_TASK_HEAD_END
 struct TraceSecondaryComputePush {
     DAXA_TH_BLOB(TraceSecondaryCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TraceSecondaryComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex shadow_mask = push.uses.shadow_mask;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

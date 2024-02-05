@@ -2,6 +2,7 @@
 
 #include <utils/quasi_random.glsl>
 #include <utils/sh.glsl>
+#include <utils/camera.glsl>
 
 #include "ircache_grid.glsl"
 #include "ircache_sampler_common.inc.glsl"

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/input.inl>
 
 #define LUMINANCE_HISTOGRAM_BIN_COUNT 256
 #define LUMINANCE_HISTOGRAM_MIN_LOG2 -8.0
 #define LUMINANCE_HISTOGRAM_MAX_LOG2 +8.0
 
-#if CalculateHistogramComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateHistogramCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -16,13 +16,6 @@ struct CalculateHistogramComputePush {
     daxa_u32vec2 input_extent;
     DAXA_TH_BLOB(CalculateHistogramCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(CalculateHistogramComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_RWBufferPtr(daxa_u32) output_buffer = push.uses.output_buffer;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

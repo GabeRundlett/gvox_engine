@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <utils/downscale.glsl>
 
 struct OcclusionScreenRayMarch {

@@ -1,4 +1,5 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
+
 #include <utils/math.glsl>
 // #include <utils/uv.glsl>
 // #include <utils/pack_unpack.glsl>
@@ -21,6 +22,25 @@
 
 // #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 // #define IRCACHE_LOOKUP_KEEP_ALIVE_PROB 0.125
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiTraceComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+IRCACHE_USE_BUFFERS_PUSH_USES()
+daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
+daxa_ImageViewIndex candidate_irradiance_out_tex = push.uses.candidate_irradiance_out_tex;
+daxa_ImageViewIndex candidate_normal_out_tex = push.uses.candidate_normal_out_tex;
+daxa_ImageViewIndex candidate_hit_out_tex = push.uses.candidate_hit_out_tex;
+daxa_ImageViewIndex rt_history_invalidity_in_tex = push.uses.rt_history_invalidity_in_tex;
+daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalidity_out_tex;
 
 #include "../ircache/lookup.glsl"
 // #include "../wrc/lookup.glsl"
@@ -53,20 +73,20 @@ void main() {
 #if RTDGI_INTERLEAVED_VALIDATION_ALWAYS_TRACE_NEAR_FIELD
     if (true)
 #else
-    if (is_rtdgi_tracing_frame())
+    if (is_rtdgi_tracing_frame(deref(gpu_input).frame_index))
 #endif
     {
         const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
         const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
         const mat3 tangent_to_world = build_orthonormal_basis(normal_ws);
-        const vec3 outgoing_dir = rtdgi_candidate_ray_dir(px, tangent_to_world);
+        const vec3 outgoing_dir = rtdgi_candidate_ray_dir(blue_noise_vec2, deref(gpu_input).frame_index, px, tangent_to_world);
 
         RayDesc outgoing_ray;
         outgoing_ray.Direction = outgoing_dir;
         outgoing_ray.Origin = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
         outgoing_ray.TMin = 0;
 
-        if (is_rtdgi_tracing_frame()) {
+        if (is_rtdgi_tracing_frame(deref(gpu_input).frame_index)) {
             outgoing_ray.TMax = SKY_DIST;
         } else {
             outgoing_ray.TMax = NEAR_FIELD_FADE_OUT_END;
@@ -76,7 +96,7 @@ void main() {
         TraceResult result = do_the_thing(px, normal_ws, rng, outgoing_ray);
 
 #if RTDGI_INTERLEAVED_VALIDATION_ALWAYS_TRACE_NEAR_FIELD
-        if (!is_rtdgi_tracing_frame() && !result.is_hit) {
+        if (!is_rtdgi_tracing_frame(deref(gpu_input).frame_index) && !result.is_hit) {
             // If we were only tracing short rays, make sure we don't try to output
             // sky color upon misses.
             result.out_value = vec3(0);
@@ -88,7 +108,7 @@ void main() {
 
         const float cos_theta = dot(normalize(outgoing_dir - ray_dir_ws(view_ray_context)), normal_ws);
         safeImageStore(candidate_irradiance_out_tex, ivec2(px), vec4(result.out_value, rtr_encode_cos_theta_for_fp16(cos_theta)));
-        safeImageStore(candidate_hit_out_tex, ivec2(px), vec4(hit_offset_ws, result.pdf * select(is_rtdgi_tracing_frame(), 1, -1)));
+        safeImageStore(candidate_hit_out_tex, ivec2(px), vec4(hit_offset_ws, result.pdf * select(is_rtdgi_tracing_frame(deref(gpu_input).frame_index), 1, -1)));
         safeImageStore(candidate_normal_out_tex, ivec2(px), vec4(direction_world_to_view(globals, result.hit_normal_ws), 0));
     }
     // } else {

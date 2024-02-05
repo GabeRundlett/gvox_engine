@@ -1,7 +1,12 @@
-#include <shared/app.inl>
+#include <shared/renderer/shadow_denoiser.inl>
 #include <utils/safety.glsl>
 
 #if ShadowBitPackComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ShadowBitPackComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);
@@ -30,6 +35,18 @@ void main() {
 #endif
 
 #if ShadowTemporalFilterComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ShadowTemporalFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
+daxa_ImageViewIndex bitpacked_shadow_mask_tex = push.uses.bitpacked_shadow_mask_tex;
+daxa_ImageViewIndex prev_moments_tex = push.uses.prev_moments_tex;
+daxa_ImageViewIndex prev_accum_tex = push.uses.prev_accum_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex output_moments_tex = push.uses.output_moments_tex;
+daxa_ImageViewIndex temporal_output_tex = push.uses.temporal_output_tex;
+daxa_ImageViewIndex meta_output_tex = push.uses.meta_output_tex;
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);
@@ -225,6 +242,15 @@ void main() {
 #endif
 
 #if ShadowSpatialFilterComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ShadowSpatialFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex meta_tex = push.uses.meta_tex;
+daxa_ImageViewIndex geometric_normal_tex = push.uses.geometric_normal_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
     return uvec2(push.input_tex_size.xy);

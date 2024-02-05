@@ -36,3 +36,19 @@ const uint IRCACHE_AUX_STRIDE = 4 * IRCACHE_OCTA_DIMS2;
 const uint IRCACHE_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_VALIDATION_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_RESTIR_M_CLAMP = 30;
+
+#include <utils/normal.glsl>
+
+Vertex unpack_vertex(VertexPacked p) {
+    Vertex res;
+    res.position = p.data0.xyz;
+    res.normal = unpack_normal_11_10_11(p.data0.w);
+    return res;
+}
+
+VertexPacked pack_vertex(Vertex v) {
+    VertexPacked p;
+    p.data0.xyz = v.position;
+    p.data0.w = pack_normal_11_10_11(v.normal);
+    return p;
+}

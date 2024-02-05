@@ -1,9 +1,9 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 #include <shared/renderer/ircache.inl>
 
-#if TraceDepthPrepassComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 3 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -13,16 +13,7 @@ DAXA_DECL_TASK_HEAD_END
 struct TraceDepthPrepassComputePush {
     DAXA_TH_BLOB(TraceDepthPrepassCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-#endif
-#endif
 
-#if TracePrimaryComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute, 7 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -36,20 +27,7 @@ DAXA_DECL_TASK_HEAD_END
 struct TracePrimaryComputePush {
     DAXA_TH_BLOB(TracePrimaryCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewIndex debug_texture = push.uses.debug_texture;
-daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
-daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
-#endif
-#endif
 
-#if CompositeParticlesComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -64,19 +42,6 @@ DAXA_DECL_TASK_HEAD_END
 struct CompositeParticlesComputePush {
     DAXA_TH_BLOB(CompositeParticlesCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
-daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
-daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
-daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

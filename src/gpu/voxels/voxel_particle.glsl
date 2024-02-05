@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/voxels/voxel_particles.inl>
 #include <utils/math.glsl>
 #include <voxels/core.glsl>
 

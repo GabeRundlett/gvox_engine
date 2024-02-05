@@ -1,4 +1,4 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 #include <utils/math.glsl>
 #include <utils/color.glsl>
@@ -7,6 +7,14 @@
 // #include <utils/uv.glsl>
 // #include <utils/hash.glsl>
 #include <utils/safety.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiSpatialFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex ssao_tex = push.uses.ssao_tex;
+daxa_ImageViewIndex geometric_normal_tex = push.uses.geometric_normal_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 #define USE_SSAO_STEERING 1
 #define USE_DYNAMIC_KERNEL_RADIUS 0

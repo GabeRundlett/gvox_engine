@@ -132,22 +132,3 @@ vec3 octa_decode(vec2 f) {
     n.xy -= (step(0.0, n.xy) * 2 - 1) * t;
     return normalize(n);
 }
-
-struct Vertex {
-    vec3 position;
-    vec3 normal;
-};
-
-Vertex unpack_vertex(VertexPacked p) {
-    Vertex res;
-    res.position = p.data0.xyz;
-    res.normal = unpack_normal_11_10_11(p.data0.w);
-    return res;
-}
-
-VertexPacked pack_vertex(Vertex v) {
-    VertexPacked p;
-    p.data0.xyz = v.position;
-    p.data0.w = pack_normal_11_10_11(v.normal);
-    return p;
-}

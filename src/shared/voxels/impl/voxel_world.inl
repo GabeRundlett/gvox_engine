@@ -1,9 +1,9 @@
 #pragma once
 
-#include <shared/voxels/impl/voxels.inl>
+#include <shared/input.inl>
 #include <shared/globals.inl>
+#include <shared/voxels/impl/voxels.inl>
 
-#if PerChunkComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
@@ -15,18 +15,7 @@ DAXA_DECL_TASK_HEAD_END
 struct PerChunkComputePush {
     DAXA_TH_BLOB(PerChunkCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(PerChunkComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_RWBufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
-daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
-daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
-#endif
-#endif
 
-#if ChunkEditComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -42,20 +31,7 @@ DAXA_DECL_TASK_HEAD_END
 struct ChunkEditComputePush {
     DAXA_TH_BLOB(ChunkEditCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
-daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
-daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
-daxa_BufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
-daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
-daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
-#endif
-#endif
 
-#if ChunkEditPostProcessComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditPostProcessCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -71,20 +47,7 @@ DAXA_DECL_TASK_HEAD_END
 struct ChunkEditPostProcessComputePush {
     DAXA_TH_BLOB(ChunkEditPostProcessCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ChunkEditPostProcessComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
-daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
-daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
-daxa_BufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
-daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
-daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
-#endif
-#endif
 
-#if ChunkOptComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ChunkOptCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -95,17 +58,7 @@ DAXA_DECL_TASK_HEAD_END
 struct ChunkOptComputePush {
     DAXA_TH_BLOB(ChunkOptCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ChunkOptComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
-daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
-daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
-#endif
-#endif
 
-#if ChunkAllocComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ChunkAllocCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -117,16 +70,6 @@ DAXA_DECL_TASK_HEAD_END
 struct ChunkAllocComputePush {
     DAXA_TH_BLOB(ChunkAllocCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ChunkAllocComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
-daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
-daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
-daxa_RWBufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

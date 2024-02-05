@@ -38,17 +38,17 @@ const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;
 // New traces are a bit more expensive than validations, so the jitter is not terrible.
 #define RTDGI_INTERLEAVED_VALIDATION_ALWAYS_TRACE_NEAR_FIELD 1
 
-bool is_rtdgi_validation_frame() {
+bool is_rtdgi_validation_frame(uint frame_index) {
     #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
-        return deref(gpu_input).frame_index % RTDGI_INTERLEAVED_VALIDATION_PERIOD == 0;
+        return frame_index % RTDGI_INTERLEAVED_VALIDATION_PERIOD == 0;
     #else
         return true;
     #endif
 }
 
-bool is_rtdgi_tracing_frame() {
+bool is_rtdgi_tracing_frame(uint frame_index) {
     #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
-        return !is_rtdgi_validation_frame();
+        return !is_rtdgi_validation_frame(frame_index);
     #else
         return true;
     #endif

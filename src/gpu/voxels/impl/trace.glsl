@@ -1,7 +1,5 @@
 #pragma once
 
-#include <shared/app.inl>
-
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
 

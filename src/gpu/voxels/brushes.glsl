@@ -1,6 +1,8 @@
 #pragma once
 
 #define GEN_MODEL 0
+#include <utils/random.glsl>
+#include <utils/noise.glsl>
 
 daxa_b32 mandelbulb(in daxa_f32vec3 c, in out daxa_f32vec3 color) {
     daxa_f32vec3 z = c;
@@ -41,35 +43,6 @@ daxa_f32vec4 terrain_noise(daxa_f32vec3 p) {
     return val;
 }
 
-// Spruce Tree generation code (from main branch)
-daxa_u32 rand_hash(daxa_u32 x) {
-    x += (x << 10u);
-    x ^= (x >> 6u);
-    x += (x << 3u);
-    x ^= (x >> 11u);
-    x += (x << 15u);
-    return x;
-}
-daxa_u32 rand_hash(daxa_u32vec2 v) { return rand_hash(v.x ^ rand_hash(v.y)); }
-daxa_u32 rand_hash(daxa_u32vec3 v) {
-    return rand_hash(v.x ^ rand_hash(v.y) ^ rand_hash(v.z));
-}
-daxa_u32 rand_hash(daxa_u32vec4 v) {
-    return rand_hash(v.x ^ rand_hash(v.y) ^ rand_hash(v.z) ^ rand_hash(v.w));
-}
-daxa_f32 rand_float_construct(daxa_u32 m) {
-    const daxa_u32 ieee_mantissa = 0x007FFFFFu;
-    const daxa_u32 ieee_one = 0x3F800000u;
-    m &= ieee_mantissa;
-    m |= ieee_one;
-    daxa_f32 f = uintBitsToFloat(m);
-    return f - 1.0;
-}
-daxa_f32 rand(daxa_f32 x) { return rand_float_construct(rand_hash(floatBitsToUint(x))); }
-daxa_f32 rand(daxa_f32vec2 v) { return rand_float_construct(rand_hash(floatBitsToUint(v))); }
-daxa_f32 rand(daxa_f32vec3 v) { return rand_float_construct(rand_hash(floatBitsToUint(v))); }
-daxa_f32 rand(daxa_f32vec4 v) { return rand_float_construct(rand_hash(floatBitsToUint(v))); }
-
 struct TreeSDF {
     daxa_f32 wood;
     daxa_f32 leaves;
@@ -94,45 +67,11 @@ TreeSDF sd_spruce_tree(in daxa_f32vec3 p, in daxa_f32vec3 seed) {
         daxa_f32 scl2 = 1.0 / (1.0 + i * 0.1);
         daxa_u32 branch_n = 8 - i;
         for (daxa_u32 branch_i = 0; branch_i < branch_n; ++branch_i) {
-            daxa_f32 angle = (1.0 / branch_n * branch_i) * 2.0 * M_PI + rand(seed + i + 1.0 * branch_i) * 0.5;
+            daxa_f32 angle = (1.0 / branch_n * branch_i) * 2.0 * M_PI + good_rand(seed + i + 1.0 * branch_i) * 0.5;
             sd_branch(val, p, daxa_f32vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(daxa_f32vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
         }
     }
     return val;
-}
-
-// Random noise
-daxa_f32vec3 hash33(daxa_f32vec3 p3) {
-    p3 = fract(p3 * vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yxz + 33.33);
-    return fract((p3.xxy + p3.yxx) * p3.zyx);
-}
-
-// Value noise + fbm noise
-float hash(in ivec2 p) {
-    int n = p.x * 3 + p.y * 113;
-    n = (n << 13) ^ n;
-    n = n * (n * n * 15731 + 789221) + 1376312589;
-    return -1.0 + 2.0 * float(n & 0x0fffffff) / float(0x0fffffff);
-}
-float value_noise(in vec2 p) {
-    ivec2 i = ivec2(floor(p));
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i + ivec2(0, 0)),
-                   hash(i + ivec2(1, 0)), u.x),
-               mix(hash(i + ivec2(0, 1)),
-                   hash(i + ivec2(1, 1)), u.x),
-               u.y);
-}
-daxa_f32 fbm2(vec2 uv) {
-    daxa_f32 f = 0;
-    mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-    f = 0.5000 * value_noise(uv);
-    uv = m * uv;
-    f += 0.2500 * value_noise(uv);
-    uv = m * uv;
-    return f * .5 + .5;
 }
 
 // Forest generation
@@ -373,7 +312,7 @@ void brushgen_b(in out Voxel voxel) {
 
     float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
     if (sd < 0) {
-        // daxa_f32 val = noise(voxel_pos) + (rand() - 0.5) * 1.2;
+        // daxa_f32 val = noise(voxel_pos) + (good_rand() - 0.5) * 1.2;
         // if (val > 0.3) {
         //     voxel.color = daxa_f32vec3(0.99, 0.03, 0.01);
         // } else if (val > -0.3) {
@@ -381,8 +320,8 @@ void brushgen_b(in out Voxel voxel) {
         // } else {
         //     voxel.color = daxa_f32vec3(0.91, 0.15, 0.01);
         // }
-        // voxel.color = daxa_f32vec3(rand(), rand(), rand());
-        // voxel.color = daxa_f32vec3(floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0, floor(rand() * 4.0) / 4.0);
+        // voxel.color = daxa_f32vec3(good_rand(), good_rand(), good_rand());
+        // voxel.color = daxa_f32vec3(floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0);
         voxel.material_type = 1;
         voxel.color = daxa_f32vec3(0.9, 0.05, 0.05);
         voxel.roughness = 0.2;

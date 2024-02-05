@@ -5,7 +5,6 @@
 #if defined(__cplusplus)
 #include <cpu/core.hpp>
 #include <cpu/app_ui.hpp>
-#include <shared/renderer/core.inl>
 #define CPU_ONLY(x) x
 #define GPU_ONLY(x)
 #else

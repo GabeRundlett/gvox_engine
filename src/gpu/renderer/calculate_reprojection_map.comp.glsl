@@ -1,8 +1,17 @@
-#include <shared/app.inl>
-#include <utils/math.glsl>
+#include <shared/renderer/calculate_reprojection_map.inl>
+#include <utils/camera.glsl>
+#include <utils/bilinear.glsl>
 #include <utils/safety.glsl>
 
-#if CalculateReprojectionMapComputeShader
+DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_ImageViewIndex prev_depth_image_id = push.uses.prev_depth_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
+
 float fetch_depth(daxa_u32vec2 px) {
     return safeTexelFetch(depth_image_id, daxa_i32vec2(px), 0).r;
 }
@@ -135,23 +144,3 @@ void main() {
 
     safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(uv_diff, validity, accuracy));
 }
-#endif
-
-#if ExtractReactiveMaskComputeShader
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
-    daxa_f32vec4 output_tex_size;
-    output_tex_size.xy = deref(gpu_input).frame_dim;
-    output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-
-    if (any(greaterThanEqual(px, uvec2(output_tex_size.xy)))) {
-        return;
-    }
-
-    vec4 reprojection_val = texelFetch(daxa_texture2D(reprojection_tex), daxa_i32vec2(px), 0);
-    float validity = reprojection_val.z;
-
-    safeImageStore(dst_image_id, daxa_i32vec2(px), daxa_f32vec4(0, 0, 0, 0));
-}
-#endif

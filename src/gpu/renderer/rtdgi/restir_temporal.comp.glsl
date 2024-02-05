@@ -1,7 +1,6 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
-#include <utils/math.glsl>
-// #include <utils/uv.glsl>
+#include <utils/camera.glsl>
 // #include <utils/pack_unpack.glsl>
 // #include <utils/frame_constants.glsl>
 #include <utils/gbuffer.glsl>
@@ -21,6 +20,31 @@
 #include <utils/safety.glsl>
 #include <utils/downscale.glsl>
 #include <utils/rt.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiRestirTemporalComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex candidate_radiance_tex = push.uses.candidate_radiance_tex;
+daxa_ImageViewIndex candidate_normal_tex = push.uses.candidate_normal_tex;
+daxa_ImageViewIndex candidate_hit_tex = push.uses.candidate_hit_tex;
+daxa_ImageViewIndex radiance_history_tex = push.uses.radiance_history_tex;
+daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
+daxa_ImageViewIndex ray_history_tex = push.uses.ray_history_tex;
+daxa_ImageViewIndex reservoir_history_tex = push.uses.reservoir_history_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex hit_normal_history_tex = push.uses.hit_normal_history_tex;
+daxa_ImageViewIndex candidate_history_tex = push.uses.candidate_history_tex;
+daxa_ImageViewIndex rt_invalidity_tex = push.uses.rt_invalidity_tex;
+daxa_ImageViewIndex radiance_out_tex = push.uses.radiance_out_tex;
+daxa_ImageViewIndex ray_orig_output_tex = push.uses.ray_orig_output_tex;
+daxa_ImageViewIndex ray_output_tex = push.uses.ray_output_tex;
+daxa_ImageViewIndex hit_normal_output_tex = push.uses.hit_normal_output_tex;
+daxa_ImageViewIndex reservoir_out_tex = push.uses.reservoir_out_tex;
+daxa_ImageViewIndex candidate_out_tex = push.uses.candidate_out_tex;
+daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
+daxa_ImageViewIndex rtdgi_debug_image = push.uses.rtdgi_debug_image;
 
 const float SKY_DIST = 1e4;
 
@@ -96,7 +120,7 @@ void main() {
     Reservoir1spp reservoir = Reservoir1spp_create();
     const uint reservoir_payload = px.x | (px.y << 16);
 
-    if (is_rtdgi_tracing_frame()) {
+    if (is_rtdgi_tracing_frame(deref(gpu_input).frame_index)) {
         RayDesc outgoing_ray;
         outgoing_ray.Direction = outgoing_dir;
         outgoing_ray.Origin = refl_ray_origin_ws;

@@ -1,7 +1,30 @@
-#include <shared/app.inl>
-#include <utils/math.glsl>
+#include <shared/renderer/postprocessing.inl>
+#include <utils/camera.glsl>
 
 #if LightGbufferComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(LightGbufferComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
+daxa_ImageViewIndex rtr_tex = push.uses.rtr_tex;
+daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
+daxa_ImageViewIndex unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;
+daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
+daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = deref(ircache_buffers).ircache_pool_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_life_buf = deref(ircache_buffers).ircache_life_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;
+daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = deref(ircache_buffers).ircache_reposition_proposal_buf;
+daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = deref(ircache_buffers).ircache_irradiance_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache_buffers).ircache_reposition_proposal_count_buf;
 
 #include <utils/rt.glsl>
 #include <utils/sky.glsl>
@@ -93,7 +116,7 @@ void main() {
         vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, deref(gpu_input).sampler_llr), outgoing_ray.Direction).rgb;
         if (dot(outgoing_ray.Direction, SUN_DIRECTION) > sun_angular_radius_cos) {
             // TODO: what's the correct value?
-            output_ += 800.0 * sun_color_in_direction(transmittance_lut, outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
+            output_ += 800.0 * sun_color_in_direction(gpu_input, transmittance_lut, outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
         }
 
         output_ *= deref(gpu_input).pre_exposure;
@@ -130,7 +153,7 @@ void main() {
 
     LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
     const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z);
-    const vec3 light_radiance = shadow_mask * sun_color_in_direction(transmittance_lut, SUN_DIRECTION);
+    const vec3 light_radiance = shadow_mask * sun_color_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
     vec3 total_radiance = brdf_value * light_radiance;
 
     total_radiance += gbuffer.emissive;
@@ -193,6 +216,11 @@ void main() {
 #endif
 
 #if PostprocessingRasterShader
+
+DAXA_DECL_PUSH_CONSTANT(PostprocessingRasterPush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex composited_image_id = push.uses.composited_image_id;
+daxa_ImageViewIndex render_image = push.uses.render_image;
 
 const mat3 SRGB_2_XYZ_MAT = mat3(
     0.4124564, 0.3575761, 0.1804375,
@@ -304,6 +332,12 @@ void main() {
 #endif
 
 #if DebugImageRasterShader
+
+DAXA_DECL_PUSH_CONSTANT(DebugImageRasterPush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex image_id = push.uses.image_id;
+daxa_ImageViewIndex cube_image_id = push.uses.cube_image_id;
+daxa_ImageViewIndex render_image = push.uses.render_image;
 
 #include <utils/reservoir.glsl>
 

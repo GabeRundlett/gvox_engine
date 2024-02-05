@@ -1,13 +1,19 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 // #include <utils/samplers.glsl>
 #include <utils/color.glsl>
 // #include <utils/uv.glsl>
-// #include <utils/bilinear.glsl>
+#include <utils/bilinear.glsl>
 // #include <utils/frame_constants.glsl>
 #include <utils/image.glsl>
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <utils/safety.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiFullresReprojectComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 const bool USE_SHARPENING_HISTORY_FETCH = true;
 

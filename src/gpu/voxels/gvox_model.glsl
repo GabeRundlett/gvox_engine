@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/voxels/gvox_model.inl>
 
 #define MODEL deref(model_ptr)
 daxa_u32 sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, daxa_i32vec3 voxel_i, daxa_u32 channel_index) {

@@ -1,6 +1,7 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 #include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <utils/color.glsl>
 // #include <utils/samplers.glsl>
 // #include <utils/frame_constants.glsl>
@@ -19,6 +20,23 @@
 
 #include <utils/safety.glsl>
 #include <utils/downscale.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiRestirResolveComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex radiance_tex = push.uses.radiance_tex;
+daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;
+daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
+daxa_ImageViewIndex ssao_tex = push.uses.ssao_tex;
+daxa_ImageViewIndex candidate_radiance_tex = push.uses.candidate_radiance_tex;
+daxa_ImageViewIndex candidate_hit_tex = push.uses.candidate_hit_tex;
+daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
+daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
+daxa_ImageViewIndex irradiance_output_tex = push.uses.irradiance_output_tex;
 
 float ggx_ndf_unnorm(float a2, float cos_theta) {
     float denom_sqrt = cos_theta * cos_theta * (a2 - 1.0) + 1.0;
@@ -57,7 +75,7 @@ void main() {
 
     const uint frame_hash = hash1(deref(gpu_input).frame_index);
     const uint px_idx_in_quad = (((px.x & 1) | (px.y & 1) * 2) + frame_hash) & 3;
-    const vec4 blue = blue_noise_for_pixel(px, deref(gpu_input).frame_index) * M_TAU;
+    const vec4 blue = blue_noise_for_pixel(blue_noise_vec2, px, deref(gpu_input).frame_index) * M_TAU;
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.output_tex_size.w * 0.5);
     const float NEAR_FIELD_FADE_OUT_START = NEAR_FIELD_FADE_OUT_END * 0.5;

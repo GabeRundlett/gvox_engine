@@ -1,9 +1,9 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 #include <shared/renderer/ircache.inl>
 
-#if RtdgiFullresReprojectComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiFullresReprojectCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -14,16 +14,7 @@ struct RtdgiFullresReprojectComputePush {
     daxa_f32vec4 output_tex_size;
     DAXA_TH_BLOB(RtdgiFullresReprojectCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiFullresReprojectComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
-#if RtdgiValidateComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateCompute, 13 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -45,27 +36,7 @@ struct RtdgiValidateComputePush {
     daxa_f32vec4 gbuffer_tex_size;
     DAXA_TH_BLOB(RtdgiValidateCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiValidateComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
-daxa_ImageViewIndex reservoir_tex = push.uses.reservoir_tex;
-daxa_ImageViewIndex reservoir_ray_history_tex = push.uses.reservoir_ray_history_tex;
-daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-IRCACHE_USE_BUFFERS_PUSH_USES()
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewIndex irradiance_history_tex = push.uses.irradiance_history_tex;
-daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
-daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalidity_out_tex;
-#endif
-#endif
 
-#if RtdgiTraceComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceCompute, 15 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -89,29 +60,7 @@ struct RtdgiTraceComputePush {
     daxa_f32vec4 gbuffer_tex_size;
     DAXA_TH_BLOB(RtdgiTraceCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiTraceComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-IRCACHE_USE_BUFFERS_PUSH_USES()
-daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
-daxa_ImageViewIndex candidate_irradiance_out_tex = push.uses.candidate_irradiance_out_tex;
-daxa_ImageViewIndex candidate_normal_out_tex = push.uses.candidate_normal_out_tex;
-daxa_ImageViewIndex candidate_hit_out_tex = push.uses.candidate_hit_out_tex;
-daxa_ImageViewIndex rt_history_invalidity_in_tex = push.uses.rt_history_invalidity_in_tex;
-daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalidity_out_tex;
-#endif
-#endif
 
-#if RtdgiValidityIntegrateComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidityIntegrateCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -127,20 +76,7 @@ struct RtdgiValidityIntegrateComputePush {
     daxa_f32vec4 output_tex_size;
     DAXA_TH_BLOB(RtdgiValidityIntegrateCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiValidityIntegrateComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex history_tex = push.uses.history_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
-#if RtdgiRestirTemporalComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 23)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -170,35 +106,7 @@ struct RtdgiRestirTemporalComputePush {
     daxa_f32vec4 gbuffer_tex_size;
     DAXA_TH_BLOB(RtdgiRestirTemporalCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiRestirTemporalComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex candidate_radiance_tex = push.uses.candidate_radiance_tex;
-daxa_ImageViewIndex candidate_normal_tex = push.uses.candidate_normal_tex;
-daxa_ImageViewIndex candidate_hit_tex = push.uses.candidate_hit_tex;
-daxa_ImageViewIndex radiance_history_tex = push.uses.radiance_history_tex;
-daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
-daxa_ImageViewIndex ray_history_tex = push.uses.ray_history_tex;
-daxa_ImageViewIndex reservoir_history_tex = push.uses.reservoir_history_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex hit_normal_history_tex = push.uses.hit_normal_history_tex;
-daxa_ImageViewIndex candidate_history_tex = push.uses.candidate_history_tex;
-daxa_ImageViewIndex rt_invalidity_tex = push.uses.rt_invalidity_tex;
-daxa_ImageViewIndex radiance_out_tex = push.uses.radiance_out_tex;
-daxa_ImageViewIndex ray_orig_output_tex = push.uses.ray_orig_output_tex;
-daxa_ImageViewIndex ray_output_tex = push.uses.ray_output_tex;
-daxa_ImageViewIndex hit_normal_output_tex = push.uses.hit_normal_output_tex;
-daxa_ImageViewIndex reservoir_out_tex = push.uses.reservoir_out_tex;
-daxa_ImageViewIndex candidate_out_tex = push.uses.candidate_out_tex;
-daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
-daxa_ImageViewIndex rtdgi_debug_image = push.uses.rtdgi_debug_image;
-#endif
-#endif
 
-#if RtdgiRestirSpatialComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirSpatialCompute, 12)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -222,24 +130,7 @@ struct RtdgiRestirSpatialComputePush {
     daxa_u32 occlusion_raymarch_importance_only;
     DAXA_TH_BLOB(RtdgiRestirSpatialCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;
-daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex half_ssao_tex = push.uses.half_ssao_tex;
-daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
-daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
-daxa_ImageViewIndex reservoir_output_tex = push.uses.reservoir_output_tex;
-daxa_ImageViewIndex bounced_radiance_output_tex = push.uses.bounced_radiance_output_tex;
-#endif
-#endif
 
-#if RtdgiRestirResolveComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 15)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -262,27 +153,7 @@ struct RtdgiRestirResolveComputePush {
     daxa_f32vec4 output_tex_size;
     DAXA_TH_BLOB(RtdgiRestirResolveCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiRestirResolveComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
-daxa_ImageViewIndex radiance_tex = push.uses.radiance_tex;
-daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;
-daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
-daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
-daxa_ImageViewIndex ssao_tex = push.uses.ssao_tex;
-daxa_ImageViewIndex candidate_radiance_tex = push.uses.candidate_radiance_tex;
-daxa_ImageViewIndex candidate_hit_tex = push.uses.candidate_hit_tex;
-daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
-daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
-daxa_ImageViewIndex irradiance_output_tex = push.uses.irradiance_output_tex;
-#endif
-#endif
 
-#if RtdgiTemporalFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTemporalFilterCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -299,21 +170,7 @@ struct RtdgiTemporalFilterComputePush {
     daxa_f32vec4 gbuffer_tex_size;
     DAXA_TH_BLOB(RtdgiTemporalFilterCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiTemporalFilterComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex history_tex = push.uses.history_tex;
-daxa_ImageViewIndex variance_history_tex = push.uses.variance_history_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex rt_history_invalidity_tex = push.uses.rt_history_invalidity_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-daxa_ImageViewIndex history_output_tex = push.uses.history_output_tex;
-daxa_ImageViewIndex variance_history_output_tex = push.uses.variance_history_output_tex;
-#endif
-#endif
 
-#if RtdgiSpatialFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiSpatialFilterCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -326,16 +183,6 @@ struct RtdgiSpatialFilterComputePush {
     daxa_f32vec4 output_tex_size;
     DAXA_TH_BLOB(RtdgiSpatialFilterCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RtdgiSpatialFilterComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex ssao_tex = push.uses.ssao_tex;
-daxa_ImageViewIndex geometric_normal_tex = push.uses.geometric_normal_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

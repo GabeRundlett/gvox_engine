@@ -1,6 +1,14 @@
-#include <shared/app.inl>
+#include <shared/voxels/impl/voxel_world.inl>
 
 #if PerChunkComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(PerChunkComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_RWBufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
+daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 #include <utils/math.glsl>
 #include <voxels/impl/voxels.glsl>
@@ -102,6 +110,16 @@ void main() {
 
 #if ChunkEditComputeShader
 
+DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
+daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
+daxa_BufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
+daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
+daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
+
 #include <utils/math.glsl>
 #include <utils/noise.glsl>
 #include <voxels/impl/voxels.glsl>
@@ -197,6 +215,16 @@ void main() {
 #endif
 
 #if ChunkEditPostProcessComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ChunkEditPostProcessComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
+daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
+daxa_BufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
+daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
+daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 #include <utils/math.glsl>
 #include <utils/noise.glsl>
@@ -403,6 +431,13 @@ void main() {
 #endif
 
 #if ChunkOptComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ChunkOptComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
+daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 
 #include <voxels/impl/voxels.glsl>
 
@@ -739,6 +774,14 @@ void main() {
 #endif
 
 #if ChunkAllocComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(ChunkAllocComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
+daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
+daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
+daxa_RWBufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
 
 #extension GL_EXT_shader_atomic_int64 : require
 

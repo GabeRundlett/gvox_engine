@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 
 #if defined(__cplusplus)
 #include <ffx-fsr2-api/ffx_fsr2.h>

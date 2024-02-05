@@ -1,7 +1,12 @@
-#include <shared/app.inl>
+#include <shared/renderer/blur.inl>
 #include <utils/safety.glsl>
 
 #if BlurComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(BlurComputePush, push)
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
+
 const uint kernel_radius = 5;
 const uint group_width = 64;
 const uint vblur_window_size = (group_width + kernel_radius) * 2;
@@ -63,6 +68,12 @@ void main() {
 #endif
 
 #if RevBlurComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(RevBlurComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex input_tail_tex = push.uses.input_tail_tex;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

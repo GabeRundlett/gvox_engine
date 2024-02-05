@@ -1,6 +1,7 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 #include <utils/math.glsl>
+#include <utils/camera.glsl>
 // #include <utils/samplers.glsl>
 #include <utils/color.glsl>
 // #include <utils/uv.glsl>
@@ -8,6 +9,17 @@
 // #include <utils/soft_color_clamp.glsl>
 #include <utils/working_color_space.glsl>
 #include <utils/safety.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiTemporalFilterComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex history_tex = push.uses.history_tex;
+daxa_ImageViewIndex variance_history_tex = push.uses.variance_history_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex rt_history_invalidity_tex = push.uses.rt_history_invalidity_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
+daxa_ImageViewIndex history_output_tex = push.uses.history_output_tex;
+daxa_ImageViewIndex variance_history_output_tex = push.uses.variance_history_output_tex;
 
 #define USE_BBOX_CLAMP 1
 

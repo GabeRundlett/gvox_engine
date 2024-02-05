@@ -1,5 +1,10 @@
-#include <shared/app.inl>
+#include <shared/renderer/sky.inl>
 #include <utils/math.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(IblCubeComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
+daxa_ImageViewIndex ibl_cube = push.uses.ibl_cube;
 
 float radical_inverse_vdc(uint bits) {
     bits = (bits << 16u) | (bits >> 16u);

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 
-#if ShadowBitPackComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowBitPackCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -13,15 +13,7 @@ struct ShadowBitPackComputePush {
     daxa_u32vec2 bitpacked_shadow_mask_extent;
     DAXA_TH_BLOB(ShadowBitPackCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ShadowBitPackComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
-#if ShadowSpatialFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowSpatialFilterCompute, 7)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -37,19 +29,7 @@ struct ShadowSpatialFilterComputePush {
     daxa_u32 step_size;
     DAXA_TH_BLOB(ShadowSpatialFilterCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ShadowSpatialFilterComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex meta_tex = push.uses.meta_tex;
-daxa_ImageViewIndex geometric_normal_tex = push.uses.geometric_normal_tex;
-daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
-#if ShadowTemporalFilterComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ShadowTemporalFilterCompute, 10)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGlobals), globals)
@@ -67,20 +47,6 @@ struct ShadowTemporalFilterComputePush {
     daxa_u32vec2 bitpacked_shadow_mask_extent;
     DAXA_TH_BLOB(ShadowTemporalFilterCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ShadowTemporalFilterComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
-daxa_ImageViewIndex bitpacked_shadow_mask_tex = push.uses.bitpacked_shadow_mask_tex;
-daxa_ImageViewIndex prev_moments_tex = push.uses.prev_moments_tex;
-daxa_ImageViewIndex prev_accum_tex = push.uses.prev_accum_tex;
-daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
-daxa_ImageViewIndex output_moments_tex = push.uses.output_moments_tex;
-daxa_ImageViewIndex temporal_output_tex = push.uses.temporal_output_tex;
-daxa_ImageViewIndex meta_output_tex = push.uses.meta_output_tex;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

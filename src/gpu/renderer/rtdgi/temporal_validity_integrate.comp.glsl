@@ -1,4 +1,4 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 // #include <utils/frame_constants.glsl>
 // #include <utils/hash.glsl>
@@ -6,6 +6,16 @@
 #include <utils/math.glsl>
 #include "rtdgi_restir_settings.glsl"
 #include <utils/safety.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiValidityIntegrateComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex input_tex = push.uses.input_tex;
+daxa_ImageViewIndex history_tex = push.uses.history_tex;
+daxa_ImageViewIndex reprojection_tex = push.uses.reprojection_tex;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
+daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
 #define USE_SSAO_STEERING 1
 #define USE_DYNAMIC_KERNEL_RADIUS 0

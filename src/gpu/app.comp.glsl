@@ -2,6 +2,11 @@
 
 #if StartupComputeShader
 
+DAXA_DECL_PUSH_CONSTANT(StartupComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
+
 #include <utils/player.glsl>
 #include <voxels/core.glsl>
 
@@ -14,6 +19,13 @@ void main() {
 #endif
 
 #if PerframeComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(PerframeComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <utils/player.glsl>
 

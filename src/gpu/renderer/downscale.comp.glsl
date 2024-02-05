@@ -1,7 +1,13 @@
-#include <shared/app.inl>
+#include <shared/renderer/downscale.inl>
 #include <utils/downscale.glsl>
 #include <utils/math.glsl>
 #include <utils/safety.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(DownscaleComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
+daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

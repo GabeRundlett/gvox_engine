@@ -2,7 +2,6 @@
 
 #include <shared/core.inl>
 
-#if PrefixScan1ComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan1Compute, 1)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), inout_buf)
 DAXA_DECL_TASK_HEAD_END
@@ -10,12 +9,6 @@ struct PrefixScan1ComputePush {
     daxa_u32 element_n;
     DAXA_TH_BLOB(PrefixScan1Compute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(PrefixScan1ComputePush, push)
-daxa_RWBufferPtr(daxa_u32) inout_buf = push.uses.inout_buf;
-#endif
-#endif
-#if PrefixScan2ComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan2Compute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), input_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), output_buf)
@@ -24,13 +17,6 @@ struct PrefixScan2ComputePush {
     daxa_u32 element_n;
     DAXA_TH_BLOB(PrefixScan2Compute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(PrefixScan2ComputePush, push)
-daxa_BufferPtr(daxa_u32) input_buf = push.uses.input_buf;
-daxa_RWBufferPtr(daxa_u32) output_buf = push.uses.output_buf;
-#endif
-#endif
-#if PrefixScanMergeComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(PrefixScanMergeCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), inout_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), segment_sum_buf)
@@ -39,12 +25,6 @@ struct PrefixScanMergeComputePush {
     daxa_u32 element_n;
     DAXA_TH_BLOB(PrefixScanMergeCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(PrefixScanMergeComputePush, push)
-daxa_RWBufferPtr(daxa_u32) inout_buf = push.uses.inout_buf;
-daxa_BufferPtr(daxa_u32) segment_sum_buf = push.uses.segment_sum_buf;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

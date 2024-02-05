@@ -1,4 +1,4 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
 
 #include <utils/math.glsl>
 #include <utils/color.glsl>
@@ -18,6 +18,20 @@
 #include <utils/safety.glsl>
 #include <utils/downscale.glsl>
 #include <utils/rt.glsl>
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;
+daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex half_depth_tex = push.uses.half_depth_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex half_ssao_tex = push.uses.half_ssao_tex;
+daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
+daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
+daxa_ImageViewIndex reservoir_output_tex = push.uses.reservoir_output_tex;
+daxa_ImageViewIndex bounced_radiance_output_tex = push.uses.bounced_radiance_output_tex;
 
 #define USE_SSAO_WEIGHING 1
 #define ALLOW_REUSE_OF_BACKFACING 1

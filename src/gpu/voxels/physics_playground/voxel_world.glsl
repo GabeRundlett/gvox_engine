@@ -1,6 +1,7 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
 
 #include "trace.glsl"
 

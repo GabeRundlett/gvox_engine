@@ -1,8 +1,10 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
+#include <shared/renderer/core.inl>
 
-#if CalculateReprojectionMapComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute, 7)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -15,17 +17,6 @@ DAXA_DECL_TASK_HEAD_END
 struct CalculateReprojectionMapComputePush {
     DAXA_TH_BLOB(CalculateReprojectionMapCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
-daxa_ImageViewIndex prev_depth_image_id = push.uses.prev_depth_image_id;
-daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
-daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

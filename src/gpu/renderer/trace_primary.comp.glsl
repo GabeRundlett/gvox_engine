@@ -1,9 +1,15 @@
-#include <shared/app.inl>
+#include <shared/renderer/trace_primary.inl>
 
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <voxels/core.glsl>
 
 #if TraceDepthPrepassComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 
 #define INPUT deref(gpu_input)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -37,6 +43,16 @@ void main() {
 #endif
 
 #if TracePrimaryComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex debug_texture = push.uses.debug_texture;
+daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 
 #include <utils/sky.glsl>
 
@@ -147,6 +163,17 @@ void main() {
 #endif
 
 #if CompositeParticlesComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
+daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
 
 #include <voxels/voxel_particle.glsl>
 

@@ -1,4 +1,5 @@
-#include <shared/app.inl>
+#include <shared/renderer/rtdgi.inl>
+
 #include <utils/math.glsl>
 // #include <utils/uv.glsl>
 // #include <utils/pack_unpack.glsl>
@@ -19,6 +20,23 @@
 
 // #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 // #define IRCACHE_LOOKUP_KEEP_ALIVE_PROB 0.125
+
+DAXA_DECL_PUSH_CONSTANT(RtdgiValidateComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
+daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
+daxa_ImageViewIndex reprojected_gi_tex = push.uses.reprojected_gi_tex;
+daxa_ImageViewIndex reservoir_tex = push.uses.reservoir_tex;
+daxa_ImageViewIndex reservoir_ray_history_tex = push.uses.reservoir_ray_history_tex;
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+IRCACHE_USE_BUFFERS_PUSH_USES()
+daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex irradiance_history_tex = push.uses.irradiance_history_tex;
+daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
+daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalidity_out_tex;
 
 #include "../ircache/lookup.glsl"
 // #include "../wrc/lookup.hlsl"
@@ -41,7 +59,7 @@ void main() {
 
     float invalidity = 0.0;
 
-    if (RESTIR_USE_PATH_VALIDATION && is_rtdgi_validation_frame()) {
+    if (RESTIR_USE_PATH_VALIDATION && is_rtdgi_validation_frame(deref(gpu_input).frame_index)) {
         const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
         const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
 

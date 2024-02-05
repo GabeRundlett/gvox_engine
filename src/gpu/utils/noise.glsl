@@ -156,3 +156,30 @@ daxa_f32 fractal_voronoi_noise(daxa_f32vec3 pos, FractalNoiseConfig config) {
     }
     return value / max_value * amplitude;
 }
+
+// Value noise + fbm noise
+float fbm_value_noise_hash(in ivec2 p) {
+    int n = p.x * 3 + p.y * 113;
+    n = (n << 13) ^ n;
+    n = n * (n * n * 15731 + 789221) + 1376312589;
+    return -1.0 + 2.0 * float(n & 0x0fffffff) / float(0x0fffffff);
+}
+float value_noise(in vec2 p) {
+    ivec2 i = ivec2(floor(p));
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(fbm_value_noise_hash(i + ivec2(0, 0)),
+                   fbm_value_noise_hash(i + ivec2(1, 0)), u.x),
+               mix(fbm_value_noise_hash(i + ivec2(0, 1)),
+                   fbm_value_noise_hash(i + ivec2(1, 1)), u.x),
+               u.y);
+}
+daxa_f32 fbm2(vec2 uv) {
+    daxa_f32 f = 0;
+    mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
+    f = 0.5000 * value_noise(uv);
+    uv = m * uv;
+    f += 0.2500 * value_noise(uv);
+    uv = m * uv;
+    return f * .5 + .5;
+}

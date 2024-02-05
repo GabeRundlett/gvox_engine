@@ -1,8 +1,8 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/input.inl>
 
-#if BlurComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(BlurCompute, 2)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
@@ -10,14 +10,7 @@ DAXA_DECL_TASK_HEAD_END
 struct BlurComputePush {
     DAXA_TH_BLOB(BlurCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(BlurComputePush, push)
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
-#if RevBlurComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(RevBlurCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tail_tex)
@@ -29,14 +22,6 @@ struct RevBlurComputePush {
     daxa_f32 self_weight;
     DAXA_TH_BLOB(RevBlurCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(RevBlurComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex input_tail_tex = push.uses.input_tail_tex;
-daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_ImageViewIndex output_tex = push.uses.output_tex;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

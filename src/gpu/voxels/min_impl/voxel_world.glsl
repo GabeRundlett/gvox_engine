@@ -1,6 +1,7 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
 
 void voxel_world_startup(daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBufferPtrs ptrs) {
 }

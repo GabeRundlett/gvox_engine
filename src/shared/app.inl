@@ -6,6 +6,36 @@
 #include <shared/globals.inl>
 
 #include <shared/voxels/voxels.inl>
+
+DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute, 2 + VOXEL_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_END
+struct StartupComputePush {
+    DAXA_TH_BLOB(StartupCompute, uses)
+};
+
+DAXA_DECL_TASK_HEAD_BEGIN(PerframeCompute, 4 + VOXEL_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_END
+struct PerframeComputePush {
+    DAXA_TH_BLOB(PerframeCompute, uses)
+};
+
+DAXA_DECL_TASK_HEAD_BEGIN(TestCompute, 1)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
+DAXA_DECL_TASK_HEAD_END
+struct TestComputePush {
+    DAXA_TH_BLOB(TestCompute, uses)
+};
+
+#if defined(__cplusplus)
+
 #include <shared/voxels/impl/voxel_world.inl>
 #include <shared/voxels/voxel_particles.inl>
 #include <shared/voxels/gvox_model.inl>
@@ -24,59 +54,6 @@
 #include <shared/renderer/fsr.inl>
 
 #include <shared/renderer/ircache.inl>
-
-#if StartupComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(StartupCompute, 2 + VOXEL_BUFFER_USE_N)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
-VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
-DAXA_DECL_TASK_HEAD_END
-struct StartupComputePush {
-    DAXA_TH_BLOB(StartupCompute, uses)
-};
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(StartupComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
-#endif
-#endif
-
-#if PerframeComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(PerframeCompute, 4 + VOXEL_BUFFER_USE_N)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
-VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
-DAXA_DECL_TASK_HEAD_END
-struct PerframeComputePush {
-    DAXA_TH_BLOB(PerframeCompute, uses)
-};
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(PerframeComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
-#endif
-#endif
-
-#if TestComputeShader || defined(__cplusplus)
-DAXA_DECL_TASK_HEAD_BEGIN(TestCompute, 1)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), data)
-DAXA_DECL_TASK_HEAD_END
-struct TestComputePush {
-    DAXA_TH_BLOB(TestCompute, uses)
-};
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
-daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
-#endif
-#endif
-
-#if defined(__cplusplus)
 
 static_assert(IsVoxelWorld<VoxelWorld>);
 

@@ -1,5 +1,11 @@
-#include <shared/app.inl>
+#include <shared/renderer/ircache.inl>
 #include "ircache_constants.glsl"
+
+DAXA_DECL_PUSH_CONSTANT(IrcacheCompactEntriesComputePush, push)
+daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_BufferPtr(daxa_u32) entry_occupancy_buf = push.uses.entry_occupancy_buf;
+daxa_RWBufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {

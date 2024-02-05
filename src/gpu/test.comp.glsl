@@ -1,7 +1,9 @@
 #include <shared/app.inl>
 #include <utils/math.glsl>
 
-#if TestComputeShader
+DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
+daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
+
 uint gen_voxel(ivec3 pos) {
     uint r = uint(0);
     uint g = uint(0);
@@ -25,4 +27,3 @@ void main() {
     uint out_index = chunk_index * 64 * 64 * 64 + in_chunk_index;
     deref(data[out_index]) = v;
 }
-#endif

@@ -1,9 +1,13 @@
-#include <shared/app.inl>
+#include <shared/renderer/sky.inl>
 
 #include <utils/math.glsl>
 #include <utils/sky.glsl>
 
 #if SkyTransmittanceComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(SkyTransmittanceComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 daxa_f32vec3 integrate_transmittance(daxa_f32vec3 world_position, daxa_f32vec3 world_direction, daxa_u32 sample_count) {
@@ -54,6 +58,11 @@ void main() {
 #endif
 
 #if SkyMultiscatteringComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(SkyMultiscatteringComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex multiscattering_lut = push.uses.multiscattering_lut;
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 64) in;
 /* This number should match the number of local threads -> z dimension */
@@ -261,6 +270,12 @@ void main() {
 
 #if SkySkyComputeShader
 
+DAXA_DECL_PUSH_CONSTANT(SkySkyComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex multiscattering_lut = push.uses.multiscattering_lut;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
+
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 /* ============================= PHASE FUNCTIONS ============================ */
 daxa_f32 cornette_shanks_mie_phase_function(daxa_f32 g, daxa_f32 cos_theta) {
@@ -423,6 +438,12 @@ void main() {
 
 #if SkyCubeComputeShader
 
+DAXA_DECL_PUSH_CONSTANT(SkyCubeComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
+daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     daxa_u32vec3 px = gl_GlobalInvocationID.xyz;
@@ -432,7 +453,7 @@ void main() {
     vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
     const mat3 basis = build_orthonormal_basis(output_dir);
 
-    AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(sky_lut, transmittance_lut, output_dir, output_dir);
+    AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, output_dir, output_dir);
     vec4 result = vec4(sky_lighting.atmosphere_direct_illuminance, 1);
 
     imageStore(daxa_image2DArray(sky_cube), ivec3(px), result);

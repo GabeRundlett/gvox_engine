@@ -1,9 +1,15 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
 #include <shared/voxels/voxels.inl>
 #include <shared/utils/prefix_scan.inl>
 
+struct Vertex {
+    daxa_f32vec3 position;
+    daxa_f32vec3 normal;
+};
 struct VertexPacked {
     daxa_f32vec4 data0;
 };
@@ -82,7 +88,6 @@ DAXA_DECL_BUFFER_PTR(IrcacheBuffers)
         std::pair { TaskHeadName::ircache_reposition_proposal_count_buf, ircache.ircache_reposition_proposal_count_buf }          \
     }
 
-#if ClearIrcachePoolComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(ClearIrcachePoolCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), ircache_pool_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), ircache_life_buf)
@@ -90,13 +95,6 @@ DAXA_DECL_TASK_HEAD_END
 struct ClearIrcachePoolComputePush {
     DAXA_TH_BLOB(ClearIrcachePoolCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(ClearIrcachePoolComputePush, push)
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-#endif
-#endif
-#if IrcacheScrollCascadesComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcacheScrollCascadesCompute, 8)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheCell), ircache_grid_meta_buf)
@@ -110,19 +108,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheScrollCascadesComputePush {
     DAXA_TH_BLOB(IrcacheScrollCascadesCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcacheScrollCascadesComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf2 = push.uses.ircache_grid_meta_buf2;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-#endif
-#endif
-#if IrcachePrepareAgeDispatchComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcachePrepareAgeDispatchCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheMetadata), ircache_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32vec4), dispatch_args)
@@ -130,13 +115,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcachePrepareAgeDispatchComputePush {
     DAXA_TH_BLOB(IrcachePrepareAgeDispatchCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcachePrepareAgeDispatchComputePush, push)
-daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_u32vec4) dispatch_args = push.uses.dispatch_args;
-#endif
-#endif
-#if AgeIrcacheEntriesComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(AgeIrcacheEntriesCompute, 11)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheMetadata), ircache_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheCell), ircache_grid_meta_buf)
@@ -153,21 +131,6 @@ DAXA_DECL_TASK_HEAD_END
 struct AgeIrcacheEntriesComputePush {
     DAXA_TH_BLOB(AgeIrcacheEntriesCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(AgeIrcacheEntriesComputePush, push)
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_u32) entry_occupancy_buf = push.uses.entry_occupancy_buf;
-#endif
-#endif
-#if IrcacheCompactEntriesComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcacheCompactEntriesCompute, 5)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheMetadata), ircache_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), ircache_life_buf)
@@ -178,15 +141,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheCompactEntriesComputePush {
     DAXA_TH_BLOB(IrcacheCompactEntriesCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcacheCompactEntriesComputePush, push)
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_BufferPtr(daxa_u32) entry_occupancy_buf = push.uses.entry_occupancy_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-#endif
-#endif
-#if IrcachePrepareTraceDispatchComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcachePrepareTraceDispatchCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheMetadata), ircache_meta_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32vec4), dispatch_args)
@@ -194,13 +148,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcachePrepareTraceDispatchComputePush {
     DAXA_TH_BLOB(IrcachePrepareTraceDispatchCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcachePrepareTraceDispatchComputePush, push)
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_u32vec4) dispatch_args = push.uses.dispatch_args;
-#endif
-#endif
-#if IrcacheResetComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcacheResetCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(IrcacheMetadata), ircache_meta_buf)
@@ -212,16 +159,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheResetComputePush {
     DAXA_TH_BLOB(IrcacheResetCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcacheResetComputePush, push)
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_BufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-#endif
-#endif
-#if IrcacheTraceAccessComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcacheTraceAccessCompute, 8 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -236,19 +173,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheTraceAccessComputePush {
     DAXA_TH_BLOB(IrcacheTraceAccessCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcacheTraceAccessComputePush, push)
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-#endif
-#endif
-#if IrcacheValidateComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IrcacheValidateCompute, 15 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -270,26 +194,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheValidateComputePush {
     DAXA_TH_BLOB(IrcacheValidateCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IrcacheValidateComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-#endif
-#endif
-#if TraceIrradianceComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(TraceIrradianceCompute, 15 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -311,26 +215,6 @@ DAXA_DECL_TASK_HEAD_END
 struct TraceIrradianceComputePush {
     DAXA_TH_BLOB(TraceIrradianceCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(TraceIrradianceComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-#endif
-#endif
-#if SumUpIrradianceComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SumUpIrradianceCompute, 7)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
@@ -343,16 +227,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SumUpIrradianceComputePush {
     DAXA_TH_BLOB(SumUpIrradianceCompute, uses)
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(SumUpIrradianceComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

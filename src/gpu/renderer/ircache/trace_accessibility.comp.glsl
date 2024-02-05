@@ -1,9 +1,19 @@
-#define VOXEL_TRACE_WORLDSPACE 1
 // Trace rays between the previous ReSTIR ircache trace origins and the newly proposed ones,
 // reducing the memory of reservoirs that are inaccessible now.
 //
 // This speeds up transitions between indoors/outdoors for cache entries which span both sides.
-#include <shared/app.inl>
+#include <shared/renderer/ircache.inl>
+
+DAXA_DECL_PUSH_CONSTANT(IrcacheTraceAccessComputePush, push)
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
+daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
+daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
+daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
+#define VOXEL_TRACE_WORLDSPACE 1
 
 #include <utils/rt.glsl>
 #include <utils/reservoir.glsl>

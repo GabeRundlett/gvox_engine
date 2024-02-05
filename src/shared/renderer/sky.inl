@@ -1,8 +1,8 @@
 #pragma once
 
 #include <shared/core.inl>
+#include <shared/renderer/core.inl>
 
-#if SkyTransmittanceComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
@@ -10,13 +10,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SkyTransmittanceComputePush {
     SkyTransmittanceCompute uses;
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(SkyTransmittanceComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-#endif
-#endif
-#if SkyMultiscatteringComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
@@ -25,14 +18,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SkyMultiscatteringComputePush {
     SkyMultiscatteringCompute uses;
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(SkyMultiscatteringComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewIndex multiscattering_lut = push.uses.multiscattering_lut;
-#endif
-#endif
-#if SkySkyComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
@@ -42,15 +27,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SkySkyComputePush {
     SkySkyCompute uses;
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(SkySkyComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewIndex multiscattering_lut = push.uses.multiscattering_lut;
-daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
-#endif
-#endif
-#if SkyCubeComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(SkyCubeCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
@@ -60,15 +36,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SkyCubeComputePush {
     SkyCubeCompute uses;
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(SkyCubeComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
-daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
-#endif
-#endif
-#if IblCubeComputeShader || defined(__cplusplus)
 DAXA_DECL_TASK_HEAD_BEGIN(IblCubeCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube)
@@ -77,13 +44,6 @@ DAXA_DECL_TASK_HEAD_END
 struct IblCubeComputePush {
     IblCubeCompute uses;
 };
-#if DAXA_SHADER
-DAXA_DECL_PUSH_CONSTANT(IblCubeComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
-daxa_ImageViewIndex ibl_cube = push.uses.ibl_cube;
-#endif
-#endif
 
 #if defined(__cplusplus)
 

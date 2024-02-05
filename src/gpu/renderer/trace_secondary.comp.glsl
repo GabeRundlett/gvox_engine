@@ -1,11 +1,20 @@
-#include <shared/app.inl>
+#include <shared/renderer/trace_secondary.inl>
 
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
 #include <voxels/core.glsl>
 #include <utils/sky.glsl>
 #include <utils/downscale.glsl>
 
 #if TraceSecondaryComputeShader
+
+DAXA_DECL_PUSH_CONSTANT(TraceSecondaryComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex shadow_mask = push.uses.shadow_mask;
+VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
+daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
+daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -28,10 +37,10 @@ void main() {
 
     daxa_f32vec2 blue_noise = texelFetch(daxa_texture3D(blue_noise_vec2), ivec3(gl_GlobalInvocationID.xy, deref(gpu_input).frame_index) & ivec3(127, 127, 63), 0).yz * 255.0 / 256.0 + 0.5 / 256.0;
 
-    daxa_f32vec3 ray_dir = sample_sun_direction(blue_noise, true);
+    daxa_f32vec3 ray_dir = sample_sun_direction(gpu_input, blue_noise, true);
 
     uint hit = 0;
-    if (depth != 0.0) {
+    if (depth != 0.0 && dot(nrm, ray_dir) > 0) {
         VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
         hit = uint(trace_result.dist == MAX_DIST);
     }

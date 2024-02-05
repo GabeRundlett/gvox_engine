@@ -1,8 +1,20 @@
 #pragma once
 
-#include <shared/app.inl>
+#include <shared/input.inl>
+#include <shared/globals.inl>
 
-#include <utils/math.glsl>
+#include <utils/camera.glsl>
+
+void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 friction_vec, float friction_coeff) {
+    float fac = deref(gpu_input).delta_time * friction_coeff;
+    vec3 new_vel = vel - normalize(friction_vec) * fac;
+
+    if (dot(vel, new_vel) > 0.000) {
+        vel = new_vel;
+    } else {
+        vel -= friction_vec;
+    }
+}
 
 #define PLAYER deref(globals_ptr).player
 void player_fix_chunk_offset(
@@ -30,7 +42,7 @@ void player_startup(
     // PLAYER.pos = daxa_f32vec3(66.01, 38.02, 14.01);
 
     // Inside beach hut
-    // PLAYER.pos = daxa_f32vec3(173.78, 113.72, 12.09);
+    PLAYER.pos = daxa_f32vec3(173.78 - 125, 113.72 - 125, 12.09);
 
     PLAYER.pitch = M_PI * 0.349;
     PLAYER.yaw = M_PI * 0.25;
