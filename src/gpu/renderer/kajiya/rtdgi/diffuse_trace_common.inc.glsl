@@ -164,7 +164,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
             //                         1e-3,
             //                         sqrt(dist_to_light2) - 2e-3));
 
-            //             const vec3 bounce_albedo = lerp(gbuffer.albedo, 1.0.xxx, 0.04);
+            //             const vec3 bounce_albedo = max(gbuffer.albedo, 1.0.xxx, 0.04);
             //             const vec3 brdf_value = bounce_albedo * to_psa_metric / M_PI;
 
             //             total_radiance +=

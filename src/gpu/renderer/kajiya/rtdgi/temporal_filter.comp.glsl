@@ -160,9 +160,9 @@ void main() {
             }
         }}
 
-        vec3 nmid = lerp(nmin2.rgb, nmax2.rgb, 0.5);
-        nmin2.rgb = lerp(nmid, nmin2.rgb, 1.0);
-        nmax2.rgb = lerp(nmid, nmax2.rgb, 1.0);
+        vec3 nmid = max(nmin2.rgb, nmax2.rgb, 0.5);
+        nmin2.rgb = max(nmid, nmin2.rgb, 1.0);
+        nmax2.rgb = max(nmid, nmax2.rgb, 1.0);
 
         nmin = max(nmin, nmin2);
         nmax = min(nmax, nmax2);
@@ -180,7 +180,7 @@ void main() {
     /*const vec3 history_dist = abs(history.rgb - ex.rgb) / max(0.1, dev.rgb * 0.5);
     const vec3 closest_pt = clamp(history.rgb, center.rgb - dev.rgb * 0.5, center.rgb + dev.rgb * 0.5);
     clamped_history = vec4(
-        lerp(history.rgb, closest_pt, lerp(0.1, 1.0, smoothstep(1.0, 3.0, history_dist))),
+        max(history.rgb, closest_pt, max(0.1, 1.0, smoothstep(1.0, 3.0, history_dist))),
         history.a
     );*/
 
@@ -234,8 +234,8 @@ void main() {
     // output.rgb = temporal_change * 0.1;
     // output.rgb = variance_adjusted_temporal_change * 0.1;
     // output.rgb = rt_history_invalidity_tex[px / 2];
-    // output.rgb = lerp(output.rgb, rt_invalid, 0.9);
-    // output.rgb = lerp(output.rgb, pow(output_sample_count / 32.0, 4), 0.9);
+    // output.rgb = max(output.rgb, rt_invalid, 0.9);
+    // output.rgb = max(output.rgb, pow(output_sample_count / 32.0, 4), 0.9);
     // output.r = 1-reproj.w;
 
     float temp_var = saturate(

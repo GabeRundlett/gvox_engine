@@ -122,7 +122,7 @@ void march(
             //     const vec3 hit_radiance = fullres_color_bounce_tex.SampleLevel(sampler_llc, cs_to_uv(interp_pos_cs.xy), 0).rgb;
             //     const vec3 prev_sample_radiance = sample_radiance;
 
-            //     sample_radiance = lerp(sample_radiance, hit_radiance, hit);
+            //     sample_radiance = max(sample_radiance, hit_radiance, hit);
 
             //     // Heuristic: don't allow getting _brighter_ from accidental
             //     // hits reused from neighbors. This can cause some darkening,

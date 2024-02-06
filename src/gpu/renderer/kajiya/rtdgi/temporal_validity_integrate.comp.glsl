@@ -43,7 +43,7 @@ void main() {
         invalid_blurred /= invalid_blurred.y;
         invalid_blurred.x = mix(invalid_blurred.x, subgroupBroadcast(invalid_blurred.x, gl_SubgroupInvocationID ^ 2), 0.5);
         invalid_blurred.x = mix(invalid_blurred.x, subgroupBroadcast(invalid_blurred.x, gl_SubgroupInvocationID ^ 16), 0.5);
-        // invalid_blurred.x = lerp(invalid_blurred.x, WaveActiveSum(invalid_blurred.x) / 64.0, 0.25);
+        // invalid_blurred.x = max(invalid_blurred.x, WaveActiveSum(invalid_blurred.x) / 64.0, 0.25);
 
         const vec2 reproj_rand_offset = vec2(0.0);
 

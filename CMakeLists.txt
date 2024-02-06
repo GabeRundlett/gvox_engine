@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME}
     "src/cpu/app_settings.cpp"
     "src/cpu/mesh_model.cpp"
     "src/shared/renderer/fsr.cpp"
+    "src/shared/renderer/spp64.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})

@@ -45,6 +45,7 @@ struct TestComputePush {
 #include <shared/renderer/calculate_reprojection_map.inl>
 #include <shared/renderer/ssao.inl>
 #include <shared/renderer/rtdgi.inl>
+#include <shared/renderer/rtr.inl>
 #include <shared/renderer/trace_secondary.inl>
 #include <shared/renderer/shadow_denoiser.inl>
 #include <shared/renderer/taa.inl>
