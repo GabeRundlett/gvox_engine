@@ -16,7 +16,7 @@
 #include <utils/reservoir.glsl>
 // #include "../ircache/bindings.hlsl"
 // #include "../wrc/bindings.hlsl"
-// #include "../rtr/rtr_settings.hlsl"
+#include "../rtr/rtr_settings.glsl"
 #include "rtdgi_restir_settings.glsl"
 #include "near_field_settings.glsl"
 

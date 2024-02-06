@@ -1,17 +1,19 @@
-#include <utils/uv.glsl>
+#include <shared/renderer/rtr.inl>
+
+// #include <utils/uv.glsl>
 // #include <utils/pack_unpack.glsl>
 // #include <utils/frame_constants.glsl>
 #include <utils/gbuffer.glsl>
 #include <utils/brdf.glsl>
 #include <utils/brdf_lut.glsl>
 #include <utils/layered_brdf.glsl>
-#include <utils/blue_noise.glsl>
+#include "blue_noise.glsl"
 #include <utils/rt.glsl>
 // #include <utils/atmosphere.glsl>
 #include <utils/sky.glsl>
 // #include <utils/sun.glsl>
 // #include <utils/lights/triangle.glsl>
-#include "../ircache/bindings.glsl"
+// #include "../ircache/bindings.glsl"
 // #include "../wrc/bindings.hlsl"
 #include "rtr_settings.glsl"
 
@@ -27,6 +29,7 @@ daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
 daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex out0_tex = push.uses.out0_tex;
 daxa_ImageViewIndex out1_tex = push.uses.out1_tex;
 daxa_ImageViewIndex out2_tex = push.uses.out2_tex;
@@ -37,6 +40,8 @@ daxa_ImageViewIndex rng_out_tex = push.uses.rng_out_tex;
 // #include "../wrc/lookup.hlsl"
 
 #include "reflection_trace_common.inc.glsl"
+#include <utils/downscale.glsl>
+#include <utils/safety.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -57,7 +62,7 @@ void main() {
     // Initially, the candidate buffers contain candidates generated via diffuse tracing.
     // For rough surfaces we can skip generating new candidates just for reflections.
     // TODO: make this metric depend on spec contrast
-    if (push.reuse_rtdgi_rays != 0 && gbuffer.roughness > 0.6) {
+    if (/* push.reuse_rtdgi_rays != 0 */ true && gbuffer.roughness > 0.6) {
         return;
     }
 
@@ -82,25 +87,31 @@ void main() {
     }
 
     SpecularBrdf specular_brdf;
-    specular_brdf.albedo = max(0.04, gbuffer.albedo, gbuffer.metalness);
+    specular_brdf.albedo = max_3(vec3(0.04), gbuffer.albedo, vec3(gbuffer.metalness));
     specular_brdf.roughness = gbuffer.roughness;
 
-    const uint noise_offset = frame_constants.frame_index * select(USE_TEMPORAL_JITTER, 1, 0);
+    const uint noise_offset = deref(gpu_input).frame_index * select(USE_TEMPORAL_JITTER, 1, 0);
     uint rng = hash3(uvec3(px, noise_offset));
 
 #if 1
     // Note: since this is pre-baked for various SPP, can run into undersampling
     vec2 urand = vec2(
-        blue_noise_sampler(px.x, px.y, noise_offset, 0),
-        blue_noise_sampler(px.x, px.y, noise_offset, 1));
+        blue_noise_sampler(int(px.x), int(px.y), int(noise_offset), 0,
+                           ranking_tile_buf,
+                           scambling_tile_buf,
+                           sobol_buf),
+        blue_noise_sampler(int(px.x), int(px.y), int(noise_offset), 1,
+                           ranking_tile_buf,
+                           scambling_tile_buf,
+                           sobol_buf));
 #else
     vec2 urand = blue_noise_for_pixel(px, noise_offset).xy;
 #endif
 
     const float sampling_bias = SAMPLING_BIAS;
-    urand.x = max(urand.x, 0.0, sampling_bias);
+    urand.x = max_3(urand.x, 0.0, sampling_bias);
 
-    BrdfSample brdf_sample = specular_brdf.sample(wo, urand);
+    BrdfSample brdf_sample = sample_brdf(specular_brdf, wo, urand);
 
 // VNDF still returns a lot of invalid samples on rough surfaces at F0 angles!
 // TODO: move this to a separate sample preparation compute shader
@@ -111,7 +122,7 @@ void main() {
             uint_to_u01_float(hash1_mut(rng)));
         urand.x = max(urand.x, 0.0, sampling_bias);
 
-        brdf_sample = specular_brdf.sample(wo, urand);
+        brdf_sample = sample_brdf(specular_brdf, wo, urand);
     }
 #endif
 
@@ -130,7 +141,7 @@ void main() {
         safeImageStore(rng_out_tex, ivec2(px), uvec4(rng));
         RtrTraceResult result = do_the_thing(px, gbuffer.normal, gbuffer.roughness, rng, outgoing_ray);
 
-        const vec3 direction_vs = direction_world_to_view(outgoing_ray.Direction);
+        const vec3 direction_vs = direction_world_to_view(globals, outgoing_ray.Direction);
         const float to_surface_area_measure =
 #if RTR_APPROX_MEASURE_CONVERSION
             1

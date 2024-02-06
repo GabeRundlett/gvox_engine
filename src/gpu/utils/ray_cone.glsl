@@ -30,3 +30,16 @@ RayCone propagate(RayCone self, float surface_spread_angle, float hit_t) {
 float width_at_t(inout RayCone self, float hit_t) {
     return self.width + self.spread_angle * hit_t;
 }
+
+#include <shared/globals.inl>
+
+float pixel_cone_spread_angle_from_image_height(daxa_RWBufferPtr(GpuGlobals) globals, float image_height) {
+    return atan(2.0 * deref(globals).player.cam.clip_to_view[1][1] / image_height);
+}
+
+RayCone pixel_ray_cone_from_image_height(daxa_RWBufferPtr(GpuGlobals) globals, float image_height) {
+    RayCone res;
+    res.width = 0.0;
+    res.spread_angle = pixel_cone_spread_angle_from_image_height(globals, image_height);
+    return res;
+}

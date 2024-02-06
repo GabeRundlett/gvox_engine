@@ -26,6 +26,7 @@ uvec2 reservoir_payload_to_px(uint payload) {
 }
 
 #include <utils/math.glsl>
+#include <utils/ray_cone.glsl>
 
 #include <voxels/core.glsl>
 
@@ -34,17 +35,6 @@ bool rt_is_shadowed(RayDesc ray) {
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray.Direction, MAX_STEPS, ray.TMax, ray.TMin, true), ray.Origin);
     shadow_payload.is_shadowed = trace_result.dist < ray.TMax;
     return shadow_payload.is_shadowed;
-}
-
-float pixel_cone_spread_angle_from_image_height(float image_height) {
-    return atan(2.0 * deref(globals).player.cam.clip_to_view[1][1] / image_height);
-}
-
-RayCone pixel_ray_cone_from_image_height(float image_height) {
-    RayCone res;
-    res.width = 0.0;
-    res.spread_angle = pixel_cone_spread_angle_from_image_height(image_height);
-    return res;
 }
 
 struct TraceResult {
@@ -69,7 +59,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
 
     const float reflected_cone_spread_angle = 0.03;
     const RayCone ray_cone = propagate(
-        pixel_ray_cone_from_image_height(push.gbuffer_tex_size.y * 0.5),
+        pixel_ray_cone_from_image_height(globals, push.gbuffer_tex_size.y * 0.5),
         reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(globals)));
 
     GbufferRaytrace primary_hit_ = GbufferRaytrace_with_ray(outgoing_ray);

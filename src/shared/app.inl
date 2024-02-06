@@ -181,6 +181,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     GbufferRenderer gbuffer_renderer;
     SsaoRenderer ssao_renderer;
     RtdgiRenderer rtdgi_renderer;
+    RtrRenderer rtr_renderer;
     TaaRenderer taa_renderer;
     ShadowDenoiser shadow_denoiser;
     PostProcessor post_processor;
@@ -537,6 +538,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gbuffer_renderer.next_frame();
         ssao_renderer.next_frame();
         rtdgi_renderer.next_frame();
+        rtr_renderer.next_frame();
         post_processor.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
         if constexpr (ENABLE_TAA) {
             taa_renderer.next_frame();
@@ -693,6 +695,19 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto &rtdgi_irradiance = rtdgi_.screen_irradiance_tex;
         auto &rtdgi_candidates = rtdgi_.candidates;
+
+        {
+            auto rtr = rtr_renderer.trace(
+                record_ctx,
+                gbuffer_depth,
+                reprojection_map,
+                sky_cube,
+                transmittance_lut,
+                voxel_world.buffers,
+                rtdgi_irradiance,
+                rtdgi_candidates,
+                ircache_state);
+        }
 
         auto rtr = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,

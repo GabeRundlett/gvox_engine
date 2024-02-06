@@ -256,14 +256,6 @@ daxa_f32vec3 uniform_sample_hemisphere(daxa_f32vec2 urand) {
     return daxa_f32vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-float rtr_encode_cos_theta_for_fp16(float x) {
-    return 1 - x;
-}
-
-float rtr_decode_cos_theta_from_fp16(float x) {
-    return 1 - x;
-}
-
 vec2 rsi(vec3 r0, vec3 rd, float sr) {
     // ray-sphere intersection that assumes
     // the sphere is centered at the origin.
