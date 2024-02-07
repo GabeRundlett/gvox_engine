@@ -1,0 +1,112 @@
+#pragma once
+
+#include <shared/core.inl>
+#include <renderer/core.inl>
+
+#include <renderer/kajiya/ircache.inl>
+
+#define SHADING_MODE_DEFAULT 0
+#define SHADING_MODE_NO_TEXTURES 1
+#define SHADING_MODE_DIFFUSE_GI 2
+#define SHADING_MODE_REFLECTIONS 3
+#define SHADING_MODE_RTX_OFF 4
+#define SHADING_MODE_IRCACHE 5
+
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 20)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(IrcacheBuffers), ircache_buffers)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_grid_meta_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_meta_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_pool_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_life_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_entry_cell_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_irradiance_buf)
+DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE, ircache_reposition_proposal_count_buf)
+DAXA_DECL_TASK_HEAD_END
+struct LightGbufferComputePush {
+    daxa_f32vec4 output_tex_size;
+    daxa_u32 debug_shading_mode;
+    daxa_u32 debug_show_wrc;
+    DAXA_TH_BLOB(LightGbufferCompute, uses)
+};
+
+
+#if defined(__cplusplus)
+
+inline auto light_gbuffer(
+    RecordContext &record_ctx,
+    GbufferDepth &gbuffer_depth,
+    daxa::TaskImageView shadow_mask,
+    daxa::TaskImageView rtr,
+    daxa::TaskImageView rtdgi,
+    IrcacheRenderState &ircache,
+    // wrc: &WrcRenderState,
+    // temporal_output: &mut rg::Handle<Image>,
+    // output: &mut rg::Handle<Image>,
+    daxa::TaskImageView sky_cube,
+    daxa::TaskImageView convolved_sky_cube,
+    daxa::TaskImageView transmittance_lut) -> daxa::TaskImageView {
+
+    auto output_image = record_ctx.task_graph.create_transient_image({
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .name = "composited_image",
+    });
+
+    record_ctx.add(ComputeTask<LightGbufferCompute, LightGbufferComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtr_tex, rtr}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtdgi_tex, rtdgi}},
+            // daxa::TaskViewVariant{std::pair{LightGbufferCompute::temporal_output_tex, output_image}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::output_tex, output_image}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::unconvolved_sky_cube_tex, sky_cube}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_cube_tex, convolved_sky_cube}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
+
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_buffers, ircache.ircache_buffers}},
+
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_grid_meta_buf, ircache.ircache_grid_meta_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_meta_buf, ircache.ircache_meta_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_pool_buf, ircache.ircache_pool_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_life_buf, ircache.ircache_life_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_entry_cell_buf, ircache.ircache_entry_cell_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_reposition_proposal_buf, ircache.ircache_reposition_proposal_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_irradiance_buf, ircache.ircache_irradiance_buf}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ircache_reposition_proposal_count_buf, ircache.ircache_reposition_proposal_count_buf}},
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {
+            auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::gbuffer_tex).ids[0]).value();
+            ti.recorder.set_pipeline(pipeline);
+            push.debug_shading_mode = SHADING_MODE_DEFAULT;
+            push.debug_show_wrc = 0;
+            push.output_tex_size = extent_inv_extent_2d(image_info);
+            set_push_constant(ti, push);
+            // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+            ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+        },
+    });
+
+    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "lit gbuffer", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+
+    return output_image;
+}
+
+#endif
+

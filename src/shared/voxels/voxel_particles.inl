@@ -3,7 +3,6 @@
 #include <shared/core.inl>
 #include <shared/input.inl>
 #include <shared/globals.inl>
-#include <shared/renderer/ircache.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)

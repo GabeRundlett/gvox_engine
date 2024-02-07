@@ -40,21 +40,13 @@ struct TestComputePush {
 #include <shared/voxels/voxel_particles.inl>
 #include <shared/voxels/gvox_model.inl>
 
-#include <shared/renderer/downscale.inl>
-#include <shared/renderer/trace_primary.inl>
-#include <shared/renderer/calculate_reprojection_map.inl>
-#include <shared/renderer/ssao.inl>
-#include <shared/renderer/rtdgi.inl>
-#include <shared/renderer/rtr.inl>
-#include <shared/renderer/trace_secondary.inl>
-#include <shared/renderer/shadow_denoiser.inl>
-#include <shared/renderer/taa.inl>
-#include <shared/renderer/postprocessing.inl>
-#include <shared/renderer/sky.inl>
-#include <shared/renderer/blur.inl>
-#include <shared/renderer/fsr.inl>
+#include <renderer/trace_primary.inl>
+#include <renderer/trace_secondary.inl>
+#include <renderer/postprocessing.inl>
+#include <renderer/sky.inl>
+#include <renderer/fsr.inl>
 
-#include <shared/renderer/ircache.inl>
+#include <renderer/kajiya/kajiya.hpp>
 
 static_assert(IsVoxelWorld<VoxelWorld>);
 
@@ -179,18 +171,12 @@ struct GpuResources {
 
 struct GpuApp : AppUi::DebugDisplayProvider {
     GbufferRenderer gbuffer_renderer;
-    SsaoRenderer ssao_renderer;
-    RtdgiRenderer rtdgi_renderer;
-    RtrRenderer rtr_renderer;
-    TaaRenderer taa_renderer;
-    ShadowDenoiser shadow_denoiser;
-    PostProcessor post_processor;
+    KajiyaRenderer kajiya_renderer;
     std::unique_ptr<Fsr2Renderer> fsr2_renderer;
     SkyRenderer sky;
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
-    IrcacheRenderer ircache_renderer;
 
     GpuResources gpu_resources;
     daxa::BufferId prev_gvox_model_buffer{};
@@ -216,7 +202,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
     daxa::Format swapchain_format;
 
     GpuApp(daxa::Device &device, daxa::Format a_swapchain_format)
-        : post_processor{device},
+        : kajiya_renderer{device},
           gpu_resources{},
           swapchain_format{a_swapchain_format} {
 
@@ -394,18 +380,18 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         if (ImGui::TreeNode("Auto-Exposure")) {
             ImGui::Text("Exposure multiple: %.2f", static_cast<double>(gpu_input.pre_exposure));
             auto hist_float = std::array<float, LUMINANCE_HISTOGRAM_BIN_COUNT>{};
-            auto hist_min = static_cast<float>(post_processor.histogram[0]);
-            auto hist_max = static_cast<float>(post_processor.histogram[0]);
+            auto hist_min = static_cast<float>(kajiya_renderer.post_processor.histogram[0]);
+            auto hist_max = static_cast<float>(kajiya_renderer.post_processor.histogram[0]);
             auto first_bin_with_value = -1;
             auto last_bin_with_value = -1;
             for (uint32_t i = 0; i < LUMINANCE_HISTOGRAM_BIN_COUNT; ++i) {
-                if (first_bin_with_value == -1 && post_processor.histogram[i] != 0) {
+                if (first_bin_with_value == -1 && kajiya_renderer.post_processor.histogram[i] != 0) {
                     first_bin_with_value = i;
                 }
-                if (post_processor.histogram[i] != 0) {
+                if (kajiya_renderer.post_processor.histogram[i] != 0) {
                     last_bin_with_value = i;
                 }
-                hist_float[i] = static_cast<float>(post_processor.histogram[i]);
+                hist_float[i] = static_cast<float>(kajiya_renderer.post_processor.histogram[i]);
                 hist_min = std::min(hist_min, hist_float[i]);
                 hist_max = std::max(hist_max, hist_float[i]);
             }
@@ -506,10 +492,12 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
 
         gpu_input.sky_settings = ui.settings.sky;
-        gpu_input.pre_exposure = post_processor.exposure_state.pre_mult;
-        gpu_input.pre_exposure_prev = post_processor.exposure_state.pre_mult_prev;
-        gpu_input.pre_exposure_delta = post_processor.exposure_state.pre_mult_delta;
-        ircache_renderer.update_eye_position(gpu_input, gpu_output);
+
+        gpu_input.pre_exposure = kajiya_renderer.post_processor.exposure_state.pre_mult;
+        gpu_input.pre_exposure_prev = kajiya_renderer.post_processor.exposure_state.pre_mult_prev;
+        gpu_input.pre_exposure_delta = kajiya_renderer.post_processor.exposure_state.pre_mult_delta;
+
+        kajiya_renderer.ircache_renderer.update_eye_position(gpu_input, gpu_output);
 
         if constexpr (!ENABLE_TAA) {
             fsr2_renderer->next_frame();
@@ -536,15 +524,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
     void end_frame(AppUi &ui) {
         gbuffer_renderer.next_frame();
-        ssao_renderer.next_frame();
-        rtdgi_renderer.next_frame();
-        rtr_renderer.next_frame();
-        post_processor.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
-        if constexpr (ENABLE_TAA) {
-            taa_renderer.next_frame();
-        }
-        shadow_denoiser.next_frame();
-        ircache_renderer.next_frame();
+        kajiya_renderer.next_frame(ui.settings.auto_exposure, gpu_input.delta_time);
     }
 
     void dynamic_buffers_realloc(daxa::Device &device) {
@@ -665,84 +645,34 @@ struct GpuApp : AppUi::DebugDisplayProvider {
             },
         });
 
-        auto ircache_state = ircache_renderer.prepare(record_ctx);
-        auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_world.buffers, sky_cube, transmittance_lut);
-        ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
-
         particles.simulate(record_ctx, voxel_world.buffers);
         voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
         auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
         auto [gbuffer_depth, velocity_image] = gbuffer_renderer.render(record_ctx, voxel_world.buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
-        auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
 
-        auto reprojected_rtdgi = rtdgi_renderer.reproject(record_ctx, reprojection_map);
-
-        auto ssgi_tex = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
         auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_world.buffers);
-        auto denoised_shadow_mask = shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
 
-        auto rtdgi_ = rtdgi_renderer.render(
-            record_ctx,
-            reprojected_rtdgi,
-            gbuffer_depth,
-            reprojection_map,
-            ibl_cube,
-            transmittance_lut,
-            ircache_state,
-            // wrc,
-            voxel_world.buffers,
-            ssgi_tex);
-
-        auto &rtdgi_irradiance = rtdgi_.screen_irradiance_tex;
-        auto &rtdgi_candidates = rtdgi_.candidates;
-
-        auto rtr_ = rtr_renderer.trace(
+        auto [debug_out_tex, reprojection_map] = kajiya_renderer.render(
             record_ctx,
             gbuffer_depth,
-            reprojection_map,
-            sky_cube,
-            transmittance_lut,
-            voxel_world.buffers,
-            rtdgi_irradiance,
-            rtdgi_candidates,
-            ircache_state);
-
-        // auto rtr = record_ctx.task_graph.create_transient_image({
-        //     .format = daxa::Format::R16G16B16A16_SFLOAT,
-        //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-        //     .name = "rtr",
-        // });
-        // auto rtdgi = record_ctx.task_graph.create_transient_image({
-        //     .format = daxa::Format::R16G16B16A16_SFLOAT,
-        //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-        //     .name = "rtdgi",
-        // });
-        // clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{rtr});
-
-        auto debug_out_tex = light_gbuffer(
-            record_ctx,
-            gbuffer_depth,
-            denoised_shadow_mask,
-            rtr_.resolved_tex,
-            // rtdgi,
-            rtdgi_irradiance,
-            ircache_state,
-            // wrc,
+            velocity_image,
+            shadow_mask,
             sky_cube,
             ibl_cube,
-            sky_lut,
-            transmittance_lut);
+            transmittance_lut,
+            voxel_world.buffers);
+
         fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
         auto antialiased_image = [&]() {
             if constexpr (ENABLE_TAA) {
-                return taa_renderer.render(record_ctx, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
+                return kajiya_renderer.upscale(record_ctx, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
             } else {
                 return fsr2_renderer->upscale(record_ctx, gbuffer_depth, debug_out_tex, reprojection_map);
             }
         }();
 
-        auto post_processed_image = post_processor.process(record_ctx, antialiased_image, record_ctx.output_resolution);
+        auto post_processed_image = kajiya_renderer.post_process(record_ctx, antialiased_image, record_ctx.output_resolution);
 
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "[final]"});
 

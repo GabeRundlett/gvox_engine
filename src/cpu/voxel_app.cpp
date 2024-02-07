@@ -75,7 +75,7 @@ VoxelApp::VoxelApp()
                       "src",
                       "gpu",
                       "src/gpu",
-                      "src/gpu/renderer",
+                      "src/renderer",
                   },
                   // .write_out_preprocessed_code = ".out/",
                   // .write_out_shader_binary = ".out/",
