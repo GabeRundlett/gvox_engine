@@ -1,4 +1,4 @@
-#include <shared/utils/prefix_scan.inl>
+#include <renderer/kajiya/prefix_scan.inl>
 #include <utils/common.glsl>
 
 #define THREAD_GROUP_SIZE 512

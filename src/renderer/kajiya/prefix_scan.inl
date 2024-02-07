@@ -36,7 +36,7 @@ inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBu
     });
 
     record_ctx.add(ComputeTask<PrefixScan1Compute, PrefixScan1ComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"utils/prefix_scan.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScan1Compute::inout_buf, input_buf}},
         },
@@ -49,7 +49,7 @@ inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBu
     });
 
     record_ctx.add(ComputeTask<PrefixScan2Compute, PrefixScan2ComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"utils/prefix_scan.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScan2Compute::input_buf, input_buf}},
             daxa::TaskViewVariant{std::pair{PrefixScan2Compute::output_buf, segment_sum_buf}},
@@ -63,7 +63,7 @@ inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBu
     });
 
     record_ctx.add(ComputeTask<PrefixScanMergeCompute, PrefixScanMergeComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"utils/prefix_scan.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScanMergeCompute::inout_buf, input_buf}},
             daxa::TaskViewVariant{std::pair{PrefixScanMergeCompute::segment_sum_buf, segment_sum_buf}},

@@ -4,7 +4,7 @@
 #include <shared/input.inl>
 #include <shared/globals.inl>
 #include <shared/voxels/voxels.inl>
-#include <shared/utils/prefix_scan.inl>
+#include <renderer/kajiya/prefix_scan.inl>
 
 struct Vertex {
     daxa_f32vec3 position;
