@@ -87,7 +87,7 @@ void main() {
     }
 
     SpecularBrdf specular_brdf;
-    specular_brdf.albedo = max_3(vec3(0.04), gbuffer.albedo, vec3(gbuffer.metalness));
+    specular_brdf.albedo = mix(vec3(0.04), gbuffer.albedo, vec3(gbuffer.metalness));
     specular_brdf.roughness = gbuffer.roughness;
 
     const uint noise_offset = deref(gpu_input).frame_index * select(USE_TEMPORAL_JITTER, 1, 0);
@@ -109,7 +109,7 @@ void main() {
 #endif
 
     const float sampling_bias = SAMPLING_BIAS;
-    urand.x = max_3(urand.x, 0.0, sampling_bias);
+    urand.x = mix(urand.x, 0.0, sampling_bias);
 
     BrdfSample brdf_sample = sample_brdf(specular_brdf, wo, urand);
 

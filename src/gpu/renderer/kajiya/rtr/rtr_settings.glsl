@@ -4,11 +4,11 @@
 // and those are amplified in motion.
 //
 // HACK: must be 1 if jointly filtering with specular lighting
-const bool RTR_RENDER_SCALED_BY_FG = false;
+#define RTR_RENDER_SCALED_BY_FG 0
 
 const bool RTR_USE_RESTIR = true;
 #define RTR_RESTIR_TEMPORAL_M_CLAMP 8.0
-const bool RTR_RESTIR_USE_PATH_VALIDATION = true;
+#define RTR_RESTIR_USE_PATH_VALIDATION 1
 
 // At 0.0 uses the center pixel's position when calculating the ray direction for a neighbor sample.
 // At 1.0 uses the neighbor position.
@@ -25,7 +25,7 @@ const bool RTR_MEASURE_CONVERSION_CLAMP_ATTENUATION = true;
 
 const bool RTR_USE_BULLSHIT_TO_FIX_EDGE_HALOS = true;
 
-const bool RTR_PDF_STORED_WITH_SURFACE_AREA_METRIC = false;
+#define RTR_PDF_STORED_WITH_SURFACE_AREA_METRIC 0
 
 // If true, only uses distance^2 for conversion between projected solid angle and surface area.
 // Skipping the cosine terms is certainly not correct, but the effect is small considering
@@ -37,7 +37,7 @@ const bool RTR_PDF_STORED_WITH_SURFACE_AREA_METRIC = false;
 // Has visible artifacts on edges when used with ReSTIR
 // Actually, cannot see the artifacts anymore, and using this fixes
 // halos on Maik's gnome (V-shaped rough geo, looking into the cavity).
-const bool RTR_APPROX_MEASURE_CONVERSION = true;
+#define RTR_APPROX_MEASURE_CONVERSION 1
 
 #define RTR_ROUGHNESS_CLAMP 6e-4
 
@@ -45,9 +45,9 @@ const bool RTR_APPROX_MEASURE_CONVERSION = true;
 // roughness variation, but they also dim down spec highlights therein.
 #define RTR_RESTIR_MAX_PDF_CLAMP 200
 
-const bool RTR_USE_TEMPORAL_FILTERS = true;
+#define RTR_USE_TEMPORAL_FILTERS 1
 
-const bool RTR_USE_TIGHTER_RAY_BIAS = true;
+#define RTR_USE_TIGHTER_RAY_BIAS 1
 
 float rtr_encode_cos_theta_for_fp16(float x) {
     return 1 - x;

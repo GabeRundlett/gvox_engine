@@ -696,36 +696,34 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto &rtdgi_irradiance = rtdgi_.screen_irradiance_tex;
         auto &rtdgi_candidates = rtdgi_.candidates;
 
-        {
-            auto rtr = rtr_renderer.trace(
-                record_ctx,
-                gbuffer_depth,
-                reprojection_map,
-                sky_cube,
-                transmittance_lut,
-                voxel_world.buffers,
-                rtdgi_irradiance,
-                rtdgi_candidates,
-                ircache_state);
-        }
+        auto rtr_ = rtr_renderer.trace(
+            record_ctx,
+            gbuffer_depth,
+            reprojection_map,
+            sky_cube,
+            transmittance_lut,
+            voxel_world.buffers,
+            rtdgi_irradiance,
+            rtdgi_candidates,
+            ircache_state);
 
-        auto rtr = record_ctx.task_graph.create_transient_image({
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
-            .name = "rtr",
-        });
+        // auto rtr = record_ctx.task_graph.create_transient_image({
+        //     .format = daxa::Format::R16G16B16A16_SFLOAT,
+        //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        //     .name = "rtr",
+        // });
         // auto rtdgi = record_ctx.task_graph.create_transient_image({
         //     .format = daxa::Format::R16G16B16A16_SFLOAT,
         //     .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
         //     .name = "rtdgi",
         // });
-        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{rtr});
+        // clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{rtr});
 
         auto debug_out_tex = light_gbuffer(
             record_ctx,
             gbuffer_depth,
             denoised_shadow_mask,
-            rtr,
+            rtr_.resolved_tex,
             // rtdgi,
             rtdgi_irradiance,
             ircache_state,

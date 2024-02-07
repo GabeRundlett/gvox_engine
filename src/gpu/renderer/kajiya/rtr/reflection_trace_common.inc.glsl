@@ -56,8 +56,6 @@ bool rt_is_shadowed(RayDesc ray) {
     return shadow_payload.is_shadowed;
 }
 
-#define max_3(x, y, z) max(x, max(y, z))
-
 RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uint rng, RayDesc outgoing_ray) {
 #if USE_AGGRESSIVE_SECONDARY_ROUGHNESS_BIAS
     const float roughness_bias = roughness;
@@ -81,7 +79,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
 
         if (primary_hit.is_hit) {
             GbufferData gbuffer = unpack(primary_hit.gbuffer_packed);
-            gbuffer.roughness = max_3(gbuffer.roughness, 1.0, roughness_bias);
+            gbuffer.roughness = mix(gbuffer.roughness, 1.0, roughness_bias);
             const mat3 tangent_to_world = build_orthonormal_basis(gbuffer.normal);
             const vec3 wo = (-outgoing_ray.Direction) * tangent_to_world;
             const LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);

@@ -44,7 +44,7 @@ daxa_ImageViewIndex reservoir_history_tex = push.uses.reservoir_history_tex;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    if (!RTR_RESTIR_USE_PATH_VALIDATION) {
+    if (RTR_RESTIR_USE_PATH_VALIDATION == 0) {
         return;
     }
 

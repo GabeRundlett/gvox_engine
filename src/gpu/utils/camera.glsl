@@ -98,10 +98,10 @@ daxa_f32vec3 direction_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, daxa_
     return (deref(globals).player.cam.world_to_view * daxa_f32vec4(v, 0)).xyz;
 }
 daxa_f32vec3 position_world_to_view(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
-    return (deref(globals).player.cam.world_to_view, daxa_f32vec4(v, 1)).xyz;
+    return (deref(globals).player.cam.world_to_view * daxa_f32vec4(v, 1)).xyz;
 }
 daxa_f32vec3 position_view_to_world(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
-    return (deref(globals).player.cam.view_to_world, daxa_f32vec4(v, 1)).xyz;
+    return (deref(globals).player.cam.view_to_world * daxa_f32vec4(v, 1)).xyz;
 }
 
 daxa_f32vec3 position_world_to_sample(daxa_RWBufferPtr(GpuGlobals) globals, daxa_f32vec3 v) {
