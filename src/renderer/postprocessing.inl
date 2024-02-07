@@ -32,7 +32,7 @@ struct DebugImageRasterPush {
 inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
     record_ctx.add(RasterTask<PostprocessingRaster, PostprocessingRasterPush, NoTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-        .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
+        .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
         .color_attachments = {{
             .format = output_format,
         }},
@@ -63,7 +63,7 @@ inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
 
     record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-        .frag_source = daxa::ShaderFile{"postprocessing.comp.glsl"},
+        .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
         .color_attachments = {{
             .format = output_format,
         }},
