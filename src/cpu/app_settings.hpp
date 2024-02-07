@@ -34,6 +34,7 @@ struct AppSettings {
     bool show_help;
     bool autosave;
     bool battery_saving_mode;
+    bool global_illumination;
 
     void save(std::filesystem::path const &filepath);
     void load(std::filesystem::path const &filepath);

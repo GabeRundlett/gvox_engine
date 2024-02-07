@@ -509,6 +509,10 @@ void AppUi::settings_ui() {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Graphics")) {
+            if (ImGui::Checkbox("Global Illumination", &settings.global_illumination)) {
+                needs_saving = true;
+                should_record_task_graph = true;
+            }
             if (ImGui::Checkbox("Battery Saving Mode", &settings.battery_saving_mode)) {
                 needs_saving = true;
             }

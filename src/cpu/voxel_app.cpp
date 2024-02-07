@@ -1056,6 +1056,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
 
     // gpu_app.task_value_noise_image.view().view({});
 
+    // TODO: Pass settings into frame recording?
+    gpu_app.kajiya_renderer.do_global_illumination = ui.settings.global_illumination;
     gpu_app.record_frame(record_ctx);
 
     record_ctx.task_graph.add_task({

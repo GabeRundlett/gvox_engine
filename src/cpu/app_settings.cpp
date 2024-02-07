@@ -69,6 +69,7 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["show_help"] = show_help;
     json["autosave"] = autosave;
     json["battery_saving_mode"] = battery_saving_mode;
+    json["global_illumination"] = global_illumination;
 
     json["sky_absorption_density_0_const_term"] = sky.absorption_density[0].const_term;
     json["sky_absorption_density_0_exp_scale"] = sky.absorption_density[0].exp_scale;
@@ -162,6 +163,7 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("show_help", show_help);
     grab_value("autosave", autosave);
     grab_value("battery_saving_mode", battery_saving_mode);
+    grab_value("global_illumination", global_illumination);
 
     grab_value("sky_absorption_density_0_const_term", sky.absorption_density[0].const_term);
     grab_value("sky_absorption_density_0_exp_scale", sky.absorption_density[0].exp_scale);
@@ -248,6 +250,7 @@ void AppSettings::clear() {
     show_help = false;
     autosave = true;
     battery_saving_mode = false;
+    global_illumination = true;
 
     keybinds.clear();
     mouse_button_binds.clear();

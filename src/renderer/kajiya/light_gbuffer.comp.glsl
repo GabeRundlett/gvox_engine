@@ -13,15 +13,7 @@ daxa_ImageViewIndex output_tex = push.uses.output_tex;
 daxa_ImageViewIndex unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_BufferPtr(IrcacheBuffers) ircache_buffers = push.uses.ircache_buffers;
-daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = deref(ircache_buffers).ircache_grid_meta_buf;
-daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = deref(ircache_buffers).ircache_meta_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = deref(ircache_buffers).ircache_pool_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = deref(ircache_buffers).ircache_life_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = deref(ircache_buffers).ircache_entry_cell_buf;
-daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = deref(ircache_buffers).ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = deref(ircache_buffers).ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache_buffers).ircache_reposition_proposal_count_buf;
+// IRCACHE_USE_BUFFERS_PUSH_USES()
 
 #include <utils/rt.glsl>
 #include <utils/sky.glsl>
@@ -29,8 +21,8 @@ daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache
 
 #include <utils/layered_brdf.glsl>
 
-#define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
-#include <renderer/kajiya/ircache/lookup.glsl>
+// #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
+// #include <renderer/kajiya/ircache/lookup.glsl>
 
 #define USE_RTDGI true
 #define USE_RTR true
@@ -42,9 +34,6 @@ daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = deref(ircache
 
 #define FORCE_IRCACHE_DEBUG false
 
-// #include "inc/atmosphere.hlsl"
-// #include "inc/sun.hlsl"
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
     uvec2 px = gl_GlobalInvocationID.xy;
@@ -54,35 +43,30 @@ void main() {
         return;
     }
 
-    if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
-        if (px.y < 50) {
-            vec3 output_ = vec3(0);
-            const uint entry_count = deref(ircache_meta_buf).entry_count;
-            const uint entry_alloc_count = deref(ircache_meta_buf).alloc_count;
-
-            const float u = float(px.x + 0.5) * push.output_tex_size.z;
-
-            const uint MAX_ENTRY_COUNT = 64 * 1024;
-
-            if (px.y < 25) {
-                if (entry_alloc_count > u * MAX_ENTRY_COUNT) {
-                    output_ = vec3(0.05, 1, .2) * 4;
-                }
-            } else {
-                if (entry_count > u * MAX_ENTRY_COUNT) {
-                    output_ = vec3(1, 0.1, 0.05) * 4;
-                }
-            }
-
-            // Ticks every 16k
-            if (fract(u * 16) < push.output_tex_size.z * 32) {
-                output_ = vec3(1, 1, 0) * 10;
-            }
-
-            imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
-            return;
-        }
-    }
+    // if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
+    //     if (px.y < 50) {
+    //         vec3 output_ = vec3(0);
+    //         const uint entry_count = deref(ircache_meta_buf).entry_count;
+    //         const uint entry_alloc_count = deref(ircache_meta_buf).alloc_count;
+    //         const float u = float(px.x + 0.5) * push.output_tex_size.z;
+    //         const uint MAX_ENTRY_COUNT = 64 * 1024;
+    //         if (px.y < 25) {
+    //             if (entry_alloc_count > u * MAX_ENTRY_COUNT) {
+    //                 output_ = vec3(0.05, 1, .2) * 4;
+    //             }
+    //         } else {
+    //             if (entry_count > u * MAX_ENTRY_COUNT) {
+    //                 output_ = vec3(1, 0.1, 0.05) * 4;
+    //             }
+    //         }
+    //         // Ticks every 16k
+    //         if (fract(u * 16) < push.output_tex_size.z * 32) {
+    //             output_ = vec3(1, 1, 0) * 10;
+    //         }
+    //         imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+    //         return;
+    //     }
+    // }
 
     RayDesc outgoing_ray;
     ViewRayContext view_ray_context = vrc_from_uv(globals, uv);
@@ -199,10 +183,10 @@ void main() {
     pt_ws /= pt_ws.w;
     pt_ws.xyz += deref(globals).player.player_unit_offset;
     uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
-    if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
-        IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
-        output_ = lookup(ircache_params, rng);
-    }
+    // if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
+    //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
+    //     output_ = lookup(ircache_params, rng);
+    // }
 
     output_ *= deref(gpu_input).pre_exposure;
 
