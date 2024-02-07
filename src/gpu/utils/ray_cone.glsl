@@ -34,7 +34,7 @@ float width_at_t(inout RayCone self, float hit_t) {
 #include <shared/globals.inl>
 
 float pixel_cone_spread_angle_from_image_height(daxa_RWBufferPtr(GpuGlobals) globals, float image_height) {
-    return atan(2.0 * deref(globals).player.cam.clip_to_view[1][1] / image_height);
+    return atan(2.0 * deref(globals).player.cam.clip_to_view[0][0] / image_height);
 }
 
 RayCone pixel_ray_cone_from_image_height(daxa_RWBufferPtr(GpuGlobals) globals, float image_height) {

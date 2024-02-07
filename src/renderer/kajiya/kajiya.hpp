@@ -84,7 +84,7 @@ struct KajiyaRenderer {
                 rtdgi_candidates,
                 ircache_state);
 
-            rtr = rtr_.resolved_tex;
+            rtr = rtr_.filter(record_ctx, gbuffer_depth, reprojection_map, rtr_renderer.spatial_resolve_offsets_buf);
             rtdgi = rtdgi_irradiance;
         } else {
             rtr = record_ctx.task_graph.create_transient_image({

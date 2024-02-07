@@ -1,5 +1,6 @@
 #include <renderer/kajiya/shadow_denoiser.inl>
 #include <utils/safety.glsl>
+#include <utils/color.glsl>
 
 #if ShadowBitPackComputeShader
 
@@ -133,18 +134,6 @@ void FFX_DNSR_Shadows_WriteMoments(uvec2 px, vec4 moments) {
 
 float FFX_DNSR_Shadows_HitsLight(uvec2 px) {
     return safeTexelFetch(shadow_mask_tex, daxa_i32vec2(px), 0).r;
-}
-
-float soft_color_clamp(float center, float history, float ex, float dev) {
-    // Sort of like the color bbox clamp, but with a twist. In noisy surrounds, the bbox becomes
-    // very large, and then the clamp does nothing, especially with a high multiplier on std. deviation.
-    //
-    // Instead of a hard clamp, this will smoothly bring the value closer to the center,
-    // thus over time reducing disocclusion artifacts.
-    float history_dist = abs(history - ex) / max(abs(history * 0.1), dev);
-
-    float closest_pt = clamp(history, center - dev, center + dev);
-    return mix(history, closest_pt, smoothstep((1.0), (3.0), history_dist));
 }
 
 daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {

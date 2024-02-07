@@ -29,3 +29,27 @@ vec3 blackbody_radiation(float T) {
 
     return O;
 }
+
+float soft_color_clamp(float center, float history, float ex, float dev) {
+    // Sort of like the color bbox clamp, but with a twist. In noisy surrounds, the bbox becomes
+    // very large, and then the clamp does nothing, especially with a high multiplier on std. deviation.
+    //
+    // Instead of a hard clamp, this will smoothly bring the value closer to the center,
+    // thus over time reducing disocclusion artifacts.
+    float history_dist = abs(history - ex) / max(abs(history * 0.1), dev);
+
+    float closest_pt = clamp(history, center - dev, center + dev);
+    return mix(history, closest_pt, smoothstep((1.0), (3.0), history_dist));
+}
+
+vec3 soft_color_clamp(vec3 center, vec3 history, vec3 ex, vec3 dev) {
+    // Sort of like the color bbox clamp, but with a twist. In noisy surrounds, the bbox becomes
+    // very large, and then the clamp does nothing, especially with a high multiplier on std. deviation.
+    //
+    // Instead of a hard clamp, this will smoothly bring the value closer to the center,
+    // thus over time reducing disocclusion artifacts.
+    vec3 history_dist = abs(history - ex) / max(abs(history * 0.1), dev);
+
+    vec3 closest_pt = clamp(history, center - dev, center + dev);
+    return mix(history, closest_pt, smoothstep(vec3(1.0), vec3(3.0), history_dist));
+}
