@@ -22,7 +22,8 @@ daxa_ImageViewIndex output_tex = push.uses.output_tex;
 const bool SHUFFLE_SUBPIXELS = true;
 
 float depth_to_view_z(float depth) {
-    // we'll see
+    // NOTE(grundlett): In Kajiya, this is `clip_to_view._43`, which
+    // I have no clue what corresponds to in GLSL.
     return rcp(depth * -deref(globals).player.cam.clip_to_view[2][3]);
 }
 
@@ -72,5 +73,5 @@ void main() {
         wsum += w;
     }
 
-    safeImageStore(output_tex, ivec2(px), vec4(vsum / wsum, 1.0));
+    safeImageStore(output_tex, ivec2(px), working_to_linear(vec4(vsum / wsum, 1.0)));
 }

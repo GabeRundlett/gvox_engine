@@ -343,9 +343,10 @@ void main() {
                 jacobian *= clamp(prev_dist / dist_to_sample_hit, 1e-4, 1e4);
                 jacobian *= jacobian;
 
+                // TODO(grundlett): Figure out how there could be hits closer than 1 voxel even on flat surfaces.
                 // N of hit dot -L. Needed to avoid leaks. Without it, light "hugs" corners.
                 //
-                jacobian *= clamp(center_to_hit_vis / sample_hit_normal_ws_dot.w, 0, 1e4);
+                // jacobian *= clamp(center_to_hit_vis / sample_hit_normal_ws_dot.w, 0, 1e4);
             }
 
             // Fixes boiling artifacts near edges. Unstable jacobians,
@@ -376,8 +377,6 @@ void main() {
                 center_M = r.M;
             }
 
-            // TODO: Figure out how there could be hits closer than 1 voxel even on flat surfaces.
-            // safeImageStore(rtdgi_debug_image, ivec2(px), vec4(vec3(dist_to_sample_hit < 1.0 / VOXEL_SCL), 1));
 
             if (update_with_stream(reservoir,
                                    r, p_q, jacobian * visibility,
@@ -420,4 +419,6 @@ void main() {
     res_packed.luminance = max(0.0, sRGB_to_luminance(radiance_sel));
     res_packed.hit_normal_ws = hit_normal_ws_dot.xyz;
     safeImageStoreU(temporal_reservoir_packed_tex, ivec2(px), as_raw(res_packed));
+
+    // safeImageStore(rtdgi_debug_image, ivec2(px), vec4(vec3(res_packed.luminance * 0.01), 1));
 }

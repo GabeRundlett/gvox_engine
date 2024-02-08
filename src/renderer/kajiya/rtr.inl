@@ -178,6 +178,12 @@ struct TracedRtr {
         });
         AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtr temporal filter", .task_image_id = this->temporal_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
+        auto final_resolved_tex = record_ctx.task_graph.create_transient_image({
+            .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
+            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .name = "final_resolved_tex",
+        });
+
         record_ctx.add(ComputeTask<RtrSpatialFilterCompute, RtrSpatialFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtr/spatial_cleanup.comp.glsl"},
             .views = std::array{
@@ -187,7 +193,7 @@ struct TracedRtr {
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::input_tex, this->temporal_output_tex}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::output_tex, resolved_tex}},
+                daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::output_tex, final_resolved_tex}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RtrSpatialFilterComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(RtrSpatialFilterCompute::input_tex).ids[0]).value();
@@ -198,9 +204,9 @@ struct TracedRtr {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtr spatial cleanup", .task_image_id = resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtr spatial cleanup", .task_image_id = final_resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-        return resolved_tex;
+        return final_resolved_tex;
     }
 };
 

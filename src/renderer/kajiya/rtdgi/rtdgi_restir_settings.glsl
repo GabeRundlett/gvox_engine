@@ -8,7 +8,7 @@
 
 const bool RESTIR_USE_SPATIAL = true;
 // TODO(grundlett): figure out why permutations cause bogus
-const bool RESTIR_TEMPORAL_USE_PERMUTATIONS = false;
+const bool RESTIR_TEMPORAL_USE_PERMUTATIONS = true;
 const bool RESTIR_USE_PATH_VALIDATION = true;
 
 // Narrow down the spatial resampling kernel when M is already high.
@@ -16,7 +16,7 @@ const bool RESTIR_USE_PATH_VALIDATION = true;
 
 const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH = true;
 const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE = !true;
-const bool RTDGI_RESTIR_USE_JACOBIAN_BASED_REJECTION = !true;
+const bool RTDGI_RESTIR_USE_JACOBIAN_BASED_REJECTION = true;
 #define RTDGI_RESTIR_JACOBIAN_BASED_REJECTION_VALUE 8
 
 const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;

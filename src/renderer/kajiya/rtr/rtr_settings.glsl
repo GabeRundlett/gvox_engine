@@ -6,7 +6,7 @@
 // HACK: must be 1 if jointly filtering with specular lighting
 #define RTR_RENDER_SCALED_BY_FG 0
 
-const bool RTR_USE_RESTIR = true;
+const bool RTR_USE_RESTIR = false;
 #define RTR_RESTIR_TEMPORAL_M_CLAMP 8.0
 #define RTR_RESTIR_USE_PATH_VALIDATION 1
 
