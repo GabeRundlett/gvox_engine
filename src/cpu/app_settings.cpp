@@ -128,6 +128,14 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["auto_exposure_speed"] = auto_exposure.speed;
     json["auto_exposure_ev_shift"] = auto_exposure.ev_shift;
 
+    auto save_brush_settings = [&json](std::string const &brush_name, BrushSettings const &brush_settings) {
+        json[brush_name + ".flags"] = brush_settings.flags;
+        json[brush_name + ".radius"] = brush_settings.radius;
+    };
+    save_brush_settings("world_brush_settings", world_brush_settings);
+    save_brush_settings("brush_a_settings", brush_a_settings);
+    save_brush_settings("brush_b_settings", brush_b_settings);
+
     for (auto [key_i, action_i] : keybinds) {
         auto str = fmt::format("key_{}", key_i);
         json[str] = action_i;
@@ -223,6 +231,14 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("auto_exposure_speed", auto_exposure.speed);
     grab_value("auto_exposure_ev_shift", auto_exposure.ev_shift);
 
+    auto load_brush_settings = [&grab_value](std::string const &brush_name, BrushSettings &brush_settings) {
+        grab_value(brush_name + ".flags", brush_settings.flags);
+        grab_value(brush_name + ".radius", brush_settings.radius);
+    };
+    load_brush_settings("world_brush_settings", world_brush_settings);
+    load_brush_settings("brush_a_settings", brush_a_settings);
+    load_brush_settings("brush_b_settings", brush_b_settings);
+
     for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
         auto str = fmt::format("key_{}", key_i);
         if (json.contains(str)) {
@@ -257,6 +273,10 @@ void AppSettings::clear() {
 
     sky = {};
     recompute_sun_direction();
+
+    world_brush_settings = {.radius = 8.0f};
+    brush_a_settings = {.radius = 8.0f};
+    brush_b_settings = {.radius = 8.0f};
 }
 
 void AppSettings::reset_default() {

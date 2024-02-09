@@ -1027,7 +1027,7 @@ void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
 // PostprocessingTask            [Render]
 // ImGui draw                    [GUI Render]
 auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
-    ui.debug_display.passes.clear();
+    AppUi::DebugDisplay::begin_passes();
     ui.should_record_task_graph = false;
 
     compute_image_sizes();

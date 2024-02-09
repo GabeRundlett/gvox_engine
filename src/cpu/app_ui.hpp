@@ -42,6 +42,7 @@ struct AppUi {
         std::string name;
         daxa::TaskImageView task_image_id;
         daxa_u32 type;
+        DebugImageSettings settings = {.flags = 0, .brightness = 1.0f};
     };
 
     struct DebugDisplayProvider {
@@ -57,6 +58,7 @@ struct AppUi {
         };
         std::vector<GpuResourceInfo> gpu_resource_infos;
         std::vector<DebugDisplayProvider *> providers;
+        std::vector<Pass> prev_passes{};
         std::vector<Pass> passes{};
         uint32_t selected_pass{};
         std::string selected_pass_name{};
@@ -65,6 +67,9 @@ struct AppUi {
 
         DebugDisplay();
         ~DebugDisplay();
+
+        static void begin_passes();
+        static void add_pass(Pass const &info);
     };
 
     using Clock = std::chrono::high_resolution_clock;

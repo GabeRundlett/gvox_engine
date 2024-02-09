@@ -45,7 +45,7 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
         },
     });
 
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
+    AppUi::DebugDisplay::add_pass({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
 
     return daxa::TaskImageView{shadow_mask};
 }

@@ -79,7 +79,7 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
         },
     });
 
-    // AppUi::DebugDisplay::s_instance->passes.push_back({.name = "blur_pyramid mip 0", .task_image_id = output, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    // AppUi::DebugDisplay::add_pass({.name = "blur_pyramid mip 0", .task_image_id = output, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     for (uint32_t mip_i = 0; mip_i < mip_count - 1; ++mip_i) {
         auto src = output.view({.base_mip_level = mip_i + 0, .level_count = 1});
         auto dst = output.view({.base_mip_level = mip_i + 1, .level_count = 1});
@@ -94,7 +94,7 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
                 .mip_i = mip_i + 1,
             },
         });
-        // AppUi::DebugDisplay::s_instance->passes.push_back({.name = "blur_pyramid mip " + std::to_string(mip_i + 1), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        // AppUi::DebugDisplay::add_pass({.name = "blur_pyramid mip " + std::to_string(mip_i + 1), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     }
 
     return output;
@@ -146,7 +146,7 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView inpu
                 .self_weight = self_weight,
             },
         });
-        // AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rev blur_pyramid mip " + std::to_string(target_mip_i), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        // AppUi::DebugDisplay::add_pass({.name = "rev blur_pyramid mip " + std::to_string(target_mip_i), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     }
 
     return output;

@@ -147,8 +147,8 @@ struct VoxelParticles {
             },
         });
 
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "voxel particles", .task_image_id = raster_color_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "voxel particles depth", .task_image_id = raster_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "voxel particles", .task_image_id = raster_color_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
+        AppUi::DebugDisplay::add_pass({.name = "voxel particles depth", .task_image_id = raster_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         return {raster_color_image, raster_depth_image};
     }
 };

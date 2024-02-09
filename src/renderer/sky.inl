@@ -165,9 +165,9 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
         },
     });
 
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    AppUi::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    AppUi::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    AppUi::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
     auto sky_cube = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -192,7 +192,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
         },
     });
 
-    // AppUi::DebugDisplay::s_instance->passes.push_back({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+    // AppUi::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
 #if IMMEDIATE_SKY
 

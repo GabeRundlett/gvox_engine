@@ -603,8 +603,8 @@ struct GpuApp : AppUi::DebugDisplayProvider {
         auto sky_cube = sky.task_sky_cube.view().view({.layer_count = 6});
         auto ibl_cube = sky.task_ibl_cube.view().view({.layer_count = 6});
 #endif
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+        AppUi::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+        AppUi::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
         record_ctx.task_graph.add_task({
             .attachments = {
@@ -674,7 +674,7 @@ struct GpuApp : AppUi::DebugDisplayProvider {
 
         auto post_processed_image = kajiya_renderer.post_process(record_ctx, antialiased_image, record_ctx.output_resolution);
 
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "[final]"});
+        AppUi::DebugDisplay::add_pass({.name = "[final]"});
 
         auto &dbg_disp = *AppUi::DebugDisplay::s_instance;
         auto pass_iter = std::find_if(dbg_disp.passes.begin(), dbg_disp.passes.end(), [&](auto &pass) { return pass.name == dbg_disp.selected_pass_name; });

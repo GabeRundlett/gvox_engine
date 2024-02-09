@@ -265,7 +265,7 @@ struct RtdgiRenderer {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi reprojected history", .task_image_id = reprojected_history_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "rtdgi reprojected history", .task_image_id = reprojected_history_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return ReprojectedRtdgi{
             reprojected_history_tex,
@@ -323,7 +323,7 @@ struct RtdgiRenderer {
                 ti.recorder.dispatch({(out_image_info.size.x + 7) / 8, (out_image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi temporal filter", .task_image_id = temporal_filtered_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "rtdgi temporal filter", .task_image_id = temporal_filtered_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         return temporal_filtered_tex;
     }
 
@@ -357,7 +357,7 @@ struct RtdgiRenderer {
                 ti.recorder.dispatch({(out_image_info.size.x + 7) / 8, (out_image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi spatial filter", .task_image_id = spatial_filtered_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "rtdgi spatial filter", .task_image_id = spatial_filtered_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return spatial_filtered_tex;
     }
@@ -374,7 +374,7 @@ struct RtdgiRenderer {
         daxa::TaskImageView ssao_tex) -> RtdgiOutput {
         auto [reprojected_history_tex, temporal_output_tex] = reprojected_rtdgi;
         auto half_ssao_tex = extract_downscaled_ssao(record_ctx, ssao_tex);
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi downscaled ssao", .task_image_id = half_ssao_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "rtdgi downscaled ssao", .task_image_id = half_ssao_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto gbuffer_half_res = daxa_u32vec2{(record_ctx.render_resolution.x + 1) / 2, (record_ctx.render_resolution.y + 1) / 2};
 
@@ -426,7 +426,7 @@ struct RtdgiRenderer {
         });
         auto half_depth_tex = gbuffer_depth.get_downscaled_depth(record_ctx);
 
-        AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi downscaled depth", .task_image_id = half_depth_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        AppUi::DebugDisplay::add_pass({.name = "rtdgi downscaled depth", .task_image_id = half_depth_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         temporal_invalidity_tex = PingPongImage{};
         auto [invalidity_output_tex, invalidity_history_tex] = temporal_invalidity_tex.get(
@@ -535,7 +535,7 @@ struct RtdgiRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi validate", .task_image_id = half_depth_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "rtdgi validate", .task_image_id = half_depth_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto rt_history_validity_input_tex = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R8_UNORM,
@@ -574,7 +574,7 @@ struct RtdgiRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi trace", .task_image_id = candidate_radiance_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "rtdgi trace", .task_image_id = candidate_radiance_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             record_ctx.add(ComputeTask<RtdgiValidityIntegrateCompute, RtdgiValidityIntegrateComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/temporal_validity_integrate.comp.glsl"},
@@ -599,7 +599,7 @@ struct RtdgiRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi temporal validate", .task_image_id = invalidity_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "rtdgi temporal validate", .task_image_id = invalidity_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto rtdgi_debug_image = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R32G32B32A32_SFLOAT,
@@ -644,8 +644,8 @@ struct RtdgiRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "restir temporal", .task_image_id = radiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "rtdgi debug", .task_image_id = rtdgi_debug_image, .type = DEBUG_IMAGE_TYPE_RTDGI_DEBUG});
+            AppUi::DebugDisplay::add_pass({.name = "restir temporal", .task_image_id = radiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "rtdgi debug", .task_image_id = rtdgi_debug_image, .type = DEBUG_IMAGE_TYPE_RTDGI_DEBUG});
 
             // return std::pair{radiance_output_tex, reservoir_output_tex};
             radiance_tex = radiance_output_tex;
@@ -735,7 +735,7 @@ struct RtdgiRenderer {
                 reservoir_input_tex = reservoir_output_tex1;
                 bounced_radiance_input_tex = bounced_radiance_output_tex1;
             }
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "restir spatial", .task_image_id = bounced_radiance_input_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "restir spatial", .task_image_id = bounced_radiance_input_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto irradiance_output_tex = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -774,7 +774,7 @@ struct RtdgiRenderer {
             });
 
             irradiance_tex = irradiance_output_tex;
-            AppUi::DebugDisplay::s_instance->passes.push_back({.name = "restir resolve", .task_image_id = irradiance_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            AppUi::DebugDisplay::add_pass({.name = "restir resolve", .task_image_id = irradiance_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         }
 
         auto filtered_tex = this->temporal(

@@ -169,6 +169,11 @@ void main() {
         tex_color = vec3(value.rgb);
     }
 
+    tex_color = tex_color * push.settings.brightness;
+    if (((push.settings.flags >> DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX) & 1) != 0) {
+        tex_color = pow(tex_color, vec3(1.0 / 2.2));
+    }
+
     color = daxa_f32vec4(tex_color, 1.0);
 }
 

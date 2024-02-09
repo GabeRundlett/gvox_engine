@@ -80,7 +80,7 @@ inline auto light_gbuffer(
         },
     });
 
-    AppUi::DebugDisplay::s_instance->passes.push_back({.name = "lit gbuffer", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    AppUi::DebugDisplay::add_pass({.name = "lit gbuffer", .task_image_id = output_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
     return output_image;
 }

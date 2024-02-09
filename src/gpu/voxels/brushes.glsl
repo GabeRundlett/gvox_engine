@@ -324,7 +324,7 @@ void brushgen_b(in out Voxel voxel) {
         // voxel.color = daxa_f32vec3(good_rand(), good_rand(), good_rand());
         // voxel.color = daxa_f32vec3(floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0);
         voxel.material_type = 3;
-        voxel.color = daxa_f32vec3(0.9, 0.05, 0.05);
+        voxel.color = daxa_f32vec3(0.95, 0.05, 0.05);
         voxel.roughness = 0.2;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }

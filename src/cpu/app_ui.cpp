@@ -131,16 +131,6 @@ AppUi::Console::~Console() {
     }
 }
 
-AppUi::DebugDisplay::DebugDisplay() {
-    s_instance = this;
-}
-
-AppUi::DebugDisplay::~DebugDisplay() {
-    if (s_instance == this) {
-        s_instance = nullptr;
-    }
-}
-
 void AppUi::Console::clear_log() {
     auto lock = std::lock_guard{*items_mtx};
     items.clear();
@@ -343,6 +333,34 @@ auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
     return 0;
 }
 
+AppUi::DebugDisplay::DebugDisplay() {
+    s_instance = this;
+}
+
+AppUi::DebugDisplay::~DebugDisplay() {
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
+}
+
+void AppUi::DebugDisplay::begin_passes() {
+    auto &self = *s_instance;
+    std::swap(self.prev_passes, self.passes);
+    self.passes.clear();
+}
+
+void AppUi::DebugDisplay::add_pass(Pass const &info) {
+    auto &self = *s_instance;
+    auto prev_iter = std::find_if(
+        self.prev_passes.begin(), self.prev_passes.end(),
+        [&](Pass const &other) { return info.name == other.name; });
+    auto new_info = info;
+    if (prev_iter != self.prev_passes.end()) {
+        new_info.settings = prev_iter->settings;
+    }
+    self.passes.push_back(new_info);
+}
+
 AppUi::AppUi(GLFWwindow *glfw_window_ptr)
     : glfw_window_ptr{glfw_window_ptr},
       data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"} {
@@ -474,10 +492,17 @@ namespace {
 
 void AppUi::settings_ui() {
     ImGui::Begin("Settings");
+
+    const auto bottom_bar_size = 32 * settings.ui_scl + 12;
+    ImGui::BeginChild("Child0", ImVec2(0, ImGui::GetContentRegionAvail().y - bottom_bar_size));
+
     if (ImGui::BeginTabBar("##settings_tabs")) {
         if (ImGui::BeginTabItem("Game")) {
-            if (ImGui::InputText("World Seed", &settings.world_seed_str)) {
-                should_upload_seed_data = true;
+            if (ImGui::TreeNode("Brush")) {
+                if (ImGui::InputText("World Seed", &settings.world_seed_str)) {
+                    should_upload_seed_data = true;
+                }
+                
             }
             if (ImGui::Button("Re-run Startup")) {
                 should_run_startup = true;
@@ -584,10 +609,7 @@ void AppUi::settings_ui() {
         ImGui::EndTabBar();
     }
 
-    auto menu_size = ImGui::GetWindowSize().y;
-    ImGui::SetCursorPosY(menu_size - (32 * settings.ui_scl + 12));
-
-    ImGui::Separator();
+    ImGui::EndChild();
 
     ImGui::Text("Settings");
     ImGui::SameLine();
@@ -754,6 +776,8 @@ void AppUi::settings_controls_ui() {
 
 void AppUi::settings_passes_ui() {
     for (uint32_t pass_i = 0; pass_i < debug_display.passes.size(); ++pass_i) {
+        if (debug_display.selected_pass == pass_i) {
+        }
         auto &pass = debug_display.passes[pass_i];
         if (ImGui::Selectable(pass.name.c_str(), debug_display.selected_pass == pass_i)) {
             if (debug_display.selected_pass_name != pass.name) {
@@ -761,6 +785,10 @@ void AppUi::settings_passes_ui() {
                 debug_display.selected_pass_name = pass.name;
                 should_record_task_graph = true;
             }
+        }
+        if (debug_display.selected_pass == pass_i) {
+            ImGui::SliderFloat("brightness", &pass.settings.brightness, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+            ImGui::CheckboxFlags("gamma correct", &pass.settings.flags, 1u << DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX);
         }
     }
 }
@@ -822,6 +850,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
             ImGui::EndMenuBar();
         }
         ImGui::End();
+
+        ImGui::ShowDemoWindow();
 
         if (settings.show_console) {
             console.draw("Console", &settings.show_console);

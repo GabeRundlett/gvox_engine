@@ -65,6 +65,13 @@ struct SkySettings {
 #define DEBUG_IMAGE_TYPE_RESERVOIR 5
 #define DEBUG_IMAGE_TYPE_RTDGI_DEBUG 6
 
+#define DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX 0
+
+struct DebugImageSettings {
+    daxa_u32 flags;
+    daxa_f32 brightness;
+};
+
 #define IMMEDIATE_SKY true
 
 #define IRCACHE_GRID_CELL_DIAMETER (1.0f / 8.0f)
@@ -74,3 +81,10 @@ struct SkySettings {
 
 #define MAX_GRID_CELLS (IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_COUNT)
 #define MAX_ENTRIES (1024 * 64)
+
+#define BRUSH_SETTINGS_FLAGS_FIXED_DISTANCE_INDEX 0
+
+struct BrushSettings {
+    daxa_u32 flags;
+    daxa_f32 radius;
+};

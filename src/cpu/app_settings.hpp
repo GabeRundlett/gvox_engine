@@ -29,6 +29,10 @@ struct AppSettings {
 
     AutoExposureSettings auto_exposure;
 
+    BrushSettings world_brush_settings;
+    BrushSettings brush_a_settings;
+    BrushSettings brush_b_settings;
+
     bool show_debug_info;
     bool show_console;
     bool show_help;

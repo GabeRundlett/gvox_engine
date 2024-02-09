@@ -22,6 +22,7 @@ DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct DebugImageRasterPush {
     daxa_u32 type;
+    DebugImageSettings settings;
     daxa_u32 cube_size;
     daxa_u32vec2 output_tex_size;
     DAXA_TH_BLOB(DebugImageRaster, uses)
@@ -58,7 +59,7 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
 
 inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
     struct DebugImageRasterTaskInfo {
-        daxa_u32 type;
+        AppUi::Pass const *pass;
     };
 
     record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
@@ -80,8 +81,9 @@ inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
                 .color_attachments = {{.image_view = render_image.default_view(), .load_op = daxa::AttachmentLoadOp::DONT_CARE, .clear_value = std::array<daxa_f32, 4>{0.0f, 0.0f, 0.0f, 0.0f}}},
                 .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
             });
-            push.type = info.type;
-            if (info.type == DEBUG_IMAGE_TYPE_CUBEMAP) {
+            push.type = info.pass->type;
+            push.settings = info.pass->settings;
+            if (info.pass->type == DEBUG_IMAGE_TYPE_CUBEMAP) {
                 push.cube_size = ti.device.info_image(ti.get(DebugImageRaster::cube_image_id).ids[0]).value().size.x;
             }
             push.output_tex_size = {image_info.size.x, image_info.size.y};
@@ -91,7 +93,7 @@ inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa:
             ti.recorder = std::move(renderpass_recorder).end_renderpass();
         },
         .info = {
-            .type = pass.type,
+            .pass = &pass,
         },
     });
 }

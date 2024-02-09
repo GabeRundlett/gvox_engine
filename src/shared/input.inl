@@ -66,6 +66,9 @@ struct GpuInput {
     daxa_f32vec3 ircache_grid_center;
     IrcacheCascadeConstants ircache_cascades[IRCACHE_CASCADE_COUNT];
     SkySettings sky_settings;
+    BrushSettings world_brush_settings;
+    BrushSettings brush_a_settings;
+    BrushSettings brush_b_settings;
     MouseInput mouse;
     daxa_u32 actions[GAME_ACTION_LAST + 1];
 };
