@@ -178,11 +178,10 @@ void main() {
 
     vec3 output_ = total_radiance;
 
-    vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
-    vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
-    pt_ws /= pt_ws.w;
-    pt_ws.xyz += deref(globals).player.player_unit_offset;
-    uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
+    // vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
+    // vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
+    // pt_ws /= pt_ws.w;
+    // uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
     // if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
     //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
     //     output_ = lookup(ircache_params, rng);
