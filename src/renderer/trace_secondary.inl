@@ -18,7 +18,7 @@ struct TraceSecondaryComputePush {
 
 #if defined(__cplusplus)
 
-inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorld::Buffers &voxel_buffers) -> daxa::TaskImageView {
+inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorldBuffers &voxel_buffers) -> daxa::TaskImageView {
     auto shadow_mask = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R8_UNORM,
         .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -45,7 +45,7 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
         },
     });
 
-    AppUi::DebugDisplay::add_pass({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
+    debug_utils::DebugDisplay::add_pass({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
 
     return daxa::TaskImageView{shadow_mask};
 }

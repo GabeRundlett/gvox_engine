@@ -6,13 +6,14 @@ include(cmake/static_analysis.cmake)
 
 project(gvox_engine VERSION 0.1.14)
 add_executable(${PROJECT_NAME}
-    "src/cpu/main.cpp"
-    "src/cpu/deps.cpp"
-    "src/cpu/voxel_app.cpp"
-    "src/cpu/app_ui.cpp"
-    "src/cpu/app_audio.cpp"
-    "src/cpu/app_settings.cpp"
-    "src/cpu/mesh_model.cpp"
+    "src/main.cpp"
+    "src/debug_utils.cpp"
+    "src/voxel_app.cpp"
+    "src/app_ui.cpp"
+    "src/app_audio.cpp"
+    "src/app_settings.cpp"
+    "src/mesh_model.cpp"
+    "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
     "src/renderer/kajiya/spp64.cpp"
 )

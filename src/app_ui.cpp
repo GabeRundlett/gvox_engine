@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <sago/platform_folders.h>
 #include <nfd.h>
+#include <debug_utils.hpp>
 
 #include <vector>
 #include <iostream>
@@ -78,287 +79,6 @@ inline auto get_button_string(daxa_i32 glfw_key_id) -> char const * {
     case GLFW_MOUSE_BUTTON_5: return "mouse button 5";
     default: return "unknown button";
     }
-}
-
-static auto Stricmp(const char *s1, const char *s2) -> int {
-    int d = 0;
-    while ((d = toupper(*s2) - toupper(*s1)) == 0 && (*s1 != 0)) {
-        s1++;
-        s2++;
-    }
-    return d;
-}
-
-static auto Strnicmp(const char *s1, const char *s2, int n) -> int {
-    int d = 0;
-    while (n > 0 && (d = toupper(*s2) - toupper(*s1)) == 0 && (*s1 != 0)) {
-        s1++;
-        s2++;
-        n--;
-    }
-    return d;
-}
-
-static auto Strdup(const char *s) -> char * {
-    IM_ASSERT(s);
-    size_t const len = strlen(s) + 1;
-    void *buf = malloc(len);
-    IM_ASSERT(buf);
-    return static_cast<char *>(memcpy(buf, static_cast<const void *>(s), len));
-}
-
-static void Strtrim(char *s) {
-    char *str_end = s + strlen(s);
-    while (str_end > s && str_end[-1] == ' ') {
-        str_end--;
-    }
-    *str_end = 0;
-}
-
-AppUi::Console::Console() {
-    s_instance = this;
-    clear_log();
-    memset(input_buffer, 0, sizeof(input_buffer));
-}
-
-AppUi::Console::~Console() {
-    if (s_instance == this) {
-        s_instance = nullptr;
-    }
-    clear_log();
-    for (auto &i : history) {
-        free(i);
-    }
-}
-
-void AppUi::Console::clear_log() {
-    auto lock = std::lock_guard{*items_mtx};
-    items.clear();
-}
-
-void AppUi::Console::add_log(std::string const &str) {
-    {
-        auto lock = std::lock_guard{*items_mtx};
-        items.push_back(str);
-    }
-    std::cout << str << std::endl;
-}
-
-void AppUi::Console::draw(const char *title, bool *p_open) {
-    ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(title, p_open)) {
-        ImGui::End();
-        return;
-    }
-    if (ImGui::BeginPopupContextItem()) {
-        if (ImGui::MenuItem("Close Console")) {
-            *p_open = false;
-        }
-        ImGui::EndPopup();
-    }
-    if (ImGui::SmallButton("Clear")) {
-        clear_log();
-    }
-    ImGui::SameLine();
-    bool const copy_to_clipboard = ImGui::SmallButton("Copy");
-    ImGui::Separator();
-    if (ImGui::BeginPopup("Options")) {
-        ImGui::Checkbox("Auto-scroll", &auto_scroll);
-        ImGui::EndPopup();
-    }
-    if (ImGui::Button("Options")) {
-        ImGui::OpenPopup("Options");
-    }
-    ImGui::SameLine();
-    filter.Draw(R"(Filter ("incl,-excl") ("error"))", 180);
-    ImGui::Separator();
-    const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-    ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (ImGui::BeginPopupContextWindow()) {
-        if (ImGui::Selectable("Clear")) {
-            clear_log();
-        }
-        ImGui::EndPopup();
-    }
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
-    if (copy_to_clipboard) {
-        ImGui::LogToClipboard();
-    }
-    {
-        auto lock = std::lock_guard{*items_mtx};
-        for (auto const &item : items) {
-            if (!filter.PassFilter(item.c_str())) {
-                continue;
-            }
-            ImVec4 color;
-            bool has_color = false;
-            if (strstr(item.c_str(), "[error]") != nullptr) {
-                color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-                has_color = true;
-            } else if (strncmp(item.c_str(), "# ", 2) == 0) {
-                color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f);
-                has_color = true;
-            }
-            if (has_color) {
-                ImGui::PushStyleColor(ImGuiCol_Text, color);
-            }
-            ImGui::TextUnformatted(item.c_str());
-            if (has_color) {
-                ImGui::PopStyleColor();
-            }
-        }
-    }
-    if (copy_to_clipboard) {
-        ImGui::LogFinish();
-    }
-    if (scroll_to_bottom || (auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())) {
-        ImGui::SetScrollHereY(1.0f);
-    }
-    scroll_to_bottom = false;
-    ImGui::PopStyleVar();
-    ImGui::EndChild();
-    ImGui::Separator();
-    bool reclaim_focus = false;
-    ImGuiInputTextFlags const input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
-    if (ImGui::InputText(
-            "Input", input_buffer, IM_ARRAYSIZE(input_buffer), input_text_flags, [](ImGuiInputTextCallbackData *data) -> int {
-                auto *user_console = static_cast<Console *>(data->UserData);
-                return user_console->on_text_edit(data);
-            },
-            static_cast<void *>(this))) {
-        char *s = input_buffer;
-        Strtrim(s);
-        if (s[0] != 0) {
-            exec_command(s);
-        }
-        s[0] = '\0';
-        reclaim_focus = true;
-    }
-    ImGui::SetItemDefaultFocus();
-    if (reclaim_focus) {
-        ImGui::SetKeyboardFocusHere(-1);
-    }
-    ImGui::End();
-}
-
-void AppUi::Console::exec_command(const char *command_line) {
-    add_log(fmt::format("# {}\n", command_line));
-    history_pos = -1;
-    for (daxa_i32 i = static_cast<daxa_i32>(history.size()) - 1; i >= 0; i--) {
-        if (Stricmp(history[static_cast<size_t>(i)], command_line) == 0) {
-            free(history[static_cast<size_t>(i)]);
-            history.erase(history.begin() + i);
-            break;
-        }
-    }
-    history.push_back(Strdup(command_line));
-    add_log(fmt::format("Unknown command: '{}'\n", command_line));
-    scroll_to_bottom = true;
-}
-
-auto AppUi::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int {
-    switch (data->EventFlag) {
-    case ImGuiInputTextFlags_CallbackCompletion: {
-        const char *word_end = data->Buf + data->CursorPos;
-        const char *word_start = word_end;
-        while (word_start > data->Buf) {
-            const char c = word_start[-1];
-            if (c == ' ' || c == '\t' || c == ',' || c == ';') {
-                break;
-            }
-            word_start--;
-        }
-        ImVector<const char *> candidates;
-        for (auto &command : commands) {
-            if (Strnicmp(command, word_start, static_cast<daxa_i32>(word_end - word_start)) == 0) {
-                candidates.push_back(command);
-            }
-        }
-        if (candidates.empty()) {
-            add_log(fmt::format("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start));
-        } else if (candidates.size() == 1) {
-            data->DeleteChars(static_cast<daxa_i32>(word_start - data->Buf), static_cast<daxa_i32>(word_end - word_start));
-            data->InsertChars(data->CursorPos, candidates[0]);
-            data->InsertChars(data->CursorPos, " ");
-        } else {
-            int match_len = static_cast<daxa_i32>(word_end - word_start);
-            for (;;) {
-                int c = 0;
-                bool all_candidates_matches = true;
-                for (int i = 0; i < candidates.size() && all_candidates_matches; i++) {
-                    if (i == 0) {
-                        c = toupper(candidates[i][match_len]);
-                    } else if (c == 0 || c != toupper(candidates[i][match_len])) {
-                        all_candidates_matches = false;
-                    }
-                }
-                if (!all_candidates_matches) {
-                    break;
-                }
-                match_len++;
-            }
-            if (match_len > 0) {
-                data->DeleteChars(static_cast<daxa_i32>(word_start - data->Buf), static_cast<daxa_i32>(word_end - word_start));
-                data->InsertChars(data->CursorPos, candidates[0], candidates[0] + match_len);
-            }
-            add_log("Possible matches:\n");
-            for (auto &candidate : candidates) {
-                add_log(fmt::format("- {}\n", candidate));
-            }
-        }
-        break;
-    }
-    case ImGuiInputTextFlags_CallbackHistory: {
-        const int prev_history_pos = history_pos;
-        if (data->EventKey == ImGuiKey_UpArrow) {
-            if (history_pos == -1) {
-                history_pos = static_cast<daxa_i32>(history.size()) - 1;
-            } else if (history_pos > 0) {
-                history_pos--;
-            }
-        } else if (data->EventKey == ImGuiKey_DownArrow) {
-            if (history_pos != -1) {
-                if (static_cast<size_t>(++history_pos) >= history.size()) {
-                    history_pos = -1;
-                }
-            }
-        }
-        if (prev_history_pos != history_pos) {
-            const char *history_str = (history_pos >= 0) ? history[static_cast<size_t>(history_pos)] : "";
-            data->DeleteChars(0, data->BufTextLen);
-            data->InsertChars(0, history_str);
-        }
-    }
-    }
-    return 0;
-}
-
-AppUi::DebugDisplay::DebugDisplay() {
-    s_instance = this;
-}
-
-AppUi::DebugDisplay::~DebugDisplay() {
-    if (s_instance == this) {
-        s_instance = nullptr;
-    }
-}
-
-void AppUi::DebugDisplay::begin_passes() {
-    auto &self = *s_instance;
-    std::swap(self.prev_passes, self.passes);
-    self.passes.clear();
-}
-
-void AppUi::DebugDisplay::add_pass(Pass const &info) {
-    auto &self = *s_instance;
-    auto prev_iter = std::find_if(
-        self.prev_passes.begin(), self.prev_passes.end(),
-        [&](Pass const &other) { return info.name == other.name; });
-    auto new_info = info;
-    if (prev_iter != self.prev_passes.end()) {
-        new_info.settings = prev_iter->settings;
-    }
-    self.passes.push_back(new_info);
 }
 
 AppUi::AppUi(GLFWwindow *glfw_window_ptr)
@@ -502,7 +222,6 @@ void AppUi::settings_ui() {
                 if (ImGui::InputText("World Seed", &settings.world_seed_str)) {
                     should_upload_seed_data = true;
                 }
-                
             }
             if (ImGui::Button("Re-run Startup")) {
                 should_run_startup = true;
@@ -513,10 +232,10 @@ void AppUi::settings_ui() {
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
-                    console.add_log(fmt::format("Loaded {}", out_path));
+                    debug_utils::Console::add_log(fmt::format("Loaded {}", out_path));
                     free(out_path);
                 } else if (result != NFD_CANCEL) {
-                    console.add_log(fmt::format("[error]: {}", NFD_GetError()));
+                    debug_utils::Console::add_log(fmt::format("[error]: {}", NFD_GetError()));
                 }
             }
             {
@@ -551,16 +270,16 @@ void AppUi::settings_ui() {
             }
 
             if (ImGui::TreeNode("Auto Exposure")) {
-                if (ImGui::SliderFloat("EV Shift", &settings.auto_exposure.ev_shift, -5.0f, 5.0f)) {
+                if (ImGui::SliderFloat("EV Shift", &settings.renderer.auto_exposure.ev_shift, -5.0f, 5.0f)) {
                     needs_saving = true;
                 }
-                if (ImGui::SliderFloat("Histogram Clip Min", &settings.auto_exposure.histogram_clip_low, 0.0f, 1.0f)) {
+                if (ImGui::SliderFloat("Histogram Clip Min", &settings.renderer.auto_exposure.histogram_clip_low, 0.0f, 1.0f)) {
                     needs_saving = true;
                 }
-                if (ImGui::SliderFloat("Histogram Clip Max", &settings.auto_exposure.histogram_clip_high, 0.0f, 1.0f - settings.auto_exposure.histogram_clip_low)) {
+                if (ImGui::SliderFloat("Histogram Clip Max", &settings.renderer.auto_exposure.histogram_clip_high, 0.0f, 1.0f - settings.renderer.auto_exposure.histogram_clip_low)) {
                     needs_saving = true;
                 }
-                if (ImGui::SliderFloat("Adaption Speed", &settings.auto_exposure.speed, 0.5f, 50.0f)) {
+                if (ImGui::SliderFloat("Adaption Speed", &settings.renderer.auto_exposure.speed, 0.5f, 50.0f)) {
                     needs_saving = true;
                 }
                 ImGui::TreePop();
@@ -775,18 +494,19 @@ void AppUi::settings_controls_ui() {
 }
 
 void AppUi::settings_passes_ui() {
-    for (uint32_t pass_i = 0; pass_i < debug_display.passes.size(); ++pass_i) {
-        if (debug_display.selected_pass == pass_i) {
+    auto &self = *debug_utils::DebugDisplay::s_instance;
+    for (uint32_t pass_i = 0; pass_i < self.passes.size(); ++pass_i) {
+        if (self.selected_pass == pass_i) {
         }
-        auto &pass = debug_display.passes[pass_i];
-        if (ImGui::Selectable(pass.name.c_str(), debug_display.selected_pass == pass_i)) {
-            if (debug_display.selected_pass_name != pass.name) {
-                debug_display.selected_pass = pass_i;
-                debug_display.selected_pass_name = pass.name;
+        auto &pass = self.passes[pass_i];
+        if (ImGui::Selectable(pass.name.c_str(), self.selected_pass == pass_i)) {
+            if (self.selected_pass_name != pass.name) {
+                self.selected_pass = pass_i;
+                self.selected_pass_name = pass.name;
                 should_record_task_graph = true;
             }
         }
-        if (debug_display.selected_pass == pass_i) {
+        if (self.selected_pass == pass_i) {
             ImGui::SliderFloat("brightness", &pass.settings.brightness, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
             ImGui::CheckboxFlags("gamma correct", &pass.settings.flags, 1u << DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX);
         }
@@ -796,8 +516,8 @@ void AppUi::settings_passes_ui() {
 static ImGuiTableSortSpecs *current_gpu_resource_info_sort_specs = nullptr;
 
 static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int {
-    auto const *a = static_cast<AppUi::DebugDisplay::GpuResourceInfo const *>(lhs);
-    auto const *b = static_cast<AppUi::DebugDisplay::GpuResourceInfo const *>(rhs);
+    auto const *a = static_cast<debug_utils::DebugDisplay::GpuResourceInfo const *>(lhs);
+    auto const *b = static_cast<debug_utils::DebugDisplay::GpuResourceInfo const *>(rhs);
     for (int n = 0; n < current_gpu_resource_info_sort_specs->SpecsCount; n++) {
         auto const *sort_spec = &current_gpu_resource_info_sort_specs->Specs[n];
         int delta = 0;
@@ -854,7 +574,7 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
         ImGui::ShowDemoWindow();
 
         if (settings.show_console) {
-            console.draw("Console", &settings.show_console);
+            debug_utils::Console::draw("Console", &settings.show_console);
         }
         if (show_settings) {
             settings_ui();
@@ -893,9 +613,6 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
             ImGui::TreePop();
         }
         ImGui::Text("GPU: %s", debug_gpu_name);
-        for (auto *provider : debug_display.providers) {
-            provider->add_ui();
-        }
         if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =
                 ImGuiTableFlags_Resizable |
@@ -920,8 +637,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
                     if (sorts_specs->SpecsDirty) {
                         current_gpu_resource_info_sort_specs = sorts_specs;
-                        if (debug_display.gpu_resource_infos.size() > 1) {
-                            qsort(debug_display.gpu_resource_infos.data(), debug_display.gpu_resource_infos.size(), sizeof(debug_display.gpu_resource_infos[0]), compare_gpu_resource_infos);
+                        if (debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size() > 1) {
+                            qsort(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.data(), debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size(), sizeof(debug_utils::DebugDisplay::s_instance->gpu_resource_infos[0]), compare_gpu_resource_infos);
                         }
                         current_gpu_resource_info_sort_specs = nullptr;
                         sorts_specs->SpecsDirty = false;
@@ -929,10 +646,10 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
                 }
 
                 ImGuiListClipper clipper;
-                clipper.Begin(static_cast<daxa_i32>(debug_display.gpu_resource_infos.size()));
+                clipper.Begin(static_cast<daxa_i32>(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size()));
                 while (clipper.Step()) {
                     for (int row_i = clipper.DisplayStart; row_i < clipper.DisplayEnd; row_i++) {
-                        auto const &res_info = debug_display.gpu_resource_infos[static_cast<size_t>(row_i)];
+                        auto const &res_info = debug_utils::DebugDisplay::s_instance->gpu_resource_infos[static_cast<size_t>(row_i)];
                         ImGui::PushID(&res_info);
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();

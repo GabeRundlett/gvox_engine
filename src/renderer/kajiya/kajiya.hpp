@@ -21,16 +21,22 @@ struct KajiyaRenderer {
 
     bool do_global_illumination = true;
 
-    KajiyaRenderer(daxa::Device &device) : post_processor{device} {}
+    void create(daxa::Device &device) {
+        post_processor.create(device);
+    }
 
-    void next_frame(AutoExposureSettings const &auto_exposure_settings, float dt) {
+    void destroy(daxa::Device &device) const {
+        post_processor.destroy(device);
+    }
+
+    void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
         if (do_global_illumination) {
             ssao_renderer.next_frame();
             rtdgi_renderer.next_frame();
             rtr_renderer.next_frame();
             ircache_renderer.next_frame();
         }
-        post_processor.next_frame(auto_exposure_settings, dt);
+        post_processor.next_frame(device, auto_exposure_settings, dt);
         if constexpr (ENABLE_TAA) {
             taa_renderer.next_frame();
         }
@@ -45,7 +51,7 @@ struct KajiyaRenderer {
         daxa::TaskImageView sky_cube,
         daxa::TaskImageView ibl_cube,
         daxa::TaskImageView transmittance_lut,
-        VoxelWorld::Buffers &voxel_buffers) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
+        VoxelWorldBuffers &voxel_buffers) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
         auto denoised_shadow_mask = shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
 

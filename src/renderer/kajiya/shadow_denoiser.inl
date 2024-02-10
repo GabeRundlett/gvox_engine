@@ -67,7 +67,7 @@ struct ShadowDenoiser {
             .size = {bitpacked_shadow_mask_extent.x, bitpacked_shadow_mask_extent.y, 1},
             .name = "bitpacked_shadows_image",
         });
-        AppUi::DebugDisplay::add_pass({.name = "shadow bitpack", .task_image_id = bitpacked_shadows_image, .type = DEBUG_IMAGE_TYPE_SHADOW_BITMAP});
+        debug_utils::DebugDisplay::add_pass({.name = "shadow bitpack", .task_image_id = bitpacked_shadows_image, .type = DEBUG_IMAGE_TYPE_SHADOW_BITMAP});
 
         struct ShadowBitPackComputeInfo {
             daxa_u32vec2 bitpacked_shadow_mask_extent;
@@ -242,10 +242,10 @@ struct ShadowDenoiser {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "shadow temporal", .task_image_id = moments_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "shadow spatial0", .task_image_id = accum_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "shadow spatial1", .task_image_id = shadow_denoise_intermediary_1, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "shadow spatial2", .task_image_id = spatial_input_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "shadow temporal", .task_image_id = moments_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "shadow spatial0", .task_image_id = accum_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "shadow spatial1", .task_image_id = shadow_denoise_intermediary_1, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "shadow spatial2", .task_image_id = spatial_input_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return spatial_input_image;
     }

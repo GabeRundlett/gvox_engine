@@ -176,7 +176,7 @@ struct TracedRtr {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::add_pass({.name = "rtr temporal filter", .task_image_id = this->temporal_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "rtr temporal filter", .task_image_id = this->temporal_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto final_resolved_tex = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
@@ -204,7 +204,7 @@ struct TracedRtr {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        AppUi::DebugDisplay::add_pass({.name = "rtr spatial cleanup", .task_image_id = final_resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "rtr spatial cleanup", .task_image_id = final_resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return final_resolved_tex;
     }
@@ -243,7 +243,7 @@ struct RtrRenderer {
         daxa::TaskImageView reprojection_map,
         daxa::TaskImageView sky_cube,
         daxa::TaskImageView transmittance_lut,
-        VoxelWorld::Buffers &voxel_buffers,
+        VoxelWorldBuffers &voxel_buffers,
         daxa::TaskImageView rtdgi_irradiance,
         RtdgiCandidates rtdgi_candidates,
         IrcacheRenderState &ircache) -> TracedRtr {
@@ -380,7 +380,7 @@ struct RtrRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "rtr trace", .task_image_id = refl0_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "rtr trace", .task_image_id = refl0_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto half_view_normal_tex = gbuffer_depth.get_downscaled_view_normal(record_ctx);
         auto half_depth_tex = gbuffer_depth.get_downscaled_depth(record_ctx);
@@ -490,7 +490,7 @@ struct RtrRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::add_pass({.name = "rtr validate", .task_image_id = refl_restir_invalidity_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "rtr validate", .task_image_id = refl_restir_invalidity_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             record_ctx.add(ComputeTask<RtrRestirTemporalCompute, RtrRestirTemporalComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtr/rtr_restir_temporal.comp.glsl"},
@@ -527,7 +527,7 @@ struct RtrRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::add_pass({.name = "rtr restir temporal", .task_image_id = irradiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "rtr restir temporal", .task_image_id = irradiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             irradiance_tex = irradiance_output_tex;
             ray_tex = ray_output_tex;
@@ -607,8 +607,8 @@ struct RtrRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "rtr restir resolve", .task_image_id = resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "rtr debug", .task_image_id = rtr_debug_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "rtr restir resolve", .task_image_id = resolved_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "rtr debug", .task_image_id = rtr_debug_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return {
             resolved_tex,

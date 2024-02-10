@@ -10,7 +10,7 @@
 #include <daxa/utils/imgui.hpp>
 #include <daxa/utils/task_graph.hpp>
 
-#include <cpu/app_ui.hpp>
+#include <debug_utils.hpp>
 
 using BDA = daxa::DeviceAddress;
 
@@ -310,11 +310,11 @@ struct AsyncPipelineManager {
             auto [pipeline_manager, lock] = get_pipeline_manager();
             auto compile_result = pipeline_manager.add_compute_pipeline(info_copy);
             if (compile_result.is_err()) {
-                AppUi::Console::s_instance->add_log(compile_result.message());
+                debug_utils::Console::add_log(compile_result.message());
                 return;
             }
             if (!compile_result.value()->is_valid()) {
-                AppUi::Console::s_instance->add_log(compile_result.message());
+                debug_utils::Console::add_log(compile_result.message());
                 return;
             }
             pipeline_promise->set_value(compile_result.value());
@@ -325,13 +325,13 @@ struct AsyncPipelineManager {
         auto [pipeline_manager, lock] = get_pipeline_manager();
         auto compile_result = pipeline_manager.add_compute_pipeline(info);
         if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
+            debug_utils::Console::add_log(compile_result.message());
             return {};
         }
         auto result = AsyncManagedComputePipeline{};
         result.pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
+            debug_utils::Console::add_log(compile_result.message());
         }
         return result;
 #endif
@@ -348,11 +348,11 @@ struct AsyncPipelineManager {
             auto [pipeline_manager, lock] = get_pipeline_manager();
             auto compile_result = pipeline_manager.add_raster_pipeline(info_copy);
             if (compile_result.is_err()) {
-                AppUi::Console::s_instance->add_log(compile_result.message());
+                debug_utils::Console::add_log(compile_result.message());
                 return;
             }
             if (!compile_result.value()->is_valid()) {
-                AppUi::Console::s_instance->add_log(compile_result.message());
+                debug_utils::Console::add_log(compile_result.message());
                 return;
             }
             pipeline_promise->set_value(compile_result.value());
@@ -363,13 +363,13 @@ struct AsyncPipelineManager {
         auto [pipeline_manager, lock] = get_pipeline_manager();
         auto compile_result = pipeline_manager.add_raster_pipeline(info);
         if (compile_result.is_err()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
+            debug_utils::Console::add_log(compile_result.message());
             return {};
         }
         auto result = AsyncManagedRasterPipeline{};
         result.pipeline = compile_result.value();
         if (!compile_result.value()->is_valid()) {
-            AppUi::Console::s_instance->add_log(compile_result.message());
+            debug_utils::Console::add_log(compile_result.message());
         }
         return result;
 #endif
@@ -626,7 +626,7 @@ struct RecordContext {
         } else {
             auto existing_info = device.info_buffer(iter->second.buffer_id).value();
             if (existing_info.size != info.size) {
-                AppUi::Console::s_instance->add_log(std::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
+                debug_utils::Console::add_log(std::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
             }
         }
         task_graph.use_persistent_buffer(iter->second.task_buffer);

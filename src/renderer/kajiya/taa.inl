@@ -208,7 +208,7 @@ struct TaaRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "taa reproject", .task_image_id = reprojected_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "taa reproject", .task_image_id = reprojected_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto filtered_input_img = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -247,7 +247,7 @@ struct TaaRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "taa filter input", .task_image_id = filtered_input_deviation_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "taa filter input", .task_image_id = filtered_input_deviation_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto filtered_history_img = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -279,7 +279,7 @@ struct TaaRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "taa filter history", .task_image_id = filtered_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "taa filter history", .task_image_id = filtered_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto input_prob_img = [&]() {
             auto input_prob_img = record_ctx.task_graph.create_transient_image({
@@ -319,7 +319,7 @@ struct TaaRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::add_pass({.name = "taa input prob", .task_image_id = input_prob_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "taa input prob", .task_image_id = input_prob_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto prob_filtered1_img = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R16_SFLOAT,
@@ -351,7 +351,7 @@ struct TaaRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::add_pass({.name = "taa prob filter 1", .task_image_id = prob_filtered1_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "taa prob filter 1", .task_image_id = prob_filtered1_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto prob_filtered2_img = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R16_SFLOAT,
@@ -383,7 +383,7 @@ struct TaaRenderer {
                 },
             });
 
-            AppUi::DebugDisplay::add_pass({.name = "taa prob filter 2", .task_image_id = prob_filtered2_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "taa prob filter 2", .task_image_id = prob_filtered2_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             return prob_filtered2_img;
         }();
@@ -428,7 +428,7 @@ struct TaaRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "taa", .task_image_id = this_frame_output_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "taa", .task_image_id = this_frame_output_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return daxa::TaskImageView{this_frame_output_img};
     }

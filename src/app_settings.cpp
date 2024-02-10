@@ -123,10 +123,11 @@ void AppSettings::save(std::filesystem::path const &filepath) {
     json["sun_angle_y"] = sun_angle.y;
     json["sun_angular_radius"] = sun_angular_radius;
 
-    json["auto_exposure_histogram_clip_low"] = auto_exposure.histogram_clip_low;
-    json["auto_exposure_histogram_clip_high"] = auto_exposure.histogram_clip_high;
-    json["auto_exposure_speed"] = auto_exposure.speed;
-    json["auto_exposure_ev_shift"] = auto_exposure.ev_shift;
+    json["renderer.auto_exposure_histogram_clip_low"] = renderer.auto_exposure.histogram_clip_low;
+    json["renderer.auto_exposure_histogram_clip_high"] = renderer.auto_exposure.histogram_clip_high;
+    json["renderer.auto_exposure_speed"] = renderer.auto_exposure.speed;
+    json["renderer.auto_exposure_ev_shift"] = renderer.auto_exposure.ev_shift;
+    json["renderer.do_global_illumination"] = renderer.do_global_illumination;
 
     auto save_brush_settings = [&json](std::string const &brush_name, BrushSettings const &brush_settings) {
         json[brush_name + ".flags"] = brush_settings.flags;
@@ -226,10 +227,11 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     grab_value("sun_angular_radius", sun_angular_radius);
     recompute_sun_direction();
 
-    grab_value("auto_exposure_histogram_clip_low", auto_exposure.histogram_clip_low);
-    grab_value("auto_exposure_histogram_clip_high", auto_exposure.histogram_clip_high);
-    grab_value("auto_exposure_speed", auto_exposure.speed);
-    grab_value("auto_exposure_ev_shift", auto_exposure.ev_shift);
+    grab_value("renderer.auto_exposure_histogram_clip_low", renderer.auto_exposure.histogram_clip_low);
+    grab_value("renderer.auto_exposure_histogram_clip_high", renderer.auto_exposure.histogram_clip_high);
+    grab_value("renderer.auto_exposure_speed", renderer.auto_exposure.speed);
+    grab_value("renderer.auto_exposure_ev_shift", renderer.auto_exposure.ev_shift);
+    grab_value("renderer.do_global_illumination", renderer.do_global_illumination);
 
     auto load_brush_settings = [&grab_value](std::string const &brush_name, BrushSettings &brush_settings) {
         grab_value(brush_name + ".flags", brush_settings.flags);
@@ -375,10 +377,11 @@ void AppSettings::reset_default() {
     sun_angular_radius = 0.25f;
     recompute_sun_direction();
 
-    auto_exposure.histogram_clip_low = 0.1f;
-    auto_exposure.histogram_clip_high = 0.1f;
-    auto_exposure.speed = 3.0f;
-    auto_exposure.ev_shift = -2.5f;
+    renderer.auto_exposure.histogram_clip_low = 0.1f;
+    renderer.auto_exposure.histogram_clip_high = 0.1f;
+    renderer.auto_exposure.speed = 3.0f;
+    renderer.auto_exposure.ev_shift = -2.5f;
+    renderer.do_global_illumination = true;
 }
 
 void AppSettings::recompute_sun_direction() {

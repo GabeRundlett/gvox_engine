@@ -259,7 +259,7 @@ struct IrcacheRenderState {
 
     bool pending_irradiance_sum;
 
-    auto trace_irradiance(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
+    auto trace_irradiance(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
         auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
             .size = static_cast<daxa_u32>(sizeof(uint32_t) * 4) * 4,
             .name = "ircache.trace_indirect_args_buf",

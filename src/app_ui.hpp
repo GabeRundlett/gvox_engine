@@ -16,62 +16,6 @@ struct ImFont;
 #define INVALID_GAME_ACTION (-1)
 
 struct AppUi {
-    struct Console {
-        char input_buffer[256]{};
-        std::vector<std::string> items;
-        std::vector<const char *> commands;
-        std::vector<char *> history;
-        int history_pos{-1};
-        ImGuiTextFilter filter;
-        bool auto_scroll{true};
-        bool scroll_to_bottom{false};
-        std::shared_ptr<std::mutex> items_mtx = std::make_shared<std::mutex>();
-        inline static Console *s_instance = nullptr;
-
-        Console();
-        ~Console();
-
-        void clear_log();
-        void add_log(std::string const &str);
-        void draw(const char *title, bool *p_open);
-        void exec_command(const char *command_line);
-        int on_text_edit(ImGuiInputTextCallbackData *data);
-    };
-
-    struct Pass {
-        std::string name;
-        daxa::TaskImageView task_image_id;
-        daxa_u32 type;
-        DebugImageSettings settings = {.flags = 0, .brightness = 1.0f};
-    };
-
-    struct DebugDisplayProvider {
-        virtual ~DebugDisplayProvider() = default;
-        virtual void add_ui() = 0;
-    };
-
-    struct DebugDisplay {
-        struct GpuResourceInfo {
-            std::string type;
-            std::string name;
-            size_t size;
-        };
-        std::vector<GpuResourceInfo> gpu_resource_infos;
-        std::vector<DebugDisplayProvider *> providers;
-        std::vector<Pass> prev_passes{};
-        std::vector<Pass> passes{};
-        uint32_t selected_pass{};
-        std::string selected_pass_name{};
-
-        inline static DebugDisplay *s_instance = nullptr;
-
-        DebugDisplay();
-        ~DebugDisplay();
-
-        static void begin_passes();
-        static void add_pass(Pass const &info);
-    };
-
     using Clock = std::chrono::high_resolution_clock;
 
     AppUi(GLFWwindow *glfw_window_ptr);
@@ -92,8 +36,6 @@ struct AppUi {
 
     bool needs_saving = false;
     Clock::time_point last_save_time{};
-    Console console{};
-    DebugDisplay debug_display{};
 
     daxa_u32 conflict_resolution_mode = 0;
     daxa_i32 new_key_id{};

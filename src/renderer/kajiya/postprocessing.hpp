@@ -38,7 +38,6 @@ struct DynamicExposureState {
 };
 
 struct PostProcessor {
-    daxa::Device device;
     std::array<daxa::BufferId, FRAMES_IN_FLIGHT + 1> histogram_buffers;
     daxa::TaskBuffer task_histogram_buffer;
     size_t histogram_buffer_index = 0;
@@ -48,7 +47,7 @@ struct PostProcessor {
 
     std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT> histogram{};
 
-    PostProcessor(daxa::Device a_device) : device{std::move(a_device)} {
+    void create(daxa::Device &device) {
         uint32_t i = 0;
         for (auto &histogram_buffer : histogram_buffers) {
             histogram_buffer = device.create_buffer(daxa::BufferInfo{
@@ -61,13 +60,13 @@ struct PostProcessor {
         task_histogram_buffer.set_buffers({.buffers = std::array{histogram_buffers[histogram_buffer_index]}});
     }
 
-    ~PostProcessor() {
+    void destroy(daxa::Device &device) const {
         for (auto &histogram_buffer : histogram_buffers) {
             device.destroy_buffer(histogram_buffer);
         }
     }
 
-    void next_frame(AutoExposureSettings const &auto_exposure_settings, float dt) {
+    void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
         ++histogram_buffer_index;
         {
             auto buffer_i = (histogram_buffer_index + 0) % histogram_buffers.size();
@@ -102,7 +101,7 @@ struct PostProcessor {
                 used_count += count_to_use;
                 ++bin_idx;
             }
-            // AppUi::Console::s_instance->add_log(fmt::format("{}", used_count));
+            // debug_utils::Console::add_log(fmt::format("{}", used_count));
 
             auto mean = sum / std::max(used_count, 1u);
             auto image_log2_lum = float(LUMINANCE_HISTOGRAM_MIN_LOG2 + mean * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2));

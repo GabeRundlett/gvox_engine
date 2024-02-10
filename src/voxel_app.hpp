@@ -6,6 +6,9 @@
 #include "mesh_model.hpp"
 
 #include <shared/app.inl>
+#include <renderer/renderer.hpp>
+#include <shared/voxels/voxel_world.inl>
+#include <shared/voxels/voxel_particles.inl>
 
 #include <chrono>
 #include <future>
@@ -13,6 +16,26 @@
 struct GvoxModelData {
     size_t size = 0;
     uint8_t *ptr = nullptr;
+};
+
+struct GpuResources {
+    daxa::ImageId value_noise_image;
+    daxa::ImageId blue_noise_vec2_image;
+    daxa::ImageId debug_texture;
+
+    daxa::BufferId input_buffer;
+    daxa::BufferId output_buffer;
+    daxa::BufferId staging_output_buffer;
+    daxa::BufferId globals_buffer;
+    daxa::BufferId gvox_model_buffer;
+
+    daxa::SamplerId sampler_nnc;
+    daxa::SamplerId sampler_lnc;
+    daxa::SamplerId sampler_llc;
+    daxa::SamplerId sampler_llr;
+
+    void create(daxa::Device &device);
+    void destroy(daxa::Device &device) const;
 };
 
 struct VoxelApp : AppWindow<VoxelApp> {
@@ -35,11 +58,37 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AppUi ui;
     AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
-    GpuApp gpu_app;
+
+    // gpu_app
+    Renderer renderer;
+
+    VoxelWorld voxel_world;
+    VoxelParticles particles;
+
+    GpuResources gpu_resources;
+    daxa::BufferId prev_gvox_model_buffer{};
+
+    daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
+    daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
+    daxa::TaskImage task_debug_texture{{.name = "task_debug_texture"}};
+
+    daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
+    daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
+    daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
+    daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
+    daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
+
+    GpuInput gpu_input{};
+    GpuOutput gpu_output{};
+    std::vector<std::string> ui_strings;
+
+    bool needs_vram_calc = true;
+
+    using Clock = std::chrono::high_resolution_clock;
+    Clock::time_point prev_phys_update_time = Clock::now();
+    // end gpu_app
 
     std::array<daxa_f32vec2, 128> halton_offsets{};
-    GpuInput &gpu_input{gpu_app.gpu_input};
-    GpuOutput &gpu_output{gpu_app.gpu_output};
     daxa_f32 render_res_scl{1.0f};
     GvoxContext *gvox_ctx;
 
@@ -83,4 +132,11 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void upload_model(daxa::TaskGraph &temp_task_graph);
 
     auto record_main_task_graph() -> daxa::TaskGraph;
+
+    void gpu_app_draw_ui();
+    void gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph);
+    void gpu_app_begin_frame(daxa::TaskGraph &task_graph);
+    void gpu_app_dynamic_buffers_realloc();
+    void gpu_app_record_startup(RecordContext &record_ctx);
+    void gpu_app_record_frame(RecordContext &record_ctx);
 };

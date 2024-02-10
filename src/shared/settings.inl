@@ -14,6 +14,11 @@ struct AutoExposureSettings {
     daxa_f32 ev_shift;
 };
 
+struct RendererSettings {
+    bool do_global_illumination;
+    AutoExposureSettings auto_exposure;
+};
+
 struct DensityProfileLayer {
     daxa_f32 const_term;
     daxa_f32 exp_scale;

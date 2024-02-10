@@ -69,7 +69,7 @@ struct VoxelParticles {
     }
 
     void simulate(RecordContext &record_ctx,
-                  VoxelWorld::Buffers &voxel_world_buffers) {
+                  VoxelWorldBuffers &voxel_world_buffers) {
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
         }
@@ -147,8 +147,8 @@ struct VoxelParticles {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "voxel particles", .task_image_id = raster_color_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
-        AppUi::DebugDisplay::add_pass({.name = "voxel particles depth", .task_image_id = raster_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "voxel particles", .task_image_id = raster_color_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
+        debug_utils::DebugDisplay::add_pass({.name = "voxel particles depth", .task_image_id = raster_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         return {raster_color_image, raster_depth_image};
     }
 };

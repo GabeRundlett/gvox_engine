@@ -101,3 +101,19 @@ struct VoxelRWBufferPtrs {
 
 #define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_BufferPtr(VoxelLeafChunk)(voxel_chunks), daxa_BufferPtr(VoxelWorldGlobals)(voxel_globals))
 #define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), daxa_RWBufferPtr(VoxelLeafChunk)(voxel_chunks), daxa_RWBufferPtr(VoxelWorldGlobals)(voxel_globals))
+
+#if defined(__cplusplus)
+
+#include <shared/utils/allocator.inl>
+
+struct VoxelWorldBuffers {
+    daxa::BufferId voxel_globals_buffer;
+    daxa::TaskBuffer task_voxel_globals_buffer{{.name = "task_voxel_globals_buffer"}};
+    daxa::BufferId voxel_chunks_buffer;
+    daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
+    AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
+    // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
+    // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
+};
+
+#endif

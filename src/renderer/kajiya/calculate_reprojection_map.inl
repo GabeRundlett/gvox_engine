@@ -44,7 +44,7 @@ inline auto calculate_reprojection_map(RecordContext &record_ctx, GbufferDepth c
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
         },
     });
-    AppUi::DebugDisplay::add_pass({.name = "reprojection_map", .task_image_id = reprojection_map, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    debug_utils::DebugDisplay::add_pass({.name = "reprojection_map", .task_image_id = reprojection_map, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     return reprojection_map;
 }
 

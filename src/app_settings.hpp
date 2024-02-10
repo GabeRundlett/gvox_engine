@@ -27,7 +27,7 @@ struct AppSettings {
     daxa_f32vec2 sun_angle;
     daxa_f32 sun_angular_radius;
 
-    AutoExposureSettings auto_exposure;
+    RendererSettings renderer;
 
     BrushSettings world_brush_settings;
     BrushSettings brush_a_settings;

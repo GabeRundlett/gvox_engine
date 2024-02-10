@@ -34,3 +34,12 @@ struct VoxelRWBufferPtrs {
 
 #define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelWorldGlobals)(voxel_globals))
 #define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelWorldGlobals)(voxel_globals))
+
+#if defined(__cplusplus)
+
+struct VoxelWorldBuffers {
+    daxa::BufferId voxel_globals;
+    daxa::TaskBuffer task_voxel_globals{{.name = "task_voxel_globals"}};
+};
+
+#endif

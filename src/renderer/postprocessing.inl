@@ -57,9 +57,9 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
     });
 }
 
-inline void debug_pass(RecordContext &record_ctx, AppUi::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
+inline void debug_pass(RecordContext &record_ctx, debug_utils::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
     struct DebugImageRasterTaskInfo {
-        AppUi::Pass const *pass;
+        debug_utils::Pass const *pass;
     };
 
     record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{

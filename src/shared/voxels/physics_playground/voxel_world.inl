@@ -1,19 +1,11 @@
 #pragma once
 
+#include "voxels.inl"
+
 #if defined(__cplusplus)
 
-struct VoxelWorld : AppUi::DebugDisplayProvider {
-    struct Buffers {
-        daxa::BufferId voxel_globals;
-        daxa::TaskBuffer task_voxel_globals{{.name = "task_voxel_globals"}};
-    };
-
-    Buffers buffers;
-
-    virtual ~VoxelWorld() override = default;
-
-    virtual void add_ui() override {
-    }
+struct VoxelWorld {
+    VoxelWorldBuffers buffers;
 
     void create(daxa::Device &device) {
         buffers.voxel_globals = device.create_buffer({

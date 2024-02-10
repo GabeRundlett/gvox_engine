@@ -51,7 +51,7 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, VoxelWorld::Buffers &voxel_buffers, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
+    auto render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, daxa::TaskBufferView simulated_voxel_particles_buffer, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
         gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
@@ -124,9 +124,9 @@ struct GbufferRenderer {
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryComputePush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.info_image(ti.get(TracePrimaryCompute::g_buffer_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
-                // AppUi::Console::s_instance->add_log(fmt::format("0 {}, {}", image_info.size.x, image_info.size.y));
+                // debug_utils::Console::add_log(fmt::format("0 {}, {}", image_info.size.x, image_info.size.y));
                 set_push_constant(ti, push);
-                // AppUi::Console::s_instance->add_log(fmt::format("1 {}, {}", image_info.size.x, image_info.size.y));
+                // debug_utils::Console::add_log(fmt::format("1 {}, {}", image_info.size.x, image_info.size.y));
                 // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
@@ -156,10 +156,10 @@ struct GbufferRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "depth_prepass", .task_image_id = depth_prepass_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "gbuffer", .task_image_id = gbuffer_depth.gbuffer, .type = DEBUG_IMAGE_TYPE_GBUFFER});
-        AppUi::DebugDisplay::add_pass({.name = "geometric_normal", .task_image_id = gbuffer_depth.geometric_normal, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "velocity", .task_image_id = velocity_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "depth_prepass", .task_image_id = depth_prepass_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "gbuffer", .task_image_id = gbuffer_depth.gbuffer, .type = DEBUG_IMAGE_TYPE_GBUFFER});
+        debug_utils::DebugDisplay::add_pass({.name = "geometric_normal", .task_image_id = gbuffer_depth.geometric_normal, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "velocity", .task_image_id = velocity_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return {gbuffer_depth, velocity_image};
     }

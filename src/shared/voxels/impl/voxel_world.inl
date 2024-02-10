@@ -2,7 +2,7 @@
 
 #include <shared/input.inl>
 #include <shared/globals.inl>
-#include <shared/voxels/impl/voxels.inl>
+#include "voxels.inl"
 
 DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
@@ -73,30 +73,18 @@ struct ChunkAllocComputePush {
 
 #if defined(__cplusplus)
 
-struct VoxelWorld : AppUi::DebugDisplayProvider {
-    struct Buffers {
-        daxa::BufferId voxel_globals_buffer;
-        daxa::TaskBuffer task_voxel_globals_buffer{{.name = "task_voxel_globals_buffer"}};
-        daxa::BufferId voxel_chunks_buffer;
-        daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
-        AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
-        // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
-        // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
-    };
-
-    Buffers buffers;
+struct VoxelWorld {
+    VoxelWorldBuffers buffers;
     daxa_u32 debug_page_count{};
     daxa_u32 debug_gpu_heap_usage{};
 
-    virtual ~VoxelWorld() override = default;
-
-    virtual void add_ui() override {
-        if (ImGui::TreeNode("Voxel World")) {
-            ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-            ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
-            ImGui::TreePop();
-        }
-    }
+    // virtual void add_ui() override {
+    //     if (ImGui::TreeNode("Voxel World")) {
+    //         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
+    //         ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
+    //         ImGui::TreePop();
+    //     }
+    // }
 
     void create(daxa::Device &device) {
         buffers.voxel_globals_buffer = device.create_buffer({

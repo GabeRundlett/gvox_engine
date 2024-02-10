@@ -158,10 +158,10 @@ struct SsaoRenderer {
             },
         });
 
-        AppUi::DebugDisplay::add_pass({.name = "ssao", .task_image_id = ssao_image0, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "ssao spatial", .task_image_id = ssao_image1, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "ssao upsample", .task_image_id = ssao_image2, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        AppUi::DebugDisplay::add_pass({.name = "ssao temporal", .task_image_id = ssao_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "ssao", .task_image_id = ssao_image0, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "ssao spatial", .task_image_id = ssao_image1, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "ssao upsample", .task_image_id = ssao_image2, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        debug_utils::DebugDisplay::add_pass({.name = "ssao temporal", .task_image_id = ssao_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         return daxa::TaskImageView{ssao_image};
     }
