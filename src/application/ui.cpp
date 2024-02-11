@@ -181,7 +181,8 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
 }
 
 AppUi::~AppUi() {
-    if ((settings.autosave || autosave_override) && needs_saving) {
+    auto autosave = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
+    if ((autosave || autosave_override) && needs_saving) {
         settings.save(data_directory / "user_settings.json");
     }
     ImGui_ImplGlfw_Shutdown();
@@ -189,11 +190,10 @@ AppUi::~AppUi() {
 }
 
 void AppUi::rescale_ui() {
-    settings.ui_scl = std::clamp(settings.ui_scl, 0.5f, 2.0f);
-    mono_font->Scale = settings.ui_scl * 0.5f;
-    menu_font->Scale = settings.ui_scl * 0.5f;
+    mono_font->Scale = ui_scale * 0.5f;
+    menu_font->Scale = ui_scale * 0.5f;
     auto &style = ImGui::GetStyle();
-    style.FramePadding = {settings.ui_scl * 4.0f, settings.ui_scl * 3.0f};
+    style.FramePadding = {ui_scale * 4.0f, ui_scale * 3.0f};
 }
 
 template <class... Ts>
@@ -202,19 +202,7 @@ struct overloaded : Ts... {
 };
 
 namespace {
-    void sky_settings(SkySettings &sky, bool &needs_saving) {
-        if (ImGui::InputFloat3("mie scattering", &sky.mie_scattering.x, "%.6f")) {
-            needs_saving = true;
-        }
-        if (ImGui::InputFloat3("rayleigh scattering", &sky.rayleigh_scattering.x, "%.6f")) {
-            needs_saving = true;
-        }
-        if (ImGui::InputFloat3("absorption extinction", &sky.absorption_extinction.x, "%.6f")) {
-            needs_saving = true;
-        }
-    }
-
-    bool settings_entry_ui(SettingId const &id, SettingType &data) {
+    bool settings_entry_ui(SettingId const &id, SettingValue &data) {
         bool changed = false;
 
         std::visit(
@@ -234,6 +222,9 @@ namespace {
                         ImGui::EndPopup();
                     }
                 },
+                [&changed, &id](settings::Checkbox &data) {
+                    changed = ImGui::Checkbox(id.c_str(), &data.value);
+                },
             },
             data);
 
@@ -244,7 +235,14 @@ namespace {
 void AppUi::settings_ui() {
     ImGui::Begin("Settings");
 
-    const auto bottom_bar_size = 32 * settings.ui_scl + 12;
+    auto autosave_0 = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
+
+    auto new_ui_scale = std::clamp(AppSettings::get<settings::InputFloat>("UI", "Scale").value, 0.5f, 2.0f);
+    if (new_ui_scale != ui_scale) {
+        ui_scale = new_ui_scale;
+        rescale_ui();
+    }
+    const auto bottom_bar_size = 32 * ui_scale + 12;
     ImGui::BeginChild("Child0", ImVec2(0, ImGui::GetContentRegionAvail().y - bottom_bar_size));
 
     if (ImGui::BeginTabBar("##settings_tabs")) {
@@ -255,6 +253,8 @@ void AppUi::settings_ui() {
                     for (auto &[id, entry] : category) {
                         if (settings_entry_ui(id, entry.data)) {
                             needs_saving = true;
+                            // TODO: Figure out how to make this conditional
+                            should_record_task_graph = true;
                         }
                     }
                     ImGui::TreePop();
@@ -296,70 +296,6 @@ void AppUi::settings_ui() {
             ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Graphics")) {
-            if (ImGui::Checkbox("Global Illumination", &settings.global_illumination)) {
-                needs_saving = true;
-                should_record_task_graph = true;
-            }
-            if (ImGui::Checkbox("Battery Saving Mode", &settings.battery_saving_mode)) {
-                needs_saving = true;
-            }
-            auto resolution_scale_id = static_cast<int>(settings.render_res_scl_id);
-            if (ImGui::Combo("Resolution Scale", &resolution_scale_id, resolution_scale_options.data(), resolution_scale_options.size())) {
-                settings.render_res_scl_id = static_cast<RenderResScl>(resolution_scale_id);
-                needs_saving = true;
-            }
-
-            if (ImGui::TreeNode("Auto Exposure")) {
-                if (ImGui::SliderFloat("EV Shift", &settings.renderer.auto_exposure.ev_shift, -5.0f, 5.0f)) {
-                    needs_saving = true;
-                }
-                if (ImGui::SliderFloat("Histogram Clip Min", &settings.renderer.auto_exposure.histogram_clip_low, 0.0f, 1.0f)) {
-                    needs_saving = true;
-                }
-                if (ImGui::SliderFloat("Histogram Clip Max", &settings.renderer.auto_exposure.histogram_clip_high, 0.0f, 1.0f - settings.renderer.auto_exposure.histogram_clip_low)) {
-                    needs_saving = true;
-                }
-                if (ImGui::SliderFloat("Adaption Speed", &settings.renderer.auto_exposure.speed, 0.5f, 50.0f)) {
-                    needs_saving = true;
-                }
-                ImGui::TreePop();
-            }
-
-            // if (ImGui::TreeNode("Sky")) {
-            //     if (ImGui::SliderFloat("Sun Angle X", &settings.sun_angle.x, 0.0f, 360.0f)) {
-            //         needs_saving = true;
-            //     }
-            //     if (ImGui::SliderFloat("Sun Angle Y", &settings.sun_angle.y, 0.0f, 180.0f)) {
-            //         needs_saving = true;
-            //     }
-            //     if (ImGui::SliderFloat("Sun Angular Radius", &settings.sun_angular_radius, 0.05f, 30.5f)) {
-            //         needs_saving = true;
-            //     }
-            //     sky_settings(settings.sky, needs_saving);
-            //     ImGui::TreePop();
-            // }
-            settings.recompute_sun_direction();
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("UI")) {
-            if (ImGui::InputFloat("Scale", &settings.ui_scl, 0.1f)) {
-                needs_saving = true;
-                rescale_ui();
-            }
-            if (ImGui::Checkbox("Show Debug Info", &settings.show_debug_info)) {
-                needs_saving = true;
-            }
-            if (ImGui::Checkbox("Show Console", &settings.show_console)) {
-                needs_saving = true;
-            }
-            if (ImGui::Checkbox("Show Help Menu", &settings.show_help)) {
-                needs_saving = true;
-            }
-            if (ImGui::Checkbox("Show ImGui Demo Window", &show_imgui_demo_window)) {
-            }
-            ImGui::EndTabItem();
-        }
         if (ImGui::BeginTabItem("Controls")) {
             settings_controls_ui();
             ImGui::EndTabItem();
@@ -375,11 +311,13 @@ void AppUi::settings_ui() {
 
     ImGui::Text("Settings");
     ImGui::SameLine();
-    if (ImGui::Checkbox("Auto-save", &settings.autosave)) {
-        needs_saving = true;
+
+    auto autosave = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
+
+    if (autosave_0 != autosave) {
         autosave_override = true;
     }
-    if (!settings.autosave) {
+    if (!autosave) {
         ImGui::SameLine();
         if (ImGui::Button("Save")) {
             settings.save(data_directory / "user_settings.json");
@@ -387,14 +325,12 @@ void AppUi::settings_ui() {
         ImGui::SameLine();
         if (ImGui::Button("Load")) {
             settings.load(data_directory / "user_settings.json");
-            rescale_ui();
             needs_saving = true;
         }
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         settings.reset_default();
-        rescale_ui();
         needs_saving = true;
     }
     ImGui::End();
@@ -413,7 +349,7 @@ void AppUi::settings_controls_ui() {
     if (ImGui::SliderFloat("Mouse Sensitivity", &settings.mouse_sensitivity, 0.1f, 10.0f)) {
         needs_saving = true;
     }
-    if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, -(32 * settings.ui_scl + 12)))) {
+    if (ImGui::BeginTable("controls_table", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersV | ImGuiTableFlags_ScrollY, ImVec2(0, -(32 * ui_scale + 12)))) {
         ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 0.0f, 0);
         ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch, 0.0f, 1);
         ImGui::TableHeadersRow();
@@ -584,7 +520,6 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
     full_frametimes[frametime_rotation_index] = delta_time;
     frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
-    render_res_scl = resolution_scale_values[static_cast<size_t>(settings.render_res_scl_id)];
 
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -618,15 +553,23 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
             ImGui::ShowDemoWindow(&show_imgui_demo_window);
         }
 
-        if (settings.show_console) {
-            debug_utils::Console::draw("Console", &settings.show_console);
+        auto show_console = AppSettings::get<settings::Checkbox>("UI", "show_console").value;
+        if (show_console) {
+            auto temp_show_console = show_console;
+            debug_utils::Console::draw("Console", &show_console);
+            if (temp_show_console != show_console) {
+                AppSettings::set("UI", "show_console", settings::Checkbox{.value = show_console});
+            }
         }
+
         if (show_settings) {
             settings_ui();
         }
     }
 
-    if (settings.show_debug_info) {
+    auto show_debug_info = AppSettings::get<settings::Checkbox>("UI", "show_debug_info").value;
+
+    if (show_debug_info) {
         ImGui::PushFont(mono_font);
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
         auto pos = viewport->WorkPos;
@@ -722,7 +665,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     // Auto-save
     auto now = Clock::now();
     using namespace std::chrono_literals;
-    if ((settings.autosave || autosave_override) && needs_saving && now - last_save_time > 0.1s) {
+    auto autosave = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
+    if ((autosave || autosave_override) && needs_saving && now - last_save_time > 0.1s) {
         settings.save(data_directory / "user_settings.json");
         needs_saving = false;
         autosave_override = false;
@@ -738,16 +682,13 @@ void AppUi::toggle_pause() {
 }
 
 void AppUi::toggle_debug() {
-    settings.show_debug_info = !settings.show_debug_info;
-    needs_saving = true;
-}
-
-void AppUi::toggle_help() {
-    settings.show_help = !settings.show_help;
+    auto show_debug_info = AppSettings::get<settings::Checkbox>("UI", "show_debug_info").value;
+    AppSettings::set("UI", "show_debug_info", settings::Checkbox{.value = !show_debug_info});
     needs_saving = true;
 }
 
 void AppUi::toggle_console() {
-    settings.show_console = !settings.show_console;
+    auto show_console = AppSettings::get<settings::Checkbox>("UI", "show_console").value;
+    AppSettings::set("UI", "show_console", settings::Checkbox{.value = !show_console});
     needs_saving = true;
 }

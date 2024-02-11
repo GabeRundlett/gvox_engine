@@ -22,6 +22,7 @@ struct KajiyaRenderer {
     bool do_global_illumination = true;
 
     void create(daxa::Device &device) {
+        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}});
         post_processor.create(device);
     }
 
@@ -57,6 +58,9 @@ struct KajiyaRenderer {
 
         auto rtr = daxa::TaskImageView{};
         auto rtdgi = daxa::TaskImageView{};
+
+        do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+
         if (do_global_illumination) {
             auto ircache_state = ircache_renderer.prepare(record_ctx);
             auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_buffers, sky_cube, transmittance_lut);

@@ -23,6 +23,11 @@ void Renderer::create(daxa::Device &device) {
     auto &self = *impl;
     self.kajiya_renderer.create(device);
     self.sky.create(device);
+
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip High", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = -2.5f, .min = -15.0f, .max = 15.0f}});
 }
 
 void Renderer::destroy(daxa::Device &device) {
@@ -49,10 +54,16 @@ void Renderer::begin_frame(GpuInput &gpu_input, GpuOutput &gpu_output) {
     }
 }
 
-void Renderer::end_frame(daxa::Device &device, RendererSettings const &settings, float dt) {
+void Renderer::end_frame(daxa::Device &device, float dt) {
     auto &self = *impl;
     self.gbuffer_renderer.next_frame();
-    self.kajiya_renderer.next_frame(device, settings.auto_exposure, dt);
+    auto auto_exposure_settings = AutoExposureSettings{
+        .histogram_clip_low = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Hist Clip Low").value,
+        .histogram_clip_high = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Hist Clip High").value,
+        .speed = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Reaction Speed").value,
+        .ev_shift = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Shift").value,
+    };
+    self.kajiya_renderer.next_frame(device, auto_exposure_settings, dt);
 }
 
 auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {

@@ -7,14 +7,6 @@
 #include <GLFW/glfw3.h>
 #include "settings.inl"
 
-enum struct RenderResScl {
-    SCL_33_PCT,
-    SCL_50_PCT,
-    SCL_67_PCT,
-    SCL_75_PCT,
-    SCL_100_PCT,
-};
-
 using SettingCategoryId = std::string;
 using SettingId = std::string;
 
@@ -30,17 +22,21 @@ namespace settings {
         float min;
         float max;
     };
+    struct Checkbox {
+        bool value;
+    };
 } // namespace settings
 
-using SettingType = std::variant<
+using SettingValue = std::variant<
     settings::InputFloat,
     settings::InputFloat3,
-    settings::SliderFloat>;
+    settings::SliderFloat,
+    settings::Checkbox>;
 
 struct SettingEntry {
-    SettingType data;
-    SettingType factory_default;
-    SettingType user_default;
+    SettingValue data;
+    SettingValue factory_default;
+    SettingValue user_default;
 };
 
 template <typename T>
@@ -51,28 +47,12 @@ struct SettingInfo {
 };
 
 struct AppSettings {
+    // TODO: remove these explicit settings in favor of settings registry
     std::map<daxa_i32, daxa_i32> keybinds;
     std::map<daxa_i32, daxa_i32> mouse_button_binds;
 
-    // TODO: remove
-    daxa_f32 ui_scl;
     daxa_f32 mouse_sensitivity;
-    RenderResScl render_res_scl_id;
     std::string world_seed_str;
-
-    RendererSettings renderer;
-
-    BrushSettings world_brush_settings;
-    BrushSettings brush_a_settings;
-    BrushSettings brush_b_settings;
-
-    bool show_debug_info;
-    bool show_console;
-    bool show_help;
-    bool autosave;
-    bool battery_saving_mode;
-    bool global_illumination;
-    //
 
     static inline AppSettings *s_instance = nullptr;
 
@@ -80,8 +60,6 @@ struct AppSettings {
 
     AppSettings();
     ~AppSettings();
-
-    static bool default_entry_ui(SettingId const &id, SettingType &data);
 
     static void add(SettingCategoryId const &category_id, SettingId const &id, SettingEntry const &entry);
     template <typename T>
@@ -95,8 +73,9 @@ struct AppSettings {
             });
     }
 
-    static auto get(SettingCategoryId const &category_id, SettingId const &id) -> SettingEntry;
+    static void set(SettingCategoryId const &category_id, SettingId const &id, SettingValue const &value);
 
+    static auto get(SettingCategoryId const &category_id, SettingId const &id) -> SettingEntry;
     template <typename T>
     static auto get(SettingCategoryId const &category_id, SettingId const &id) -> T {
         return std::get<T>(get(category_id, id).data);
@@ -106,6 +85,4 @@ struct AppSettings {
     void load(std::filesystem::path const &filepath);
     void clear();
     void reset_default();
-
-    void recompute_sun_direction();
 };

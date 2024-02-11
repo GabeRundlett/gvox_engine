@@ -41,6 +41,7 @@ struct AppUi {
     daxa_i32 new_key_id{};
     daxa_i32 limbo_action_index = INVALID_GAME_ACTION;
     daxa_i32 limbo_key_index = GLFW_KEY_LAST + 1;
+    daxa_f32 ui_scale = 1.0f;
     bool limbo_is_button = false;
 
     bool paused = true;
@@ -54,22 +55,6 @@ struct AppUi {
     bool should_regenerate_sky = true;
 
     bool should_record_task_graph = false;
-
-    static inline constexpr std::array<char const *, 5> resolution_scale_options = {
-        "33%",
-        "50%",
-        "67%",
-        "75%",
-        "100%",
-    };
-    static inline constexpr std::array<float, 5> resolution_scale_values = {
-        0.33333333f,
-        0.50f,
-        0.66666667f,
-        0.75f,
-        1.00f,
-    };
-    daxa_f32 render_res_scl = 1.0f;
 
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;
@@ -89,7 +74,6 @@ struct AppUi {
 
     void toggle_pause();
     void toggle_debug();
-    void toggle_help();
     void toggle_console();
 
   private:

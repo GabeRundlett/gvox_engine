@@ -172,7 +172,15 @@ VoxelApp::VoxelApp()
       }},
       ui{AppUi(AppWindow::glfw_window_ptr)} {
 
-    AppSettings::add(SettingInfo<settings::SliderFloat>{"Camera", "FOV", {.value = 74.0f, .min = 0.0f, .max = 179.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "FOV", {.value = 74.0f, .min = 0.0f, .max = 179.0f}});
+
+    AppSettings::add<settings::InputFloat>({"UI", "Scale", {.value = 1.0f}});
+    AppSettings::add<settings::Checkbox>({"UI", "show_debug_info", {.value = false}});
+    AppSettings::add<settings::Checkbox>({"UI", "show_console", {.value = false}});
+    AppSettings::add<settings::Checkbox>({"UI", "autosave", {.value = true}});
+    AppSettings::add<settings::Checkbox>({"General", "battery_saving_mode", {.value = false}});
+
+    AppSettings::add<settings::SliderFloat>({"Graphics", "Render Res Scale", {.value = 1.0f, .min = 0.2f, .max = 4.0f}});
 
     auto const &device_props = device.properties();
     ui.debug_gpu_name = reinterpret_cast<char const *>(device_props.device_name);
@@ -422,12 +430,9 @@ void VoxelApp::run() {
         }
 
         if (!AppWindow::minimized) {
-            auto resized = render_res_scl != ui.render_res_scl;
-            if (resized) {
-                on_resize(window_size.x, window_size.y);
-            }
+            on_resize(window_size.x, window_size.y);
 
-            if (ui.settings.battery_saving_mode) {
+            if (AppSettings::get<settings::Checkbox>("General", "battery_saving_mode").value) {
                 std::this_thread::sleep_for(10ms);
             }
 
@@ -876,7 +881,7 @@ void VoxelApp::on_update() {
     gpu_input.time = std::chrono::duration<daxa_f32>(now - start).count();
     gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
-    gpu_input.render_res_scl = ui.render_res_scl;
+    gpu_input.render_res_scl = render_res_scl;
     gpu_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
 
@@ -1000,7 +1005,7 @@ void VoxelApp::on_update() {
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
-    renderer.end_frame(device, ui.settings.renderer, gpu_input.delta_time);
+    renderer.end_frame(device, gpu_input.delta_time);
 
     auto t1 = Clock::now();
     ui.update(gpu_input.delta_time, std::chrono::duration<daxa_f32>(t1 - t0).count());
@@ -1062,9 +1067,6 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     }
 
     if (ui.paused) {
-        if (key_id == GLFW_KEY_F1 && action == GLFW_PRESS) {
-            ui.toggle_help();
-        }
         if (key_id == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS) {
             ui.toggle_console();
         }
@@ -1081,12 +1083,13 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
 }
 void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
     minimized = (sx == 0 || sy == 0);
-    auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != ui.render_res_scl;
+    auto new_render_res_scl = AppSettings::get<settings::SliderFloat>("Graphics", "Render Res Scale").value;
+    auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != new_render_res_scl;
     if (!minimized && resized) {
         swapchain.resize();
         window_size.x = swapchain.get_surface_extent().x;
         window_size.y = swapchain.get_surface_extent().y;
-        render_res_scl = ui.render_res_scl;
+        render_res_scl = new_render_res_scl;
         {
             // resize render images
             // gpu_resources.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
