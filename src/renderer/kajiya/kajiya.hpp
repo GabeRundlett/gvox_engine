@@ -22,7 +22,7 @@ struct KajiyaRenderer {
     bool do_global_illumination = true;
 
     void create(daxa::Device &device) {
-        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}});
+        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
         post_processor.create(device);
     }
 

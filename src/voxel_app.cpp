@@ -180,7 +180,7 @@ VoxelApp::VoxelApp()
     AppSettings::add<settings::Checkbox>({"UI", "autosave", {.value = true}});
     AppSettings::add<settings::Checkbox>({"General", "battery_saving_mode", {.value = false}});
 
-    AppSettings::add<settings::SliderFloat>({"Graphics", "Render Res Scale", {.value = 1.0f, .min = 0.2f, .max = 4.0f}});
+    AppSettings::add<settings::SliderFloat>({"Graphics", "Render Res Scale", {.value = 1.0f, .min = 0.2f, .max = 4.0f}, {.task_graph_depends = true}});
 
     auto const &device_props = device.properties();
     ui.debug_gpu_name = reinterpret_cast<char const *>(device_props.device_name);
@@ -545,7 +545,7 @@ auto VoxelApp::load_gvox_data() -> GvoxModelData {
     }
     GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
     GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);
-    result = load_gvox_data_from_parser(i_ctx, p_ctx, nullptr); // &ui.gvox_region_range,
+    result = load_gvox_data_from_parser(i_ctx, p_ctx, nullptr);
     gvox_destroy_adapter_context(i_ctx);
     gvox_destroy_adapter_context(p_ctx);
     return result;

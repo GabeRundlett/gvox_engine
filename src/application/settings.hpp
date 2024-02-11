@@ -33,10 +33,15 @@ using SettingValue = std::variant<
     settings::SliderFloat,
     settings::Checkbox>;
 
+struct SettingConfig {
+    bool task_graph_depends = false;
+};
+
 struct SettingEntry {
     SettingValue data;
     SettingValue factory_default;
     SettingValue user_default;
+    SettingConfig config;
 };
 
 template <typename T>
@@ -44,6 +49,7 @@ struct SettingInfo {
     SettingCategoryId category_id = "General";
     SettingId id;
     T factory_default;
+    SettingConfig config = {};
 };
 
 struct AppSettings {
@@ -70,6 +76,7 @@ struct AppSettings {
                 .data = info.factory_default,
                 .factory_default = info.factory_default,
                 .user_default = info.factory_default,
+                .config = info.config,
             });
     }
 

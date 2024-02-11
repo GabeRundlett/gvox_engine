@@ -202,31 +202,55 @@ struct overloaded : Ts... {
 };
 
 namespace {
-    bool settings_entry_ui(SettingId const &id, SettingValue &data) {
+    bool settings_entry_ui(SettingId const &id, SettingEntry &entry) {
         bool changed = false;
+
+        auto context_menu = [&](auto extra_code) {
+            if (ImGui::BeginPopupContextItem(id.c_str())) {
+                ImGui::Text("%s", id.c_str());
+                extra_code();
+                if (ImGui::Button("Save Default")) {
+                    entry.user_default = entry.data;
+                    changed = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Reset")) {
+                    entry.data = entry.user_default;
+                    changed = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Factory Reset")) {
+                    entry.data = entry.factory_default;
+                    changed = true;
+                }
+                ImGui::EndPopup();
+            }
+        };
 
         std::visit(
             overloaded{
-                [&changed, &id](settings::InputFloat &data) {
+                [&](settings::InputFloat &data) {
                     changed = ImGui::InputFloat(id.c_str(), &data.value);
+                    context_menu([]() {});
                 },
-                [&changed, &id](settings::InputFloat3 &data) {
+                [&](settings::InputFloat3 &data) {
                     changed = ImGui::InputFloat3(id.c_str(), &data.value.x);
+                    context_menu([]() {});
                 },
-                [&changed, &id](settings::SliderFloat &data) {
+                [&](settings::SliderFloat &data) {
                     changed = ImGui::SliderFloat(id.c_str(), &data.value, data.min, data.max);
-                    if (ImGui::BeginPopupContextItem()) {
+                    context_menu([&]() {
                         auto changed0 = ImGui::InputFloat("min", &data.min);
                         auto changed1 = ImGui::InputFloat("max", &data.max);
                         changed = changed || changed0 || changed1;
-                        ImGui::EndPopup();
-                    }
+                    });
                 },
-                [&changed, &id](settings::Checkbox &data) {
+                [&](settings::Checkbox &data) {
                     changed = ImGui::Checkbox(id.c_str(), &data.value);
+                    context_menu([]() {});
                 },
             },
-            data);
+            entry.data);
 
         return changed;
     }
@@ -249,12 +273,44 @@ void AppUi::settings_ui() {
         if (ImGui::BeginTabItem("App")) {
             auto &settings = *AppSettings::s_instance;
             for (auto &[cat_id, category] : settings.categories) {
-                if (ImGui::TreeNode(cat_id.c_str())) {
-                    for (auto &[id, entry] : category) {
-                        if (settings_entry_ui(id, entry.data)) {
+                auto category_open = ImGui::TreeNode(cat_id.c_str());
+                if (ImGui::BeginPopupContextItem()) {
+                    ImGui::Text("%s", cat_id.c_str());
+                    if (ImGui::Button("Save Defaults")) {
+                        for (auto &[id, entry] : category) {
+                            entry.user_default = entry.data;
                             needs_saving = true;
-                            // TODO: Figure out how to make this conditional
-                            should_record_task_graph = true;
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset")) {
+                        for (auto &[id, entry] : category) {
+                            entry.data = entry.user_default;
+                            needs_saving = true;
+                            if (entry.config.task_graph_depends) {
+                                should_record_task_graph = true;
+                            }
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Factory Reset")) {
+                        for (auto &[id, entry] : category) {
+                            entry.data = entry.factory_default;
+                            needs_saving = true;
+                            if (entry.config.task_graph_depends) {
+                                should_record_task_graph = true;
+                            }
+                        }
+                    }
+                    ImGui::EndPopup();
+                }
+                if (category_open) {
+                    for (auto &[id, entry] : category) {
+                        if (settings_entry_ui(id, entry)) {
+                            needs_saving = true;
+                            if (entry.config.task_graph_depends) {
+                                should_record_task_graph = true;
+                            }
                         }
                     }
                     ImGui::TreePop();
@@ -282,18 +338,8 @@ void AppUi::settings_ui() {
                     debug_utils::Console::add_log(fmt::format("[error]: {}", NFD_GetError()));
                 }
             }
-            {
-                ImGui::InputInt3("Load Offset", &gvox_region_range.offset.x);
-                auto temp_i32vec3 = gvox_region_range.offset;
-                temp_i32vec3.x = static_cast<daxa_i32>(gvox_region_range.extent.x);
-                temp_i32vec3.y = static_cast<daxa_i32>(gvox_region_range.extent.y);
-                temp_i32vec3.z = static_cast<daxa_i32>(gvox_region_range.extent.z);
-                ImGui::InputInt3("Load Extent", &temp_i32vec3.x);
-                gvox_region_range.extent.x = static_cast<daxa_u32>(std::max(temp_i32vec3.x, 0));
-                gvox_region_range.extent.y = static_cast<daxa_u32>(std::max(temp_i32vec3.y, 0));
-                gvox_region_range.extent.z = static_cast<daxa_u32>(std::max(temp_i32vec3.z, 0));
-            }
             ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
+            ImGui::Checkbox("Show ImGui Demo Window", &show_imgui_demo_window);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Controls")) {
@@ -331,6 +377,14 @@ void AppUi::settings_ui() {
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         settings.reset_default();
+        for (auto &[cat_id, category] : settings.categories) {
+            for (auto &[id, entry] : category) {
+                entry.data = entry.user_default;
+                if (entry.config.task_graph_depends) {
+                    should_record_task_graph = true;
+                }
+            }
+        }
         needs_saving = true;
     }
     ImGui::End();

@@ -22,11 +22,13 @@ void AppSettings::add(SettingCategoryId const &category_id, SettingId const &id,
         category.insert({id, entry});
     } else {
         entry_iter->second.factory_default = entry.factory_default;
+        entry_iter->second.config = entry.config;
     }
 }
 
 auto AppSettings::get(SettingCategoryId const &category_id, SettingId const &id) -> SettingEntry {
     // TODO: make threadsafe
+    // TODO: make lookup faster
     auto &self = *s_instance;
     auto &category = self.categories[category_id];
     auto entry_iter = category.find(id);

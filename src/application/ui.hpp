@@ -58,15 +58,6 @@ struct AppUi {
 
     bool should_upload_gvox_model = false;
     std::filesystem::path gvox_model_path;
-    GvoxRegionRange gvox_region_range{
-        .offset = {0, 0, 0},
-        .extent = {256, 256, 256},
-        // .offset = {-932, -663, -72},
-        // .extent = {1932, 1167, 635},
-        // .offset = {-70, 108, 150},
-        // .extent = {32, 32, 16},
-    };
-
     std::filesystem::path data_directory;
 
     void rescale_ui();

@@ -95,24 +95,24 @@ struct SkyRenderer {
 
     void create(daxa::Device &device) {
         auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {
-            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
-            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_exp_scale", {.value = factory_default.exp_scale, .min = -1.0f, .max = 1.0f}});
-            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
-            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
-            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
+            AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
+            AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_exp_scale", {.value = factory_default.exp_scale, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
+            AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
         };
 
         auto mie_scale_height = 1.2000000476837158f;
         auto rayleigh_scale_height = 8.696f;
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angle X", {.value = 210.0f, .min = 0.0f, .max = 360.0f}});
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angle Y", {.value = 25.0f, .min = 0.0f, .max = 180.0f}});
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angular Radius", {.value = 0.25f, .min = 0.25f, .max = 30.0f}});
-        AppSettings::add(SettingInfo<settings::InputFloat>{"Atmosphere", "atmosphere_bottom", {.value = 6360.0f}});
-        AppSettings::add(SettingInfo<settings::InputFloat>{"Atmosphere", "atmosphere_top", {.value = 6460.0f}});
-        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "mie_scattering", {.value = {0.003996000159531832f, 0.003996000159531832f, 0.003996000159531832f}}});
-        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "mie_extinction", {.value = {0.00443999981507659f, 0.00443999981507659f, 0.00443999981507659f}}});
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "mie_scale_height", {.value = mie_scale_height, .min = 0.0f, .max = 10.0f}});
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "mie_phase_function_g", {.value = 0.800000011920929f, .min = 0.0f, .max = 1.0f}});
+        AppSettings::add<settings::SliderFloat>({"Sun", "Angle X", {.value = 210.0f, .min = 0.0f, .max = 360.0f}});
+        AppSettings::add<settings::SliderFloat>({"Sun", "Angle Y", {.value = 25.0f, .min = 0.0f, .max = 180.0f}});
+        AppSettings::add<settings::SliderFloat>({"Sun", "Angular Radius", {.value = 0.25f, .min = 0.25f, .max = 30.0f}});
+        AppSettings::add<settings::InputFloat>({"Atmosphere", "atmosphere_bottom", {.value = 6360.0f}});
+        AppSettings::add<settings::InputFloat>({"Atmosphere", "atmosphere_top", {.value = 6460.0f}});
+        AppSettings::add<settings::InputFloat3>({"Atmosphere", "mie_scattering", {.value = {0.003996000159531832f, 0.003996000159531832f, 0.003996000159531832f}}});
+        AppSettings::add<settings::InputFloat3>({"Atmosphere", "mie_extinction", {.value = {0.00443999981507659f, 0.00443999981507659f, 0.00443999981507659f}}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere", "mie_scale_height", {.value = mie_scale_height, .min = 0.0f, .max = 10.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere", "mie_phase_function_g", {.value = 0.800000011920929f, .min = 0.0f, .max = 1.0f}});
         add_DensityProfileLayer(
             "mie_density_0",
             DensityProfileLayer{
@@ -131,8 +131,8 @@ struct SkyRenderer {
                 .layer_width = 0.0f,
                 .lin_term = 0.0f,
             });
-        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "rayleigh_scattering", {.value = {0.006604931f, 0.013344918f, 0.029412623f}}});
-        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "rayleigh_scale_height", {.value = rayleigh_scale_height, .min = 0.0f, .max = 10.0f}});
+        AppSettings::add<settings::InputFloat3>({"Atmosphere", "rayleigh_scattering", {.value = {0.006604931f, 0.013344918f, 0.029412623f}}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere", "rayleigh_scale_height", {.value = rayleigh_scale_height, .min = 0.0f, .max = 10.0f}});
         add_DensityProfileLayer(
             "rayleigh_density_0",
             DensityProfileLayer{
@@ -151,7 +151,7 @@ struct SkyRenderer {
                 .layer_width = 0.0f,
                 .lin_term = 0.0f,
             });
-        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "absorption_extinction", {.value = {0.00229072f, 0.00214036f, 0.0f}}});
+        AppSettings::add<settings::InputFloat3>({"Atmosphere", "absorption_extinction", {.value = {0.00229072f, 0.00214036f, 0.0f}}});
         add_DensityProfileLayer(
             "absorption_density_0",
             DensityProfileLayer{
