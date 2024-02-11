@@ -11,6 +11,7 @@ AppSettings::AppSettings() {
     s_instance = this;
 }
 AppSettings::~AppSettings() {
+    s_instance = nullptr;
 }
 
 void AppSettings::add(SettingCategoryId const &category_id, SettingId const &id, SettingEntry const &entry) {

@@ -8,6 +8,7 @@ project(gvox_engine VERSION 0.1.14)
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
     "src/voxel_app.cpp"
+    "src/voxels/model.cpp"
     "src/application/ui.cpp"
     "src/application/audio.cpp"
     "src/application/settings.cpp"

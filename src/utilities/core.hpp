@@ -257,12 +257,9 @@ struct AsyncManagedRasterPipeline {
 
 struct AsyncPipelineManager {
     std::array<daxa::PipelineManager, 8> pipeline_managers;
-    struct Atomics {
-        std::array<std::mutex, 8> mutexes{};
-        std::atomic_uint64_t current_index = 0;
-        ThreadPool thread_pool{};
-    };
-    std::unique_ptr<Atomics> atomics;
+    std::array<std::mutex, 8> mutexes{};
+    std::atomic_uint64_t current_index = 0;
+    ThreadPool thread_pool{};
 
     AsyncPipelineManager(daxa::PipelineManagerInfo info) {
         pipeline_managers = {
@@ -284,19 +281,18 @@ struct AsyncPipelineManager {
             // daxa::PipelineManager(info),
             // daxa::PipelineManager(info),
         };
-        atomics = std::make_unique<Atomics>();
 
-        atomics->thread_pool.start();
+        thread_pool.start();
     }
 
     ~AsyncPipelineManager() {
-        atomics->thread_pool.stop();
+        thread_pool.stop();
     }
 
     AsyncPipelineManager(AsyncPipelineManager const &) = delete;
-    AsyncPipelineManager(AsyncPipelineManager &&) noexcept = default;
+    AsyncPipelineManager(AsyncPipelineManager &&) noexcept = delete;
     AsyncPipelineManager &operator=(AsyncPipelineManager const &) = delete;
-    AsyncPipelineManager &operator=(AsyncPipelineManager &&) noexcept = default;
+    AsyncPipelineManager &operator=(AsyncPipelineManager &&) noexcept = delete;
 
     auto add_compute_pipeline(daxa::ComputePipelineCompileInfo const &info) -> AsyncManagedComputePipeline {
 #if ENABLE_THREAD_POOL
@@ -306,7 +302,7 @@ struct AsyncPipelineManager {
         result.pipeline_future = pipeline_promise->get_future();
         auto info_copy = info;
 
-        atomics->thread_pool.enqueue([this, pipeline_promise, info_copy]() {
+        thread_pool.enqueue([this, pipeline_promise, info_copy]() {
             auto [pipeline_manager, lock] = get_pipeline_manager();
             auto compile_result = pipeline_manager.add_compute_pipeline(info_copy);
             if (compile_result.is_err()) {
@@ -344,7 +340,7 @@ struct AsyncPipelineManager {
         result.pipeline_future = pipeline_promise->get_future();
         auto info_copy = info;
 
-        atomics->thread_pool.enqueue([this, pipeline_promise, info_copy]() {
+        thread_pool.enqueue([this, pipeline_promise, info_copy]() {
             auto [pipeline_manager, lock] = get_pipeline_manager();
             auto compile_result = pipeline_manager.add_raster_pipeline(info_copy);
             if (compile_result.is_err()) {
@@ -389,7 +385,7 @@ struct AsyncPipelineManager {
     }
     void wait() {
 #if ENABLE_THREAD_POOL
-        while (atomics->thread_pool.busy()) {
+        while (thread_pool.busy()) {
         }
 #endif
     }
@@ -397,19 +393,19 @@ struct AsyncPipelineManager {
         std::array<daxa::PipelineReloadResult, 8> results;
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
             // #if ENABLE_THREAD_POOL
-            //             atomics->thread_pool.enqueue([this, i, &results]() {
+            //             thread_pool.enqueue([this, i, &results]() {
             //                 auto &pipeline_manager = this->pipeline_managers[i];
-            //                 auto lock = std::lock_guard{this->atomics->mutexes[i]};
+            //                 auto lock = std::lock_guard{this->mutexes[i]};
             //                 (results)[i] = pipeline_manager.reload_all();
             //             });
             // #else
             auto &pipeline_manager = pipeline_managers[i];
-            auto lock = std::lock_guard{atomics->mutexes[i]};
+            auto lock = std::lock_guard{mutexes[i]};
             results[i] = pipeline_manager.reload_all();
             // #endif
         }
         // #if ENABLE_THREAD_POOL
-        //         while (atomics->thread_pool.busy()) {
+        //         while (thread_pool.busy()) {
         //         }
         // #endif
         for (auto const &result : results) {
@@ -423,13 +419,13 @@ struct AsyncPipelineManager {
   private:
     auto get_pipeline_manager() -> std::pair<daxa::PipelineManager &, std::unique_lock<std::mutex>> {
 #if ENABLE_THREAD_POOL
-        auto index = atomics->current_index.fetch_add(1);
+        auto index = current_index.fetch_add(1);
         index = (index / 4) % pipeline_managers.size();
 
 #if NDEBUG // Pipeline manager really needs to be internally thread-safe
         // try to find one that's not locked, otherwise we'll fall back on the index above.
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
-            auto &mtx = this->atomics->mutexes[i];
+            auto &mtx = this->mutexes[i];
             if (mtx.try_lock()) {
                 index = i;
                 mtx.unlock();
@@ -442,7 +438,7 @@ struct AsyncPipelineManager {
 #endif
         return {
             pipeline_managers[index],
-            std::unique_lock(atomics->mutexes[index]),
+            std::unique_lock(mutexes[index]),
         };
     }
 };

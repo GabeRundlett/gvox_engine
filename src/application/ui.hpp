@@ -11,8 +11,6 @@ struct ImFont;
 #include <mutex>
 #include <fmt/format.h>
 
-#include <gvox/gvox.h>
-
 #define INVALID_GAME_ACTION (-1)
 
 struct AppUi {

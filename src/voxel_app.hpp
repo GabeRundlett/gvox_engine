@@ -3,20 +3,15 @@
 #include <application/window.hpp>
 #include <application/ui.hpp>
 #include <application/audio.hpp>
-#include <utilities/mesh/mesh_model.hpp>
 
 #include <app.inl>
 #include <renderer/renderer.hpp>
 #include <voxels/voxel_world.inl>
 #include <voxels/voxel_particles.inl>
+#include <voxels/model.hpp>
 
 #include <chrono>
 #include <future>
-
-struct GvoxModelData {
-    size_t size = 0;
-    uint8_t *ptr = nullptr;
-};
 
 struct GpuResources {
     daxa::ImageId value_noise_image;
@@ -27,7 +22,6 @@ struct GpuResources {
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
     daxa::BufferId globals_buffer;
-    daxa::BufferId gvox_model_buffer;
 
     daxa::SamplerId sampler_nnc;
     daxa::SamplerId sampler_lnc;
@@ -50,7 +44,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImageId swapchain_image{};
     daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
-    AsyncPipelineManager main_pipeline_manager;
+    std::shared_ptr<AsyncPipelineManager> main_pipeline_manager;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;
     TemporalBuffers temporal_buffers;
@@ -64,9 +58,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
+    VoxelModelLoader voxel_model_loader;
 
     GpuResources gpu_resources;
-    daxa::BufferId prev_gvox_model_buffer{};
 
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
@@ -76,7 +70,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
     daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
-    daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -90,13 +83,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     std::array<daxa_f32vec2, 128> halton_offsets{};
     daxa_f32 render_res_scl{1.0f};
-    GvoxContext *gvox_ctx;
-
-    bool has_model = false;
-    std::future<GvoxModelData> gvox_model_data_future;
-    GvoxModelData gvox_model_data;
-    bool model_is_loading = false;
-    bool model_is_ready = false;
 
     enum class Conditions {
         COUNT,
@@ -113,10 +99,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void run();
 
-    auto load_gvox_data_from_parser(GvoxAdapterContext *i_ctx, GvoxAdapterContext *p_ctx, GvoxRegionRange const *region_range) -> GvoxModelData;
-    auto load_gvox_data() -> GvoxModelData;
-    auto open_mesh_model() -> GvoxModelData;
-
     void on_update();
     void on_mouse_move(daxa_f32 x, daxa_f32 y);
     void on_mouse_scroll(daxa_f32 dx, daxa_f32 dy);
@@ -129,7 +111,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void update_seeded_value_noise();
     void run_startup(daxa::TaskGraph &temp_task_graph);
-    void upload_model(daxa::TaskGraph &temp_task_graph);
 
     auto record_main_task_graph() -> daxa::TaskGraph;
 

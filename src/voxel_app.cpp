@@ -6,10 +6,6 @@
 #include <random>
 #include <unordered_map>
 
-#include <gvox/adapters/input/byte_buffer.h>
-#include <gvox/adapters/output/byte_buffer.h>
-#include <gvox/adapters/parse/voxlap.h>
-
 // #include <voxels/gvox_model.inl>
 #include <minizip/unzip.h>
 
@@ -54,10 +50,6 @@ void GpuResources::create(daxa::Device &device) {
         .size = sizeof(GpuGlobals),
         .name = "globals_buffer",
     });
-    gvox_model_buffer = device.create_buffer({
-        .size = static_cast<daxa_u32>(offsetof(GpuGvoxModel, data)),
-        .name = "gvox_model_buffer",
-    });
     sampler_nnc = device.create_sampler({
         .magnification_filter = daxa::Filter::NEAREST,
         .minification_filter = daxa::Filter::NEAREST,
@@ -92,9 +84,6 @@ void GpuResources::destroy(daxa::Device &device) const {
     device.destroy_buffer(output_buffer);
     device.destroy_buffer(staging_output_buffer);
     device.destroy_buffer(globals_buffer);
-    if (!gvox_model_buffer.is_empty()) {
-        device.destroy_buffer(gvox_model_buffer);
-    }
     device.destroy_sampler(sampler_nnc);
     device.destroy_sampler(sampler_lnc);
     device.destroy_sampler(sampler_llc);
@@ -150,7 +139,7 @@ VoxelApp::VoxelApp()
           .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
           .name = "swapchain",
       })},
-      main_pipeline_manager{daxa::PipelineManagerInfo{
+      main_pipeline_manager{std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo{
           .device = device,
           .shader_compile_options = {
               .root_paths = {
@@ -169,7 +158,7 @@ VoxelApp::VoxelApp()
           },
           .register_null_pipelines_when_first_compile_fails = true,
           .name = "pipeline_manager",
-      }},
+      })},
       ui{AppUi(AppWindow::glfw_window_ptr)} {
 
     AppSettings::add<settings::SliderFloat>({"Camera", "FOV", {.value = 74.0f, .min = 0.0f, .max = 179.0f}});
@@ -190,18 +179,18 @@ VoxelApp::VoxelApp()
         .context = ImGui::GetCurrentContext(),
         .use_custom_config = false,
     });
-    gvox_ctx = gvox_create_context();
 
     renderer.create(device);
     gpu_resources.create(device);
     voxel_world.create(device);
     particles.create(device);
+    voxel_model_loader.create(device);
+    voxel_model_loader.main_pipeline_manager = main_pipeline_manager;
 
     task_input_buffer.set_buffers({.buffers = std::array{gpu_resources.input_buffer}});
     task_output_buffer.set_buffers({.buffers = std::array{gpu_resources.output_buffer}});
     task_staging_output_buffer.set_buffers({.buffers = std::array{gpu_resources.staging_output_buffer}});
     task_globals_buffer.set_buffers({.buffers = std::array{gpu_resources.globals_buffer}});
-    task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
 
     task_value_noise_image.set_images({.images = std::array{gpu_resources.value_noise_image}});
     task_blue_noise_vec2_image.set_images({.images = std::array{gpu_resources.blue_noise_vec2_image}});
@@ -348,22 +337,22 @@ VoxelApp::VoxelApp()
         temp_task_graph.execute({});
     }
 
-    constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
-    if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
-        // ui.gvox_model_path = "C:/Users/gabe/AppData/Roaming/GabeVoxelGame/models/building.vox";
-        // ui.gvox_model_path = "C:/dev/models/half-life/test.dae";
-        ui.gvox_model_path = "C:/dev/models/Bistro_v5_2/BistroExterior.fbx";
-        gvox_model_data = load_gvox_data();
-        if (gvox_model_data.size != 0) {
-            model_is_ready = true;
-            prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
-            gpu_resources.gvox_model_buffer = device.create_buffer({
-                .size = static_cast<daxa_u32>(gvox_model_data.size),
-                .name = "gvox_model_buffer",
-            });
-            task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
-        }
-    }
+    // constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
+    // if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
+    //     // ui.gvox_model_path = "C:/Users/gabe/AppData/Roaming/GabeVoxelGame/models/building.vox";
+    //     // ui.gvox_model_path = "C:/dev/models/half-life/test.dae";
+    //     ui.gvox_model_path = "C:/dev/models/Bistro_v5_2/BistroExterior.fbx";
+    //     gvox_model_data = load_gvox_data();
+    //     if (gvox_model_data.size != 0) {
+    //         model_is_ready = true;
+    //         prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
+    //         gpu_resources.gvox_model_buffer = device.create_buffer({
+    //             .size = static_cast<daxa_u32>(gvox_model_data.size),
+    //             .name = "gvox_model_buffer",
+    //         });
+    //         task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
+    //     }
+    // }
 
     auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
         auto val = 0.0f;
@@ -382,7 +371,7 @@ VoxelApp::VoxelApp()
         halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
 
-    main_pipeline_manager.add_virtual_file({
+    main_pipeline_manager->add_virtual_file({
         .name = "FULL_SCREEN_TRIANGLE_VERTEX_SHADER",
         .contents = R"glsl(
             void main() {
@@ -395,17 +384,11 @@ VoxelApp::VoxelApp()
         )glsl",
     });
 
-    // main_pipeline_manager.add_virtual_file({
-    //     .name = "gpu_resources",
-    //     .contents = gpu_resources.get_shader_string(),
-    // });
-
     main_task_graph = record_main_task_graph();
-    main_pipeline_manager.wait();
+    main_pipeline_manager->wait();
     debug_utils::Console::add_log(std::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
 }
 VoxelApp::~VoxelApp() {
-    gvox_destroy_context(gvox_ctx);
     device.wait_idle();
     device.collect_garbage();
 
@@ -413,6 +396,7 @@ VoxelApp::~VoxelApp() {
     gpu_resources.destroy(device);
     voxel_world.destroy(device);
     particles.destroy(device);
+    voxel_model_loader.destroy();
 
     for (auto const &[id, temporal_buffer] : temporal_buffers) {
         device.destroy_buffer(temporal_buffer.buffer_id);
@@ -443,427 +427,6 @@ void VoxelApp::run() {
     }
 }
 
-auto VoxelApp::load_gvox_data_from_parser(GvoxAdapterContext *i_ctx, GvoxAdapterContext *p_ctx, GvoxRegionRange const *region_range) -> GvoxModelData {
-    auto result = GvoxModelData{};
-    GvoxByteBufferOutputAdapterConfig o_config = {
-        .out_size = &result.size,
-        .out_byte_buffer_ptr = &result.ptr,
-        .allocate = nullptr,
-    };
-    GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
-    GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), nullptr);
-
-    {
-        // time_t start = clock();
-        gvox_blit_region(
-            i_ctx, o_ctx, p_ctx, s_ctx,
-            region_range,
-            // GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_EMISSIVITY);
-            GVOX_CHANNEL_BIT_COLOR);
-        // time_t end = clock();
-        // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        // debug_utils::Console::add_log("{}s, new size: {} bytes", cpu_time_used, result.size);
-
-        GvoxResult res = gvox_get_result(gvox_ctx);
-        // int error_count = 0;
-        while (res != GVOX_RESULT_SUCCESS) {
-            size_t size = 0;
-            gvox_get_result_message(gvox_ctx, nullptr, &size);
-            char *str = new char[size + 1];
-            gvox_get_result_message(gvox_ctx, str, nullptr);
-            str[size] = '\0';
-            debug_utils::Console::add_log(fmt::format("ERROR loading model: {}", str));
-            gvox_pop_result(gvox_ctx);
-            delete[] str;
-            res = gvox_get_result(gvox_ctx);
-            // ++error_count;
-            return {};
-        }
-    }
-
-    gvox_destroy_adapter_context(o_ctx);
-    gvox_destroy_adapter_context(s_ctx);
-    return result;
-}
-
-auto VoxelApp::load_gvox_data() -> GvoxModelData {
-    auto result = GvoxModelData{};
-    auto file = std::ifstream(ui.gvox_model_path, std::ios::binary);
-    if (!file.is_open()) {
-        debug_utils::Console::add_log("[error] Failed to load the model");
-        ui.should_upload_gvox_model = false;
-        return result;
-    }
-    file.seekg(0, std::ios_base::end);
-    auto temp_gvox_model_size = static_cast<daxa_u32>(file.tellg());
-    auto temp_gvox_model = std::vector<uint8_t>{};
-    temp_gvox_model.resize(temp_gvox_model_size);
-    {
-        // time_t start = clock();
-        file.seekg(0, std::ios_base::beg);
-        file.read(reinterpret_cast<char *>(temp_gvox_model.data()), static_cast<std::streamsize>(temp_gvox_model_size));
-        file.close();
-        // time_t end = clock();
-        // double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-        // debug_utils::Console::add_log("(pulling file into memory: {}s)", cpu_time_used);
-    }
-    GvoxByteBufferInputAdapterConfig i_config = {
-        .data = temp_gvox_model.data(),
-        .size = temp_gvox_model_size,
-    };
-    void *i_config_ptr = nullptr;
-    auto voxlap_config = GvoxVoxlapParseAdapterConfig{
-        .size_x = 512,
-        .size_y = 512,
-        .size_z = 64,
-        .make_solid = 1,
-        .is_ace_of_spades = 1,
-    };
-    char const *gvox_model_type = "gvox_palette";
-    if (ui.gvox_model_path.has_extension()) {
-        auto ext = ui.gvox_model_path.extension();
-        if (ext == ".vox") {
-            gvox_model_type = "magicavoxel";
-        } else if (ext == ".rle") {
-            gvox_model_type = "gvox_run_length_encoding";
-        } else if (ext == ".oct") {
-            gvox_model_type = "gvox_octree";
-        } else if (ext == ".glp") {
-            gvox_model_type = "gvox_global_palette";
-        } else if (ext == ".brk") {
-            gvox_model_type = "gvox_brickmap";
-        } else if (ext == ".gvr") {
-            gvox_model_type = "gvox_raw";
-        } else if (ext == ".vxl") {
-            i_config_ptr = &voxlap_config;
-            gvox_model_type = "voxlap";
-        } else {
-            return open_mesh_model();
-        }
-    } else {
-        return open_mesh_model();
-    }
-    GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
-    GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);
-    result = load_gvox_data_from_parser(i_ctx, p_ctx, nullptr);
-    gvox_destroy_adapter_context(i_ctx);
-    gvox_destroy_adapter_context(p_ctx);
-    return result;
-}
-
-auto VoxelApp::open_mesh_model() -> GvoxModelData {
-    MeshModel mesh_model;
-    ::open_mesh_model(this->device, mesh_model, ui.gvox_model_path, "test");
-    if (mesh_model.meshes.size() == 0) {
-        debug_utils::Console::add_log("[error] Failed to load the mesh model");
-        ui.should_upload_gvox_model = false;
-        return {};
-    }
-
-    auto mesh_gpu_input = MeshGpuInput{};
-    mesh_gpu_input.size = {768, 768, 768};
-    mesh_gpu_input.bound_min = mesh_model.bound_min;
-    mesh_gpu_input.bound_max = mesh_model.bound_max;
-
-    daxa::SamplerId texture_sampler = device.create_sampler({
-        .magnification_filter = daxa::Filter::LINEAR,
-        .minification_filter = daxa::Filter::LINEAR,
-        .address_mode_u = daxa::SamplerAddressMode::REPEAT,
-        .address_mode_v = daxa::SamplerAddressMode::REPEAT,
-        .address_mode_w = daxa::SamplerAddressMode::REPEAT,
-        .name = "texture_sampler",
-    });
-    daxa::BufferId mesh_gpu_input_buffer = device.create_buffer(daxa::BufferInfo{
-        .size = sizeof(MeshGpuInput),
-        .name = "mesh_gpu_input_buffer",
-    });
-    daxa::BufferId voxel_buffer = device.create_buffer(daxa::BufferInfo{
-        .size = static_cast<u32>(sizeof(u32) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z),
-        .name = "voxel_buffer",
-    });
-    daxa::BufferId staging_voxel_buffer = device.create_buffer({
-        .size = static_cast<u32>(sizeof(u32) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z),
-        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-        .name = "staging_voxel_buffer",
-    });
-    auto preprocess_pipeline = main_pipeline_manager.add_compute_pipeline({
-        .shader_info = {
-            .source = daxa::ShaderFile{"mesh/preprocess.comp.glsl"},
-        },
-        .push_constant_size = sizeof(MeshPreprocessPush),
-        .name = "preprocess_pipeline",
-    });
-    auto raster_pipeline = main_pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = daxa::ShaderCompileInfo{
-            .source = daxa::ShaderFile{"mesh/voxelize.raster.glsl"},
-            .compile_options = {.defines = {{"RASTER_VERT", "1"}}},
-        },
-        .fragment_shader_info = daxa::ShaderCompileInfo{
-            .source = daxa::ShaderFile{"mesh/voxelize.raster.glsl"},
-            .compile_options = {.defines = {{"RASTER_FRAG", "1"}}},
-        },
-        .raster = {
-            // .samples = 8,
-            .conservative_raster_info = daxa::ConservativeRasterInfo{
-                .mode = daxa::ConservativeRasterizationMode::OVERESTIMATE,
-                .size = 0.0f,
-            },
-        },
-        .push_constant_size = sizeof(MeshRasterPush),
-        .name = "raster_pipeline",
-    });
-    daxa::CommandSubmitInfo submit_info;
-    daxa::TaskGraph task_list = daxa::TaskGraph({
-        .device = device,
-        .name = "mesh voxel conv",
-    });
-    auto task_gpu_input_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{mesh_gpu_input_buffer}}, .name = "task_gpu_input_buffer"});
-    task_list.use_persistent_buffer(task_gpu_input_buffer);
-    auto task_vertex_buffer_ids = std::vector<daxa::BufferId>{};
-    auto task_image_ids = std::vector<daxa::ImageId>{};
-    for (auto const &mesh : mesh_model.meshes) {
-        task_vertex_buffer_ids.push_back(mesh.vertex_buffer);
-        task_image_ids.push_back(mesh.textures[0]->image_id);
-        // task_list.add_runtime_buffer(task_vertex_buffer, mesh.vertex_buffer);
-        // task_list.add_runtime_image(task_image_id, mesh.textures[0]->image_id);
-    }
-    auto task_vertex_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = task_vertex_buffer_ids}, .name = "task_vertex_buffer"});
-    auto task_image_id = daxa::TaskImage(daxa::TaskImageInfo{.initial_images = {.images = task_image_ids}, .name = "task_image_id"});
-    auto task_voxel_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{voxel_buffer}}, .name = "task_voxel_buffer"});
-    auto task_staging_voxel_buffer = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{staging_voxel_buffer}}, .name = "task_staging_voxel_buffer"});
-    task_list.use_persistent_buffer(task_vertex_buffer);
-    task_list.use_persistent_image(task_image_id);
-    task_list.use_persistent_buffer(task_voxel_buffer);
-    task_list.use_persistent_buffer(task_staging_voxel_buffer);
-    task_list.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_gpu_input_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_vertex_buffer),
-        },
-        .task = [&](daxa::TaskInterface const &ti) {
-            {
-                auto staging_gpu_input_buffer = device.create_buffer({
-                    .size = sizeof(MeshGpuInput),
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                    .name = "staging_gpu_input_buffer",
-                });
-                ti.recorder.destroy_buffer_deferred(staging_gpu_input_buffer);
-                auto *buffer_ptr = device.get_host_address_as<MeshGpuInput>(staging_gpu_input_buffer).value();
-                *buffer_ptr = mesh_gpu_input;
-                ti.recorder.copy_buffer_to_buffer({
-                    .src_buffer = staging_gpu_input_buffer,
-                    .dst_buffer = mesh_gpu_input_buffer,
-                    .size = sizeof(MeshGpuInput),
-                });
-            }
-            {
-                usize vert_n = 0;
-                for (auto const &mesh : mesh_model.meshes) {
-                    vert_n += mesh.verts.size();
-                }
-                auto staging_vertex_buffer = device.create_buffer({
-                    .size = static_cast<u32>(sizeof(MeshVertex) * vert_n),
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                    .name = "staging_vertex_buffer",
-                });
-                ti.recorder.destroy_buffer_deferred(staging_vertex_buffer);
-                auto *buffer_ptr = device.get_host_address_as<MeshVertex>(staging_vertex_buffer).value();
-                usize vert_offset = 0;
-                for (auto const &mesh : mesh_model.meshes) {
-                    std::memcpy(buffer_ptr + vert_offset, mesh.verts.data(), sizeof(MeshVertex) * mesh.verts.size());
-                    ti.recorder.copy_buffer_to_buffer({
-                        .src_buffer = staging_vertex_buffer,
-                        .dst_buffer = mesh.vertex_buffer,
-                        .src_offset = sizeof(MeshVertex) * vert_offset,
-                        .size = sizeof(MeshVertex) * mesh.verts.size(),
-                    });
-                    vert_offset += mesh.verts.size();
-                }
-            }
-        },
-        .name = "Input Transfer",
-    });
-    task_list.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_voxel_buffer),
-        },
-        .task = [&](daxa::TaskInterface const &ti) {
-            ti.recorder.clear_buffer({
-                .buffer = voxel_buffer,
-                .offset = 0,
-                .size = sizeof(u32) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z,
-                .clear_value = {},
-            });
-        },
-        .name = "Clear Output",
-    });
-    task_list.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::COMPUTE_SHADER_READ, task_gpu_input_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::COMPUTE_SHADER_WRITE, task_vertex_buffer),
-        },
-        .task = [&](daxa::TaskInterface const &ti) {
-            for (auto const &mesh : mesh_model.meshes) {
-                if (!preprocess_pipeline.is_valid()) {
-                    return;
-                }
-                ti.recorder.set_pipeline(preprocess_pipeline.get());
-                set_push_constant(
-                    ti,
-                    MeshPreprocessPush{
-                        .modl_mat = mesh.modl_mat,
-                        .gpu_input = device.get_device_address(mesh_gpu_input_buffer).value(),
-                        .vertex_buffer = device.get_device_address(mesh.vertex_buffer).value(),
-                        .normal_buffer = device.get_device_address(mesh.normal_buffer).value(),
-                        .triangle_count = static_cast<u32>(mesh.verts.size() / 3),
-                    });
-                ti.recorder.dispatch({.x = static_cast<u32>(mesh.verts.size() / 3)});
-            }
-        },
-        .name = "Preprocess Verts",
-    });
-    task_list.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_gpu_input_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_READ, task_vertex_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::FRAGMENT_SHADER_WRITE, task_voxel_buffer),
-            daxa::inl_attachment(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, task_image_id.view().view({.base_mip_level = 0, .level_count = 4})),
-        },
-        .task = [&](daxa::TaskInterface const &ti) {
-            auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({.render_area = {.width = mesh_gpu_input.size.x, .height = mesh_gpu_input.size.y}});
-            if (!raster_pipeline.is_valid()) {
-                return;
-            }
-            renderpass_recorder.set_pipeline(raster_pipeline.get());
-            for (auto const &mesh : mesh_model.meshes) {
-                set_push_constant(
-                    ti, renderpass_recorder,
-                    MeshRasterPush{
-                        .gpu_input = device.get_device_address(mesh_gpu_input_buffer).value(),
-                        .vertex_buffer = device.get_device_address(mesh.vertex_buffer).value(),
-                        .normal_buffer = device.get_device_address(mesh.normal_buffer).value(),
-                        .voxel_buffer = device.get_device_address(voxel_buffer).value(),
-                        .texture_id = {.value = static_cast<uint32_t>(mesh.textures[0]->image_id.default_view().index)},
-                        .texture_sampler = texture_sampler,
-                    });
-                renderpass_recorder.draw({.vertex_count = static_cast<u32>(mesh.verts.size())});
-            }
-            ti.recorder = std::move(renderpass_recorder).end_renderpass();
-        },
-        .name = "Raster to Voxels",
-    });
-    task_list.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, task_voxel_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_staging_voxel_buffer),
-        },
-        .task = [&](daxa::TaskInterface const &ti) {
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = voxel_buffer,
-                .dst_buffer = staging_voxel_buffer,
-                .size = sizeof(u32) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z,
-            });
-        },
-        .name = "Output Transfer",
-    });
-    task_list.submit({});
-    task_list.complete({});
-    task_list.execute({});
-    device.wait_idle();
-    auto cleanup = [&]() {
-        device.wait_idle();
-        device.destroy_buffer(mesh_gpu_input_buffer);
-        for (auto &mesh : mesh_model.meshes) {
-            device.destroy_buffer(mesh.vertex_buffer);
-            device.destroy_buffer(mesh.normal_buffer);
-        }
-        for (auto &[key, value] : mesh_model.textures) {
-            device.destroy_image(value->image_id);
-        }
-        device.destroy_buffer(voxel_buffer);
-        device.destroy_buffer(staging_voxel_buffer);
-        device.destroy_sampler(texture_sampler);
-    };
-    auto *buffer_ptr = device.get_host_address_as<u32>(staging_voxel_buffer).value();
-    if (buffer_ptr == nullptr) {
-        cleanup();
-        debug_utils::Console::add_log("[error] Failed to voxelize the mesh model");
-        ui.should_upload_gvox_model = false;
-        return {};
-    }
-
-    struct GpuOutputState {
-        uint32_t *buffer_ptr;
-        daxa_u32vec3 size;
-    };
-
-    auto gpu_output_state = GpuOutputState{
-        .buffer_ptr = buffer_ptr,
-        .size = mesh_gpu_input.size,
-    };
-
-    GvoxParseAdapterInfo procedural_adapter_info = {
-        .base_info = {
-            .name_str = "gpu_result",
-            .create = [](GvoxAdapterContext *ctx, void const *user_state_ptr) -> void {
-                gvox_adapter_set_user_pointer(ctx, const_cast<void *>(user_state_ptr));
-            },
-            .destroy = [](GvoxAdapterContext *) -> void {},
-            .blit_begin = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {},
-            .blit_end = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {},
-        },
-        .query_details = []() -> GvoxParseAdapterDetails { return {.preferred_blit_mode = GVOX_BLIT_MODE_SERIALIZE_DRIVEN}; },
-        .query_parsable_range = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) -> GvoxRegionRange { return {{0, 0, 0}, {0, 0, 0}}; },
-        .sample_region = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
-            auto &[buffer_ptr_, size] = *static_cast<GpuOutputState *>(gvox_adapter_get_user_pointer(ctx));
-            auto voxel_i = static_cast<size_t>(offset->x) + size.x * offset->y + size.x * size.y * offset->z;
-            auto u32_voxel = buffer_ptr_[voxel_i];
-            // float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
-            // float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;
-            // float b = static_cast<float>((u32_voxel >> 0x10) & 0xff) / 255.0f;
-            // uint32_t const id = (u32_voxel >> 0x18) & 0xff;
-            switch (channel_id) {
-            case GVOX_CHANNEL_ID_COLOR: return {u32_voxel, 1u};
-            // case GVOX_CHANNEL_ID_NORMAL: return {0x0, 1u};
-            // case GVOX_CHANNEL_ID_MATERIAL_ID: return {id, 1u};
-            default:
-                gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Tried sampling something other than color or normal");
-                return {0u, 0u};
-            }
-            return {};
-        },
-        .query_region_flags = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t { return 0; },
-        .load_region = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
-            GvoxRegion const region = {.range = *range, .channels = channel_flags, .flags = 0u, .data = nullptr};
-            return region;
-        },
-        .unload_region = [](GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {},
-        .parse_region = [](GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> void {
-            GvoxRegion const region = {.range = *range, .channels = channel_flags, .flags = 0u, .data = nullptr};
-            gvox_emit_region(blit_ctx, &region);
-        },
-    };
-
-    static auto parse_adapter = gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info);
-
-    GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, parse_adapter, &gpu_output_state);
-    GvoxRegionRange region_range = {
-        .offset = {0, 0, 0},
-        .extent = {
-            mesh_gpu_input.size.x,
-            mesh_gpu_input.size.y,
-            mesh_gpu_input.size.z,
-        },
-    };
-    auto result = load_gvox_data_from_parser(nullptr, p_ctx, &region_range);
-    gvox_destroy_adapter_context(p_ctx);
-    cleanup();
-    if (result.size == 0) {
-        ui.should_upload_gvox_model = false;
-    }
-    return result;
-}
-
 // [Update engine state]
 // Reload pipeline manager
 // Update UI
@@ -892,7 +455,7 @@ void VoxelApp::on_update() {
     audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     if (ui.should_hotload_shaders) {
-        auto reload_result = main_pipeline_manager.reload_all();
+        auto reload_result = main_pipeline_manager->reload_all();
         if (auto *reload_err = daxa::get_if<daxa::PipelineReloadError>(&reload_result)) {
             debug_utils::Console::add_log(reload_err->message);
         }
@@ -905,44 +468,6 @@ void VoxelApp::on_update() {
 
     if (ui.should_upload_seed_data) {
         update_seeded_value_noise();
-    }
-
-    if (ui.should_upload_gvox_model) {
-        if (false) {
-            // async model loading.. broken with mesh import
-            if (!model_is_loading) {
-                gvox_model_data_future = std::async(std::launch::async, &VoxelApp::load_gvox_data, this);
-                model_is_loading = true;
-            }
-            if (model_is_loading && gvox_model_data_future.wait_for(0.01s) == std::future_status::ready) {
-                model_is_ready = true;
-                model_is_loading = false;
-                gvox_model_data = gvox_model_data_future.get();
-                prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
-                gpu_resources.gvox_model_buffer = device.create_buffer({
-                    .size = static_cast<daxa_u32>(gvox_model_data.size),
-                    .name = "gvox_model_buffer",
-                });
-                task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
-            }
-        } else {
-            if (!model_is_loading) {
-                model_is_loading = true;
-            }
-            if (model_is_loading) {
-                model_is_loading = false;
-                gvox_model_data = load_gvox_data();
-                if (gvox_model_data.size != 0) {
-                    model_is_ready = true;
-                    prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
-                    gpu_resources.gvox_model_buffer = device.create_buffer({
-                        .size = static_cast<daxa_u32>(gvox_model_data.size),
-                        .name = "gvox_model_buffer",
-                    });
-                    task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
-                }
-            }
-        }
     }
 
 #if !IMMEDIATE_SKY
@@ -981,12 +506,11 @@ void VoxelApp::on_update() {
 
     // gpu_app_draw_ui();
 
-    if (ui.should_run_startup || model_is_ready) {
+    if (ui.should_run_startup || voxel_model_loader.model_is_ready) {
         run_startup(main_task_graph);
     }
-    if (model_is_ready) {
-        upload_model(main_task_graph);
-    }
+
+    voxel_model_loader.update(ui);
 
     if (ui.should_record_task_graph) {
         device.wait_idle();
@@ -999,7 +523,6 @@ void VoxelApp::on_update() {
     // condition_values[static_cast<size_t>(Conditions::DYNAMIC_BUFFERS_REALLOC)] = should_realloc;
     // main_task_graph.execute({.permutation_condition_values = condition_values});
     main_task_graph.execute({});
-    model_is_ready = false;
 
     gpu_input.resize_factor = 1.0f;
     gpu_input.mouse.pos_delta = {0.0f, 0.0f};
@@ -1184,7 +707,7 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = temp_task_graph,
-        .pipeline_manager = &main_pipeline_manager,
+        .pipeline_manager = main_pipeline_manager.get(),
         .compute_pipelines = &this->compute_pipelines,
         .raster_pipelines = &this->raster_pipelines,
     };
@@ -1196,50 +719,6 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     temp_task_graph.execute({});
 
     ui.should_run_startup = false;
-}
-
-void VoxelApp::upload_model(daxa::TaskGraph & /*unused*/) {
-    auto temp_task_graph = daxa::TaskGraph({
-        .device = device,
-        .name = "temp_task_graph",
-    });
-    temp_task_graph.use_persistent_buffer(task_gvox_model_buffer);
-    temp_task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, task_gvox_model_buffer),
-        },
-        .task = [this](daxa::TaskInterface const &ti) {
-            if (!prev_gvox_model_buffer.is_empty()) {
-                ti.recorder.destroy_buffer_deferred(prev_gvox_model_buffer);
-            }
-            ti.recorder.pipeline_barrier({
-                .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
-            });
-            auto staging_gvox_model_buffer = device.create_buffer({
-                .size = static_cast<daxa_u32>(gvox_model_data.size),
-                .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                .name = "staging_gvox_model_buffer",
-            });
-            ti.recorder.destroy_buffer_deferred(staging_gvox_model_buffer);
-            char *buffer_ptr = device.get_host_address_as<char>(staging_gvox_model_buffer).value();
-            std::copy(gvox_model_data.ptr, gvox_model_data.ptr + gvox_model_data.size, buffer_ptr);
-            if (gvox_model_data.ptr != nullptr) {
-                free(gvox_model_data.ptr);
-            }
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = staging_gvox_model_buffer,
-                .dst_buffer = gpu_resources.gvox_model_buffer,
-                .size = static_cast<daxa_u32>(gvox_model_data.size),
-            });
-            ui.should_upload_gvox_model = false;
-            has_model = true;
-            needs_vram_calc = true;
-        },
-        .name = "upload_model",
-    });
-    temp_task_graph.submit({});
-    temp_task_graph.complete({});
-    temp_task_graph.execute({});
 }
 
 // [Record the command list sent to the GPU each frame]
@@ -1295,7 +774,7 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = result_task_graph,
-        .pipeline_manager = &main_pipeline_manager,
+        .pipeline_manager = main_pipeline_manager.get(),
         .render_resolution = gpu_input.rounded_frame_dim,
         .output_resolution = gpu_input.output_resolution,
         .task_swapchain_image = task_swapchain_image,
@@ -1363,7 +842,6 @@ void VoxelApp::gpu_app_draw_ui() {
     //     ImGui::TreePop();
     // }
 }
-
 void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
     std::vector<debug_utils::DebugDisplay::GpuResourceInfo> &debug_gpu_resource_infos = debug_utils::DebugDisplay::s_instance->gpu_resource_infos;
 
@@ -1413,7 +891,7 @@ void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
 
     voxel_world.for_each_buffer(buffer_size);
 
-    buffer_size(gpu_resources.gvox_model_buffer);
+    // buffer_size(gpu_resources.gvox_model_buffer);
     buffer_size(particles.simulated_voxel_particles_buffer);
     buffer_size(particles.rendered_voxel_particles_buffer);
     buffer_size(particles.placed_voxel_particles_buffer);
@@ -1432,7 +910,6 @@ void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
 
     ui_strings.push_back(fmt::format("Est. VRAM usage: {} MB", static_cast<float>(result_size) / 1000000));
 }
-
 void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
     gpu_input.sampler_nnc = gpu_resources.sampler_nnc;
     gpu_input.sampler_lnc = gpu_resources.sampler_lnc;
@@ -1462,7 +939,6 @@ void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
         gpu_app_dynamic_buffers_realloc();
     }
 }
-
 void VoxelApp::gpu_app_dynamic_buffers_realloc() {
     auto temp_task_graph = daxa::TaskGraph({
         .device = device,
@@ -1475,7 +951,6 @@ void VoxelApp::gpu_app_dynamic_buffers_realloc() {
     temp_task_graph.complete({});
     temp_task_graph.execute({});
 }
-
 void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
@@ -1512,7 +987,6 @@ void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
         },
     });
 }
-
 void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_image(task_value_noise_image);
     record_ctx.task_graph.use_persistent_image(task_blue_noise_vec2_image);
@@ -1522,7 +996,7 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_buffer(task_output_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_staging_output_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
-    record_ctx.task_graph.use_persistent_buffer(task_gvox_model_buffer);
+    record_ctx.task_graph.use_persistent_buffer(voxel_model_loader.task_gvox_model_buffer);
 
     voxel_world.use_buffers(record_ctx);
     particles.use_buffers(record_ctx);
@@ -1572,7 +1046,7 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     });
 
     particles.simulate(record_ctx, voxel_world.buffers);
-    voxel_world.record_frame(record_ctx, task_gvox_model_buffer, task_value_noise_image);
+    voxel_world.record_frame(record_ctx, voxel_model_loader.task_gvox_model_buffer, task_value_noise_image);
 
     renderer.render(record_ctx, voxel_world.buffers, particles, record_ctx.task_swapchain_image, swapchain.get_format());
 
