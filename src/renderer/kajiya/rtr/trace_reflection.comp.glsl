@@ -1,18 +1,18 @@
 #include <renderer/kajiya/rtr.inl>
 
-// #include <utils/uv.glsl>
-// #include <utils/pack_unpack.glsl>
-// #include <utils/frame_constants.glsl>
-#include <utils/gbuffer.glsl>
-#include <utils/brdf.glsl>
-#include <utils/brdf_lut.glsl>
-#include <utils/layered_brdf.glsl>
+// #include <utilities/gpu/uv.glsl>
+// #include <utilities/gpu/pack_unpack.glsl>
+// #include <utilities/gpu/frame_constants.glsl>
+#include <utilities/gpu/gbuffer.glsl>
+#include <utilities/gpu/brdf.glsl>
+#include <utilities/gpu/brdf_lut.glsl>
+#include <utilities/gpu/layered_brdf.glsl>
 #include "blue_noise.glsl"
-#include <utils/rt.glsl>
-// #include <utils/atmosphere.glsl>
-#include <utils/sky.glsl>
-// #include <utils/sun.glsl>
-// #include <utils/lights/triangle.glsl>
+#include <utilities/gpu/rt.glsl>
+// #include <utilities/gpu/atmosphere.glsl>
+#include <utilities/gpu/sky.glsl>
+// #include <utilities/gpu/sun.glsl>
+// #include <utilities/gpu/lights/triangle.glsl>
 // #include "../ircache/bindings.glsl"
 // #include "../wrc/bindings.hlsl"
 #include "rtr_settings.glsl"
@@ -40,8 +40,8 @@ daxa_ImageViewIndex rng_out_tex = push.uses.rng_out_tex;
 // #include "../wrc/lookup.hlsl"
 
 #include "reflection_trace_common.inc.glsl"
-#include <utils/downscale.glsl>
-#include <utils/safety.glsl>
+#include <utilities/gpu/downscale.glsl>
+#include <utilities/gpu/safety.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

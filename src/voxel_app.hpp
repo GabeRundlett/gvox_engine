@@ -1,14 +1,14 @@
 #pragma once
 
-#include "app_window.hpp"
-#include "app_ui.hpp"
-#include "app_audio.hpp"
-#include "mesh_model.hpp"
+#include <application/window.hpp>
+#include <application/ui.hpp>
+#include <application/audio.hpp>
+#include <utilities/mesh/mesh_model.hpp>
 
-#include <shared/app.inl>
+#include <app.inl>
 #include <renderer/renderer.hpp>
-#include <shared/voxels/voxel_world.inl>
-#include <shared/voxels/voxel_particles.inl>
+#include <voxels/voxel_world.inl>
+#include <voxels/voxel_particles.inl>
 
 #include <chrono>
 #include <future>

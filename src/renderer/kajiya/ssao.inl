@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <core.inl>
 #include <renderer/core.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute, 5)

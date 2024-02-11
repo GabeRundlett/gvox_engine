@@ -17,22 +17,22 @@ daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
 daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
 
-#include <utils/math.glsl>
-// #include <utils/pack_unpack.glsl>
-// #include <utils/frame_constants.glsl>
-#include <utils/gbuffer.glsl>
-#include <utils/brdf.glsl>
-#include <utils/brdf_lut.glsl>
-#include <utils/layered_brdf.glsl>
-#include <utils/rt.glsl>
-#include <utils/random.glsl>
-#include <utils/quasi_random.glsl>
-#include <utils/reservoir.glsl>
-// #include <utils/bindless_textures.glsl>
-// #include <utils/atmosphere.glsl>
-#include <utils/normal.glsl>
-// #include <utils/lights/triangle.glsl>
-#include <utils/color.glsl>
+#include <utilities/gpu/math.glsl>
+// #include <utilities/gpu/pack_unpack.glsl>
+// #include <utilities/gpu/frame_constants.glsl>
+#include <utilities/gpu/gbuffer.glsl>
+#include <utilities/gpu/brdf.glsl>
+#include <utilities/gpu/brdf_lut.glsl>
+#include <utilities/gpu/layered_brdf.glsl>
+#include <utilities/gpu/rt.glsl>
+#include <utilities/gpu/random.glsl>
+#include <utilities/gpu/quasi_random.glsl>
+#include <utilities/gpu/reservoir.glsl>
+// #include <utilities/gpu/bindless_textures.glsl>
+// #include <utilities/gpu/atmosphere.glsl>
+#include <utilities/gpu/normal.glsl>
+// #include <utilities/gpu/lights/triangle.glsl>
+#include <utilities/gpu/color.glsl>
 
 // #include "../inc/sun.hlsl"
 // #include "../wrc/lookup.hlsl"

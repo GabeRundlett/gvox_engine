@@ -1,23 +1,23 @@
 #include <renderer/kajiya/rtdgi.inl>
 
-#include <utils/math.glsl>
-#include <utils/color.glsl>
-// #include <utils/samplers.glsl>
-// #include <utils/frame_constants.glsl>
-// #include <utils/pack_unpack.glsl>
-#include <utils/brdf.glsl>
-#include <utils/brdf_lut.glsl>
-#include <utils/layered_brdf.glsl>
-// #include <utils/uv.glsl>
-// #include <utils/hash.glsl>
-#include <utils/reservoir.glsl>
+#include <utilities/gpu/math.glsl>
+#include <utilities/gpu/color.glsl>
+// #include <utilities/gpu/samplers.glsl>
+// #include <utilities/gpu/frame_constants.glsl>
+// #include <utilities/gpu/pack_unpack.glsl>
+#include <utilities/gpu/brdf.glsl>
+#include <utilities/gpu/brdf_lut.glsl>
+#include <utilities/gpu/layered_brdf.glsl>
+// #include <utilities/gpu/uv.glsl>
+// #include <utilities/gpu/hash.glsl>
+#include <utilities/gpu/reservoir.glsl>
 #include "rtdgi_restir_settings.glsl"
 #include "rtdgi_common.glsl"
-#include <utils/occlusion_raymarch.glsl>
+#include <utilities/gpu/occlusion_raymarch.glsl>
 
-#include <utils/safety.glsl>
-#include <utils/downscale.glsl>
-#include <utils/rt.glsl>
+#include <utilities/gpu/safety.glsl>
+#include <utilities/gpu/downscale.glsl>
+#include <utilities/gpu/rt.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

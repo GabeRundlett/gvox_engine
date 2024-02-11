@@ -1,5 +1,5 @@
 #include <renderer/postprocessing.inl>
-#include <utils/camera.glsl>
+#include <utilities/gpu/camera.glsl>
 
 #if PostprocessingRasterShader
 
@@ -125,7 +125,7 @@ daxa_ImageViewIndex image_id = push.uses.image_id;
 daxa_ImageViewIndex cube_image_id = push.uses.cube_image_id;
 daxa_ImageViewIndex render_image = push.uses.render_image;
 
-#include <utils/reservoir.glsl>
+#include <utilities/gpu/reservoir.glsl>
 
 layout(location = 0) out daxa_f32vec4 color;
 

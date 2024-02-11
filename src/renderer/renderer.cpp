@@ -34,6 +34,8 @@ void Renderer::destroy(daxa::Device &device) {
 void Renderer::begin_frame(GpuInput &gpu_input, GpuOutput &gpu_output) {
     auto &self = *impl;
 
+    gpu_input.sky_settings = get_sky_settings();
+
     gpu_input.pre_exposure = self.kajiya_renderer.post_processor.exposure_state.pre_mult;
     gpu_input.pre_exposure_prev = self.kajiya_renderer.post_processor.exposure_state.pre_mult_prev;
     gpu_input.pre_exposure_delta = self.kajiya_renderer.post_processor.exposure_state.pre_mult_delta;

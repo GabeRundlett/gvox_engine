@@ -1,9 +1,9 @@
 #pragma once
 
-#include <shared/input.inl>
+#include <application/input.inl>
 
-#include <shared/voxels/voxels.inl>
-#include <shared/voxels/voxel_particles.inl>
+#include <voxels/voxels.inl>
+#include <voxels/voxel_particles.inl>
 
 struct RendererImpl;
 

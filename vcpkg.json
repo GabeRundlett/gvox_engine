@@ -22,7 +22,6 @@
     "assimp",
     "freeimage",
     "glm",
-    "soloud",
     {
       "name": "glfw3",
       "features": [

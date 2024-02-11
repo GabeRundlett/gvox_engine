@@ -1,7 +1,7 @@
 #include <renderer/downscale.inl>
-#include <utils/downscale.glsl>
-#include <utils/math.glsl>
-#include <utils/safety.glsl>
+#include <utilities/gpu/downscale.glsl>
+#include <utilities/gpu/math.glsl>
+#include <utilities/gpu/safety.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(DownscaleComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

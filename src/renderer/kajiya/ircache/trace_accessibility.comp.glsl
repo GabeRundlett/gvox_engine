@@ -14,9 +14,9 @@ daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
 daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
-#include <utils/rt.glsl>
-#include <utils/reservoir.glsl>
-#include <utils/normal.glsl>
+#include <utilities/gpu/rt.glsl>
+#include <utilities/gpu/reservoir.glsl>
+#include <utilities/gpu/normal.glsl>
 #include "ircache_constants.glsl"
 
 #include <voxels/core.glsl>

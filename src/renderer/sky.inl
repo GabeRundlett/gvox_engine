@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <core.inl>
 #include <renderer/core.inl>
 
 #include <renderer/kajiya/convolve_cube.inl>
@@ -41,6 +41,50 @@ struct SkyCubeComputePush {
 
 #if defined(__cplusplus)
 
+#include <application/settings.hpp>
+#include <numbers>
+
+inline auto get_sky_settings() -> SkySettings {
+    auto radians = [](float x) -> float {
+        return x * std::numbers::pi_v<float> / 180.0f;
+    };
+    auto get_DensityProfileLayer = [](std::string_view name) -> DensityProfileLayer {
+        return DensityProfileLayer{
+            .const_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_const_term").value,
+            .exp_scale = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_exp_scale").value,
+            .exp_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_exp_term").value,
+            .layer_width = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_layer_width").value,
+            .lin_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_lin_term").value,
+        };
+    };
+
+    auto result = SkySettings{};
+    auto sun_angle_x = AppSettings::get<settings::SliderFloat>("Sun", "Angle X").value;
+    auto sun_angle_y = AppSettings::get<settings::SliderFloat>("Sun", "Angle Y").value;
+    result.sun_angular_radius_cos = std::cos(radians(AppSettings::get<settings::SliderFloat>("Sun", "Angular Radius").value));
+    result.atmosphere_bottom = AppSettings::get<settings::InputFloat>("Atmosphere", "atmosphere_bottom").value;
+    result.atmosphere_top = AppSettings::get<settings::InputFloat>("Atmosphere", "atmosphere_top").value;
+    result.mie_scattering = AppSettings::get<settings::InputFloat3>("Atmosphere", "mie_scattering").value;
+    result.mie_extinction = AppSettings::get<settings::InputFloat3>("Atmosphere", "mie_extinction").value;
+    result.mie_scale_height = AppSettings::get<settings::SliderFloat>("Atmosphere", "mie_scale_height").value;
+    result.mie_phase_function_g = AppSettings::get<settings::SliderFloat>("Atmosphere", "mie_phase_function_g").value;
+    result.mie_density[0] = get_DensityProfileLayer("mie_density_0");
+    result.mie_density[1] = get_DensityProfileLayer("mie_density_1");
+    result.rayleigh_scattering = AppSettings::get<settings::InputFloat3>("Atmosphere", "rayleigh_scattering").value;
+    result.rayleigh_scale_height = AppSettings::get<settings::SliderFloat>("Atmosphere", "rayleigh_scale_height").value;
+    result.rayleigh_density[0] = get_DensityProfileLayer("rayleigh_density_0");
+    result.rayleigh_density[1] = get_DensityProfileLayer("rayleigh_density_1");
+    result.absorption_extinction = AppSettings::get<settings::InputFloat3>("Atmosphere", "absorption_extinction").value;
+    result.absorption_density[0] = get_DensityProfileLayer("absorption_density_0");
+    result.absorption_density[1] = get_DensityProfileLayer("absorption_density_1");
+    result.sun_direction = {
+        daxa_f32(std::cos(radians(sun_angle_x)) * std::sin(radians(sun_angle_y))),
+        daxa_f32(std::sin(radians(sun_angle_x)) * std::sin(radians(sun_angle_y))),
+        daxa_f32(std::cos(radians(sun_angle_y))),
+    };
+    return result;
+}
+
 struct SkyRenderer {
     daxa::ImageId sky_cube_image;
     daxa::ImageId ibl_cube_image;
@@ -48,6 +92,83 @@ struct SkyRenderer {
     daxa::TaskImage task_ibl_cube{{.name = "task_ibl_cube"}};
 
     void create(daxa::Device &device) {
+        auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {
+            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_exp_scale", {.value = factory_default.exp_scale, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = -1.0f, .max = 1.0f}});
+            AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -1.0f, .max = 1.0f}});
+        };
+
+        auto mie_scale_height = 1.2000000476837158f;
+        auto rayleigh_scale_height = 8.696f;
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angle X", {.value = 210.0f, .min = 0.0f, .max = 360.0f}});
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angle Y", {.value = 25.0f, .min = 0.0f, .max = 180.0f}});
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Sun", "Angular Radius", {.value = 0.25f, .min = 0.25f, .max = 30.0f}});
+        AppSettings::add(SettingInfo<settings::InputFloat>{"Atmosphere", "atmosphere_bottom", {.value = 6360.0f}});
+        AppSettings::add(SettingInfo<settings::InputFloat>{"Atmosphere", "atmosphere_top", {.value = 6460.0f}});
+        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "mie_scattering", {.value = {0.003996000159531832f, 0.003996000159531832f, 0.003996000159531832f}}});
+        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "mie_extinction", {.value = {0.00443999981507659f, 0.00443999981507659f, 0.00443999981507659f}}});
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "mie_scale_height", {.value = mie_scale_height, .min = 0.0f, .max = 10.0f}});
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "mie_phase_function_g", {.value = 0.800000011920929f, .min = 0.0f, .max = 1.0f}});
+        add_DensityProfileLayer(
+            "mie_density_0",
+            DensityProfileLayer{
+                .const_term = 0.0f,
+                .exp_scale = 0.0f,
+                .exp_term = 0.0f,
+                .layer_width = 0.0f,
+                .lin_term = 0.0f,
+            });
+        add_DensityProfileLayer(
+            "mie_density_1",
+            DensityProfileLayer{
+                .const_term = 0.0f,
+                .exp_scale = -1.0f / mie_scale_height,
+                .exp_term = 1.0f,
+                .layer_width = 0.0f,
+                .lin_term = 0.0f,
+            });
+        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "rayleigh_scattering", {.value = {0.006604931f, 0.013344918f, 0.029412623f}}});
+        AppSettings::add(SettingInfo<settings::SliderFloat>{"Atmosphere", "rayleigh_scale_height", {.value = rayleigh_scale_height, .min = 0.0f, .max = 10.0f}});
+        add_DensityProfileLayer(
+            "rayleigh_density_0",
+            DensityProfileLayer{
+                .const_term = 0.0f,
+                .exp_scale = 0.0f,
+                .exp_term = 0.0f,
+                .layer_width = 0.0f,
+                .lin_term = 0.0f,
+            });
+        add_DensityProfileLayer(
+            "rayleigh_density_1",
+            DensityProfileLayer{
+                .const_term = 0.0f,
+                .exp_scale = -1.0f / rayleigh_scale_height,
+                .exp_term = 1.0f,
+                .layer_width = 0.0f,
+                .lin_term = 0.0f,
+            });
+        AppSettings::add(SettingInfo<settings::InputFloat3>{"Atmosphere", "absorption_extinction", {.value = {0.00229072f, 0.00214036f, 0.0f}}});
+        add_DensityProfileLayer(
+            "absorption_density_0",
+            DensityProfileLayer{
+                .const_term = -0.6666600108146667f,
+                .exp_scale = 0.0f,
+                .exp_term = 0.0f,
+                .layer_width = 25.0f,
+                .lin_term = 0.06666599959135056f,
+            });
+        add_DensityProfileLayer(
+            "absorption_density_1",
+            DensityProfileLayer{
+                .const_term = 2.6666600704193115f,
+                .exp_scale = 0.0f,
+                .exp_term = 0.0f,
+                .layer_width = 0.0f,
+                .lin_term = -0.06666599959135056f,
+            });
+
         sky_cube_image = device.create_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,

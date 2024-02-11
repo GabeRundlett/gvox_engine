@@ -1,6 +1,6 @@
 #include <renderer/kajiya/calculate_histogram.inl>
-#include <utils/camera.glsl>
-#include <utils/color.glsl>
+#include <utilities/gpu/camera.glsl>
+#include <utilities/gpu/color.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(CalculateHistogramComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

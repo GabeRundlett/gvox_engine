@@ -7,12 +7,12 @@ include(cmake/static_analysis.cmake)
 project(gvox_engine VERSION 0.1.14)
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
-    "src/debug_utils.cpp"
     "src/voxel_app.cpp"
-    "src/app_ui.cpp"
-    "src/app_audio.cpp"
-    "src/app_settings.cpp"
-    "src/mesh_model.cpp"
+    "src/application/ui.cpp"
+    "src/application/audio.cpp"
+    "src/application/settings.cpp"
+    "src/utilities/debug.cpp"
+    "src/utilities/mesh/mesh_model.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
     "src/renderer/kajiya/spp64.cpp"
@@ -31,7 +31,7 @@ find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(unofficial-minizip CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
-find_package(soloud CONFIG REQUIRED)
+# find_package(soloud CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(fsr2 CONFIG REQUIRED)
 
@@ -63,7 +63,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     assimp::assimp
     freeimage::FreeImage
     glm::glm
-    soloud
+    # soloud
     fsr2::ffx_fsr2_api
     fsr2::ffx_fsr2_api_vk
 )

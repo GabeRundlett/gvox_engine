@@ -37,7 +37,7 @@ const uint IRCACHE_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_VALIDATION_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_RESTIR_M_CLAMP = 30;
 
-#include <utils/normal.glsl>
+#include <utilities/gpu/normal.glsl>
 
 Vertex unpack_vertex(VertexPacked p) {
     Vertex res;

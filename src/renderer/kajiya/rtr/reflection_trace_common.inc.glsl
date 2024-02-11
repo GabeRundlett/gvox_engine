@@ -39,9 +39,9 @@ const bool USE_SCREEN_GI_REPROJECTION = true;
 #define SAMPLING_BIAS 0.15
 #endif
 
-#include <utils/sky.glsl>
-#include <utils/ray_cone.glsl>
-#include <utils/safety.glsl>
+#include <utilities/gpu/sky.glsl>
+#include <utilities/gpu/ray_cone.glsl>
+#include <utilities/gpu/safety.glsl>
 
 struct RtrTraceResult {
     vec3 total_radiance;

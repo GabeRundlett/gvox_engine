@@ -1,5 +1,5 @@
 #include <renderer/kajiya/light_gbuffer.inl>
-#include <utils/camera.glsl>
+#include <utilities/gpu/camera.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(LightGbufferComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -15,11 +15,11 @@ daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 // IRCACHE_USE_BUFFERS_PUSH_USES()
 
-#include <utils/rt.glsl>
-#include <utils/sky.glsl>
-#include <utils/gbuffer.glsl>
+#include <utilities/gpu/rt.glsl>
+#include <utilities/gpu/sky.glsl>
+#include <utilities/gpu/gbuffer.glsl>
 
-#include <utils/layered_brdf.glsl>
+#include <utilities/gpu/layered_brdf.glsl>
 
 // #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 // #include <renderer/kajiya/ircache/lookup.glsl>

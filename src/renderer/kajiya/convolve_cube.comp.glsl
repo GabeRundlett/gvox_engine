@@ -1,5 +1,5 @@
 #include <renderer/kajiya/convolve_cube.inl>
-#include <utils/math.glsl>
+#include <utilities/gpu/math.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(ConvolveCubeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

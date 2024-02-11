@@ -1,8 +1,8 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
-#include <shared/globals.inl>
+#include <core.inl>
+#include <application/input.inl>
+#include <application/globals.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)

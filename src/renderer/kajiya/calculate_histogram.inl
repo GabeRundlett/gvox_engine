@@ -1,7 +1,7 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
+#include <core.inl>
+#include <application/input.inl>
 
 #define LUMINANCE_HISTOGRAM_BIN_COUNT 256
 #define LUMINANCE_HISTOGRAM_MIN_LOG2 -8.0

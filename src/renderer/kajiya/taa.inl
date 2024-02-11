@@ -1,8 +1,8 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
-#include <shared/globals.inl>
+#include <core.inl>
+#include <application/input.inl>
+#include <application/globals.inl>
 
 #define TAA_WG_SIZE_X 16
 #define TAA_WG_SIZE_Y 8

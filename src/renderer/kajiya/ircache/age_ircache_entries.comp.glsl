@@ -1,6 +1,6 @@
 #include <renderer/kajiya/ircache.inl>
 #include "ircache_constants.glsl"
-#include <utils/random.glsl>
+#include <utilities/gpu/random.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(AgeIrcacheEntriesComputePush, push)
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/normal.glsl>
+#include <utilities/gpu/normal.glsl>
 
 vec4 decode_hit_normal_and_dot(vec4 val) {
     return vec4(val.xyz * 2 - 1, val.w);

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
-#include <shared/globals.inl>
-#include <shared/voxels/voxels.inl>
+#include <core.inl>
+#include <application/input.inl>
+#include <application/globals.inl>
+#include <voxels/voxels.inl>
 #include <renderer/kajiya/prefix_scan.inl>
 
 struct Vertex {

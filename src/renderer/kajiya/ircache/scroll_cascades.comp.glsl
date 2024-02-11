@@ -1,6 +1,6 @@
 #include <renderer/kajiya/ircache.inl>
 
-#include <utils/random.glsl>
+#include <utilities/gpu/random.glsl>
 #include "ircache_constants.glsl"
 #include "ircache_grid.glsl"
 

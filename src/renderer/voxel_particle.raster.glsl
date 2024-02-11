@@ -1,4 +1,4 @@
-#include <shared/voxels/voxel_particles.inl>
+#include <voxels/voxel_particles.inl>
 
 #define VOXEL_SCL 8
 
@@ -13,7 +13,7 @@ daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
 #include <voxels/voxel_particle.glsl>
-#include <utils/camera.glsl>
+#include <utilities/gpu/camera.glsl>
 
 layout(location = 1) out uint id;
 

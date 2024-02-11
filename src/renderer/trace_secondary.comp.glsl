@@ -1,9 +1,9 @@
 #include <renderer/trace_secondary.inl>
 
-#include <utils/camera.glsl>
+#include <utilities/gpu/camera.glsl>
 #include <voxels/core.glsl>
-#include <utils/sky.glsl>
-#include <utils/downscale.glsl>
+#include <utilities/gpu/sky.glsl>
+#include <utilities/gpu/downscale.glsl>
 
 #if TraceSecondaryComputeShader
 

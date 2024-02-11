@@ -1,6 +1,6 @@
 #pragma once
-#include <utils/random.glsl>
-#include <utils/normal.glsl>
+#include <utilities/gpu/random.glsl>
+#include <utilities/gpu/normal.glsl>
 
 const uint SAMPLER_SEQUENCE_LENGTH = 1024;
 

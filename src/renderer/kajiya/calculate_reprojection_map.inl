@@ -1,8 +1,8 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
-#include <shared/globals.inl>
+#include <core.inl>
+#include <application/input.inl>
+#include <application/globals.inl>
 #include <renderer/core.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute, 7)

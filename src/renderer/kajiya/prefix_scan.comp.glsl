@@ -1,5 +1,5 @@
 #include <renderer/kajiya/prefix_scan.inl>
-#include <utils/common.glsl>
+#include <utilities/gpu/common.glsl>
 
 #define THREAD_GROUP_SIZE 512
 #define SEGMENT_SIZE (THREAD_GROUP_SIZE * 2)

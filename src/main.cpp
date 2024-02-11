@@ -1,7 +1,7 @@
 #include "voxel_app.hpp"
 #include <filesystem>
 
-#include <debug_utils.hpp>
+#include <utilities/debug.hpp>
 
 void search_for_path_to_fix_working_directory(std::span<std::filesystem::path const> test_paths) {
     auto current_path = std::filesystem::current_path();
@@ -27,6 +27,8 @@ auto main() -> int {
 
     auto global_console = debug_utils::Console{};
     auto global_debug_display = debug_utils::DebugDisplay{};
+
+    auto settings = AppSettings{};
 
     auto app = VoxelApp{};
     app.run();

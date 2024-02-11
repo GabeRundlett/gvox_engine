@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <core.inl>
 #include <renderer/core.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 3 + VOXEL_BUFFER_USE_N)

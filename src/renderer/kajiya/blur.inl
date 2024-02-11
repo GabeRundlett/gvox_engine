@@ -1,7 +1,7 @@
 #pragma once
 
-#include <shared/core.inl>
-#include <shared/input.inl>
+#include <core.inl>
+#include <application/input.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(BlurCompute, 2)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <core.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan1Compute, 1)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), inout_buf)

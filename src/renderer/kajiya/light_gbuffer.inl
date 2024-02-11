@@ -1,6 +1,6 @@
 #pragma once
 
-#include <shared/core.inl>
+#include <core.inl>
 #include <renderer/core.inl>
 
 #include <renderer/kajiya/ircache.inl>

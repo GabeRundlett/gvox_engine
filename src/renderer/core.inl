@@ -4,7 +4,7 @@
 
 #if defined(__cplusplus)
 
-#include <core.hpp>
+#include <utilities/core.hpp>
 
 struct GbufferDepth {
     daxa::TaskImageView gbuffer;

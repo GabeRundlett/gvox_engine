@@ -10,7 +10,7 @@
 #include <gvox/adapters/output/byte_buffer.h>
 #include <gvox/adapters/parse/voxlap.h>
 
-// #include <shared/voxels/gvox_model.inl>
+// #include <voxels/gvox_model.inl>
 #include <minizip/unzip.h>
 
 static_assert(IsVoxelWorld<VoxelWorld>);
@@ -150,56 +150,39 @@ VoxelApp::VoxelApp()
           .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
           .name = "swapchain",
       })},
-      main_pipeline_manager{[this]() {
-          auto result = AsyncPipelineManager({
-              .device = device,
-              .shader_compile_options = {
-                  .root_paths = {
-                      DAXA_SHADER_INCLUDE_DIR,
-                      "assets",
-                      "src",
-                      "gpu",
-                      "src/gpu",
-                      "src/renderer",
-                  },
-                  // .write_out_preprocessed_code = ".out/",
-                  // .write_out_shader_binary = ".out/",
-                  .spirv_cache_folder = ".out/spirv_cache",
-                  .language = daxa::ShaderLanguage::GLSL,
-                  .enable_debug_info = true,
+      main_pipeline_manager{daxa::PipelineManagerInfo{
+          .device = device,
+          .shader_compile_options = {
+              .root_paths = {
+                  DAXA_SHADER_INCLUDE_DIR,
+                  "assets",
+                  "src",
+                  "gpu",
+                  "src/gpu",
+                  "src/renderer",
               },
-              .register_null_pipelines_when_first_compile_fails = true,
-              .name = "pipeline_manager",
-          });
-          result.add_virtual_file({
-              .name = "FULL_SCREEN_TRIANGLE_VERTEX_SHADER",
-              .contents = R"glsl(
-                void main() {
-                    switch (gl_VertexIndex) {
-                    case 0: gl_Position = vec4(-1, -1, 0, 1); break;
-                    case 1: gl_Position = vec4(-1, +4, 0, 1); break;
-                    case 2: gl_Position = vec4(+4, -1, 0, 1); break;
-                    }
-                }
-                )glsl",
-          });
-          return result;
-      }()},
-      ui{[this]() {
-          auto result = AppUi(AppWindow::glfw_window_ptr);
-          auto const &device_props = device.properties();
-          result.debug_gpu_name = reinterpret_cast<char const *>(device_props.device_name);
-          return result;
-      }()},
-      imgui_renderer{[this]() {
-          return daxa::ImGuiRenderer({
-              .device = device,
-              .format = swapchain.get_format(),
-              .context = ImGui::GetCurrentContext(),
-              .use_custom_config = false,
-          });
-      }()},
-      gpu_resources{}, gvox_ctx(gvox_create_context()) {
+              // .write_out_preprocessed_code = ".out/",
+              // .write_out_shader_binary = ".out/",
+              .spirv_cache_folder = ".out/spirv_cache",
+              .language = daxa::ShaderLanguage::GLSL,
+              .enable_debug_info = true,
+          },
+          .register_null_pipelines_when_first_compile_fails = true,
+          .name = "pipeline_manager",
+      }},
+      ui{AppUi(AppWindow::glfw_window_ptr)} {
+
+    AppSettings::add(SettingInfo<settings::SliderFloat>{"Camera", "FOV", {.value = 74.0f, .min = 0.0f, .max = 179.0f}});
+
+    auto const &device_props = device.properties();
+    ui.debug_gpu_name = reinterpret_cast<char const *>(device_props.device_name);
+    imgui_renderer = daxa::ImGuiRenderer({
+        .device = device,
+        .format = swapchain.get_format(),
+        .context = ImGui::GetCurrentContext(),
+        .use_custom_config = false,
+    });
+    gvox_ctx = gvox_create_context();
 
     renderer.create(device);
     gpu_resources.create(device);
@@ -390,6 +373,24 @@ VoxelApp::VoxelApp()
     for (daxa_u32 i = 0; i < halton_offsets.size(); ++i) {
         halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
+
+    main_pipeline_manager.add_virtual_file({
+        .name = "FULL_SCREEN_TRIANGLE_VERTEX_SHADER",
+        .contents = R"glsl(
+            void main() {
+                switch (gl_VertexIndex) {
+                case 0: gl_Position = vec4(-1, -1, 0, 1); break;
+                case 1: gl_Position = vec4(-1, +4, 0, 1); break;
+                case 2: gl_Position = vec4(+4, -1, 0, 1); break;
+                }
+            }
+        )glsl",
+    });
+
+    // main_pipeline_manager.add_virtual_file({
+    //     .name = "gpu_resources",
+    //     .contents = gpu_resources.get_shader_string(),
+    // });
 
     main_task_graph = record_main_task_graph();
     main_pipeline_manager.wait();
@@ -876,7 +877,7 @@ void VoxelApp::on_update() {
     gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
     gpu_input.render_res_scl = ui.render_res_scl;
-    gpu_input.fov = ui.settings.camera_fov * (std::numbers::pi_v<daxa_f32> / 180.0f);
+    gpu_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
     gpu_input.sensitivity = ui.settings.mouse_sensitivity;
 
 #if ENABLE_TAA
@@ -975,8 +976,6 @@ void VoxelApp::on_update() {
 
     // gpu_app_draw_ui();
 
-    gpu_app_begin_frame(main_task_graph);
-
     if (ui.should_run_startup || model_is_ready) {
         run_startup(main_task_graph);
     }
@@ -988,6 +987,8 @@ void VoxelApp::on_update() {
         device.wait_idle();
         main_task_graph = record_main_task_graph();
     }
+
+    gpu_app_begin_frame(main_task_graph);
 
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
     // condition_values[static_cast<size_t>(Conditions::DYNAMIC_BUFFERS_REALLOC)] = should_realloc;
@@ -1439,8 +1440,6 @@ void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
     gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<daxa_u32>(ui.paused);
 
     gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
-
-    gpu_input.sky_settings = ui.settings.sky;
 
     renderer.begin_frame(gpu_input, gpu_output);
 

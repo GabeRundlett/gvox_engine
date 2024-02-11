@@ -1,5 +1,5 @@
 #include <renderer/kajiya/ircache.inl>
-#include <utils/sh.glsl>
+#include <utilities/gpu/sh.glsl>
 #include "ircache_constants.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(IrcacheResetComputePush, push)
