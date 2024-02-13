@@ -169,7 +169,7 @@ struct VoxelWorld {
         });
     }
 
-    auto check_for_realloc(daxa::Device &device, VoxelWorldOutput const &gpu_output) -> bool {
+    void begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_output) {
         buffers.voxel_malloc.check_for_realloc(device, gpu_output.voxel_malloc_output.current_element_count);
         // buffers.voxel_leaf_chunk_malloc.check_for_realloc(device, gpu_output.voxel_leaf_chunk_output.current_element_count);
         // buffers.voxel_parent_chunk_malloc.check_for_realloc(device, gpu_output.voxel_parent_chunk_output.current_element_count);
@@ -182,38 +182,42 @@ struct VoxelWorld {
         debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
         debug_page_count = buffers.voxel_malloc.current_element_count;
 
-        return needs_realloc;
-    }
+        if (needs_realloc) {
+            auto temp_task_graph = daxa::TaskGraph({
+                .device = device,
+                .name = "temp_task_graph",
+            });
 
-    void dynamic_buffers_realloc(daxa::TaskGraph &temp_task_graph, bool &needs_vram_calc) {
-        buffers.voxel_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
-        // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
-        // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
-        temp_task_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_malloc.task_old_element_buffer),
-                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_malloc.task_element_buffer),
-                // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_leaf_chunk_malloc.task_old_element_buffer),
-                // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_leaf_chunk_malloc.task_element_buffer),
-                // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_parent_chunk_malloc.task_old_element_buffer),
-                // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_parent_chunk_malloc.task_element_buffer),
-            },
-            .task = [this, &needs_vram_calc](daxa::TaskInterface const &ti) {
-                if (buffers.voxel_malloc.needs_realloc()) {
-                    buffers.voxel_malloc.realloc(ti.device, ti.recorder);
-                    needs_vram_calc = true;
-                }
-                // if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_leaf_chunk_malloc.realloc(ti.device, ti.recorder);
-                //     needs_vram_calc = true;
-                // }
-                // if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
-                //     buffers.voxel_parent_chunk_malloc.realloc(ti.device, ti.recorder);
-                //     needs_vram_calc = true;
-                // }
-            },
-            .name = "Transfer Task",
-        });
+            buffers.voxel_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
+            // buffers.voxel_leaf_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
+            // buffers.voxel_parent_chunk_malloc.for_each_task_buffer([&temp_task_graph](auto &task_buffer) { temp_task_graph.use_persistent_buffer(task_buffer); });
+            temp_task_graph.add_task({
+                .attachments = {
+                    daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_malloc.task_old_element_buffer),
+                    daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_malloc.task_element_buffer),
+                    // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_leaf_chunk_malloc.task_old_element_buffer),
+                    // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_leaf_chunk_malloc.task_element_buffer),
+                    // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, buffers.voxel_parent_chunk_malloc.task_old_element_buffer),
+                    // daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_parent_chunk_malloc.task_element_buffer),
+                },
+                .task = [this](daxa::TaskInterface const &ti) {
+                    if (buffers.voxel_malloc.needs_realloc()) {
+                        buffers.voxel_malloc.realloc(ti.device, ti.recorder);
+                    }
+                    // if (buffers.voxel_leaf_chunk_malloc.needs_realloc()) {
+                    //     buffers.voxel_leaf_chunk_malloc.realloc(ti.device, ti.recorder);
+                    // }
+                    // if (buffers.voxel_parent_chunk_malloc.needs_realloc()) {
+                    //     buffers.voxel_parent_chunk_malloc.realloc(ti.device, ti.recorder);
+                    // }
+                },
+                .name = "Transfer Task",
+            });
+
+            temp_task_graph.submit({});
+            temp_task_graph.complete({});
+            temp_task_graph.execute({});
+        }
     }
 
     void use_buffers(RecordContext &record_ctx) {

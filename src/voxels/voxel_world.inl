@@ -5,7 +5,7 @@
 #if defined(__cplusplus)
 
 template <typename T>
-concept IsVoxelWorld = requires(T x, RecordContext &r, bool b) {
+concept IsVoxelWorld = requires(T x, RecordContext &r) {
     { x.buffers };
     { x.create(r.device) };
     { x.destroy(r.device) };
@@ -13,8 +13,7 @@ concept IsVoxelWorld = requires(T x, RecordContext &r, bool b) {
         x.for_each_buffer([](daxa::BufferId) {})
     };
     { x.record_startup(r) };
-    { x.check_for_realloc(r.device, VoxelWorldOutput{}) } -> std::same_as<bool>;
-    { x.dynamic_buffers_realloc(r.task_graph, b) };
+    { x.begin_frame(r.device, VoxelWorldOutput{}) };
     { x.use_buffers(r) };
     { x.record_frame(r, daxa::TaskBufferView{}, daxa::TaskImageView{}) };
 };

@@ -5,7 +5,7 @@
 #if defined(__cplusplus)
 
 struct VoxelWorld {
-    Buffers buffers;
+    VoxelWorldBuffers buffers;
 
     void create(daxa::Device &device) {
         buffers.voxel_globals = device.create_buffer({
@@ -28,11 +28,7 @@ struct VoxelWorld {
     void record_startup(RecordContext &) {
     }
 
-    auto check_for_realloc(daxa::Device &, VoxelWorldOutput const &) -> bool {
-        return false;
-    }
-
-    void dynamic_buffers_realloc(daxa::TaskGraph &, bool &) {
+    void begin_frame(daxa::Device &, VoxelWorldOutput const &) {
     }
 
     void use_buffers(RecordContext &record_ctx) {

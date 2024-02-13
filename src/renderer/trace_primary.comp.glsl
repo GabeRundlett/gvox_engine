@@ -106,6 +106,7 @@ void main() {
     daxa_f32vec3 vs_nrm = daxa_f32vec3(0);
     daxa_f32vec3 vs_velocity = daxa_f32vec3(0);
 
+#if !PER_VOXEL_NORMALS && defined(VOXELS_ORIGINAL_IMPL)
     bool is_valid = true;
     if (trace_result.dist != MAX_DIST) {
         daxa_u32 lod_index = 0;
@@ -114,7 +115,6 @@ void main() {
         Voxel voxel = unpack_voxel(voxel_data);
         is_valid = voxel.material_type == 0;
     }
-#if !PER_VOXEL_NORMALS
     vec3 old_nrm = trace_result.nrm;
     if (!is_valid) {
         trace_result.nrm = vec3(0.0);

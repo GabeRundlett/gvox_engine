@@ -933,23 +933,7 @@ void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
         gpu_app_calc_vram_usage(task_graph);
     }
 
-    bool should_realloc = voxel_world.check_for_realloc(device, gpu_output.voxel_world);
-
-    if (should_realloc) {
-        gpu_app_dynamic_buffers_realloc();
-    }
-}
-void VoxelApp::gpu_app_dynamic_buffers_realloc() {
-    auto temp_task_graph = daxa::TaskGraph({
-        .device = device,
-        .name = "temp_task_graph",
-    });
-
-    voxel_world.dynamic_buffers_realloc(temp_task_graph, needs_vram_calc);
-
-    temp_task_graph.submit({});
-    temp_task_graph.complete({});
-    temp_task_graph.execute({});
+    voxel_world.begin_frame(device, gpu_output.voxel_world);
 }
 void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_buffer(task_input_buffer);

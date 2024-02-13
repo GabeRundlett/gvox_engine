@@ -7,6 +7,7 @@
 
 #define INVALID_CHUNK_I daxa_i32vec3(0x80000000)
 #define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / voxel_scl)
+#define VOXELS_ORIGINAL_IMPL
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                       \
     daxa_u32 uniformity_lod_index_##N(daxa_u32vec3 index_within_lod) {     \
