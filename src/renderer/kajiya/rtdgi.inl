@@ -29,7 +29,7 @@ IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, irradiance_history_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ray_orig_history_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, ray_orig_history_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, rt_history_invalidity_out_tex)
 DAXA_DECL_TASK_HEAD_END
 struct RtdgiValidateComputePush {
@@ -535,7 +535,7 @@ struct RtdgiRenderer {
                 },
             });
 
-            debug_utils::DebugDisplay::add_pass({.name = "rtdgi validate", .task_image_id = half_depth_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+            debug_utils::DebugDisplay::add_pass({.name = "rtdgi validate", .task_image_id = rt_history_validity_pre_input_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             auto rt_history_validity_input_tex = record_ctx.task_graph.create_transient_image({
                 .format = daxa::Format::R8_UNORM,

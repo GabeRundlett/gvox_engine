@@ -247,8 +247,18 @@ void brushgen_world(in out Voxel voxel) {
         voxel.material_type = 1;
         voxel.color = daxa_f32vec3(0.5, 0.1, 0.8);
         voxel.roughness = 0.5;
+    } else if (false) { // test
+        vec2 map_uv = voxel_pos.xy / (4097.0 / VOXEL_SCL);
+        float map_height = texture(daxa_sampler2D(test_texture, deref(gpu_input).sampler_llc), map_uv).r * 4097.0 / VOXEL_SCL - 128.0;
+        vec3 map_color = texture(daxa_sampler2D(test_texture2, deref(gpu_input).sampler_llc), map_uv).rgb;
+        bool solid = voxel_pos.z < map_height * 0.6;
+        if (solid) {
+            voxel.color = pow(vec3(uvec3(map_color * 64)) / 64, vec3(2.2));
+            voxel.material_type = 1;
+            voxel.roughness = 0.99;
+        }
     } else if (GEN_MODEL != 0) { // Model world
-        daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel + ivec3(1000, 1000, 0), 0);
+        daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         voxel.material_type = (packed_col_data >> 0x18) != 0 ? 1 : 0;
         // daxa_u32 packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);

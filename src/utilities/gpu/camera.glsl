@@ -7,8 +7,6 @@ daxa_f32vec2 get_uv(daxa_i32vec2 pix, daxa_f32vec4 tex_size) { return (daxa_f32v
 daxa_f32vec2 get_uv(daxa_f32vec2 pix, daxa_f32vec4 tex_size) { return (pix + 0.5) * tex_size.zw; }
 daxa_f32vec2 cs_to_uv(daxa_f32vec2 cs) { return cs * daxa_f32vec2(0.5, -0.5) + daxa_f32vec2(0.5, 0.5); }
 daxa_f32vec2 uv_to_cs(daxa_f32vec2 uv) { return (uv - 0.5) * daxa_f32vec2(2, -2); }
-daxa_f32vec2 uv_to_ss(daxa_BufferPtr(GpuInput) gpu_input, daxa_f32vec2 uv, daxa_f32vec4 tex_size) { return uv - deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
-daxa_f32vec2 ss_to_uv(daxa_BufferPtr(GpuInput) gpu_input, daxa_f32vec2 ss, daxa_f32vec4 tex_size) { return ss + deref(gpu_input).halton_jitter.xy * tex_size.zw * 1.0; }
 
 struct ViewRayContext {
     daxa_f32vec4 ray_dir_cs;

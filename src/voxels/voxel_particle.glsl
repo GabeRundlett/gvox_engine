@@ -34,7 +34,7 @@ void particle_spawn(in out SimulatedVoxelParticle self, daxa_u32 index) {
 
     vec3 col = vec3(0.3, 0.4, 0.9) * (rand() * 0.5 + 0.5); // vec3(0.5);
     vec3 nrm = vec3(0, 0, 1);
-    Voxel particle_voxel = Voxel(1, 0.5, nrm, col);
+    Voxel particle_voxel = Voxel(1, 0.99, nrm, col);
     self.packed_voxel = pack_voxel(particle_voxel);
 }
 

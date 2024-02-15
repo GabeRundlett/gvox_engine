@@ -541,6 +541,8 @@ struct RecordContext {
     daxa::TaskImageView task_swapchain_image;
     daxa::TaskImageView task_blue_noise_vec2_image;
     daxa::TaskImageView task_debug_texture;
+    daxa::TaskImageView task_test_texture;
+    daxa::TaskImageView task_test_texture2;
     daxa::TaskBufferView task_input_buffer;
     daxa::TaskBufferView task_globals_buffer;
 

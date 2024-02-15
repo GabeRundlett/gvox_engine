@@ -70,23 +70,10 @@ void main() {
     vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
     vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 
-    mat4 view_to_clip = deref(globals).player.cam.view_to_clip;
-    // TODO: Figure out why raster is projected upside down
-    view_to_clip[1][1] *= -1.0;
-    
-    daxa_f32vec4 output_tex_size;
-    output_tex_size.xy = deref(gpu_input).frame_dim;
-    output_tex_size.zw = daxa_f32vec2(1.0, 1.0) / output_tex_size.xy;
-    daxa_f32mat4x4 inv_jitter_mat = daxa_f32mat4x4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        ss_to_uv(gpu_input, daxa_f32vec2(0.0), output_tex_size), 0, 1);
-
-    view_to_clip = inv_jitter_mat * view_to_clip;
-
     vec4 vs_pos = deref(globals).player.cam.world_to_view * daxa_f32vec4(vert_pos, 1);
-    vec4 cs_pos = view_to_clip * vs_pos;
+    vec4 cs_pos = deref(globals).player.cam.view_to_sample * vs_pos;
+    // TODO: Figure out why raster is projected upside down
+    cs_pos.y *= -1;
 
     gl_Position = cs_pos;
 

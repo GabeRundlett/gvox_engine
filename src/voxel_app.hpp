@@ -17,6 +17,8 @@ struct GpuResources {
     daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec2_image;
     daxa::ImageId debug_texture;
+    daxa::ImageId test_texture;
+    daxa::ImageId test_texture2;
 
     daxa::BufferId input_buffer;
     daxa::BufferId output_buffer;
@@ -65,6 +67,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
     daxa::TaskImage task_debug_texture{{.name = "task_debug_texture"}};
+    daxa::TaskImage task_test_texture{{.name = "task_test_texture"}};
+    daxa::TaskImage task_test_texture2{{.name = "task_test_texture2"}};
 
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};

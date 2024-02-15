@@ -59,18 +59,23 @@ void main() {
 
     float invalidity = 0.0;
 
+    // NOTE(grundlett): Here we fix the ray origin for when the player causes the world to wrap.
+    // We technically don't need to write out if the world does not wrap in this frame, but IDC for now.
+    vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz;
+    prev_ray_orig -= daxa_f32vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);
+    safeImageStore(ray_orig_history_tex, ivec2(px), vec4(prev_ray_orig, 0));
+
     if (RESTIR_USE_PATH_VALIDATION && is_rtdgi_validation_frame(deref(gpu_input).frame_index)) {
         const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
         const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
 
-        const vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz;
-        const vec3 prev_hit_pos = safeTexelFetch(reservoir_ray_history_tex, ivec2(px), 0).xyz + prev_ray_orig;
+        const vec3 prev_ray_delta = safeTexelFetch(reservoir_ray_history_tex, ivec2(px), 0).xyz;
 
         const vec4 prev_radiance_packed = safeTexelFetch(irradiance_history_tex, ivec2(px), 0);
         const vec3 prev_radiance = max(0.0.xxx, prev_radiance_packed.rgb);
 
         RayDesc prev_ray;
-        prev_ray.Direction = normalize(prev_hit_pos - prev_ray_orig);
+        prev_ray.Direction = normalize(prev_ray_delta);
         prev_ray.Origin = prev_ray_orig;
         prev_ray.TMin = 0;
         prev_ray.TMax = SKY_DIST;
@@ -84,7 +89,7 @@ void main() {
         const float rad_diff = length(abs(prev_radiance - new_radiance) / max(vec3(1e-3), prev_radiance + new_radiance));
         invalidity = smoothstep(0.1, 0.5, rad_diff / length(1.0.xxx));
 
-        const float prev_hit_dist = length(prev_hit_pos - prev_ray_orig);
+        const float prev_hit_dist = length(prev_ray_delta);
 
         // If we hit more or less the same point, replace the hit radiance.
         // If the hit is different, it's possible that the previous origin point got obscured

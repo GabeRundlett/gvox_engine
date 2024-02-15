@@ -80,6 +80,12 @@ void GpuResources::destroy(daxa::Device &device) const {
     if (!debug_texture.is_empty()) {
         device.destroy_image(debug_texture);
     }
+    if (!test_texture.is_empty()) {
+        device.destroy_image(test_texture);
+    }
+    if (!test_texture2.is_empty()) {
+        device.destroy_image(test_texture2);
+    }
     device.destroy_buffer(input_buffer);
     device.destroy_buffer(output_buffer);
     device.destroy_buffer(staging_output_buffer);
@@ -335,6 +341,111 @@ VoxelApp::VoxelApp()
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});
+    }
+
+    if (false) {
+        daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
+            .device = device,
+            .name = "temp_task_graph",
+        });
+
+        auto texture_path = "C:/Users/gabe/Downloads/Rugged Terrain with Rocky Peaks/Rugged Terrain with Rocky Peaks Height Map EXR.exr";
+        auto fi_file_desc = FreeImage_GetFileType(texture_path, 0);
+        FIBITMAP *fi_bitmap = FreeImage_Load(fi_file_desc, texture_path);
+        auto size_x = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap));
+        auto size_y = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap));
+        auto *temp_data = FreeImage_GetBits(fi_bitmap);
+        assert(temp_data != nullptr && "Failed to load image");
+        // auto pixel_size = FreeImage_GetBPP(fi_bitmap);
+        // if (pixel_size != 32) {
+        //     auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
+        //     FreeImage_Unload(fi_bitmap);
+        //     fi_bitmap = temp;
+        // }
+        auto size = static_cast<daxa_u32>(size_x) * static_cast<daxa_u32>(size_y) * 1 * 4;
+
+        gpu_resources.test_texture = device.create_image({
+            .dimensions = 2,
+            .format = daxa::Format::R32_SFLOAT,
+            .size = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+            .name = "test_texture",
+        });
+
+        auto texture_path2 = "C:/Users/gabe/Downloads/Rugged Terrain with Rocky Peaks/Rugged Terrain with Rocky Peaks Diffuse EXR.exr";
+        auto fi_file_desc2 = FreeImage_GetFileType(texture_path2, 0);
+        FIBITMAP *fi_bitmap2 = FreeImage_Load(fi_file_desc2, texture_path2);
+        auto size_x2 = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap2));
+        auto size_y2 = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap2));
+        {
+            auto *temp = FreeImage_ConvertToRGBAF(fi_bitmap2);
+            FreeImage_Unload(fi_bitmap2);
+            fi_bitmap2 = temp;
+        }
+        auto *temp_data2 = FreeImage_GetBits(fi_bitmap2);
+        assert(temp_data2 != nullptr && "Failed to load image");
+        auto size2 = static_cast<daxa_u32>(size_x2) * static_cast<daxa_u32>(size_y2) * 4 * 4;
+
+        gpu_resources.test_texture2 = device.create_image({
+            .dimensions = 2,
+            .format = daxa::Format::R32G32B32A32_SFLOAT,
+            .size = {static_cast<daxa_u32>(size_x2), static_cast<daxa_u32>(size_y2), 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+            .name = "test_texture",
+        });
+
+        task_test_texture.set_images({.images = std::array{gpu_resources.test_texture}});
+        task_test_texture2.set_images({.images = std::array{gpu_resources.test_texture2}});
+        temp_task_graph.use_persistent_image(task_test_texture);
+        temp_task_graph.use_persistent_image(task_test_texture2);
+        temp_task_graph.add_task({
+            .attachments = {
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_test_texture),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_test_texture2),
+            },
+            .task = [&, this](daxa::TaskInterface const &ti) {
+                {
+                    auto staging_buffer = ti.device.create_buffer({
+                        .size = size,
+                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .name = "staging_buffer",
+                    });
+                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                    std::copy(temp_data + 0, temp_data + size, buffer_ptr);
+                    FreeImage_Unload(fi_bitmap);
+                    ti.recorder.destroy_buffer_deferred(staging_buffer);
+                    ti.recorder.copy_buffer_to_image({
+                        .buffer = staging_buffer,
+                        .image = task_test_texture.get_state().images[0],
+                        .image_extent = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
+                    });
+                }
+                {
+                    auto staging_buffer = ti.device.create_buffer({
+                        .size = size2,
+                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .name = "staging_buffer",
+                    });
+                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                    std::copy(temp_data2 + 0, temp_data2 + size2, buffer_ptr);
+                    FreeImage_Unload(fi_bitmap2);
+                    ti.recorder.destroy_buffer_deferred(staging_buffer);
+                    ti.recorder.copy_buffer_to_image({
+                        .buffer = staging_buffer,
+                        .image = task_test_texture2.get_state().images[0],
+                        .image_extent = {static_cast<daxa_u32>(size_x2), static_cast<daxa_u32>(size_y2), 1},
+                    });
+                }
+                needs_vram_calc = true;
+            },
+            .name = "upload_test_texture",
+        });
+        temp_task_graph.submit({});
+        temp_task_graph.complete({});
+        temp_task_graph.execute({});
+    } else {
+        task_test_texture.set_images({.images = std::array{gpu_resources.debug_texture}});
+        task_test_texture2.set_images({.images = std::array{gpu_resources.debug_texture}});
     }
 
     // constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
@@ -975,6 +1086,8 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_image(task_value_noise_image);
     record_ctx.task_graph.use_persistent_image(task_blue_noise_vec2_image);
     record_ctx.task_graph.use_persistent_image(task_debug_texture);
+    record_ctx.task_graph.use_persistent_image(task_test_texture);
+    record_ctx.task_graph.use_persistent_image(task_test_texture2);
 
     record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_output_buffer);
@@ -987,6 +1100,8 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
 
     record_ctx.task_blue_noise_vec2_image = task_blue_noise_vec2_image;
     record_ctx.task_debug_texture = task_debug_texture;
+    record_ctx.task_test_texture = task_test_texture;
+    record_ctx.task_test_texture2 = task_test_texture2;
     record_ctx.task_input_buffer = task_input_buffer;
     record_ctx.task_globals_buffer = task_globals_buffer;
 

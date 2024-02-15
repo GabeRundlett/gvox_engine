@@ -126,6 +126,7 @@ daxa_ImageViewIndex cube_image_id = push.uses.cube_image_id;
 daxa_ImageViewIndex render_image = push.uses.render_image;
 
 #include <utilities/gpu/reservoir.glsl>
+#include <utilities/gpu/gbuffer.glsl>
 
 layout(location = 0) out daxa_f32vec4 color;
 
@@ -135,10 +136,8 @@ void main() {
 
     if (push.type == DEBUG_IMAGE_TYPE_GBUFFER) {
         daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
-        daxa_u32vec4 g_buffer_value = texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0);
-        daxa_f32vec3 nrm = u16_to_nrm(g_buffer_value.y);
-        daxa_f32 depth = uintBitsToFloat(g_buffer_value.z);
-        tex_color = vec3(nrm);
+        GbufferData gbuffer = unpack(GbufferDataPacked(texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0)));
+        tex_color = vec3(gbuffer.albedo);
         // tex_color = vec3(g_buffer_value.x * 0.00001, g_buffer_value.y * 0.0001, depth * 0.01);
     } else if (push.type == DEBUG_IMAGE_TYPE_SHADOW_BITMAP) {
         daxa_i32vec2 in_pixel_i = daxa_i32vec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);

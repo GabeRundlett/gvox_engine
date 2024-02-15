@@ -119,6 +119,8 @@ daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 daxa_BufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
 daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
+daxa_ImageViewIndex test_texture = push.uses.test_texture;
+daxa_ImageViewIndex test_texture2 = push.uses.test_texture2;
 
 #include <utilities/gpu/math.glsl>
 #include <utilities/gpu/noise.glsl>
@@ -411,6 +413,7 @@ void main() {
     if (is_occluded) {
         // nullify normal
         result.normal = vec3(0, 0, 1);
+        // result.color = vec3(0.9);
     } else {
         // potentially generate a normal
         // if the voxel normal is the "null" normal AKA up

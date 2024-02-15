@@ -179,19 +179,20 @@ void player_perframe(
     daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(input_ptr).frame_dim.xy, 0, 0);
     output_tex_size.zw = 1.0 / output_tex_size.xy;
 
-    daxa_f32mat4x4 jitter_mat = daxa_f32mat4x4(
+    daxa_f32mat4x4 clip_to_sample = daxa_f32mat4x4(
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        uv_to_ss(input_ptr, daxa_f32vec2(0.0), output_tex_size), 0, 1);
-    daxa_f32mat4x4 inv_jitter_mat = daxa_f32mat4x4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        ss_to_uv(input_ptr, daxa_f32vec2(0.0), output_tex_size), 0, 1);
+        deref(gpu_input).halton_jitter.xy * output_tex_size.zw * -2.0, 0, 1);
 
-    PLAYER.cam.view_to_sample = jitter_mat * PLAYER.cam.view_to_clip;
-    PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view * inv_jitter_mat;
+    daxa_f32mat4x4 sample_to_clip = daxa_f32mat4x4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        deref(gpu_input).halton_jitter.xy * output_tex_size.zw * +2.0, 0, 1);
+
+    PLAYER.cam.view_to_sample = clip_to_sample * PLAYER.cam.view_to_clip;
+    PLAYER.cam.sample_to_view = PLAYER.cam.clip_to_view * sample_to_clip;
 
     PLAYER.cam.view_to_world = translation_matrix(PLAYER.pos) * rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
     PLAYER.cam.world_to_view = inv_rotation_matrix(PLAYER.yaw, PLAYER.pitch, PLAYER.roll) * translation_matrix(-PLAYER.pos);
