@@ -13,7 +13,7 @@ add_executable(${PROJECT_NAME}
     "src/application/audio.cpp"
     "src/application/settings.cpp"
     "src/utilities/debug.cpp"
-    "src/utilities/gpu_resources.cpp"
+    "src/utilities/gpu_context.cpp"
     "src/utilities/mesh/mesh_model.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"

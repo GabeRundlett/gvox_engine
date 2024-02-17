@@ -18,7 +18,7 @@ inline void convolve_cube(RecordContext &record_ctx, daxa::TaskImageView input_c
     record_ctx.add(ComputeTask<ConvolveCubeCompute, ConvolveCubeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/convolve_cube.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::sky_cube, input_cube}},
             daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::ibl_cube, output_cube}},
         },

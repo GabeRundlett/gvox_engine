@@ -301,7 +301,7 @@ struct IrcacheRenderState {
         record_ctx.add(ComputeTask<IrcacheTraceAccessCompute, IrcacheTraceAccessComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/trace_accessibility.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(IrcacheTraceAccessCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::ircache_life_buf, this->ircache_life_buf}},
@@ -324,8 +324,8 @@ struct IrcacheRenderState {
         record_ctx.add(ComputeTask<IrcacheValidateCompute, IrcacheValidateComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/ircache_validate.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(IrcacheValidateCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::sky_cube_tex, sky_cube}},
@@ -354,8 +354,8 @@ struct IrcacheRenderState {
         record_ctx.add(ComputeTask<TraceIrradianceCompute, TraceIrradianceComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/trace_irradiance.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(TraceIrradianceCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
                 daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::sky_cube_tex, sky_cube}},
@@ -389,7 +389,7 @@ struct IrcacheRenderState {
         record_ctx.add(ComputeTask<SumUpIrradianceCompute, SumUpIrradianceComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/sum_up_irradiance.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_life_buf, this->ircache_life_buf}},
                 daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_meta_buf, this->ircache_meta_buf}},
                 daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_irradiance_buf, this->ircache_irradiance_buf}},
@@ -412,10 +412,15 @@ struct IrcacheRenderState {
 };
 
 inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
-    auto result = record_ctx.find_or_add_temporal_buffer({
-        .size = static_cast<uint32_t>(size),
-        .name = name,
-    });
+    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer(
+        record_ctx.device,
+        {
+            .size = static_cast<uint32_t>(size),
+            .name = name,
+        });
+
+    record_ctx.task_graph.use_persistent_buffer(result.task_buffer);
+
     return result.task_buffer;
 }
 
@@ -530,9 +535,7 @@ struct IrcacheRenderer {
                     .device = record_ctx.device,
                     .name = "temp_task_graph",
                 }),
-                .pipeline_manager = record_ctx.pipeline_manager,
-                .compute_pipelines = record_ctx.compute_pipelines,
-                .raster_pipelines = record_ctx.raster_pipelines,
+                .gpu_context = record_ctx.gpu_context,
             };
 
             temp_record_ctx.task_graph.use_persistent_buffer(state.ircache_pool_buf);
@@ -561,7 +564,7 @@ struct IrcacheRenderer {
         record_ctx.add(ComputeTask<IrcacheScrollCascadesCompute, IrcacheScrollCascadesComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/scroll_cascades.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_grid_meta_buf, state.ircache_grid_meta_buf}},
                 daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_grid_meta_buf2, state.ircache_grid_meta_buf2}},
                 daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_entry_cell_buf, state.ircache_entry_cell_buf}},

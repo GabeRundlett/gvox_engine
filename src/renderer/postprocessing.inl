@@ -38,7 +38,7 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
             .format = output_format,
         }},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{PostprocessingRaster::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{PostprocessingRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::composited_image_id, antialiased_image}},
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::render_image, output_image}},
         },
@@ -69,9 +69,9 @@ inline void debug_pass(RecordContext &record_ctx, debug_utils::Pass const &pass,
             .format = output_format,
         }},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::gpu_input, record_ctx.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? record_ctx.task_debug_texture : pass.task_image_id}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.task_debug_texture}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? record_ctx.gpu_context->task_debug_texture : pass.task_image_id}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.gpu_context->task_debug_texture}},
             daxa::TaskViewVariant{std::pair{DebugImageRaster::render_image, output_image}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {

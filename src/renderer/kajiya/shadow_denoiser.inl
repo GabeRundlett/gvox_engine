@@ -75,7 +75,7 @@ struct ShadowDenoiser {
         record_ctx.add(ComputeTask<ShadowBitPackCompute, ShadowBitPackComputePush, ShadowBitPackComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::input_tex, shadow_mask}},
                 daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::output_tex, bitpacked_shadows_image}},
             },
@@ -142,8 +142,8 @@ struct ShadowDenoiser {
         record_ctx.add(ComputeTask<ShadowTemporalFilterCompute, ShadowTemporalFilterComputePush, ShadowBitPackComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::shadow_mask_tex, shadow_mask}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::bitpacked_shadow_mask_tex, bitpacked_shadows_image}},
                 daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::prev_moments_tex, prev_moments_image}},
@@ -191,8 +191,8 @@ struct ShadowDenoiser {
         record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, spatial_input_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
@@ -209,8 +209,8 @@ struct ShadowDenoiser {
         record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, accum_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},
@@ -227,8 +227,8 @@ struct ShadowDenoiser {
         record_ctx.add(ComputeTask<ShadowSpatialFilterCompute, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::input_tex, shadow_denoise_intermediary_1}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::meta_tex, metadata_image}},
                 daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::geometric_normal_tex, gbuffer_depth.geometric_normal}},

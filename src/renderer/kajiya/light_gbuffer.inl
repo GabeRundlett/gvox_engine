@@ -55,8 +55,8 @@ inline auto light_gbuffer(
     record_ctx.add(ComputeTask<LightGbufferCompute, LightGbufferComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},

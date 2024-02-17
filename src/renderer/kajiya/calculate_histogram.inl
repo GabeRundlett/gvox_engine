@@ -52,7 +52,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
     record_ctx.add(ComputeTask<CalculateHistogramCompute, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/calculate_histogram.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::input_tex, blur_pyramid.view({.base_mip_level = input_mip_level, .level_count = 1})}},
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::output_buffer, tmp_histogram}},
         },

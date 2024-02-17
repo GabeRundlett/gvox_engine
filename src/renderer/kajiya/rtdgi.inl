@@ -252,7 +252,7 @@ struct RtdgiRenderer {
         record_ctx.add(ComputeTask<RtdgiFullresReprojectCompute, RtdgiFullresReprojectComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtdgi/fullres_reproject.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtdgiFullresReprojectCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtdgiFullresReprojectCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtdgiFullresReprojectCompute::input_tex, history_tex}},
                 daxa::TaskViewVariant{std::pair{RtdgiFullresReprojectCompute::reprojection_tex, reprojection_map}},
                 daxa::TaskViewVariant{std::pair{RtdgiFullresReprojectCompute::output_tex, reprojected_history_tex}},
@@ -303,7 +303,7 @@ struct RtdgiRenderer {
         record_ctx.add(ComputeTask<RtdgiTemporalFilterCompute, RtdgiTemporalFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtdgi/temporal_filter.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtdgiTemporalFilterCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtdgiTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtdgiTemporalFilterCompute::input_tex, input_color}},
                 daxa::TaskViewVariant{std::pair{RtdgiTemporalFilterCompute::history_tex, reprojected_history_tex}},
                 daxa::TaskViewVariant{std::pair{RtdgiTemporalFilterCompute::variance_history_tex, variance_history_tex}},
@@ -342,7 +342,7 @@ struct RtdgiRenderer {
         record_ctx.add(ComputeTask<RtdgiSpatialFilterCompute, RtdgiSpatialFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtdgi/spatial_filter.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtdgiSpatialFilterCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtdgiSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtdgiSpatialFilterCompute::input_tex, input_color}},
                 daxa::TaskViewVariant{std::pair{RtdgiSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{RtdgiSpatialFilterCompute::ssao_tex, ssao_tex}},
@@ -508,14 +508,14 @@ struct RtdgiRenderer {
             record_ctx.add(ComputeTask<RtdgiValidateCompute, RtdgiValidateComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/diffuse_validate.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::gpu_input, record_ctx.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::globals, record_ctx.task_globals_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::half_view_normal_tex, half_view_normal_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::depth_tex, gbuffer_depth.depth.current()}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::reprojected_gi_tex, reprojected_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::reservoir_tex, reservoir_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::reservoir_ray_history_tex, ray_history_tex}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
                     // daxa::TaskViewVariant{std::pair{RtdgiValidateCompute::reprojection_tex, reprojection_map}},
                     VOXELS_BUFFER_USES_ASSIGN(RtdgiValidateCompute, voxel_buffers),
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiValidateCompute, ircache),
@@ -546,13 +546,13 @@ struct RtdgiRenderer {
             record_ctx.add(ComputeTask<RtdgiTraceCompute, RtdgiTraceComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/trace_diffuse.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::gpu_input, record_ctx.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::globals, record_ctx.task_globals_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::half_view_normal_tex, half_view_normal_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::depth_tex, gbuffer_depth.depth.current()}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::reprojected_gi_tex, reprojected_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::reprojection_tex, reprojection_map}},
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
+                    daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::sky_cube_tex, sky_cube}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceCompute::transmittance_lut, transmittance_lut}},
                     VOXELS_BUFFER_USES_ASSIGN(RtdgiTraceCompute, voxel_buffers),
@@ -579,8 +579,8 @@ struct RtdgiRenderer {
             record_ctx.add(ComputeTask<RtdgiValidityIntegrateCompute, RtdgiValidityIntegrateComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/temporal_validity_integrate.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::gpu_input, record_ctx.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::globals, record_ctx.task_globals_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::input_tex, rt_history_validity_input_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::history_tex, invalidity_history_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidityIntegrateCompute::reprojection_tex, reprojection_map}},
@@ -610,8 +610,8 @@ struct RtdgiRenderer {
             record_ctx.add(ComputeTask<RtdgiRestirTemporalCompute, RtdgiRestirTemporalComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/restir_temporal.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::gpu_input, record_ctx.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::globals, record_ctx.task_globals_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::half_view_normal_tex, half_view_normal_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::depth_tex, gbuffer_depth.depth.current()}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::candidate_radiance_tex, candidate_radiance_tex}},
@@ -697,8 +697,8 @@ struct RtdgiRenderer {
                 record_ctx.add(ComputeTask<RtdgiRestirSpatialCompute, RtdgiRestirSpatialComputePush, RestirSpatialTaskInfo>{
                     .source = daxa::ShaderFile{"kajiya/rtdgi/restir_spatial.comp.glsl"},
                     .views = std::array{
-                        daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::gpu_input, record_ctx.task_input_buffer}},
-                        daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::globals, record_ctx.task_globals_buffer}},
+                        daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                        daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                         daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::reservoir_input_tex, reservoir_input_tex}},
                         daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::bounced_radiance_input_tex, bounced_radiance_input_tex}},
                         daxa::TaskViewVariant{std::pair{RtdgiRestirSpatialCompute::half_view_normal_tex, half_view_normal_tex}},
@@ -746,9 +746,9 @@ struct RtdgiRenderer {
             record_ctx.add(ComputeTask<RtdgiRestirResolveCompute, RtdgiRestirResolveComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/restir_resolve.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::gpu_input, record_ctx.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::globals, record_ctx.task_globals_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::radiance_tex, radiance_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::reservoir_input_tex, reservoir_input_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::gbuffer_tex, gbuffer_depth.gbuffer}},

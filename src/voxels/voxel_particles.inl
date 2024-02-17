@@ -76,8 +76,8 @@ struct VoxelParticles {
         record_ctx.add(ComputeTask<VoxelParticleSimCompute, VoxelParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticleSimCompute, voxel_world_buffers),
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
@@ -122,8 +122,8 @@ struct VoxelParticles {
                 .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
             },
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::render_image, raster_color_image}},

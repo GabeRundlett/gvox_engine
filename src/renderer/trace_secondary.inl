@@ -28,11 +28,11 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
     record_ctx.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::globals, record_ctx.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::shadow_mask, shadow_mask}},
             VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.task_blue_noise_vec2_image}},
+            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
             daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.current()}},
         },

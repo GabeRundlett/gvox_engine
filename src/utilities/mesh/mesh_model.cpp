@@ -1,6 +1,6 @@
 #include "mesh_model.hpp"
 
-#include <daxa/gpu_resources.hpp>
+#include <daxa/daxa.hpp>
 #include <daxa/utils/task_graph.hpp>
 
 #include <assimp/Importer.hpp>

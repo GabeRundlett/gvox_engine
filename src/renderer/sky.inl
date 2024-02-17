@@ -247,7 +247,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     record_ctx.add(ComputeTask<SkyTransmittanceCompute, SkyTransmittanceComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::transmittance_lut, transmittance_lut}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
@@ -259,7 +259,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     record_ctx.add(ComputeTask<SkyMultiscatteringCompute, SkyMultiscatteringComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::transmittance_lut, transmittance_lut}},
             daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::multiscattering_lut, multiscattering_lut}},
         },
@@ -272,7 +272,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     record_ctx.add(ComputeTask<SkySkyCompute, SkySkyComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkySkyCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkySkyCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SkySkyCompute::transmittance_lut, transmittance_lut}},
             daxa::TaskViewVariant{std::pair{SkySkyCompute::multiscattering_lut, multiscattering_lut}},
             daxa::TaskViewVariant{std::pair{SkySkyCompute::sky_lut, sky_lut}},
@@ -299,7 +299,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     record_ctx.add(ComputeTask<SkyCubeCompute, SkyCubeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"sky.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyCubeCompute::gpu_input, record_ctx.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SkyCubeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SkyCubeCompute::transmittance_lut, transmittance_lut}},
             daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_lut, sky_lut}},
             daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_cube, sky_cube}},

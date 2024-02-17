@@ -234,9 +234,9 @@ struct VoxelWorld {
         record_ctx.add(ComputeTask<PerChunkCompute, PerChunkComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{PerChunkCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::gvox_model, task_gvox_model_buffer}},
-                daxa::TaskViewVariant{std::pair{PerChunkCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{PerChunkCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{PerChunkCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
@@ -257,8 +257,8 @@ struct VoxelWorld {
         record_ctx.add(ComputeTask<ChunkEditCompute, ChunkEditComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ChunkEditCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ChunkEditCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditCompute::gvox_model, task_gvox_model_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
@@ -267,8 +267,8 @@ struct VoxelWorld {
                 // daxa::TaskViewVariant{std::pair{ChunkEditCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
                 // daxa::TaskViewVariant{std::pair{ChunkEditCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
-                daxa::TaskViewVariant{std::pair{ChunkEditCompute::test_texture, record_ctx.task_test_texture}},
-                daxa::TaskViewVariant{std::pair{ChunkEditCompute::test_texture2, record_ctx.task_test_texture2}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::test_texture, record_ctx.gpu_context->task_test_texture}},
+                daxa::TaskViewVariant{std::pair{ChunkEditCompute::test_texture2, record_ctx.gpu_context->task_test_texture2}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ChunkEditComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
@@ -283,8 +283,8 @@ struct VoxelWorld {
         record_ctx.add(ComputeTask<ChunkEditPostProcessCompute, ChunkEditPostProcessComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gvox_model, task_gvox_model_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
@@ -308,8 +308,8 @@ struct VoxelWorld {
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .extra_defines = {{"CHUNK_OPT_STAGE", "0"}},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
@@ -328,8 +328,8 @@ struct VoxelWorld {
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .extra_defines = {{"CHUNK_OPT_STAGE", "1"}},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},
@@ -347,8 +347,8 @@ struct VoxelWorld {
         record_ctx.add(ComputeTask<ChunkAllocCompute, ChunkAllocComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ChunkAllocCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_globals, buffers.task_voxel_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkAllocCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
                 daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_chunks, buffers.task_voxel_chunks_buffer}},

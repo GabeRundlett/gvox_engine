@@ -26,7 +26,7 @@ constexpr auto round_frame_dim(daxa_u32vec2 size) {
 
 // Code flow
 // VoxelApp::VoxelApp()
-// GpuResources::create()
+// GpuContext::create()
 // VoxelApp::record_main_task_graph()
 // VoxelApp::run()
 // VoxelApp::on_update()
@@ -35,7 +35,7 @@ constexpr auto round_frame_dim(daxa_u32vec2 size) {
 // Creates daxa instance, device, swapchain, pipeline manager
 // Creates ui and imgui_renderer
 // Creates task states
-// Creates GPU Resources: GpuResources::create()
+// Creates GPU Resources: GpuContext::create()
 // Creates main task graph: VoxelApp::record_main_task_graph()
 // Creates GVOX Context (gvox_ctx)
 // Creates temp task graph
@@ -64,26 +64,6 @@ VoxelApp::VoxelApp()
           .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
           .name = "swapchain",
       })},
-      main_pipeline_manager{std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo{
-          .device = device,
-          .shader_compile_options = {
-              .root_paths = {
-                  DAXA_SHADER_INCLUDE_DIR,
-                  "assets",
-                  "src",
-                  "gpu",
-                  "src/gpu",
-                  "src/renderer",
-              },
-              // .write_out_preprocessed_code = ".out/",
-              // .write_out_shader_binary = ".out/",
-              .spirv_cache_folder = ".out/spirv_cache",
-              .language = daxa::ShaderLanguage::GLSL,
-              .enable_debug_info = true,
-          },
-          .register_null_pipelines_when_first_compile_fails = true,
-          .name = "pipeline_manager",
-      })},
       ui{AppUi(AppWindow::glfw_window_ptr)} {
 
     AppSettings::add<settings::SliderFloat>({"Camera", "FOV", {.value = 74.0f, .min = 0.0f, .max = 179.0f}});
@@ -106,11 +86,11 @@ VoxelApp::VoxelApp()
     });
 
     renderer.create(device);
-    gpu_resources.create(device);
+    gpu_context.create(device);
     voxel_world.create(device);
     particles.create(device);
     voxel_model_loader.create(device);
-    voxel_model_loader.main_pipeline_manager = main_pipeline_manager;
+    voxel_model_loader.main_pipeline_manager = gpu_context.pipeline_manager;
 
     // constexpr auto IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE = false;
     // if constexpr (IMMEDIATE_LOAD_MODEL_FROM_GABES_DRIVE) {
@@ -120,12 +100,12 @@ VoxelApp::VoxelApp()
     //     gvox_model_data = load_gvox_data();
     //     if (gvox_model_data.size != 0) {
     //         model_is_ready = true;
-    //         prev_gvox_model_buffer = gpu_resources.gvox_model_buffer;
-    //         gpu_resources.gvox_model_buffer = device.create_buffer({
+    //         prev_gvox_model_buffer = gpu_context.gvox_model_buffer;
+    //         gpu_context.gvox_model_buffer = device.create_buffer({
     //             .size = static_cast<daxa_u32>(gvox_model_data.size),
     //             .name = "gvox_model_buffer",
     //         });
-    //         task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_resources.gvox_model_buffer}});
+    //         task_gvox_model_buffer.set_buffers({.buffers = std::array{gpu_context.gvox_model_buffer}});
     //     }
     // }
 
@@ -146,21 +126,9 @@ VoxelApp::VoxelApp()
         halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
 
-    main_pipeline_manager->add_virtual_file({
-        .name = "FULL_SCREEN_TRIANGLE_VERTEX_SHADER",
-        .contents = R"glsl(
-            void main() {
-                switch (gl_VertexIndex) {
-                case 0: gl_Position = vec4(-1, -1, 0, 1); break;
-                case 1: gl_Position = vec4(-1, +4, 0, 1); break;
-                case 2: gl_Position = vec4(+4, -1, 0, 1); break;
-                }
-            }
-        )glsl",
-    });
 
     main_task_graph = record_main_task_graph();
-    main_pipeline_manager->wait();
+    gpu_context.pipeline_manager->wait();
     debug_utils::Console::add_log(std::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
 }
 VoxelApp::~VoxelApp() {
@@ -168,14 +136,10 @@ VoxelApp::~VoxelApp() {
     device.collect_garbage();
 
     renderer.destroy(device);
-    gpu_resources.destroy(device);
+    gpu_context.destroy(device);
     voxel_world.destroy(device);
     particles.destroy(device);
     voxel_model_loader.destroy();
-
-    for (auto const &[id, temporal_buffer] : temporal_buffers) {
-        device.destroy_buffer(temporal_buffer.buffer_id);
-    }
 }
 
 // [Main loop]
@@ -230,7 +194,7 @@ void VoxelApp::on_update() {
     audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     if (ui.should_hotload_shaders) {
-        auto reload_result = main_pipeline_manager->reload_all();
+        auto reload_result = gpu_context.pipeline_manager->reload_all();
         if (auto *reload_err = daxa::get_if<daxa::PipelineReloadError>(&reload_result)) {
             debug_utils::Console::add_log(reload_err->message);
         }
@@ -242,7 +206,7 @@ void VoxelApp::on_update() {
     }
 
     if (ui.should_upload_seed_data) {
-        gpu_resources.update_seeded_value_noise(device, std::hash<std::string>{}(ui.settings.world_seed_str));
+        gpu_context.update_seeded_value_noise(device, std::hash<std::string>{}(ui.settings.world_seed_str));
         ui.should_upload_seed_data = false;
     }
 
@@ -357,8 +321,8 @@ void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
         render_res_scl = new_render_res_scl;
         {
             // resize render images
-            // gpu_resources.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
-            // gpu_resources.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
+            // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
+            // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
             device.wait_idle();
             needs_vram_calc = true;
         }
@@ -401,9 +365,7 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = temp_task_graph,
-        .pipeline_manager = main_pipeline_manager.get(),
-        .compute_pipelines = &this->compute_pipelines,
-        .raster_pipelines = &this->raster_pipelines,
+        .gpu_context = &this->gpu_context,
     };
 
     gpu_app_record_startup(record_ctx);
@@ -468,13 +430,10 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     auto record_ctx = RecordContext{
         .device = this->device,
         .task_graph = result_task_graph,
-        .pipeline_manager = main_pipeline_manager.get(),
         .render_resolution = gpu_input.rounded_frame_dim,
         .output_resolution = gpu_input.output_resolution,
         .task_swapchain_image = task_swapchain_image,
-        .compute_pipelines = &this->compute_pipelines,
-        .raster_pipelines = &this->raster_pipelines,
-        .temporal_buffers = &this->temporal_buffers,
+        .gpu_context = &this->gpu_context,
     };
 
     // task_value_noise_image.view().view({});
@@ -580,12 +539,12 @@ void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
         result_size += buffer_info.size;
     };
 
-    buffer_size(gpu_resources.input_buffer);
-    buffer_size(gpu_resources.globals_buffer);
+    buffer_size(gpu_context.input_buffer);
+    buffer_size(gpu_context.globals_buffer);
 
     voxel_world.for_each_buffer(buffer_size);
 
-    // buffer_size(gpu_resources.gvox_model_buffer);
+    // buffer_size(gpu_context.gvox_model_buffer);
     buffer_size(particles.simulated_voxel_particles_buffer);
     buffer_size(particles.rendered_voxel_particles_buffer);
     buffer_size(particles.placed_voxel_particles_buffer);
@@ -605,10 +564,10 @@ void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
     ui_strings.push_back(fmt::format("Est. VRAM usage: {} MB", static_cast<float>(result_size) / 1000000));
 }
 void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
-    gpu_input.sampler_nnc = gpu_resources.sampler_nnc;
-    gpu_input.sampler_lnc = gpu_resources.sampler_lnc;
-    gpu_input.sampler_llc = gpu_resources.sampler_llc;
-    gpu_input.sampler_llr = gpu_resources.sampler_llr;
+    gpu_input.sampler_nnc = gpu_context.sampler_nnc;
+    gpu_input.sampler_lnc = gpu_context.sampler_lnc;
+    gpu_input.sampler_llc = gpu_context.sampler_llc;
+    gpu_input.sampler_llr = gpu_context.sampler_llr;
 
     gpu_input.flags &= ~GAME_FLAG_BITS_PAUSED;
     gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<daxa_u32>(ui.paused);
@@ -630,19 +589,19 @@ void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
     voxel_world.begin_frame(device, gpu_output.voxel_world);
 }
 void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
-    record_ctx.task_graph.use_persistent_buffer(gpu_resources.task_input_buffer);
-    record_ctx.task_graph.use_persistent_buffer(gpu_resources.task_globals_buffer);
+    record_ctx.task_graph.use_persistent_buffer(gpu_context.task_input_buffer);
+    record_ctx.task_graph.use_persistent_buffer(gpu_context.task_globals_buffer);
 
     voxel_world.use_buffers(record_ctx);
 
     voxel_world.record_startup(record_ctx);
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_resources.task_globals_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_context.task_globals_buffer),
         },
         .task = [this](daxa::TaskInterface const &ti) {
             ti.recorder.clear_buffer({
-                .buffer = gpu_resources.task_globals_buffer.get_state().buffers[0],
+                .buffer = gpu_context.task_globals_buffer.get_state().buffers[0],
                 .offset = 0,
                 .size = sizeof(GpuGlobals),
                 .clear_value = 0,
@@ -654,8 +613,8 @@ void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
     record_ctx.add(ComputeTask<StartupCompute, StartupComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"app.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{StartupCompute::gpu_input, gpu_resources.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{StartupCompute::globals, gpu_resources.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{StartupCompute::gpu_input, gpu_context.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{StartupCompute::globals, gpu_context.task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(StartupCompute, voxel_world.buffers),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, StartupComputePush &push, NoTaskInfo const &) {
@@ -666,14 +625,14 @@ void VoxelApp::gpu_app_record_startup(RecordContext &record_ctx) {
     });
 }
 void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
-    gpu_resources.use_resources(record_ctx);
+    gpu_context.use_resources(record_ctx);
     voxel_world.use_buffers(record_ctx);
     particles.use_buffers(record_ctx);
     record_ctx.task_graph.use_persistent_buffer(voxel_model_loader.task_gvox_model_buffer);
 
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_resources.task_input_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_context.task_input_buffer),
         },
         .task = [this](daxa::TaskInterface const &ti) {
             auto staging_input_buffer = ti.device.create_buffer({
@@ -686,7 +645,7 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
             *buffer_ptr = gpu_input;
             ti.recorder.copy_buffer_to_buffer({
                 .src_buffer = staging_input_buffer,
-                .dst_buffer = gpu_resources.task_input_buffer.get_state().buffers[0],
+                .dst_buffer = gpu_context.task_input_buffer.get_state().buffers[0],
                 .size = sizeof(GpuInput),
             });
         },
@@ -697,9 +656,9 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     record_ctx.add(ComputeTask<PerframeCompute, PerframeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"app.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_input, gpu_resources.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_output, gpu_resources.task_output_buffer}},
-            daxa::TaskViewVariant{std::pair{PerframeCompute::globals, gpu_resources.task_globals_buffer}},
+            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_input, gpu_context.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_output, gpu_context.task_output_buffer}},
+            daxa::TaskViewVariant{std::pair{PerframeCompute::globals, gpu_context.task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{PerframeCompute::simulated_voxel_particles, particles.task_simulated_voxel_particles_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(PerframeCompute, voxel_world.buffers),
         },
@@ -711,18 +670,18 @@ void VoxelApp::gpu_app_record_frame(RecordContext &record_ctx) {
     });
 
     particles.simulate(record_ctx, voxel_world.buffers);
-    voxel_world.record_frame(record_ctx, voxel_model_loader.task_gvox_model_buffer, gpu_resources.task_value_noise_image);
+    voxel_world.record_frame(record_ctx, voxel_model_loader.task_gvox_model_buffer, gpu_context.task_value_noise_image);
 
     renderer.render(record_ctx, voxel_world.buffers, particles, record_ctx.task_swapchain_image, swapchain.get_format());
 
     record_ctx.task_graph.add_task({
         .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, gpu_resources.task_output_buffer),
-            daxa::inl_attachment(daxa::TaskBufferAccess::HOST_TRANSFER_WRITE, gpu_resources.task_staging_output_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, gpu_context.task_output_buffer),
+            daxa::inl_attachment(daxa::TaskBufferAccess::HOST_TRANSFER_WRITE, gpu_context.task_staging_output_buffer),
         },
         .task = [this](daxa::TaskInterface const &ti) {
-            auto output_buffer = gpu_resources.task_output_buffer.get_state().buffers[0];
-            auto staging_output_buffer = gpu_resources.staging_output_buffer;
+            auto output_buffer = gpu_context.task_output_buffer.get_state().buffers[0];
+            auto staging_output_buffer = gpu_context.staging_output_buffer;
             auto frame_index = gpu_input.frame_index + 1;
             auto *buffer_ptr = ti.device.get_host_address_as<std::array<GpuOutput, (FRAMES_IN_FLIGHT + 1)>>(staging_output_buffer).value();
             daxa_u32 const offset = frame_index % (FRAMES_IN_FLIGHT + 1);

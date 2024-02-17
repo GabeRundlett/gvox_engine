@@ -92,8 +92,8 @@ struct SsaoRenderer {
         record_ctx.add(ComputeTask<SsaoCompute, SsaoComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoCompute::gpu_input, record_ctx.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SsaoCompute::globals, record_ctx.task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::vs_normal_image_id, scaled_view_normal_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::ssao_image_id, ssao_image0}},
@@ -109,7 +109,7 @@ struct SsaoRenderer {
         record_ctx.add(ComputeTask<SsaoSpatialFilterCompute, SsaoSpatialFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::vs_normal_image_id, scaled_view_normal_image}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::src_image_id, ssao_image0}},
@@ -126,7 +126,7 @@ struct SsaoRenderer {
         record_ctx.add(ComputeTask<SsaoUpscaleCompute, SsaoUpscaleComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::depth_image_id, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::src_image_id, ssao_image1}},
@@ -143,7 +143,7 @@ struct SsaoRenderer {
         record_ctx.add(ComputeTask<SsaoTemporalFilterCompute, SsaoTemporalFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::reprojection_image_id, reprojection_map}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::history_image_id, prev_ssao_image}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::src_image_id, ssao_image2}},

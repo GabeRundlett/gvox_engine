@@ -127,7 +127,7 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView inpu
         record_ctx.add(ComputeTask<RevBlurCompute, RevBlurComputePush, RevBlurTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::gpu_input, record_ctx.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tail_tex, tail}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tex, src}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::output_tex, dst}},

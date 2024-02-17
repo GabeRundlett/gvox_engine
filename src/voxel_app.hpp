@@ -11,7 +11,7 @@
 #include <voxels/model.hpp>
 #include <daxa/utils/imgui.hpp>
 
-#include <utilities/gpu_resources.hpp>
+#include <utilities/gpu_context.hpp>
 
 #include <chrono>
 #include <future>
@@ -28,11 +28,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImageId swapchain_image{};
     daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
-    std::shared_ptr<AsyncPipelineManager> main_pipeline_manager;
-    std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
-    std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;
-    TemporalBuffers temporal_buffers;
-
     AppUi ui;
     AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
@@ -44,7 +39,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     VoxelParticles particles;
     VoxelModelLoader voxel_model_loader;
 
-    GpuResources gpu_resources;
+    GpuContext gpu_context;
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
