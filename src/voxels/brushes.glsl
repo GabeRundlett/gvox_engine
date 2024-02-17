@@ -248,14 +248,31 @@ void brushgen_world(in out Voxel voxel) {
         voxel.color = daxa_f32vec3(0.5, 0.1, 0.8);
         voxel.roughness = 0.5;
     } else if (false) { // test
-        vec2 map_uv = voxel_pos.xy / (4097.0 / VOXEL_SCL);
-        float map_height = texture(daxa_sampler2D(test_texture, deref(gpu_input).sampler_llc), map_uv).r * 4097.0 / VOXEL_SCL - 128.0;
+        float map_scale = 2.0;
+        vec2 map_uv = voxel_pos.xy / (4097.0 / VOXEL_SCL) / map_scale;
+
+        const float offset = 1.0 / 512.0;
+        vec4 heights = textureGather(daxa_sampler2D(test_texture, deref(gpu_input).sampler_llc), map_uv);
+        heights = heights * 4097.0 / VOXEL_SCL - 128.0;
+        heights = heights * map_scale * 0.6;
+        vec2 w = fract(map_uv * 4097.0 - 0.5 + offset);
+        float map_height = mix(mix(heights.w, heights.z, w.x), mix(heights.x, heights.y, w.x), w.y);
         vec3 map_color = texture(daxa_sampler2D(test_texture2, deref(gpu_input).sampler_llc), map_uv).rgb;
-        bool solid = voxel_pos.z < map_height * 0.6;
+        bool solid = voxel_pos.z < map_height;
         if (solid) {
-            voxel.color = pow(vec3(uvec3(map_color * 64)) / 64, vec3(2.2));
+            voxel.color = pow(map_color, vec3(2.2));
             voxel.material_type = 1;
             voxel.roughness = 0.99;
+
+            vec3 pos_origin = floor(voxel_pos);
+            pos_origin.z = heights.w;
+            vec3 pos_down = pos_origin + vec3(0, map_scale / VOXEL_SCL, 0);
+            pos_down.z = heights.x;
+            vec3 pos_right = pos_origin + vec3(map_scale / VOXEL_SCL, 0, 0);
+            pos_right.z = heights.z;
+            vec3 vertical_dir = normalize(pos_origin - pos_down);
+            vec3 horizontal_dir = normalize(pos_origin - pos_right);
+            voxel.normal = normalize(cross(horizontal_dir, vertical_dir));
         }
     } else if (GEN_MODEL != 0) { // Model world
         daxa_u32 packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
@@ -271,9 +288,6 @@ void brushgen_world(in out Voxel voxel) {
             voxel.material_type = 1;
         }
 
-        if (voxel.material_type != 0) {
-            voxel.normal = vec3(0, 0, 1);
-        }
         voxel.roughness = 0.9;
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);

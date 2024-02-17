@@ -189,7 +189,7 @@ void main() {
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
-    Voxel result = Voxel(0, 0, vec3(0), vec3(0));
+    Voxel result = Voxel(0, 0, vec3(0, 0, 1), vec3(0));
 
     if ((brush_flags & BRUSH_FLAGS_WORLD_BRUSH) != 0) {
         brushgen_world(result);
@@ -203,10 +203,6 @@ void main() {
     // if ((brush_flags & BRUSH_FLAGS_PARTICLE_BRUSH) != 0) {
     //     brushgen_particles(col, id);
     // }
-
-    if (result.material_type != 0 && dot(result.normal, result.normal) == 0) {
-        result.normal = vec3(0, 0, 1);
-    }
 
     PackedVoxel packed_result = pack_voxel(result);
     // result.col_and_id = daxa_f32vec4_to_uint_rgba8(daxa_f32vec4(col, 0.0)) | (id << 0x18);
@@ -408,21 +404,26 @@ void main() {
     PackedVoxel packed_result = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE];
     Voxel result = unpack_voxel(packed_result);
 
-    bool is_occluded = !has_air_neighbor();
-
-    if (is_occluded) {
-        // nullify normal
+    if (result.material_type == 0) {
         result.normal = vec3(0, 0, 1);
-        // result.color = vec3(0.9);
+        result.color = vec3(0.0);
+        result.roughness = 0;
     } else {
-        // potentially generate a normal
-        // if the voxel normal is the "null" normal AKA up
-        // bool generate_normal = true;
-        bool generate_normal = dot(result.normal, vec3(0, 0, 1)) > 0.99;
-        if (generate_normal) {
-            result.normal = generate_normal_from_geometry();
+        bool is_occluded = !has_air_neighbor();
+        if (is_occluded) {
+            // nullify normal
+            result.normal = vec3(0, 0, 1);
+            // result.color = vec3(0.9);
+        } else {
+            // potentially generate a normal
+            // if the voxel normal is the "null" normal AKA up
+            // bool generate_normal = true;
+            bool generate_normal = (result.normal == unpack_voxel(pack_voxel(Voxel(0, 0, vec3(0, 0, 1), vec3(0)))).normal);
+            if (generate_normal) {
+                result.normal = generate_normal_from_geometry();
+            }
+            result.normal = normalize(result.normal);
         }
-        result.normal = normalize(result.normal);
     }
 
     packed_result = pack_voxel(result);
