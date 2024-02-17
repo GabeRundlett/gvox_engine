@@ -1,7 +1,7 @@
 #include <renderer/kajiya/rtr.inl>
 
 #include <renderer/kajiya/inc/camera.glsl>
-// #include <utilities/gpu/samplers.glsl>
+#include <g_samplers>
 // #include <utilities/gpu/uv.glsl>
 // #include "../inc/frame_constants.glsl"
 #include "../inc/color.glsl"
@@ -89,7 +89,7 @@ void main() {
         // history0 = history_tex.SampleLevel(sampler_lnc, uv + reproj.xy, 0) * history_mult;
         history0 = max(vec4(0.0), image_sample_catmull_rom_5tap(IdentityImageRemap_remap)(
                                 history_tex,
-                                deref(gpu_input).sampler_lnc,
+                                g_sampler_lnc,
                                 uv + reproj.xy,
                                 push.output_tex_size.xy)) *
                    history_mult;
@@ -113,7 +113,7 @@ void main() {
     history0 = linear_to_working(history0);
 #endif
 
-    vec4 history1 = linear_to_working(textureLod(daxa_sampler2D(history_tex, deref(gpu_input).sampler_lnc), hit_prev_uv, 0) * history_mult);
+    vec4 history1 = linear_to_working(textureLod(daxa_sampler2D(history_tex, g_sampler_lnc), hit_prev_uv, 0) * history_mult);
     /*vec4 history1 = linear_to_working(max(0.0, image_sample_catmull_rom_5tap(
         history_tex,
         sampler_lnc,
@@ -124,8 +124,8 @@ void main() {
 
     float history1_valid = float(quad_reproj_valid_packed == 15);
 
-    vec4 history0_reproj = textureLod(daxa_sampler2D(reprojection_tex, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0);
-    vec4 history1_reproj = textureLod(daxa_sampler2D(reprojection_tex, deref(gpu_input).sampler_lnc), hit_prev_uv, 0);
+    vec4 history0_reproj = textureLod(daxa_sampler2D(reprojection_tex, g_sampler_lnc), uv + reproj.xy, 0);
+    vec4 history1_reproj = textureLod(daxa_sampler2D(reprojection_tex, g_sampler_lnc), hit_prev_uv, 0);
 
     vec4 vsum = 0.0.xxxx;
     vec4 vsum2 = 0.0.xxxx;

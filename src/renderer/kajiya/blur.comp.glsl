@@ -69,6 +69,8 @@ void main() {
 
 #if RevBlurComputeShader
 
+#include <g_samplers>
+
 DAXA_DECL_PUSH_CONSTANT(RevBlurComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewIndex input_tail_tex = push.uses.input_tail_tex;
@@ -90,7 +92,7 @@ void main() {
     for (int y = -K; y < K; ++y) {
         for (int x = -K; x < K; ++x) {
             vec2 uv = (vec2(px) + vec2(0.5) + vec2(x, y)) * inv_size;
-            vec4 t_sample = textureLod(daxa_sampler2D(input_tex, deref(gpu_input).sampler_lnc), uv, 0);
+            vec4 t_sample = textureLod(daxa_sampler2D(input_tex, g_sampler_lnc), uv, 0);
             self_col += t_sample;
         }
     }

@@ -2,7 +2,6 @@
 
 #include <utilities/gpu/math.glsl>
 #include "../inc/color.glsl"
-// #include <utilities/gpu/samplers.glsl>
 // #include "../inc/frame_constants.glsl"
 // #include <utilities/gpu/pack_unpack.glsl>
 #include "../inc/brdf.glsl"

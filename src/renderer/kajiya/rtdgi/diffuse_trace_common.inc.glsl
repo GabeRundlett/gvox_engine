@@ -18,7 +18,7 @@ const bool USE_LIGHTS = true;
 const float SKY_DIST = 1e4;
 
 vec3 sample_environment_light(vec3 dir) {
-    return texture(daxa_samplerCube(sky_cube_tex, deref(gpu_input).sampler_llr), dir).rgb;
+    return texture(daxa_samplerCube(sky_cube_tex, g_sampler_llr), dir).rgb;
 }
 
 uvec2 reservoir_payload_to_px(uint payload) {
@@ -76,7 +76,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
         // Project the sample into clip space, and check if it's on-screen
         const vec3 primary_hit_cs = position_world_to_sample(globals, primary_hit.position);
         const vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
-        const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0).r;
+        const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, g_sampler_nnc), primary_hit_uv, 0).r;
         // const GbufferDataPacked primary_hit_screen_gbuffer = GbufferDataPacked::from_uint4(asuint(gbuffer_tex[ivec2(primary_hit_uv * gbuffer_tex_size.xy)]));
         // const vec3 primary_hit_screen_normal_ws = primary_hit_screen_gbuffer.unpack_normal();
         bool is_on_screen = true && all(lessThan(abs(primary_hit_cs.xy), vec2(1.0))) && inverse_depth_relative_diff(primary_hit_cs.z, primary_hit_screen_depth) < 5e-3
@@ -89,7 +89,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
         vec4 reprojected_radiance = vec4(0);
         if (is_on_screen) {
             reprojected_radiance =
-                textureLod(daxa_sampler2D(reprojected_gi_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0) * deref(gpu_input).pre_exposure_delta;
+                textureLod(daxa_sampler2D(reprojected_gi_tex, g_sampler_nnc), primary_hit_uv, 0) * deref(gpu_input).pre_exposure_delta;
 
             // Check if the temporal reprojection is valid.
             is_on_screen = reprojected_radiance.w > 0;

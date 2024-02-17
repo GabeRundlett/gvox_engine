@@ -87,7 +87,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
             // Project the sample into clip space, and check if it's on-screen
             const vec3 primary_hit_cs = position_world_to_sample(globals, primary_hit.position);
             const vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
-            const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0).r;
+            const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, g_sampler_nnc), primary_hit_uv, 0).r;
             GbufferData primary_hit_screen_gbuffer = unpack(GbufferDataPacked(safeTexelFetchU(gbuffer_tex, ivec2(primary_hit_uv * push.gbuffer_tex_size.xy), 0)));
             const bool is_on_screen =
                 all(lessThan(abs(primary_hit_cs.xy), vec2(1.0))) &&
@@ -138,7 +138,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
 
                 if (USE_SCREEN_GI_REPROJECTION && is_on_screen) {
                     const vec3 reprojected_radiance =
-                        textureLod(daxa_sampler2D(rtdgi_tex, deref(gpu_input).sampler_nnc), primary_hit_uv, 0).rgb * deref(gpu_input).pre_exposure_delta;
+                        textureLod(daxa_sampler2D(rtdgi_tex, g_sampler_nnc), primary_hit_uv, 0).rgb * deref(gpu_input).pre_exposure_delta;
 
                     total_radiance += reprojected_radiance.rgb * gbuffer.albedo;
                 } else {
@@ -215,7 +215,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
 
     float hit_t = SKY_DIST;
     vec3 far_gi;
-    far_gi = texture(daxa_samplerCube(sky_cube_tex, deref(gpu_input).sampler_llr), outgoing_ray.Direction).rgb;
+    far_gi = texture(daxa_samplerCube(sky_cube_tex, g_sampler_llr), outgoing_ray.Direction).rgb;
 
 #if COLOR_CODE_GROUND_SKY_BLACK_WHITE
     result.total_radiance = 2.0.xxx;

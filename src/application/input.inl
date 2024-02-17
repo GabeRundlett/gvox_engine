@@ -59,10 +59,6 @@ struct GpuInput {
     daxa_u32 flags;
     daxa_f32 time;
     daxa_f32 delta_time;
-    daxa_SamplerId sampler_nnc;
-    daxa_SamplerId sampler_lnc;
-    daxa_SamplerId sampler_llc;
-    daxa_SamplerId sampler_llr;
     daxa_f32vec3 ircache_grid_center;
     IrcacheCascadeConstants ircache_cascades[IRCACHE_CASCADE_COUNT];
     SkySettings sky_settings;

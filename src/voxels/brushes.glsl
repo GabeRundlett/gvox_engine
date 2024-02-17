@@ -3,6 +3,8 @@
 #include <utilities/gpu/random.glsl>
 #include <utilities/gpu/noise.glsl>
 
+#include <g_samplers>
+
 bool mandelbulb(in vec3 c, in out vec3 color) {
     vec3 z = c;
     uint i = 0;
@@ -35,7 +37,7 @@ vec4 terrain_noise(vec3 p) {
         /* .scale       = */ 0.005,
         /* .lacunarity  = */ 4.5,
         /* .octaves     = */ 6);
-    vec4 val = fractal_noise(value_noise_texture, deref(gpu_input).sampler_llr, p, noise_conf);
+    vec4 val = fractal_noise(value_noise_texture, g_sampler_llr, p, noise_conf);
     val.x += p.z * 0.003 - 1.0;
     val.yzw = normalize(val.yzw + vec3(0, 0, 0.003));
     // val.x += -0.24;
@@ -252,12 +254,12 @@ void brushgen_world(in out Voxel voxel) {
         vec2 map_uv = voxel_pos.xy / (4097.0 / VOXEL_SCL) / map_scale;
 
         const float offset = 1.0 / 512.0;
-        vec4 heights = textureGather(daxa_sampler2D(test_texture, deref(gpu_input).sampler_llc), map_uv);
+        vec4 heights = textureGather(daxa_sampler2D(test_texture, g_sampler_llc), map_uv);
         heights = heights * 4097.0 / VOXEL_SCL - 128.0;
         heights = heights * map_scale * 0.6;
         vec2 w = fract(map_uv * 4097.0 - 0.5 + offset);
         float map_height = mix(mix(heights.w, heights.z, w.x), mix(heights.x, heights.y, w.x), w.y);
-        vec3 map_color = texture(daxa_sampler2D(test_texture2, deref(gpu_input).sampler_llc), map_uv).rgb;
+        vec3 map_color = texture(daxa_sampler2D(test_texture2, g_sampler_llc), map_uv).rgb;
         bool solid = voxel_pos.z < map_height;
         if (solid) {
             voxel.color = pow(map_color, vec3(2.2));

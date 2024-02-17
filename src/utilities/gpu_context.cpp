@@ -102,6 +102,16 @@ void GpuContext::create(daxa::Device &device) {
         .max_lod = 0.0f,
     });
 
+    auto g_samplers_header = daxa::VirtualFileInfo{
+        .name = "g_samplers",
+        .contents = "#pragma once\n#include <daxa/daxa.glsl>\n",
+    };
+    g_samplers_header.contents += "daxa_SamplerId g_sampler_nnc = daxa_SamplerId(" + std::to_string(std::bit_cast<uint64_t>(sampler_nnc)) + ");\n";
+    g_samplers_header.contents += "daxa_SamplerId g_sampler_lnc = daxa_SamplerId(" + std::to_string(std::bit_cast<uint64_t>(sampler_lnc)) + ");\n";
+    g_samplers_header.contents += "daxa_SamplerId g_sampler_llc = daxa_SamplerId(" + std::to_string(std::bit_cast<uint64_t>(sampler_llc)) + ");\n";
+    g_samplers_header.contents += "daxa_SamplerId g_sampler_llr = daxa_SamplerId(" + std::to_string(std::bit_cast<uint64_t>(sampler_llr)) + ");\n";
+    pipeline_manager->add_virtual_file(g_samplers_header);
+
     task_input_buffer.set_buffers({.buffers = std::array{input_buffer}});
     task_output_buffer.set_buffers({.buffers = std::array{output_buffer}});
     task_staging_output_buffer.set_buffers({.buffers = std::array{staging_output_buffer}});

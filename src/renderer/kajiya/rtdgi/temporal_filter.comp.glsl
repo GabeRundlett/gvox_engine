@@ -2,7 +2,7 @@
 
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
-// #include <utilities/gpu/samplers.glsl>
+#include <g_samplers>
 #include "../inc/color.glsl"
 // #include <utilities/gpu/uv.glsl>
 // #include "../inc/frame_constants.glsl"
@@ -102,7 +102,7 @@ void main() {
     // dev_sum /= wsum;
 
     const vec2 moments_history =
-        textureLod(daxa_sampler2D(variance_history_tex, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).xy *
+        textureLod(daxa_sampler2D(variance_history_tex, g_sampler_lnc), uv + reproj.xy, 0).xy *
         vec2(deref(gpu_input).pre_exposure_delta, deref(gpu_input).pre_exposure_delta * deref(gpu_input).pre_exposure_delta);
 
     // const float center_luma = working_luma(center.rgb);

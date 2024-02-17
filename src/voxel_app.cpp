@@ -564,11 +564,6 @@ void VoxelApp::gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph) {
     ui_strings.push_back(fmt::format("Est. VRAM usage: {} MB", static_cast<float>(result_size) / 1000000));
 }
 void VoxelApp::gpu_app_begin_frame(daxa::TaskGraph &task_graph) {
-    gpu_input.sampler_nnc = gpu_context.sampler_nnc;
-    gpu_input.sampler_lnc = gpu_context.sampler_lnc;
-    gpu_input.sampler_llc = gpu_context.sampler_llc;
-    gpu_input.sampler_llr = gpu_context.sampler_llr;
-
     gpu_input.flags &= ~GAME_FLAG_BITS_PAUSED;
     gpu_input.flags |= GAME_FLAG_BITS_PAUSED * static_cast<daxa_u32>(ui.paused);
 

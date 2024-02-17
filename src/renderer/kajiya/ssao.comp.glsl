@@ -381,6 +381,8 @@ void main() {
 #endif
 #if SsaoTemporalFilterComputeShader
 
+#include <g_samplers>
+
 DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewIndex reprojection_image_id = push.uses.reprojection_image_id;
@@ -405,7 +407,7 @@ void main() {
 
     float center = WORKING_TO_LINEAR(fetch_src(px));
     vec4 reproj = safeTexelFetch(reprojection_image_id, ivec2(px), 0);
-    float history = WORKING_TO_LINEAR(textureLod(daxa_sampler2D(history_image_id, deref(gpu_input).sampler_lnc), uv + reproj.xy, 0).r);
+    float history = WORKING_TO_LINEAR(textureLod(daxa_sampler2D(history_image_id, g_sampler_lnc), uv + reproj.xy, 0).r);
 
     float vsum = 0.0;
     float vsum2 = 0.0;

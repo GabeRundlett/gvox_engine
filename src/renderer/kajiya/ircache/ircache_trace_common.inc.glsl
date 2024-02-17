@@ -29,7 +29,7 @@ const bool SAMPLE_IRCACHE_AT_LAST_VERTEX = true;
 const uint MAX_PATH_LENGTH = 1;
 
 vec3 sample_environment_light(vec3 dir) {
-    return texture(daxa_samplerCube(sky_cube_tex, deref(gpu_input).sampler_llr), dir).rgb;
+    return texture(daxa_samplerCube(sky_cube_tex, g_sampler_llr), dir).rgb;
 }
 
 float pack_dist(float x) {

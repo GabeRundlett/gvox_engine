@@ -1,5 +1,6 @@
 #include <renderer/kajiya/convolve_cube.inl>
 #include <utilities/gpu/math.glsl>
+#include <g_samplers>
 
 DAXA_DECL_PUSH_CONSTANT(ConvolveCubeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -36,7 +37,7 @@ void main() {
     for (uint i = 0; i < sample_count; ++i) {
         vec2 urand = hammersley(i, sample_count);
         vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
-        result += texture(daxa_samplerCube(sky_cube, deref(gpu_input).sampler_llr), input_dir);
+        result += texture(daxa_samplerCube(sky_cube, g_sampler_llr), input_dir);
     }
 
     imageStore(daxa_image2DArray(ibl_cube), ivec3(px), result / sample_count);

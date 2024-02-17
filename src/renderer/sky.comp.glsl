@@ -125,7 +125,7 @@ RaymarchResult integrate_scattered_luminance(vec3 world_position, vec3 world_dir
         /* uv coordinates later used to sample transmittance texture */
         vec2 trans_texture_uv = transmittance_lut_to_uv(transmittance_lut_params, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top);
 
-        vec3 transmittance_to_sun = texture(daxa_sampler2D(transmittance_lut, deref(gpu_input).sampler_llc), trans_texture_uv).rgb;
+        vec3 transmittance_to_sun = texture(daxa_sampler2D(transmittance_lut, g_sampler_llc), trans_texture_uv).rgb;
 
         vec3 medium_scattering = sample_medium_scattering(gpu_input, new_position);
         vec3 medium_extinction = sample_medium_extinction(gpu_input, new_position);
@@ -302,7 +302,7 @@ vec3 get_multiple_scattering(vec3 world_position, float view_zenith_cos_angle) {
     uv = vec2(from_unit_to_subuv(uv.x, SKY_MULTISCATTERING_RES.x),
               from_unit_to_subuv(uv.y, SKY_MULTISCATTERING_RES.y));
 
-    return texture(daxa_sampler2D(multiscattering_lut, deref(gpu_input).sampler_llc), uv).rgb;
+    return texture(daxa_sampler2D(multiscattering_lut, g_sampler_llc), uv).rgb;
 }
 
 vec3 integrate_scattered_luminance(vec3 world_position,
@@ -361,7 +361,7 @@ vec3 integrate_scattered_luminance(vec3 world_position,
 
         /* uv coordinates later used to sample transmittance texture */
         vec2 trans_texture_uv = transmittance_lut_to_uv(transmittance_lut_params, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top);
-        vec3 transmittance_to_sun = texture(daxa_sampler2D(transmittance_lut, deref(gpu_input).sampler_llc), trans_texture_uv).rgb;
+        vec3 transmittance_to_sun = texture(daxa_sampler2D(transmittance_lut, g_sampler_llc), trans_texture_uv).rgb;
 
         vec3 phase_times_scattering = medium_scattering.mie * mie_phase_value + medium_scattering.ray * rayleigh_phase_value;
 

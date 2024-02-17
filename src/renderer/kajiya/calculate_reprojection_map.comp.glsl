@@ -2,6 +2,7 @@
 #include "inc/camera.glsl"
 #include "inc/bilinear.glsl"
 #include "inc/safety.glsl"
+#include <g_samplers>
 
 DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -99,7 +100,7 @@ void main() {
 
     const Bilinear bilinear_at_prev = get_bilinear_filter(prev_uv, deref(gpu_input).frame_dim.xy);
     vec2 prev_gather_uv = (bilinear_at_prev.origin + 1.0) / deref(gpu_input).rounded_frame_dim.xy;
-    vec4 prev_depth = textureGather(daxa_sampler2D(prev_depth_image_id, deref(gpu_input).sampler_nnc), prev_gather_uv).wzxy;
+    vec4 prev_depth = textureGather(daxa_sampler2D(prev_depth_image_id, g_sampler_nnc), prev_gather_uv).wzxy;
 
     // vec4 prev_view_z = rcp(prev_depth * -deref(globals).player.cam.prev_clip_to_prev_view._43);
     vec4 prev_view_z = 1.0 / (prev_depth * -deref(globals).player.cam.prev_clip_to_prev_view[2][3]);

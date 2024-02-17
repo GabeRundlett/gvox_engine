@@ -2,7 +2,7 @@
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include "../inc/color.glsl"
-// #include <utilities/gpu/samplers.glsl>
+#include <g_samplers>
 // #include "../inc/frame_constants.glsl"
 // #include <utilities/gpu/pack_unpack.glsl>
 #include "../inc/brdf.glsl"
@@ -156,7 +156,7 @@ void main() {
 
     const float ray_squish_scale = 16.0 / max(1e-5, eye_to_surf_dist);
     const float ray_len_avg = exponential_unsquish(mix(
-                                                       exponential_squish(textureLod(daxa_sampler2D(ray_len_history_tex, deref(gpu_input).sampler_nnc), uv + reprojection_params.xy, 0).y, ray_squish_scale),
+                                                       exponential_squish(textureLod(daxa_sampler2D(ray_len_history_tex, g_sampler_nnc), uv + reprojection_params.xy, 0).y, ray_squish_scale),
                                                        exponential_squish(surf_to_hit_dist, ray_squish_scale),
                                                        0.1),
                                                    ray_squish_scale);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core.inl>
+#include <g_samplers>
 
 #define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
@@ -278,7 +279,7 @@ vec3 get_sun_illuminance(
             deref(gpu_input).sky_settings.atmosphere_bottom,
             deref(gpu_input).sky_settings.atmosphere_top);
         vec3 transmittance_to_sun = texture(
-                                        daxa_sampler2D(_transmittance, deref(gpu_input).sampler_llc),
+                                        daxa_sampler2D(_transmittance, g_sampler_llc),
                                         transmittance_texture_uv)
                                         .rgb;
         return transmittance_to_sun * sun_color.rgb * SUN_INTENSITY;
@@ -318,7 +319,7 @@ vec3 get_atmosphere_illuminance_along_ray(
         vec2(SKY_SKY_RES.xy),
         camera_height);
 
-    const vec3 unitless_atmosphere_illuminance = texture(daxa_sampler2D(_skyview, deref(gpu_input).sampler_llc), skyview_uv).rgb;
+    const vec3 unitless_atmosphere_illuminance = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv).rgb;
     const vec3 sun_color_weighed_atmosphere_illuminance = sun_color.rgb * unitless_atmosphere_illuminance;
     const vec3 atmosphere_scattering_illuminance = sun_color_weighed_atmosphere_illuminance * SUN_INTENSITY;
 

@@ -1,6 +1,6 @@
 #include <renderer/kajiya/rtdgi.inl>
 
-// #include <utilities/gpu/samplers.glsl>
+#include <g_samplers>
 #include "../inc/color.glsl"
 // #include <utilities/gpu/uv.glsl>
 #include "../inc/bilinear.glsl"
@@ -37,7 +37,7 @@ void main() {
     // For the sharpening (4x4) kernel, we need to know whether our neighbors are valid too,
     // as otherwise we end up over-sharpening with fake history (moving edges rather than scene features).
     const uvec4 reproj_valid_neigh =
-        uvec4(textureGather(daxa_sampler2D(reprojection_tex, deref(gpu_input).sampler_nnc), uv + 0.5 * sign(prev_uv) * push.output_tex_size.zw) * 15.0 + 0.5);
+        uvec4(textureGather(daxa_sampler2D(reprojection_tex, g_sampler_nnc), uv + 0.5 * sign(prev_uv) * push.output_tex_size.zw) * 15.0 + 0.5);
 
     vec4 history = 0.0.xxxx;
 
@@ -50,7 +50,7 @@ void main() {
                                         prev_uv,
                                         push.output_tex_size));
         } else {
-            history = textureLod(daxa_sampler2D(input_tex, deref(gpu_input).sampler_lnc), prev_uv, 0);
+            history = textureLod(daxa_sampler2D(input_tex, g_sampler_lnc), prev_uv, 0);
         }
     } else {
         // Only some samples are valid. Only include those, and don't do a sharpening fetch here.

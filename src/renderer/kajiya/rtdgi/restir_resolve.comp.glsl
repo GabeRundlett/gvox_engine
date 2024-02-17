@@ -3,7 +3,7 @@
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 #include "../inc/color.glsl"
-// #include <utilities/gpu/samplers.glsl>
+#include <g_samplers>
 // #include "../inc/frame_constants.glsl"
 // #include <utilities/gpu/pack_unpack.glsl>
 #include "../inc/brdf.glsl"

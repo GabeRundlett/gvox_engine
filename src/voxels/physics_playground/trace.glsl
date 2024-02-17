@@ -31,7 +31,7 @@ vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
     switch (id) {
     case 0:
 #if 0 // TracePrimaryComputeShader
-        return texture(daxa_sampler2D(debug_texture, deref(gpu_input).sampler_llr), pos.xy).rgb;
+        return texture(daxa_sampler2D(debug_texture, g_sampler_llr), pos.xy).rgb;
 #else
         return vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
 #endif

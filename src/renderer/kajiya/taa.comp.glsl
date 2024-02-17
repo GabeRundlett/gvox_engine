@@ -7,6 +7,8 @@
 #include "inc/color/srgb.glsl"
 #include "inc/color/ycbcr.glsl"
 
+#include <g_samplers>
+
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
 
@@ -86,7 +88,7 @@ daxa_ImageViewIndex closest_velocity_img = push.uses.closest_velocity_img;
 #define APPROX_SKIP_DILATION 1
 
 vec4 fetch_history(vec2 uv) {
-    vec4 h = textureLod(daxa_sampler2D(history_tex, deref(gpu_input).sampler_lnc), uv, 0);
+    vec4 h = textureLod(daxa_sampler2D(history_tex, g_sampler_lnc), uv, 0);
     return vec4(decode_rgb(h.xyz * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), h.w);
 }
 
@@ -267,7 +269,7 @@ void main() {
     );
 #elif 1
     vec4 history_packed = image_sample_catmull_rom_5tap(
-        history_tex, deref(gpu_input).sampler_llc, history_uv, output_tex_size.xy);
+        history_tex, g_sampler_llc, history_uv, output_tex_size.xy);
 #else
     vec4 history_packed = fetch_history(history_uv);
 #endif
@@ -513,9 +515,9 @@ void main() {
 
         const vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) / push.input_tex_size.xy;
 
-        const vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, deref(gpu_input).sampler_nnc), input_uv, 0);
-        const vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
-        const vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
+        const vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, g_sampler_nnc), input_uv, 0);
+        const vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, g_sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
+        const vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, g_sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
 
         // Combine spaital and temporla variance. We generally want to use
         // the smoothed temporal estimate, but bound it by this frame's input,
@@ -873,11 +875,11 @@ void main() {
     vec3 ex2 = center_sample.ex2;
     const vec3 var = max(0.0.xxx, ex2 - ex * ex);
 
-    const vec3 prev_var = vec3(textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), uv + reproj_xy, 0).x);
+    const vec3 prev_var = vec3(textureLod(daxa_sampler2D(smooth_var_history_tex, g_sampler_lnc), uv + reproj_xy, 0).x);
 
     // TODO: factor-out camera-only velocity
     const vec2 vel_now = safeTexelFetch(closest_velocity_img, px, 0).xy / deref(gpu_input).delta_time;
-    const vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_llc), uv + safeTexelFetch(closest_velocity_img, px, 0).xy, 0).xy;
+    const vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, g_sampler_llc), uv + safeTexelFetch(closest_velocity_img, px, 0).xy, 0).xy;
     const float vel_diff = length((vel_now - vel_prev) / max(vec2(1.0), abs(vel_now + vel_prev)));
     const float var_blend = clamp(0.3 + 0.7 * (1 - reproj.z) + vel_diff, 0.0, 1.0);
 

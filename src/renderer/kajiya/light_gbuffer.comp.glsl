@@ -94,7 +94,7 @@ void main() {
         float current_sun_angular_radius = acos(sun_angular_radius_cos);
         float sun_radius_ratio = real_sun_angular_radius / current_sun_angular_radius;
 
-        vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, deref(gpu_input).sampler_llr), outgoing_ray.Direction).rgb;
+        vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, g_sampler_llr), outgoing_ray.Direction).rgb;
         if (dot(outgoing_ray.Direction, SUN_DIRECTION) > sun_angular_radius_cos) {
             // TODO: what's the correct value?
             output_ += 800.0 * sun_color_in_direction(gpu_input, transmittance_lut, outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
