@@ -15,7 +15,7 @@ vec4 IdentityImageRemap_remap(vec4 v) {
     return v;
 }
 
-#include <utilities/gpu/safety.glsl>
+#include <renderer/kajiya/inc/safety.glsl>
 
 // https://www.shadertoy.com/view/MllSzX
 // NOTE(grundlett): Template-ized via macros. Manual instantiation is necessary

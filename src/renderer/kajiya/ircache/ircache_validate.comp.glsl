@@ -19,20 +19,20 @@ daxa_RWBufferPtr(uint) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf
 
 #include <utilities/gpu/math.glsl>
 // #include <utilities/gpu/pack_unpack.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
-#include <utilities/gpu/gbuffer.glsl>
-#include <utilities/gpu/brdf.glsl>
-#include <utilities/gpu/brdf_lut.glsl>
-#include <utilities/gpu/layered_brdf.glsl>
-#include <utilities/gpu/rt.glsl>
+// #include "../inc/frame_constants.glsl"
+#include "../inc/gbuffer.glsl"
+#include "../inc/brdf.glsl"
+#include "../inc/brdf_lut.glsl"
+#include "../inc/layered_brdf.glsl"
+#include "../inc/rt.glsl"
 #include <utilities/gpu/random.glsl>
-#include <utilities/gpu/quasi_random.glsl>
-#include <utilities/gpu/reservoir.glsl>
+#include "../inc/quasi_random.glsl"
+#include "../inc/reservoir.glsl"
 // #include <utilities/gpu/bindless_textures.glsl>
 // #include <utilities/gpu/atmosphere.glsl>
 #include <utilities/gpu/normal.glsl>
 // #include <utilities/gpu/lights/triangle.glsl>
-#include <utilities/gpu/color.glsl>
+#include "../inc/color.glsl"
 
 // #include "../inc/sun.hlsl"
 // #include "../wrc/lookup.hlsl"

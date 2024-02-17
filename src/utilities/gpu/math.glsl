@@ -1,7 +1,7 @@
 #pragma once
 
 #include <utilities/gpu/defs.glsl>
-#include <utilities/gpu/math_const.glsl>
+#include <renderer/kajiya/inc/math_const.glsl>
 
 // Definitions
 

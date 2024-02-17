@@ -1,5 +1,5 @@
 #include <renderer/kajiya/blur.inl>
-#include <utilities/gpu/safety.glsl>
+#include "inc/safety.glsl"
 
 #if BlurComputeShader
 

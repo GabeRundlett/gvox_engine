@@ -1,19 +1,19 @@
 #include <renderer/kajiya/rtr.inl>
 
-#include <utilities/gpu/camera.glsl>
+#include <renderer/kajiya/inc/camera.glsl>
 // #include <utilities/gpu/samplers.glsl>
 // #include <utilities/gpu/uv.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
-#include <utilities/gpu/color.glsl>
-#include <utilities/gpu/bilinear.glsl>
+// #include "../inc/frame_constants.glsl"
+#include "../inc/color.glsl"
+#include "../inc/bilinear.glsl"
 // #include <utilities/gpu/soft_color_clamp.glsl>
-#include <utilities/gpu/image.glsl>
-#include <utilities/gpu/brdf.glsl>
-#include <utilities/gpu/gbuffer.glsl>
+#include "../inc/image.glsl"
+#include "../inc/brdf.glsl"
+#include "../inc/gbuffer.glsl"
 #include "rtr_settings.glsl"
 
-#include <utilities/gpu/working_color_space.glsl>
-#include <utilities/gpu/safety.glsl>
+#include "../inc/working_color_space.glsl"
+#include "../inc/safety.glsl"
 
 // Use this after tweaking all the spec.
 #define linear_to_working linear_rgb_to_crunched_luma_chroma

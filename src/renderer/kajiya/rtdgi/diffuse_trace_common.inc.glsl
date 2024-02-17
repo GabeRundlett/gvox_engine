@@ -13,7 +13,7 @@ const bool USE_LIGHTS = true;
 
 #define USE_SKY_CUBE_TEX 1
 
-#include <utilities/gpu/sky.glsl>
+#include <renderer/sky.glsl>
 
 const float SKY_DIST = 1e4;
 
@@ -26,7 +26,7 @@ uvec2 reservoir_payload_to_px(uint payload) {
 }
 
 #include <utilities/gpu/math.glsl>
-#include <utilities/gpu/ray_cone.glsl>
+#include "../inc/ray_cone.glsl"
 
 #include <voxels/core.glsl>
 

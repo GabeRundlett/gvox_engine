@@ -1,6 +1,6 @@
 #pragma once
 
-#include "random.glsl"
+#include <utilities/gpu/random.glsl>
 
 float radical_inverse_vdc(uint bits) {
     bits = (bits << 16u) | (bits >> 16u);

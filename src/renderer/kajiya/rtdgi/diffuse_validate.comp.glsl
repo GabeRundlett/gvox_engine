@@ -3,17 +3,17 @@
 #include <utilities/gpu/math.glsl>
 // #include <utilities/gpu/uv.glsl>
 // #include <utilities/gpu/pack_unpack.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
-#include <utilities/gpu/gbuffer.glsl>
-#include <utilities/gpu/brdf.glsl>
-#include <utilities/gpu/brdf_lut.glsl>
-#include <utilities/gpu/layered_brdf.glsl>
+// #include "../inc/frame_constants.glsl"
+#include "../inc/gbuffer.glsl"
+#include "../inc/brdf.glsl"
+#include "../inc/brdf_lut.glsl"
+#include "../inc/layered_brdf.glsl"
 // #include <utilities/gpu/blue_noise.glsl>
-#include <utilities/gpu/rt.glsl>
+#include "../inc/rt.glsl"
 // #include <utilities/gpu/atmosphere.glsl>
 // #include <utilities/gpu/sun.glsl>
 // #include <utilities/gpu/lights/triangle.glsl>
-#include <utilities/gpu/reservoir.glsl>
+#include "../inc/reservoir.glsl"
 // #include "../ircache/bindings.hlsl"
 // #include "../wrc/bindings.glsl"
 #include "rtdgi_restir_settings.glsl"
@@ -43,8 +43,8 @@ daxa_ImageViewIndex rt_history_invalidity_out_tex = push.uses.rt_history_invalid
 #include "candidate_ray_dir.glsl"
 
 #include "diffuse_trace_common.inc.glsl"
-#include <utilities/gpu/downscale.glsl>
-#include <utilities/gpu/safety.glsl>
+#include "../inc/downscale.glsl"
+#include "../inc/safety.glsl"
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <utilities/gpu/camera.glsl>
-#include <utilities/gpu/downscale.glsl>
+#include <renderer/kajiya/inc/camera.glsl>
+#include <renderer/kajiya/inc/downscale.glsl>
 
 struct OcclusionScreenRayMarch {
     uint max_sample_count;

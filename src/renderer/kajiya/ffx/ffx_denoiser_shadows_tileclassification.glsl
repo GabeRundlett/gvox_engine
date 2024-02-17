@@ -292,7 +292,7 @@ void FFX_DNSR_Shadows_ClearTargets(uvec2 did, uvec2 gtid, uvec2 gid, float shado
     FFX_DNSR_Shadows_WriteMoments(did, vec4(shadow_value, 0, temporal_sample_count, shadow_value)); // mean, variance, temporal sample count, local neighborhood
 }
 
-#include <utilities/gpu/safety.glsl>
+#include <renderer/kajiya/inc/safety.glsl>
 
 void FFX_DNSR_Shadows_TileClassification(uint group_index, uvec2 gid) {
     uvec2 gtid = FFX_DNSR_Shadows_RemapLane8x8(group_index); // Make sure we can use the QuadReadAcross intrinsics to access a 2x2 region.

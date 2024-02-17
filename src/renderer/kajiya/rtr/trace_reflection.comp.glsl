@@ -2,15 +2,15 @@
 
 // #include <utilities/gpu/uv.glsl>
 // #include <utilities/gpu/pack_unpack.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
-#include <utilities/gpu/gbuffer.glsl>
-#include <utilities/gpu/brdf.glsl>
-#include <utilities/gpu/brdf_lut.glsl>
-#include <utilities/gpu/layered_brdf.glsl>
+// #include "../inc/frame_constants.glsl"
+#include "../inc/gbuffer.glsl"
+#include "../inc/brdf.glsl"
+#include "../inc/brdf_lut.glsl"
+#include "../inc/layered_brdf.glsl"
 #include "blue_noise.glsl"
-#include <utilities/gpu/rt.glsl>
+#include "../inc/rt.glsl"
 // #include <utilities/gpu/atmosphere.glsl>
-#include <utilities/gpu/sky.glsl>
+#include <renderer/sky.glsl>
 // #include <utilities/gpu/sun.glsl>
 // #include <utilities/gpu/lights/triangle.glsl>
 // #include "../ircache/bindings.glsl"
@@ -40,8 +40,8 @@ daxa_ImageViewIndex rng_out_tex = push.uses.rng_out_tex;
 // #include "../wrc/lookup.hlsl"
 
 #include "reflection_trace_common.inc.glsl"
-#include <utilities/gpu/downscale.glsl>
-#include <utilities/gpu/safety.glsl>
+#include "../inc/downscale.glsl"
+#include "../inc/safety.glsl"
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

@@ -3,7 +3,7 @@
 #include <application/input.inl>
 #include <application/globals.inl>
 
-#include <utilities/gpu/camera.glsl>
+#include <renderer/kajiya/inc/camera.glsl>
 
 void apply_friction(daxa_BufferPtr(GpuInput) gpu_input, in out vec3 vel, vec3 friction_vec, float friction_coeff) {
     float fac = deref(gpu_input).delta_time * friction_coeff;

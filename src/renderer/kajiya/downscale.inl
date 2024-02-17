@@ -26,7 +26,7 @@ inline auto extract_downscaled_depth(RecordContext &record_ctx, daxa::TaskImageV
     });
 
     record_ctx.add(ComputeTask<DownscaleCompute, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"downscale.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_DEPTH", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.task_input_buffer}},
@@ -55,7 +55,7 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &record_c
     });
 
     record_ctx.add(ComputeTask<DownscaleCompute, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"downscale.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_NRM", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.task_input_buffer}},
@@ -84,7 +84,7 @@ inline auto extract_downscaled_ssao(RecordContext &record_ctx, daxa::TaskImageVi
     });
 
     record_ctx.add(ComputeTask<DownscaleCompute, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"downscale.comp.glsl"},
+        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_SSAO", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.task_input_buffer}},

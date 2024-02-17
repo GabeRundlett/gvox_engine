@@ -1,11 +1,11 @@
 #include <renderer/kajiya/taa.inl>
 
 #include <utilities/gpu/math.glsl>
-#include <utilities/gpu/camera.glsl>
-#include <utilities/gpu/safety.glsl>
+#include "inc/camera.glsl"
+#include "inc/safety.glsl"
 
-#include <utilities/gpu/color/srgb.glsl>
-#include <utilities/gpu/color/ycbcr.glsl>
+#include "inc/color/srgb.glsl"
+#include "inc/color/ycbcr.glsl"
 
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1

@@ -1,6 +1,6 @@
 #pragma once
 
-// #include <utilities/gpu/quasi_random.glsl>
+// #include "../inc/quasi_random.glsl"
 // #include <utilities/gpu/bindless_textures.glsl>
 
 // The source texture is RGBA8, and the output here is quantized to [0.5/256 .. 255.5/256]

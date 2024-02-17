@@ -1,5 +1,7 @@
 #pragma once
 
+// NOTE(grundlett): Merged together frame_constants.hlsl and uv.hlsl
+
 #include <utilities/gpu/math.glsl>
 #include <application/globals.inl>
 

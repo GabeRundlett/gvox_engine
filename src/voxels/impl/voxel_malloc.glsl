@@ -4,7 +4,7 @@
 
 #define UserAllocatorType VoxelMallocPageAllocator
 #define UserIndexType VoxelMalloc_PageIndex
-#include <utilities/gpu/allocator.glsl>
+#include <utilities/allocator.glsl>
 
 // See 'VoxelMalloc_PageInfo' in shared/voxel_malloc.inl
 uint VoxelMalloc_PageInfo_extract_local_consumption_bitmask(VoxelMalloc_PageInfo page_info_bits) {

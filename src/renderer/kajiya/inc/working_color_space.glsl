@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utilities/gpu/color.glsl>
+#include <renderer/kajiya/inc/color.glsl>
 
 // ----
 

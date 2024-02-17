@@ -1,14 +1,14 @@
 #include <renderer/kajiya/rtdgi.inl>
 
 #include <utilities/gpu/math.glsl>
-#include <utilities/gpu/camera.glsl>
+#include <renderer/kajiya/inc/camera.glsl>
 // #include <utilities/gpu/samplers.glsl>
-#include <utilities/gpu/color.glsl>
+#include "../inc/color.glsl"
 // #include <utilities/gpu/uv.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
+// #include "../inc/frame_constants.glsl"
 // #include <utilities/gpu/soft_color_clamp.glsl>
-#include <utilities/gpu/working_color_space.glsl>
-#include <utilities/gpu/safety.glsl>
+#include "../inc/working_color_space.glsl"
+#include "../inc/safety.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

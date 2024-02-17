@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utilities/gpu/math_const.glsl>
+#include <renderer/kajiya/inc/math_const.glsl>
 
 // Random functions
 

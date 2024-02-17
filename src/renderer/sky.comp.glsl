@@ -1,7 +1,7 @@
 #include <renderer/sky.inl>
 
 #include <utilities/gpu/math.glsl>
-#include <utilities/gpu/sky.glsl>
+#include <renderer/sky.glsl>
 
 #if SkyTransmittanceComputeShader
 

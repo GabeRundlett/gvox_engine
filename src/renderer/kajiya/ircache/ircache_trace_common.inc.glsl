@@ -8,7 +8,7 @@
 
 #define USE_BLEND_RESULT 0
 
-#include <utilities/gpu/sky.glsl>
+#include <renderer/sky.glsl>
 
 #include <voxels/core.glsl>
 

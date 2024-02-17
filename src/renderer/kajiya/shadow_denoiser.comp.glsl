@@ -1,6 +1,6 @@
 #include <renderer/kajiya/shadow_denoiser.inl>
-#include <utilities/gpu/safety.glsl>
-#include <utilities/gpu/color.glsl>
+#include "inc/safety.glsl"
+#include "inc/color.glsl"
 
 #if ShadowBitPackComputeShader
 

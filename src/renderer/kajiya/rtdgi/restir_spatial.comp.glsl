@@ -1,23 +1,23 @@
 #include <renderer/kajiya/rtdgi.inl>
 
 #include <utilities/gpu/math.glsl>
-#include <utilities/gpu/color.glsl>
+#include "../inc/color.glsl"
 // #include <utilities/gpu/samplers.glsl>
-// #include <utilities/gpu/frame_constants.glsl>
+// #include "../inc/frame_constants.glsl"
 // #include <utilities/gpu/pack_unpack.glsl>
-#include <utilities/gpu/brdf.glsl>
-#include <utilities/gpu/brdf_lut.glsl>
-#include <utilities/gpu/layered_brdf.glsl>
+#include "../inc/brdf.glsl"
+#include "../inc/brdf_lut.glsl"
+#include "../inc/layered_brdf.glsl"
 // #include <utilities/gpu/uv.glsl>
 // #include <utilities/gpu/hash.glsl>
-#include <utilities/gpu/reservoir.glsl>
+#include "../inc/reservoir.glsl"
 #include "rtdgi_restir_settings.glsl"
 #include "rtdgi_common.glsl"
-#include <utilities/gpu/occlusion_raymarch.glsl>
+#include "../inc/occlusion_raymarch.glsl"
 
-#include <utilities/gpu/safety.glsl>
-#include <utilities/gpu/downscale.glsl>
-#include <utilities/gpu/rt.glsl>
+#include "../inc/safety.glsl"
+#include "../inc/downscale.glsl"
+#include "../inc/rt.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

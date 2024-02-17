@@ -9,11 +9,11 @@ void voxel_world_startup(daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBuffer
 
 // #define UserAllocatorType VoxelLeafChunkAllocator
 // #define UserIndexType uint
-// #include <utilities/gpu/allocator.glsl>
+// #include <utilities/allocator.glsl>
 
 // #define UserAllocatorType VoxelParentChunkAllocator
 // #define UserIndexType uint
-// #include <utilities/gpu/allocator.glsl>
+// #include <utilities/allocator.glsl>
 
 // Queue a L0 terrain generation item
 // void queue_terrain_generation_work_item(ivec3 chunk_offset) {

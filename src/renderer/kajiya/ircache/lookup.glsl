@@ -1,8 +1,8 @@
 #pragma once
 
-#include <utilities/gpu/quasi_random.glsl>
-#include <utilities/gpu/sh.glsl>
-#include <utilities/gpu/camera.glsl>
+#include "../inc/quasi_random.glsl"
+#include "../inc/sh.glsl"
+#include <renderer/kajiya/inc/camera.glsl>
 
 #include "ircache_grid.glsl"
 #include "ircache_sampler_common.inc.glsl"

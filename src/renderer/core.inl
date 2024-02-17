@@ -1,38 +1,12 @@
 #pragma once
 
-#include <renderer/downscale.inl>
+#include <application/input.inl>
+#include <application/globals.inl>
 
 #if defined(__cplusplus)
 
 #include <utilities/core.hpp>
-
-struct GbufferDepth {
-    daxa::TaskImageView gbuffer;
-    daxa::TaskImageView geometric_normal;
-    PingPongImage depth;
-
-    std::optional<daxa::TaskImageView> downscaled_depth = std::nullopt;
-    std::optional<daxa::TaskImageView> downscaled_view_normal = std::nullopt;
-
-    void next_frame() {
-        depth.swap();
-        downscaled_depth = std::nullopt;
-        downscaled_view_normal = std::nullopt;
-    }
-
-    auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
-        if (!downscaled_depth) {
-            downscaled_depth = extract_downscaled_depth(ctx, depth.current());
-        }
-        return *downscaled_depth;
-    }
-    auto get_downscaled_view_normal(RecordContext &ctx) -> daxa::TaskImageView {
-        if (!downscaled_view_normal) {
-            downscaled_view_normal = extract_downscaled_gbuffer_view_normal_rgba8(ctx, gbuffer);
-        }
-        return *downscaled_view_normal;
-    }
-};
+#include <renderer/kajiya/gbuffer.hpp>
 
 namespace {
     template <size_t N>
