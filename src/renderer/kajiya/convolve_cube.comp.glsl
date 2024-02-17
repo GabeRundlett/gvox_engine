@@ -21,7 +21,7 @@ vec2 hammersley(uint i, uint n) {
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    daxa_u32vec3 px = gl_GlobalInvocationID.xyz;
+    uvec3 px = gl_GlobalInvocationID.xyz;
     uint face = px.z;
     vec2 uv = (px.xy + 0.5) / IBL_CUBE_RES;
 

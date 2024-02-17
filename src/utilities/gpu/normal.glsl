@@ -68,15 +68,15 @@ vec3 i_spheremap_16(uint data) {
 }
 // ----------------------------------------
 
-daxa_f32vec3 u16_to_nrm(daxa_u32 x) {
+vec3 u16_to_nrm(uint x) {
     return normalize(i_octahedral_16(x));
     // return i_spheremap_16(x);
 }
-daxa_f32vec3 u16_to_nrm_unnormalized(daxa_u32 x) {
+vec3 u16_to_nrm_unnormalized(uint x) {
     return i_octahedral_16(x);
     // return i_spheremap_16(x);
 }
-daxa_u32 nrm_to_u16(daxa_f32vec3 nrm) {
+uint nrm_to_u16(vec3 nrm) {
     return octahedral_16(nrm);
     // return spheremap_16(nrm);
 }
@@ -91,7 +91,7 @@ uint pack_unorm(float val, uint bitCount) {
     return uint(clamp(val, 0.0, 1.0) * maxVal + 0.5);
 }
 
-float pack_normal_11_10_11(daxa_f32vec3 n) {
+float pack_normal_11_10_11(vec3 n) {
     uint pckd = 0;
     pckd += pack_unorm(n.x * 0.5 + 0.5, 11);
     pckd += pack_unorm(n.y * 0.5 + 0.5, 10) << 11;
@@ -99,9 +99,9 @@ float pack_normal_11_10_11(daxa_f32vec3 n) {
     return uintBitsToFloat(pckd);
 }
 
-daxa_f32vec3 unpack_normal_11_10_11(float pckd) {
+vec3 unpack_normal_11_10_11(float pckd) {
     uint p = floatBitsToUint(pckd);
-    return normalize(daxa_f32vec3(
+    return normalize(vec3(
                          unpack_unorm(p, 11),
                          unpack_unorm(p >> 11, 10),
                          unpack_unorm(p >> 21, 11)) *

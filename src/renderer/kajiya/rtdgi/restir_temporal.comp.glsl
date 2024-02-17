@@ -101,7 +101,7 @@ void main() {
     const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
     const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
     const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
-    const daxa_f32mat3x3 tangent_to_world = tbn_from_normal(normal_ws);
+    const mat3 tangent_to_world = tbn_from_normal(normal_ws);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
 
     const vec3 hit_offset_ws = safeTexelFetch(candidate_hit_tex, ivec2(px), 0).xyz;
@@ -376,7 +376,6 @@ void main() {
             if (0 == sample_i) {
                 center_M = r.M;
             }
-
 
             if (update_with_stream(reservoir,
                                    r, p_q, jacobian * visibility,

@@ -5,14 +5,14 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_RWBufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
-daxa_RWBufferPtr(daxa_u32) placed_voxel_particles = push.uses.placed_voxel_particles;
+daxa_RWBufferPtr(uint) rendered_voxel_particles = push.uses.rendered_voxel_particles;
+daxa_RWBufferPtr(uint) placed_voxel_particles = push.uses.placed_voxel_particles;
 
 #include <voxels/voxel_particle.glsl>
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    daxa_u32 particle_index = gl_GlobalInvocationID.x;
+    uint particle_index = gl_GlobalInvocationID.x;
     SimulatedVoxelParticle self = deref(simulated_voxel_particles[particle_index]);
 
     bool should_place = false;
@@ -24,15 +24,15 @@ void main() {
     // }
 
     if (should_place) {
-        daxa_u32vec3 my_voxel_i = daxa_u32vec3(self.pos * VOXEL_SCL);
-        const daxa_u32vec3 max_pos = daxa_u32vec3(2048);
+        uvec3 my_voxel_i = uvec3(self.pos * VOXEL_SCL);
+        const uvec3 max_pos = uvec3(2048);
         if (my_voxel_i.x < max_pos.x && my_voxel_i.y < max_pos.y && my_voxel_i.z < max_pos.z) {
             // Commented out, since placing particles in the voxel volume is not well optimized yet.
 
-            // daxa_u32 my_place_index = atomicAdd(deref(globals).voxel_particles_state.place_count, 1);
+            // uint my_place_index = atomicAdd(deref(globals).voxel_particles_state.place_count, 1);
             // if (my_place_index == 0) {
             //     ChunkWorkItem brush_work_item;
-            //     brush_work_item.i = daxa_u32vec3(0);
+            //     brush_work_item.i = uvec3(0);
             //     brush_work_item.brush_id = BRUSH_FLAGS_PARTICLE_BRUSH;
             //     brush_work_item.brush_input = deref(globals).brush_input;
             //     zero_work_item_children(brush_work_item);
@@ -52,7 +52,7 @@ void main() {
         return;
     }
 
-    daxa_u32 my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
+    uint my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
 
     deref(rendered_voxel_particles[my_render_index]) = particle_index;
 }

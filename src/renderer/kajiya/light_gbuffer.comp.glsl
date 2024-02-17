@@ -63,7 +63,7 @@ void main() {
     //         if (fract(u * 16) < push.output_tex_size.z * 32) {
     //             output_ = vec3(1, 1, 0) * 10;
     //         }
-    //         imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+    //         imageStore(daxa_image2D(output_tex), ivec2(px), vec4(output_, 1.0));
     //         return;
     //     }
     // }
@@ -78,7 +78,7 @@ void main() {
             FLT_MAX);
     }
 
-    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), daxa_i32vec2(px), 0));
+    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), ivec2(px), 0));
     const float depth = uintBitsToFloat(gbuffer_packed.data0.z);
 
     if (depth == 0.0) {
@@ -102,13 +102,13 @@ void main() {
 
         output_ *= deref(gpu_input).pre_exposure;
         // temporal_output_tex[px] = vec4(output_, 1);
-        imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+        imageStore(daxa_image2D(output_tex), ivec2(px), vec4(output_, 1.0));
         return;
     }
 
     const vec3 to_light_norm = SUN_DIRECTION;
 
-    float shadow_mask = texelFetch(daxa_texture2D(shadow_mask_tex), daxa_i32vec2(px), 0).x;
+    float shadow_mask = texelFetch(daxa_texture2D(shadow_mask_tex), ivec2(px), 0).x;
 
     if (push.debug_shading_mode == SHADING_MODE_RTX_OFF) {
         shadow_mask = 1;
@@ -143,7 +143,7 @@ void main() {
 
     if (push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
         if (USE_RTDGI) {
-            gi_irradiance = texelFetch(daxa_texture2D(rtdgi_tex), daxa_i32vec2(px), 0).rgb;
+            gi_irradiance = texelFetch(daxa_texture2D(rtdgi_tex), ivec2(px), 0).rgb;
         }
     }
 
@@ -159,9 +159,9 @@ void main() {
         vec3 rtr_radiance;
 
         if (!RTR_RENDER_SCALED_BY_FG) {
-            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), daxa_i32vec2(px), 0).xyz * brdf.energy_preservation.preintegrated_reflection;
+            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz * brdf.energy_preservation.preintegrated_reflection;
         } else {
-            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), daxa_i32vec2(px), 0).xyz;
+            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz;
         }
 
         if (USE_DIFFUSE_GI_FOR_ROUGH_SPEC) {
@@ -178,7 +178,7 @@ void main() {
 
     vec3 output_ = total_radiance;
 
-    // vec4 pt_cs = daxa_f32vec4(uv_to_cs(uv), depth, 1.0);
+    // vec4 pt_cs = vec4(uv_to_cs(uv), depth, 1.0);
     // vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
     // pt_ws /= pt_ws.w;
     // uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
@@ -190,5 +190,5 @@ void main() {
     output_ *= deref(gpu_input).pre_exposure;
 
     // output_ = gbuffer.albedo;
-    imageStore(daxa_image2D(output_tex), daxa_i32vec2(px), daxa_f32vec4(output_, 1.0));
+    imageStore(daxa_image2D(output_tex), ivec2(px), vec4(output_, 1.0));
 }

@@ -6,7 +6,7 @@ DAXA_DECL_PUSH_CONSTANT(VoxelParticleRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_BufferPtr(daxa_u32) rendered_voxel_particles = push.uses.rendered_voxel_particles;
+daxa_BufferPtr(uint) rendered_voxel_particles = push.uses.rendered_voxel_particles;
 daxa_ImageViewIndex render_image = push.uses.render_image;
 daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 
@@ -18,59 +18,59 @@ daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 layout(location = 1) out uint id;
 
 void main() {
-    daxa_u32 particle_index = gl_VertexIndex / 36;
-    daxa_f32vec3 positions[36];
+    uint particle_index = gl_VertexIndex / 36;
+    vec3 positions[36];
 
-    positions[0 + 6 * 0] = daxa_f32vec3(+0.0, +0.0, +0.0);
-    positions[1 + 6 * 0] = daxa_f32vec3(+1.0, +0.0, +0.0);
-    positions[2 + 6 * 0] = daxa_f32vec3(+0.0, +1.0, +0.0);
-    positions[3 + 6 * 0] = daxa_f32vec3(+0.0, +1.0, +0.0);
-    positions[4 + 6 * 0] = daxa_f32vec3(+1.0, +0.0, +0.0);
-    positions[5 + 6 * 0] = daxa_f32vec3(+1.0, +1.0, +0.0);
+    positions[0 + 6 * 0] = vec3(+0.0, +0.0, +0.0);
+    positions[1 + 6 * 0] = vec3(+1.0, +0.0, +0.0);
+    positions[2 + 6 * 0] = vec3(+0.0, +1.0, +0.0);
+    positions[3 + 6 * 0] = vec3(+0.0, +1.0, +0.0);
+    positions[4 + 6 * 0] = vec3(+1.0, +0.0, +0.0);
+    positions[5 + 6 * 0] = vec3(+1.0, +1.0, +0.0);
 
-    positions[0 + 6 * 1] = daxa_f32vec3(+0.0, +0.0, +1.0);
-    positions[1 + 6 * 1] = daxa_f32vec3(+0.0, +1.0, +1.0);
-    positions[2 + 6 * 1] = daxa_f32vec3(+1.0, +0.0, +1.0);
-    positions[3 + 6 * 1] = daxa_f32vec3(+1.0, +0.0, +1.0);
-    positions[4 + 6 * 1] = daxa_f32vec3(+0.0, +1.0, +1.0);
-    positions[5 + 6 * 1] = daxa_f32vec3(+1.0, +1.0, +1.0);
+    positions[0 + 6 * 1] = vec3(+0.0, +0.0, +1.0);
+    positions[1 + 6 * 1] = vec3(+0.0, +1.0, +1.0);
+    positions[2 + 6 * 1] = vec3(+1.0, +0.0, +1.0);
+    positions[3 + 6 * 1] = vec3(+1.0, +0.0, +1.0);
+    positions[4 + 6 * 1] = vec3(+0.0, +1.0, +1.0);
+    positions[5 + 6 * 1] = vec3(+1.0, +1.0, +1.0);
 
-    positions[0 + 6 * 2] = daxa_f32vec3(+0.0, +0.0, +0.0);
-    positions[1 + 6 * 2] = daxa_f32vec3(+0.0, +0.0, +1.0);
-    positions[2 + 6 * 2] = daxa_f32vec3(+1.0, +0.0, +0.0);
-    positions[3 + 6 * 2] = daxa_f32vec3(+1.0, +0.0, +0.0);
-    positions[4 + 6 * 2] = daxa_f32vec3(+0.0, +0.0, +1.0);
-    positions[5 + 6 * 2] = daxa_f32vec3(+1.0, +0.0, +1.0);
+    positions[0 + 6 * 2] = vec3(+0.0, +0.0, +0.0);
+    positions[1 + 6 * 2] = vec3(+0.0, +0.0, +1.0);
+    positions[2 + 6 * 2] = vec3(+1.0, +0.0, +0.0);
+    positions[3 + 6 * 2] = vec3(+1.0, +0.0, +0.0);
+    positions[4 + 6 * 2] = vec3(+0.0, +0.0, +1.0);
+    positions[5 + 6 * 2] = vec3(+1.0, +0.0, +1.0);
 
-    positions[0 + 6 * 3] = daxa_f32vec3(+0.0, +1.0, +0.0);
-    positions[1 + 6 * 3] = daxa_f32vec3(+1.0, +1.0, +0.0);
-    positions[2 + 6 * 3] = daxa_f32vec3(+0.0, +1.0, +1.0);
-    positions[3 + 6 * 3] = daxa_f32vec3(+0.0, +1.0, +1.0);
-    positions[4 + 6 * 3] = daxa_f32vec3(+1.0, +1.0, +0.0);
-    positions[5 + 6 * 3] = daxa_f32vec3(+1.0, +1.0, +1.0);
+    positions[0 + 6 * 3] = vec3(+0.0, +1.0, +0.0);
+    positions[1 + 6 * 3] = vec3(+1.0, +1.0, +0.0);
+    positions[2 + 6 * 3] = vec3(+0.0, +1.0, +1.0);
+    positions[3 + 6 * 3] = vec3(+0.0, +1.0, +1.0);
+    positions[4 + 6 * 3] = vec3(+1.0, +1.0, +0.0);
+    positions[5 + 6 * 3] = vec3(+1.0, +1.0, +1.0);
 
-    positions[0 + 6 * 4] = daxa_f32vec3(+0.0, +0.0, +0.0);
-    positions[1 + 6 * 4] = daxa_f32vec3(+0.0, +1.0, +0.0);
-    positions[2 + 6 * 4] = daxa_f32vec3(+0.0, +0.0, +1.0);
-    positions[3 + 6 * 4] = daxa_f32vec3(+0.0, +0.0, +1.0);
-    positions[4 + 6 * 4] = daxa_f32vec3(+0.0, +1.0, +0.0);
-    positions[5 + 6 * 4] = daxa_f32vec3(+0.0, +1.0, +1.0);
+    positions[0 + 6 * 4] = vec3(+0.0, +0.0, +0.0);
+    positions[1 + 6 * 4] = vec3(+0.0, +1.0, +0.0);
+    positions[2 + 6 * 4] = vec3(+0.0, +0.0, +1.0);
+    positions[3 + 6 * 4] = vec3(+0.0, +0.0, +1.0);
+    positions[4 + 6 * 4] = vec3(+0.0, +1.0, +0.0);
+    positions[5 + 6 * 4] = vec3(+0.0, +1.0, +1.0);
 
-    positions[0 + 6 * 5] = daxa_f32vec3(+1.0, +0.0, +0.0);
-    positions[1 + 6 * 5] = daxa_f32vec3(+1.0, +0.0, +1.0);
-    positions[2 + 6 * 5] = daxa_f32vec3(+1.0, +1.0, +0.0);
-    positions[3 + 6 * 5] = daxa_f32vec3(+1.0, +1.0, +0.0);
-    positions[4 + 6 * 5] = daxa_f32vec3(+1.0, +0.0, +1.0);
-    positions[5 + 6 * 5] = daxa_f32vec3(+1.0, +1.0, +1.0);
+    positions[0 + 6 * 5] = vec3(+1.0, +0.0, +0.0);
+    positions[1 + 6 * 5] = vec3(+1.0, +0.0, +1.0);
+    positions[2 + 6 * 5] = vec3(+1.0, +1.0, +0.0);
+    positions[3 + 6 * 5] = vec3(+1.0, +1.0, +0.0);
+    positions[4 + 6 * 5] = vec3(+1.0, +0.0, +1.0);
+    positions[5 + 6 * 5] = vec3(+1.0, +1.0, +1.0);
 
-    daxa_u32 simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
+    uint simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
     SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
 
     vec3 particle_worldspace_origin = get_particle_worldspace_origin(globals, particle.pos);
     vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
     vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 
-    vec4 vs_pos = deref(globals).player.cam.world_to_view * daxa_f32vec4(vert_pos, 1);
+    vec4 vs_pos = deref(globals).player.cam.world_to_view * vec4(vert_pos, 1);
     vec4 cs_pos = deref(globals).player.cam.view_to_sample * vs_pos;
     // TODO: Figure out why raster is projected upside down
     cs_pos.y *= -1;
@@ -83,10 +83,10 @@ void main() {
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
 
 layout(location = 1) flat in uint id;
-layout(location = 0) out daxa_u32vec4 color;
+layout(location = 0) out uvec4 color;
 
 void main() {
-    color = daxa_u32vec4(id + 1, 0, 0, 0);
+    color = uvec4(id + 1, 0, 0, 0);
 }
 
 #endif

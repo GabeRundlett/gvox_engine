@@ -11,7 +11,7 @@
 #define TAA_COLOR_MAPPING_MODE 1
 
 #define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA deref(gpu_input).pre_exposure_delta
-#define SAMPLE_OFFSET_PIXELS daxa_f32vec2(deref(gpu_input).halton_jitter)
+#define SAMPLE_OFFSET_PIXELS vec2(deref(gpu_input).halton_jitter)
 
 float linear_to_perceptual(float a) {
 #if 0 == TAA_NONLINEARITY_TYPE
@@ -52,18 +52,18 @@ float max_3(float a, float b, float c) {
     return max(a, max(b, c));
 }
 
-daxa_f32vec3 decode_rgb(daxa_f32vec3 v) {
+vec3 decode_rgb(vec3 v) {
 #if 0 == TAA_COLOR_MAPPING_MODE
-        return daxa_f32vec3(linear_to_perceptual(v.r), linear_to_perceptual(v.g), linear_to_perceptual(v.b));
+        return vec3(linear_to_perceptual(v.r), linear_to_perceptual(v.g), linear_to_perceptual(v.b));
 #elif 1 == TAA_COLOR_MAPPING_MODE
     float max_comp = max_3(v.r, v.g, v.b);
     return v * linear_to_perceptual(max_comp) / max(1e-20, max_comp);
 #endif
 }
 
-daxa_f32vec3 encode_rgb(daxa_f32vec3 v) {
+vec3 encode_rgb(vec3 v) {
 #if 0 == TAA_COLOR_MAPPING_MODE
-        return daxa_f32vec3(perceptual_to_linear(v.r), perceptual_to_linear(v.g), perceptual_to_linear(v.b));
+        return vec3(perceptual_to_linear(v.r), perceptual_to_linear(v.g), perceptual_to_linear(v.b));
 #elif 1 == TAA_COLOR_MAPPING_MODE
     float max_comp = max_3(v.r, v.g, v.b);
     return v * perceptual_to_linear(max_comp) / max(1e-20, max_comp);
@@ -85,9 +85,9 @@ daxa_ImageViewIndex closest_velocity_img = push.uses.closest_velocity_img;
 // around the pixel.
 #define APPROX_SKIP_DILATION 1
 
-daxa_f32vec4 fetch_history(daxa_f32vec2 uv) {
-    daxa_f32vec4 h = textureLod(daxa_sampler2D(history_tex, deref(gpu_input).sampler_lnc), uv, 0);
-    return daxa_f32vec4(decode_rgb(h.xyz * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), h.w);
+vec4 fetch_history(vec2 uv) {
+    vec4 h = textureLod(daxa_sampler2D(history_tex, deref(gpu_input).sampler_lnc), uv, 0);
+    return vec4(decode_rgb(h.xyz * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), h.w);
 }
 
 // struct HistoryRemap {
@@ -98,77 +98,77 @@ daxa_f32vec4 fetch_history(daxa_f32vec2 uv) {
 //     return res;
 // }
 
-daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(decode_rgb(v.rgb * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), v.a);
+vec4 HistoryRemap_remap(vec4 v) {
+    return vec4(decode_rgb(v.rgb * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), v.a);
 }
 
-daxa_f32 fetch_depth(daxa_i32vec2 px) {
+float fetch_depth(ivec2 px) {
     return safeTexelFetch(depth_image, px, 0).r;
 }
-daxa_f32vec4 fetch_reproj(daxa_i32vec2 px) {
+vec4 fetch_reproj(ivec2 px) {
     return safeTexelFetch(reprojection_map, px, 0);
 }
 
 #define REMAP_FUNC HistoryRemap_remap
-daxa_f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewIndex tex, in daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize, bool useCornerTaps) { // , Remap remap = IdentityImageRemap::create()
+vec4 image_sample_catmull_rom_approx(in daxa_ImageViewIndex tex, in daxa_SamplerId linearSampler, in vec2 uv, in vec2 texSize, bool useCornerTaps) { // , Remap remap = IdentityImageRemap::create()
     // https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
 
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
-    daxa_f32vec2 samplePos = uv * texSize;
-    daxa_f32vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+    vec2 samplePos = uv * texSize;
+    vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
 
     // Compute the fractional offset from our starting texel to our original sample location, which we'll
     // feed into the Catmull-Rom spline function to get our filter weights.
-    daxa_f32vec2 f = samplePos - texPos1;
+    vec2 f = samplePos - texPos1;
 
     // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
     // These equations are pre-expanded based on our knowledge of where the texels will be located,
     // which lets us avoid having to evaluate a piece-wise function.
-    daxa_f32vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-    daxa_f32vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-    daxa_f32vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
-    daxa_f32vec2 w3 = f * f * (-0.5f + 0.5f * f);
+    vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    vec2 w3 = f * f * (-0.5f + 0.5f * f);
 
     // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
     // simultaneously evaluate the middle 2 samples from the 4x4 grid.
-    daxa_f32vec2 w12 = w1 + w2;
-    daxa_f32vec2 offset12 = w2 / (w1 + w2);
+    vec2 w12 = w1 + w2;
+    vec2 offset12 = w2 / (w1 + w2);
 
     // Compute the final UV coordinates we'll use for sampling the texture
-    daxa_f32vec2 texPos0 = texPos1 - 1;
-    daxa_f32vec2 texPos3 = texPos1 + 2;
-    daxa_f32vec2 texPos12 = texPos1 + offset12;
+    vec2 texPos0 = texPos1 - 1;
+    vec2 texPos3 = texPos1 + 2;
+    vec2 texPos12 = texPos1 + offset12;
 
     texPos0 /= texSize;
     texPos3 /= texSize;
     texPos12 /= texSize;
 
-    daxa_f32vec4 result = daxa_f32vec4(0.0);
+    vec4 result = vec4(0.0);
 
     if (useCornerTaps) {
-        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos0.x, texPos0.y), 0.0f)) * w0.x * w0.y;
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos0.x, texPos0.y), 0.0f)) * w0.x * w0.y;
     }
 
-    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos12.x, texPos0.y), 0.0f)) * w12.x * w0.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos12.x, texPos0.y), 0.0f)) * w12.x * w0.y;
 
     if (useCornerTaps) {
-        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos3.x, texPos0.y), 0.0f)) * w3.x * w0.y;
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos3.x, texPos0.y), 0.0f)) * w3.x * w0.y;
     }
 
-    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos0.x, texPos12.y), 0.0f)) * w0.x * w12.y;
-    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos12.x, texPos12.y), 0.0f)) * w12.x * w12.y;
-    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos3.x, texPos12.y), 0.0f)) * w3.x * w12.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos0.x, texPos12.y), 0.0f)) * w0.x * w12.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos12.x, texPos12.y), 0.0f)) * w12.x * w12.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos3.x, texPos12.y), 0.0f)) * w3.x * w12.y;
 
     if (useCornerTaps) {
-        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos0.x, texPos3.y), 0.0f)) * w0.x * w3.y;
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos0.x, texPos3.y), 0.0f)) * w0.x * w3.y;
     }
 
-    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos12.x, texPos3.y), 0.0f)) * w12.x * w3.y;
+    result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos12.x, texPos3.y), 0.0f)) * w12.x * w3.y;
 
     if (useCornerTaps) {
-        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), daxa_f32vec2(texPos3.x, texPos3.y), 0.0f)) * w3.x * w3.y;
+        result += REMAP_FUNC(textureLod(daxa_sampler2D(tex, linearSampler), vec2(texPos3.x, texPos3.y), 0.0f)) * w3.x * w3.y;
     }
 
     if (!useCornerTaps) {
@@ -179,46 +179,46 @@ daxa_f32vec4 image_sample_catmull_rom_approx(in daxa_ImageViewIndex tex, in daxa
 }
 #undef REMAP_FUNC
 
-daxa_f32vec4 image_sample_catmull_rom_5tap(daxa_ImageViewIndex tex, daxa_SamplerId linearSampler, in daxa_f32vec2 uv, in daxa_f32vec2 texSize) { // , Remap remap = IdentityImageRemap::create()
+vec4 image_sample_catmull_rom_5tap(daxa_ImageViewIndex tex, daxa_SamplerId linearSampler, in vec2 uv, in vec2 texSize) { // , Remap remap = IdentityImageRemap::create()
     return image_sample_catmull_rom_approx(
         tex, linearSampler, uv, texSize, false);
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_f32vec2 px = gl_GlobalInvocationID.xy;
-    const daxa_f32vec2 input_resolution_scale = daxa_f32vec2(deref(gpu_input).render_res_scl); // input_tex_size.xy / output_tex_size.xy;
-    const daxa_u32vec2 reproj_px = daxa_u32vec2((px + 0.5) * input_resolution_scale);
+    vec2 px = gl_GlobalInvocationID.xy;
+    const vec2 input_resolution_scale = vec2(deref(gpu_input).render_res_scl); // input_tex_size.xy / output_tex_size.xy;
+    const uvec2 reproj_px = uvec2((px + 0.5) * input_resolution_scale);
 
-    daxa_f32vec4 output_tex_size = daxa_f32vec4(deref(gpu_input).output_resolution.xy, 0, 0);
+    vec4 output_tex_size = vec4(deref(gpu_input).output_resolution.xy, 0, 0);
     output_tex_size.zw = 1.0 / output_tex_size.xy;
 
     vec2 input_tex_size = output_tex_size.xy * deref(gpu_input).render_res_scl;
 
-    daxa_f32vec2 uv = get_uv(px, output_tex_size);
-    daxa_u32vec2 closest_px = reproj_px;
+    vec2 uv = get_uv(px, output_tex_size);
+    uvec2 closest_px = reproj_px;
 
 #if APPROX_SKIP_DILATION
     // Find the bounding box of velocities around this 3x3 region
-    daxa_f32vec2 vel_min;
-    daxa_f32vec2 vel_max;
+    vec2 vel_min;
+    vec2 vel_max;
     {
-        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(-1, -1)).xy;
+        vec2 v = fetch_reproj(ivec2(reproj_px) + ivec2(-1, -1)).xy;
         vel_min = v;
         vel_max = v;
     }
     {
-        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(1, -1)).xy;
+        vec2 v = fetch_reproj(ivec2(reproj_px) + ivec2(1, -1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
     {
-        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(-1, 1)).xy;
+        vec2 v = fetch_reproj(ivec2(reproj_px) + ivec2(-1, 1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
     {
-        daxa_f32vec2 v = fetch_reproj(ivec2(reproj_px) + daxa_i32vec2(1, 1)).xy;
+        vec2 v = fetch_reproj(ivec2(reproj_px) + ivec2(1, 1)).xy;
         vel_min = min(vel_min, v);
         vel_max = max(vel_max, v);
     }
@@ -242,40 +242,40 @@ void main() {
     if (should_dilate != 0)
 #endif
     {
-        float reproj_depth = fetch_depth(daxa_i32vec2(reproj_px));
+        float reproj_depth = fetch_depth(ivec2(reproj_px));
         int k = 1;
         for (int y = -k; y <= k; ++y) {
             for (int x = -k; x <= k; ++x) {
-                float d = fetch_depth(daxa_i32vec2(reproj_px) + daxa_i32vec2(x, y));
+                float d = fetch_depth(ivec2(reproj_px) + ivec2(x, y));
                 if (d > reproj_depth) {
                     reproj_depth = d;
-                    closest_px = reproj_px + daxa_i32vec2(x, y);
+                    closest_px = reproj_px + ivec2(x, y);
                 }
             }
         }
     }
 
-    const daxa_f32vec2 reproj_xy = fetch_reproj(daxa_i32vec2(closest_px)).xy;
-    safeImageStore(closest_velocity_img, daxa_i32vec2(px), daxa_f32vec4(reproj_xy, 0, 0));
-    daxa_f32vec2 history_uv = uv + reproj_xy;
+    const vec2 reproj_xy = fetch_reproj(ivec2(closest_px)).xy;
+    safeImageStore(closest_velocity_img, ivec2(px), vec4(reproj_xy, 0, 0));
+    vec2 history_uv = uv + reproj_xy;
 
 #if 0
-    daxa_f32vec4 history_packed = image_sample_catmull_rom(
+    vec4 history_packed = image_sample_catmull_rom(
         TextureImage::from_parts(history_tex, output_tex_size.xy),
         history_uv,
         HistoryRemap::create()
     );
 #elif 1
-    daxa_f32vec4 history_packed = image_sample_catmull_rom_5tap(
+    vec4 history_packed = image_sample_catmull_rom_5tap(
         history_tex, deref(gpu_input).sampler_llc, history_uv, output_tex_size.xy);
 #else
-    daxa_f32vec4 history_packed = fetch_history(history_uv);
+    vec4 history_packed = fetch_history(history_uv);
 #endif
 
-    daxa_f32vec3 history = history_packed.rgb;
+    vec3 history = history_packed.rgb;
     float history_coverage = max(0.0, history_packed.a);
 
-    safeImageStore(reprojected_history_img, daxa_i32vec2(gl_GlobalInvocationID.xy), daxa_f32vec4(history, history_coverage));
+    safeImageStore(reprojected_history_img, ivec2(gl_GlobalInvocationID.xy), vec4(history, history_coverage));
 }
 #endif
 
@@ -296,28 +296,28 @@ daxa_ImageViewIndex filtered_input_deviation_img = push.uses.filtered_input_devi
 //     return res;
 // }
 
-daxa_f32vec4 InputRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+vec4 InputRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
 }
 
 struct FilteredInput {
-    daxa_f32vec3 clamped_ex;
-    daxa_f32vec3 var;
+    vec3 clamped_ex;
+    vec3 var;
 };
 
-daxa_f32 fetch_depth(daxa_i32vec2 px) {
+float fetch_depth(ivec2 px) {
     return safeTexelFetch(depth_image, px, 0).r;
 }
-daxa_f32vec4 fetch_input(daxa_i32vec2 px) {
+vec4 fetch_input(ivec2 px) {
     return safeTexelFetch(input_image, px, 0);
 }
 
-FilteredInput filter_input_inner(daxa_u32vec2 px, float center_depth, float luma_cutoff, float depth_scale) {
-    daxa_f32vec3 iex = daxa_f32vec3(0);
-    daxa_f32vec3 iex2 = daxa_f32vec3(0);
+FilteredInput filter_input_inner(uvec2 px, float center_depth, float luma_cutoff, float depth_scale) {
+    vec3 iex = vec3(0);
+    vec3 iex2 = vec3(0);
     float iwsum = 0;
 
-    daxa_f32vec3 clamped_iex = daxa_f32vec3(0);
+    vec3 clamped_iex = vec3(0);
     float clamped_iwsum = 0;
 
     // InputRemap input_remap = InputRemap::create();
@@ -325,11 +325,11 @@ FilteredInput filter_input_inner(daxa_u32vec2 px, float center_depth, float luma
     const int k = 1;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            const daxa_i32vec2 spx_offset = daxa_i32vec2(x, y);
-            const float distance_w = exp(-(0.8 / (k * k)) * dot(daxa_f32vec2(spx_offset), daxa_f32vec2(spx_offset)));
+            const ivec2 spx_offset = ivec2(x, y);
+            const float distance_w = exp(-(0.8 / (k * k)) * dot(vec2(spx_offset), vec2(spx_offset)));
 
-            const daxa_i32vec2 spx = daxa_i32vec2(px) + spx_offset;
-            daxa_f32vec3 s = InputRemap_remap(fetch_input(spx)).rgb;
+            const ivec2 spx = ivec2(px) + spx_offset;
+            vec3 s = InputRemap_remap(fetch_input(spx)).rgb;
 
             const float depth = fetch_depth(spx);
             float w = 1;
@@ -353,14 +353,14 @@ FilteredInput filter_input_inner(daxa_u32vec2 px, float center_depth, float luma
 
     FilteredInput res;
     res.clamped_ex = clamped_iex;
-    res.var = max(daxa_f32vec3(0.0), iex2 - iex * iex);
+    res.var = max(vec3(0.0), iex2 - iex * iex);
 
     return res;
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_i32vec2 px = daxa_i32vec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     const float center_depth = fetch_depth(px);
 
     // Filter the input, with a cross-bilateral weight based on depth
@@ -370,8 +370,8 @@ void main() {
     // inputs brighter than the just-estimated luminance mean. This clamps bright outliers in the input.
     FilteredInput clamped_filtered_input = filter_input_inner(px, center_depth, filtered_input.clamped_ex.x * 1.001, 200);
 
-    safeImageStore(filtered_input_img, px, daxa_f32vec4(clamped_filtered_input.clamped_ex, 0.0));
-    safeImageStore(filtered_input_deviation_img, px, daxa_f32vec4(sqrt(filtered_input.var), 0.0));
+    safeImageStore(filtered_input_img, px, vec4(clamped_filtered_input.clamped_ex, 0.0));
+    safeImageStore(filtered_input_deviation_img, px, vec4(sqrt(filtered_input.var), 0.0));
 }
 
 #endif
@@ -384,29 +384,29 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
 daxa_ImageViewIndex filtered_history_img = push.uses.filtered_history_img;
 
-daxa_f32vec4 fetch_input(daxa_i32vec2 px) {
+vec4 fetch_input(ivec2 px) {
     return safeTexelFetch(reprojected_history_img, px, 0);
 }
 
-daxa_f32vec3 filter_input(daxa_f32vec2 uv, float luma_cutoff, int kernel_radius) {
-    daxa_f32vec3 iex = daxa_f32vec3(0);
+vec3 filter_input(vec2 uv, float luma_cutoff, int kernel_radius) {
+    vec3 iex = vec3(0);
     float iwsum = 0;
 
     // Note: + epislon to counter precision loss, which manifests itself
     // as bad rounding in a 2x upscale, showing stair-stepping artifacts.
-    daxa_i32vec2 src_px = daxa_i32vec2(floor(uv * push.input_tex_size.xy + 1e-3));
+    ivec2 src_px = ivec2(floor(uv * push.input_tex_size.xy + 1e-3));
 
     const int k = kernel_radius;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            const daxa_i32vec2 spx_offset = daxa_i32vec2(x, y);
-            const daxa_i32vec2 spx = daxa_i32vec2(src_px) + spx_offset;
+            const ivec2 spx_offset = ivec2(x, y);
+            const ivec2 spx = ivec2(src_px) + spx_offset;
 
             // TODO: consider a weight based on uv diffs between the low-res
             // output `uv` and the low-res input `spx`.
-            const float distance_w = exp(-(0.8 / (k * k)) * dot(daxa_f32vec2(spx_offset), daxa_f32vec2(spx_offset)));
+            const float distance_w = exp(-(0.8 / (k * k)) * dot(vec2(spx_offset), vec2(spx_offset)));
 
-            daxa_f32vec3 s = sRGB_to_YCbCr(fetch_input(spx).rgb);
+            vec3 s = sRGB_to_YCbCr(fetch_input(spx).rgb);
 
             float w = 1;
             w *= distance_w;
@@ -420,15 +420,15 @@ daxa_f32vec3 filter_input(daxa_f32vec2 uv, float luma_cutoff, int kernel_radius)
     return iex / iwsum;
 }
 
-void filter_history(daxa_u32vec2 px, int kernel_radius) {
-    daxa_f32vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
+void filter_history(uvec2 px, int kernel_radius) {
+    vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
     float filtered_luma = filter_input(uv, 1e10, kernel_radius).x;
-    safeImageStore(filtered_history_img, daxa_i32vec2(px), daxa_f32vec4(filter_input(uv, filtered_luma * 1.001, kernel_radius), 0.0));
+    safeImageStore(filtered_history_img, ivec2(px), vec4(filter_input(uv, filtered_luma * 1.001, kernel_radius), 0.0));
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_u32vec2 px = gl_GlobalInvocationID.xy;
+    uvec2 px = gl_GlobalInvocationID.xy;
     if (push.input_tex_size.x / push.output_tex_size.x > 1.75) {
         // If we're upscaling, history is at a higher resolution than
         // the new frame, so we need to filter history more.
@@ -463,8 +463,8 @@ daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
 //     return res;
 // }
 
-daxa_f32vec4 InputRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+vec4 InputRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
 }
 
 // struct HistoryRemap {
@@ -474,55 +474,55 @@ daxa_f32vec4 InputRemap_remap(daxa_f32vec4 v) {
 //     return res;
 // }
 
-daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(sRGB_to_YCbCr(v.rgb), 1);
+vec4 HistoryRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(v.rgb), 1);
 }
 
-daxa_f32vec4 fetch_filtered_input(daxa_i32vec2 px) {
+vec4 fetch_filtered_input(ivec2 px) {
     return safeTexelFetch(filtered_input_img, px, 0);
 }
 
-daxa_f32vec3 fetch_filtered_input_dev(daxa_i32vec2 px) {
+vec3 fetch_filtered_input_dev(ivec2 px) {
     return safeTexelFetch(filtered_input_deviation_img, px, 0).rgb;
 }
 
-daxa_f32vec4 fetch_reproj(daxa_i32vec2 px) {
+vec4 fetch_reproj(ivec2 px) {
     return safeTexelFetch(reprojection_map, px, 0);
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
     float input_prob = 0;
-    daxa_i32vec2 px = daxa_i32vec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 
     {
         // InputRemap input_remap = InputRemap::create();
 
         // Estimate input variance from a pretty large spatial neighborhood
         // We'll combine it with a temporally-filtered variance estimate later.
-        daxa_f32vec3 ivar = daxa_f32vec3(0);
+        vec3 ivar = vec3(0);
         {
             const int k = 1;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    ivar = max(ivar, fetch_filtered_input_dev(px + daxa_i32vec2(x, y) * 2));
+                    ivar = max(ivar, fetch_filtered_input_dev(px + ivec2(x, y) * 2));
                 }
             }
             ivar = square(ivar);
         }
 
-        const daxa_f32vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) / push.input_tex_size.xy;
+        const vec2 input_uv = (px + SAMPLE_OFFSET_PIXELS) / push.input_tex_size.xy;
 
-        const daxa_f32vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, deref(gpu_input).sampler_nnc), input_uv, 0);
-        const daxa_f32vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
-        const daxa_f32vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
+        const vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, deref(gpu_input).sampler_nnc), input_uv, 0);
+        const vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
+        const vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
 
         // Combine spaital and temporla variance. We generally want to use
         // the smoothed temporal estimate, but bound it by this frame's input,
         // to quickly react for large-scale temporal changes.
-        const daxa_f32vec3 combined_var = min(closest_smooth_var, ivar * 10);
-        // const daxa_f32vec3 combined_var = closest_smooth_var;
-        // const daxa_f32vec3 combined_var = ivar;
+        const vec3 combined_var = min(closest_smooth_var, ivar * 10);
+        // const vec3 combined_var = closest_smooth_var;
+        // const vec3 combined_var = ivar;
 
         // Check this frame's input, and see how closely it resembles history,
         // taking the variance estimate into account.
@@ -538,13 +538,13 @@ void main() {
             int k = 1;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    const daxa_f32vec3 s = fetch_filtered_input(px + daxa_i32vec2(x, y)).rgb;
-                    const daxa_f32vec3 idiff = s - closest_history.rgb;
+                    const vec3 s = fetch_filtered_input(px + ivec2(x, y)).rgb;
+                    const vec3 idiff = s - closest_history.rgb;
 
-                    const daxa_f32vec2 vel = fetch_reproj(px + daxa_i32vec2(x, y)).xy;
-                    const float vdiff = length((vel - closest_vel) / max(daxa_f32vec2(1.0), abs(vel + closest_vel)));
+                    const vec2 vel = fetch_reproj(px + ivec2(x, y)).xy;
+                    const float vdiff = length((vel - closest_vel) / max(vec2(1.0), abs(vel + closest_vel)));
 
-                    float prob = exp2(-1.0 * length(idiff * idiff / max(daxa_f32vec3(1e-6), combined_var)) - 1000 * vdiff);
+                    float prob = exp2(-1.0 * length(idiff * idiff / max(vec3(1e-6), combined_var)) - 1000 * vdiff);
 
                     input_prob = max(input_prob, prob);
                 }
@@ -552,7 +552,7 @@ void main() {
         }
     }
 
-    safeImageStore(input_prob_img, daxa_i32vec2(px), daxa_f32vec4(input_prob, 0, 0, 0));
+    safeImageStore(input_prob_img, ivec2(px), vec4(input_prob, 0, 0, 0));
 }
 
 #endif
@@ -565,26 +565,26 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
 daxa_ImageViewIndex prob_filtered1_img = push.uses.prob_filtered1_img;
 
-daxa_f32 fetch_input(daxa_i32vec2 px) {
+float fetch_input(ivec2 px) {
     return safeTexelFetch(input_prob_img, px, 0).r;
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_i32vec2 px = daxa_i32vec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     float prob = fetch_input(px);
 
     const int k = 1;
     {
         for (int y = -k; y <= k; ++y) {
             for (int x = -k; x <= k; ++x) {
-                float neighbor_prob = fetch_input(px + daxa_i32vec2(x, y));
+                float neighbor_prob = fetch_input(px + ivec2(x, y));
                 prob = max(prob, neighbor_prob);
             }
         }
     }
 
-    safeImageStore(prob_filtered1_img, daxa_i32vec2(px), daxa_f32vec4(prob, 0, 0, 0));
+    safeImageStore(prob_filtered1_img, ivec2(px), vec4(prob, 0, 0, 0));
 }
 
 #endif
@@ -597,23 +597,23 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex prob_filtered1_img = push.uses.prob_filtered1_img;
 daxa_ImageViewIndex prob_filtered2_img = push.uses.prob_filtered2_img;
 
-daxa_f32 fetch_input(daxa_i32vec2 px) {
+float fetch_input(ivec2 px) {
     return safeTexelFetch(prob_filtered1_img, px, 0).r;
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_i32vec2 px = daxa_i32vec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     float prob = fetch_input(px);
 
-    daxa_f32vec2 weighted_prob = daxa_f32vec2(0);
+    vec2 weighted_prob = vec2(0);
     const float SQUISH_STRENGTH = 10;
 
     const int k = 2;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            float neighbor_prob = fetch_input(px + daxa_i32vec2(x, y) * 2);
-            weighted_prob += daxa_f32vec2(exponential_squish(neighbor_prob, SQUISH_STRENGTH), 1);
+            float neighbor_prob = fetch_input(px + ivec2(x, y) * 2);
+            weighted_prob += vec2(exponential_squish(neighbor_prob, SQUISH_STRENGTH), 1);
         }
     }
 
@@ -622,7 +622,7 @@ void main() {
     // prob = min(prob, WaveReadLaneAt(prob, WaveGetLaneIndex() ^ 1));
     // prob = min(prob, WaveReadLaneAt(prob, WaveGetLaneIndex() ^ 8));
 
-    safeImageStore(prob_filtered2_img, daxa_i32vec2(px), daxa_f32vec4(prob, 0, 0, 0));
+    safeImageStore(prob_filtered2_img, ivec2(px), vec4(prob, 0, 0, 0));
 }
 
 #endif
@@ -674,23 +674,23 @@ daxa_ImageViewIndex temporal_velocity_output_tex = push.uses.temporal_velocity_o
 //     return res;
 // }
 
-daxa_f32vec4 InputRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+vec4 InputRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
 }
-daxa_f32vec4 fetch_history(daxa_i32vec2 px) {
+vec4 fetch_history(ivec2 px) {
     return safeTexelFetch(reprojected_history_img, px, 0);
 }
 
-daxa_f32vec4 fetch_blurred_history(daxa_i32vec2 px, int k, float sigma) {
-    const daxa_f32vec3 center = fetch_history(px).rgb;
+vec4 fetch_blurred_history(ivec2 px, int k, float sigma) {
+    const vec3 center = fetch_history(px).rgb;
 
-    daxa_f32vec4 csum = daxa_f32vec4(0.0);
+    vec4 csum = vec4(0.0);
     float wsum = 0;
 
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            daxa_f32vec4 c = fetch_history(px + daxa_i32vec2(x, y));
-            daxa_f32vec2 offset = daxa_f32vec2(x, y) * sigma;
+            vec4 c = fetch_history(px + ivec2(x, y));
+            vec2 offset = vec2(x, y) * sigma;
             float w = exp(-dot(offset, offset));
             float color_diff =
                 linear_to_perceptual(sRGB_to_luminance(c.rgb)) - linear_to_perceptual(sRGB_to_luminance(center));
@@ -709,15 +709,15 @@ daxa_f32vec4 fetch_blurred_history(daxa_i32vec2 px, int k, float sigma) {
 //     return res;
 // }
 
-daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {
-    return daxa_f32vec4(sRGB_to_YCbCr(v.rgb), 1);
+vec4 HistoryRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(v.rgb), 1);
 }
 
 struct UnjitteredSampleInfo {
-    daxa_f32vec4 color;
+    vec4 color;
     float coverage;
-    daxa_f32vec3 ex;
-    daxa_f32vec3 ex2;
+    vec3 ex;
+    vec3 ex2;
 };
 struct UnjitterSettings {
     float kernel_scale;
@@ -727,22 +727,22 @@ struct UnjitterSettings {
 #define REMAP_FUNC HistoryRemap_remap
 UnjitteredSampleInfo sample_image_unjitter_taa(
     daxa_ImageViewIndex img,
-    daxa_i32vec2 output_px,
-    daxa_f32vec2 output_tex_size,
-    daxa_f32vec2 sample_offset_pixels,
+    ivec2 output_px,
+    vec2 output_tex_size,
+    vec2 sample_offset_pixels,
     UnjitterSettings settings) {
-    const daxa_f32vec2 input_tex_size = push.input_tex_size.xy; // daxa_f32vec2(img.size());
-    const daxa_f32vec2 input_resolution_scale = input_tex_size / output_tex_size;
-    const daxa_i32vec2 base_src_px = daxa_i32vec2((output_px + 0.5) * input_resolution_scale);
+    const vec2 input_tex_size = push.input_tex_size.xy; // vec2(img.size());
+    const vec2 input_resolution_scale = input_tex_size / output_tex_size;
+    const ivec2 base_src_px = ivec2((output_px + 0.5) * input_resolution_scale);
 
     // In pixel units of the destination (upsampled)
-    const daxa_f32vec2 dst_sample_loc = output_px + 0.5;
-    const daxa_f32vec2 base_src_sample_loc =
-        (base_src_px + 0.5 + sample_offset_pixels * daxa_f32vec2(1, -1)) / input_resolution_scale;
+    const vec2 dst_sample_loc = output_px + 0.5;
+    const vec2 base_src_sample_loc =
+        (base_src_px + 0.5 + sample_offset_pixels * vec2(1, -1)) / input_resolution_scale;
 
-    daxa_f32vec4 res = daxa_f32vec4(0.0);
-    daxa_f32vec3 ex = daxa_f32vec3(0.0);
-    daxa_f32vec3 ex2 = daxa_f32vec3(0.0);
+    vec4 res = vec4(0.0);
+    vec3 ex = vec3(0.0);
+    vec3 ex2 = vec3(0.0);
     float dev_wt_sum = 0.0;
     float wt_sum = 0.0;
 
@@ -755,11 +755,11 @@ UnjitteredSampleInfo sample_image_unjitter_taa(
     int k = settings.kernel_half_width_pixels;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
-            daxa_i32vec2 src_px = base_src_px + daxa_i32vec2(x, y);
-            daxa_f32vec2 src_sample_loc = base_src_sample_loc + daxa_f32vec2(x, y) / input_resolution_scale;
+            ivec2 src_px = base_src_px + ivec2(x, y);
+            vec2 src_sample_loc = base_src_sample_loc + vec2(x, y) / input_resolution_scale;
 
-            daxa_f32vec4 col = REMAP_FUNC(safeTexelFetch(img, src_px, 0));
-            daxa_f32vec2 sample_center_offset = (src_sample_loc - dst_sample_loc) * kernel_distance_mult;
+            vec4 col = REMAP_FUNC(safeTexelFetch(img, src_px, 0));
+            vec2 sample_center_offset = (src_sample_loc - dst_sample_loc) * kernel_distance_mult;
 
             float dist2 = dot(sample_center_offset, sample_center_offset);
             float dist = sqrt(dist2);
@@ -781,7 +781,7 @@ UnjitteredSampleInfo sample_image_unjitter_taa(
         }
     }
 
-    daxa_f32vec2 sample_center_offset = -sample_offset_pixels / input_resolution_scale * daxa_f32vec2(1, -1) - (base_src_sample_loc - dst_sample_loc);
+    vec2 sample_center_offset = -sample_offset_pixels / input_resolution_scale * vec2(1, -1) - (base_src_sample_loc - dst_sample_loc);
 
     UnjitteredSampleInfo info;
     info.color = res;
@@ -792,16 +792,16 @@ UnjitteredSampleInfo sample_image_unjitter_taa(
 }
 #undef REMAP_FUNC
 
-daxa_f32vec4 fetch_reproj(daxa_i32vec2 px) {
+vec4 fetch_reproj(ivec2 px) {
     return safeTexelFetch(reprojection_map, px, 0);
 }
 
 layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
 void main() {
-    daxa_i32vec2 px = daxa_i32vec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 #if USE_FRAME_INDEX_INDICATOR_BAR
     if (px.y < 50) {
-        daxa_f32vec4 val = 0;
+        vec4 val = 0;
         if (px.x < frame_constants.frame_index * 10 % uint(output_tex_size.x)) {
             val = 1;
         }
@@ -811,31 +811,31 @@ void main() {
     }
 #endif
 
-    const daxa_f32vec2 input_resolution_fraction = push.input_tex_size.xy / push.output_tex_size.xy;
-    const daxa_u32vec2 reproj_px = daxa_u32vec2((daxa_f32vec2(px) + 0.5) * input_resolution_fraction);
-    // const daxa_u32vec2 reproj_px = daxa_u32vec2(px * input_resolution_fraction + 0.5);
+    const vec2 input_resolution_fraction = push.input_tex_size.xy / push.output_tex_size.xy;
+    const uvec2 reproj_px = uvec2((vec2(px) + 0.5) * input_resolution_fraction);
+    // const uvec2 reproj_px = uvec2(px * input_resolution_fraction + 0.5);
 
 #if SHORT_CIRCUIT
-    temporal_output_tex[px] = mix(input_tex[reproj_px], daxa_f32vec4(encode_rgb(fetch_history(px).rgb), 1), 1.0 - 1.0 / SHORT_CIRCUIT);
+    temporal_output_tex[px] = mix(input_tex[reproj_px], vec4(encode_rgb(fetch_history(px).rgb), 1), 1.0 - 1.0 / SHORT_CIRCUIT);
     output_tex[px] = temporal_output_tex[px];
     return;
 #endif
 
-    daxa_f32vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
+    vec2 uv = get_uv(px, vec4(push.output_tex_size.xy, 1.0 / push.output_tex_size.xy));
 
-    daxa_f32vec4 history_packed = fetch_history(px);
-    daxa_f32vec3 history = history_packed.rgb;
+    vec4 history_packed = fetch_history(px);
+    vec3 history = history_packed.rgb;
     float history_coverage = max(0.0, history_packed.a);
 
-    daxa_f32vec4 bhistory_packed = fetch_blurred_history(px, 2, 1);
-    daxa_f32vec3 bhistory = bhistory_packed.rgb;
-    daxa_f32vec3 bhistory_coverage = daxa_f32vec3(bhistory_packed.a);
+    vec4 bhistory_packed = fetch_blurred_history(px, 2, 1);
+    vec3 bhistory = bhistory_packed.rgb;
+    vec3 bhistory_coverage = vec3(bhistory_packed.a);
 
     history = sRGB_to_YCbCr(history);
     bhistory = sRGB_to_YCbCr(bhistory);
 
-    const daxa_f32vec4 reproj = fetch_reproj(daxa_i32vec2(reproj_px));
-    const daxa_f32vec2 reproj_xy = safeTexelFetch(closest_velocity_img, px, 0).xy;
+    const vec4 reproj = fetch_reproj(ivec2(reproj_px));
+    const vec2 reproj_xy = safeTexelFetch(closest_velocity_img, px, 0).xy;
 
     UnjitterSettings unjitter_settings;
     unjitter_settings.kernel_scale = 1;
@@ -856,43 +856,43 @@ void main() {
 
     float coverage = 1;
 #if FILTER_CURRENT_FRAME
-    daxa_f32vec3 center = center_sample.color.rgb;
+    vec3 center = center_sample.color.rgb;
     coverage = center_sample.coverage;
 #else
-    daxa_f32vec3 center = sRGB_to_YCbCr(decode_rgb(safeTexelFetch(INPUT_TEX, px, 0).rgb));
+    vec3 center = sRGB_to_YCbCr(decode_rgb(safeTexelFetch(INPUT_TEX, px, 0).rgb));
 #endif
 
-    daxa_f32vec3 bcenter = bcenter_sample.color.rgb / bcenter_sample.coverage;
+    vec3 bcenter = bcenter_sample.color.rgb / bcenter_sample.coverage;
 
     history = mix(history, bcenter, clamp(1.0 - history_coverage, 0.0, 1.0));
     bhistory = mix(bhistory, bcenter, clamp(1.0 - bhistory_coverage, 0.0, 1.0));
 
-    const float input_prob = safeTexelFetch(input_prob_img, daxa_i32vec2(reproj_px), 0).r;
+    const float input_prob = safeTexelFetch(input_prob_img, ivec2(reproj_px), 0).r;
 
-    daxa_f32vec3 ex = center_sample.ex;
-    daxa_f32vec3 ex2 = center_sample.ex2;
-    const daxa_f32vec3 var = max(0.0.xxx, ex2 - ex * ex);
+    vec3 ex = center_sample.ex;
+    vec3 ex2 = center_sample.ex2;
+    const vec3 var = max(0.0.xxx, ex2 - ex * ex);
 
-    const daxa_f32vec3 prev_var = daxa_f32vec3(textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), uv + reproj_xy, 0).x);
+    const vec3 prev_var = vec3(textureLod(daxa_sampler2D(smooth_var_history_tex, deref(gpu_input).sampler_lnc), uv + reproj_xy, 0).x);
 
     // TODO: factor-out camera-only velocity
-    const daxa_f32vec2 vel_now = safeTexelFetch(closest_velocity_img, px, 0).xy / deref(gpu_input).delta_time;
-    const daxa_f32vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_llc), uv + safeTexelFetch(closest_velocity_img, px, 0).xy, 0).xy;
-    const float vel_diff = length((vel_now - vel_prev) / max(daxa_f32vec2(1.0), abs(vel_now + vel_prev)));
+    const vec2 vel_now = safeTexelFetch(closest_velocity_img, px, 0).xy / deref(gpu_input).delta_time;
+    const vec2 vel_prev = textureLod(daxa_sampler2D(velocity_history_tex, deref(gpu_input).sampler_llc), uv + safeTexelFetch(closest_velocity_img, px, 0).xy, 0).xy;
+    const float vel_diff = length((vel_now - vel_prev) / max(vec2(1.0), abs(vel_now + vel_prev)));
     const float var_blend = clamp(0.3 + 0.7 * (1 - reproj.z) + vel_diff, 0.0, 1.0);
 
-    daxa_f32vec3 smooth_var = max(var, mix(prev_var, var, var_blend));
+    vec3 smooth_var = max(var, mix(prev_var, var, var_blend));
 
     const float var_prob_blend = clamp(input_prob, 0.0, 1.0);
     smooth_var = mix(var, smooth_var, var_prob_blend);
 
-    const daxa_f32vec3 input_dev = sqrt(var);
+    const vec3 input_dev = sqrt(var);
 
-    daxa_f32vec4 this_frame_result = daxa_f32vec4(0.0);
+    vec4 this_frame_result = vec4(0.0);
 #define DEBUG_SHOW(value) \
-    { this_frame_result = daxa_f32vec4((daxa_f32vec3)(value), 1); }
+    { this_frame_result = vec4((vec3)(value), 1); }
 
-    daxa_f32vec3 clamped_history;
+    vec3 clamped_history;
 
     // Perform neighborhood clamping / disocclusion rejection
     {
@@ -904,20 +904,20 @@ void main() {
             box_n_deviations = mix(box_n_deviations, 3, input_prob);
         }
 
-        daxa_f32vec3 nmin = ex - input_dev * box_n_deviations;
-        daxa_f32vec3 nmax = ex + input_dev * box_n_deviations;
+        vec3 nmin = ex - input_dev * box_n_deviations;
+        vec3 nmax = ex + input_dev * box_n_deviations;
 
 #if USE_ACCUMULATION
 #if USE_NEIGHBORHOOD_CLAMPING
-        daxa_f32vec3 clamped_bhistory = clamp(bhistory, nmin, nmax);
+        vec3 clamped_bhistory = clamp(bhistory, nmin, nmax);
 #else
-        daxa_f32vec3 clamped_bhistory = bhistory;
+        vec3 clamped_bhistory = bhistory;
 #endif
 
-        const float clamping_event = length(max(daxa_f32vec3(0.0), max(bhistory - nmax, nmin - bhistory)) / max(daxa_f32vec3(0.01), ex));
+        const float clamping_event = length(max(vec3(0.0), max(bhistory - nmax, nmin - bhistory)) / max(vec3(0.01), ex));
 
-        daxa_f32vec3 outlier3 = max(daxa_f32vec3(0.0), (max(nmin - history, history - nmax)) / (0.1 + max(max(abs(history), abs(ex)), 1e-5)));
-        daxa_f32vec3 boutlier3 = max(daxa_f32vec3(0.0), (max(nmin - bhistory, bhistory - nmax)) / (0.1 + max(max(abs(bhistory), abs(ex)), 1e-5)));
+        vec3 outlier3 = max(vec3(0.0), (max(nmin - history, history - nmax)) / (0.1 + max(max(abs(history), abs(ex)), 1e-5)));
+        vec3 boutlier3 = max(vec3(0.0), (max(nmin - bhistory, bhistory - nmax)) / (0.1 + max(max(abs(bhistory), abs(ex)), 1e-5)));
 
         // Temporal outliers in sharp history
         float outlier = max(outlier3.x, max(outlier3.y, outlier3.z));
@@ -927,14 +927,14 @@ void main() {
         float boutlier = max(boutlier3.x, max(boutlier3.y, boutlier3.z));
         // DEBUG_SHOW(boutlier);
 
-        const bool history_valid = all(bvec2(uv + reproj_xy == clamp(uv + reproj_xy, daxa_f32vec2(0.0), daxa_f32vec2(1.0))));
+        const bool history_valid = all(bvec2(uv + reproj_xy == clamp(uv + reproj_xy, vec2(0.0), vec2(1.0))));
 
 #if 1
         if (history_valid) {
             const float non_disoccluding_outliers = max(0.0, outlier - boutlier) * 10;
             // DEBUG_SHOW(non_disoccluding_outliers);
 
-            const daxa_f32vec3 unclamped_history_detail = history - clamped_bhistory;
+            const vec3 unclamped_history_detail = history - clamped_bhistory;
 
             // Temporal luminance diff, containing history edges, and peaking when
             // clamping happens.
@@ -954,7 +954,7 @@ void main() {
             // In order to keep high-resolution detail in the output, the high-frequency content is split from
             // low-frequency (`bhistory`), and then selectively re-added. The detail needs to be attenuated
             // in order not to cause false detail (which look like excessive sharpening artifacts).
-            daxa_f32vec3 history_detail = history - bhistory;
+            vec3 history_detail = history - bhistory;
 
             // Selectively stabilize some detail, allowing unclamped history
             history_detail = mix(history_detail, unclamped_history_detail, allow_unclamped_detail);
@@ -1012,7 +1012,7 @@ void main() {
 #endif
 
     float total_coverage = max(1e-5, history_coverage + coverage);
-    daxa_f32vec3 temporal_result = (clamped_history * history_coverage + center) / total_coverage;
+    vec3 temporal_result = (clamped_history * history_coverage + center) / total_coverage;
 
     const float max_coverage = max(2, TARGET_SAMPLE_COUNT / (input_resolution_fraction.x * input_resolution_fraction.y));
 
@@ -1020,24 +1020,24 @@ void main() {
 
     coverage = total_coverage;
 #else
-        daxa_f32vec3 temporal_result = center / coverage;
+        vec3 temporal_result = center / coverage;
 #endif
-    safeImageStore(smooth_var_output_tex, px, daxa_f32vec4(smooth_var, 0.0));
+    safeImageStore(smooth_var_output_tex, px, vec4(smooth_var, 0.0));
 
     temporal_result = YCbCr_to_sRGB(temporal_result);
     temporal_result = encode_rgb(temporal_result);
-    temporal_result = max(daxa_f32vec3(0.0), temporal_result);
+    temporal_result = max(vec3(0.0), temporal_result);
 
     this_frame_result.rgb = mix(temporal_result, this_frame_result.rgb, this_frame_result.a);
 
-    safeImageStore(temporal_output_tex, px, daxa_f32vec4(temporal_result, coverage));
+    safeImageStore(temporal_output_tex, px, vec4(temporal_result, coverage));
     safeImageStore(this_frame_output_img, px, this_frame_result);
 
-    daxa_f32vec2 vel_out = reproj_xy;
+    vec2 vel_out = reproj_xy;
     float vel_out_depth = 0;
 
     // It's critical that this uses the closest depth since it's compared to closest depth
-    safeImageStore(temporal_velocity_output_tex, px, daxa_f32vec4(safeTexelFetch(closest_velocity_img, px, 0).xy / deref(gpu_input).delta_time, 0.0, 0.0));
+    safeImageStore(temporal_velocity_output_tex, px, vec4(safeTexelFetch(closest_velocity_img, px, 0).xy / deref(gpu_input).delta_time, 0.0, 0.0));
 }
 
 #endif

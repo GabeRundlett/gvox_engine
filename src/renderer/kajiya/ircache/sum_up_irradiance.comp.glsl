@@ -9,11 +9,11 @@
 
 DAXA_DECL_PUSH_CONSTANT(SumUpIrradianceComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
+daxa_RWBufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
+daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 struct Contribution {
     vec4 sh_rgb[3];

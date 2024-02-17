@@ -12,11 +12,11 @@ const float floor_z = -1.0;
 vec2 map(in out VoxelBufferPtrs ptrs, in vec3 pos) {
     vec2 res = vec2(pos.z - floor_z, 0.0);
 
-    daxa_u32 body_n = min(RIGID_BODY_MAX_N, deref(ptrs.globals).rigid_body_n);
+    uint body_n = min(RIGID_BODY_MAX_N, deref(ptrs.globals).rigid_body_n);
     RigidBody body;
-    for (daxa_u32 i = 0; i < body_n; ++i) {
+    for (uint i = 0; i < body_n; ++i) {
         body = deref(ptrs.globals).rigid_bodies[i];
-        daxa_f32 mat_id = i + 1;
+        float mat_id = i + 1;
         switch (body.flags & RIGID_BODY_FLAG_MASK_SHAPE_TYPE) {
         case RIGID_BODY_SHAPE_TYPE_SPHERE: res = opU(res, vec2(sd_sphere(apply_inv_rotation(pos - body.pos, body.rot), body.size.x), mat_id)); break;
         case RIGID_BODY_SHAPE_TYPE_BOX: res = opU(res, vec2(sd_box(apply_inv_rotation(pos - body.pos, body.rot), body.size * 0.5), mat_id)); break;
@@ -33,7 +33,7 @@ vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
 #if 0 // TracePrimaryComputeShader
         return texture(daxa_sampler2D(debug_texture, deref(gpu_input).sampler_llr), pos.xy).rgb;
 #else
-        return daxa_f32vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
+        return vec3(0.2) + float(int(floor(pos.x) + floor(pos.y)) & 1) * 0.05;
 #endif
     case 1:
     case 2:
@@ -47,9 +47,9 @@ vec3 map_col(in out VoxelBufferPtrs ptrs, vec3 pos, int id) {
     case 10:
         body = deref(ptrs.globals).rigid_bodies[id - 1];
         pos = apply_inv_rotation(pos - body.pos, body.rot);
-        return daxa_f32vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
+        return vec3(0.6, 0.04, 0.12) + float(int(floor(pos.x * 8.0) + floor(pos.y * 8.0) + floor(pos.z * 8.0)) & 1) * 0.05;
     default:
-        return daxa_f32vec3(0.0);
+        return vec3(0.0);
     }
 }
 
@@ -62,7 +62,7 @@ vec3 map_nrm(in out VoxelBufferPtrs ptrs, in vec3 pos) {
     return normalize(n);
 }
 
-bool hit_box(daxa_f32vec3 ro, daxa_f32vec3 rd, daxa_f32vec3 box_pos, daxa_f32vec3 box_size) {
+bool hit_box(vec3 ro, vec3 rd, vec3 box_pos, vec3 box_size) {
     float t = 0;
 
     for (int i = 0; i < MAX_STEPS && t < MAX_DIST; i++) {
@@ -77,16 +77,16 @@ bool hit_box(daxa_f32vec3 ro, daxa_f32vec3 rd, daxa_f32vec3 box_pos, daxa_f32vec
     return false;
 }
 
-VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {
+VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
     VoxelTraceResult result;
 
     result.dist = 0;
     result.nrm = -info.ray_dir;
     result.step_n = 0;
     result.voxel_data = PackedVoxel(0);
-    result.vel = daxa_f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
+    result.vel = vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
 
-    daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
+    vec3 offset = vec3(deref(info.ptrs.globals).offset);
     ray_pos += offset;
 
 #if TraceDepthPrepassComputeShader

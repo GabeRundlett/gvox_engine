@@ -2,7 +2,7 @@
 #include <utilities/gpu/math.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(TestComputePush, push)
-daxa_RWBufferPtr(daxa_u32) data = push.uses.data;
+daxa_RWBufferPtr(uint) data = push.uses.data;
 
 uint gen_voxel(ivec3 pos) {
     uint r = uint(0);

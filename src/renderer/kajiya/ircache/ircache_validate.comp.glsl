@@ -8,14 +8,14 @@ daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
+daxa_RWBufferPtr(uint) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
+daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_RWBufferPtr(uint) ircache_pool_buf = push.uses.ircache_pool_buf;
+daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
+daxa_RWBufferPtr(uint) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
 
 #include <utilities/gpu/math.glsl>
 // #include <utilities/gpu/pack_unpack.glsl>

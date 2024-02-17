@@ -3,7 +3,7 @@
 
 DAXA_DECL_PUSH_CONSTANT(IrcachePrepareTraceDispatchComputePush, push)
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_u32vec4) dispatch_args = push.uses.dispatch_args;
+daxa_RWBufferPtr(uvec4) dispatch_args = push.uses.dispatch_args;
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {

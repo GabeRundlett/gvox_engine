@@ -8,11 +8,11 @@ DAXA_DECL_PUSH_CONSTANT(IrcacheTraceAccessComputePush, push)
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
-daxa_BufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
 daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
-daxa_BufferPtr(daxa_u32) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
+daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 #include <utilities/gpu/rt.glsl>
 #include <utilities/gpu/reservoir.glsl>

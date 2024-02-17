@@ -5,7 +5,7 @@
 DAXA_DECL_PUSH_CONSTANT(CalculateHistogramComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewIndex input_tex = push.uses.input_tex;
-daxa_RWBufferPtr(daxa_u32) output_buffer = push.uses.output_buffer;
+daxa_RWBufferPtr(uint) output_buffer = push.uses.output_buffer;
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

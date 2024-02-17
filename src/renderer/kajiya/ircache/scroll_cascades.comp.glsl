@@ -8,10 +8,10 @@ DAXA_DECL_PUSH_CONSTANT(IrcacheScrollCascadesComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf2 = push.uses.ircache_grid_meta_buf2;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
+daxa_RWBufferPtr(uint) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
+daxa_RWBufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
+daxa_RWBufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_RWBufferPtr(uint) ircache_pool_buf = push.uses.ircache_pool_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 
 void deallocate_cell(uint cell_idx) {

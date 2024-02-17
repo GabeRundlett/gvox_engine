@@ -36,10 +36,10 @@ bool is_miss(inout ShadowRayPayload self) { return !self.is_shadowed; }
 bool is_hit(inout ShadowRayPayload self) { return !is_miss(self); }
 
 struct RayDesc {
-    daxa_f32vec3 Origin;
-    daxa_f32 TMin;
-    daxa_f32vec3 Direction;
-    daxa_f32 TMax;
+    vec3 Origin;
+    float TMin;
+    vec3 Direction;
+    float TMax;
 };
 RayDesc new_ray(vec3 origin, vec3 direction, float tmin, float tmax) {
     RayDesc ray;

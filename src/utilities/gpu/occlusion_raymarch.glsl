@@ -5,14 +5,14 @@
 
 struct OcclusionScreenRayMarch {
     uint max_sample_count;
-    daxa_f32vec2 raymarch_start_uv;
-    daxa_f32vec3 raymarch_start_cs;
-    daxa_f32vec3 raymarch_start_ws;
-    daxa_f32vec3 raymarch_end_ws;
-    daxa_f32vec2 fullres_depth_tex_size;
+    vec2 raymarch_start_uv;
+    vec3 raymarch_start_cs;
+    vec3 raymarch_start_ws;
+    vec3 raymarch_end_ws;
+    vec2 fullres_depth_tex_size;
 
     bool use_halfres_depth;
-    daxa_f32vec2 halfres_depth_tex_size;
+    vec2 halfres_depth_tex_size;
     daxa_ImageViewIndex halfres_depth_tex;
 
     daxa_ImageViewIndex fullres_depth_tex;
@@ -32,7 +32,7 @@ void with_max_sample_count(OcclusionScreenRayMarch self, uint _max_sample_count)
 
 void with_halfres_depth(
     inout OcclusionScreenRayMarch self,
-    daxa_f32vec2 _halfres_depth_tex_size,
+    vec2 _halfres_depth_tex_size,
     daxa_ImageViewIndex _halfres_depth_tex) {
     self.use_halfres_depth = true;
     self.halfres_depth_tex_size = _halfres_depth_tex_size;
@@ -47,9 +47,9 @@ void with_fullres_depth(
 }
 
 OcclusionScreenRayMarch OcclusionScreenRayMarch_create(
-    daxa_f32vec2 raymarch_start_uv, daxa_f32vec3 raymarch_start_cs, daxa_f32vec3 raymarch_start_ws,
-    daxa_f32vec3 raymarch_end_ws,
-    daxa_f32vec2 fullres_depth_tex_size) {
+    vec2 raymarch_start_uv, vec3 raymarch_start_cs, vec3 raymarch_start_ws,
+    vec3 raymarch_end_ws,
+    vec2 fullres_depth_tex_size) {
     OcclusionScreenRayMarch res;
     res.max_sample_count = 4;
     res.raymarch_start_uv = raymarch_start_uv;
@@ -68,7 +68,7 @@ void march(
     daxa_RWBufferPtr(GpuGlobals) globals,
     OcclusionScreenRayMarch self,
     inout float visibility,
-    inout daxa_f32vec3 sample_radiance) {
+    inout vec3 sample_radiance) {
     const vec2 raymarch_end_uv = cs_to_uv(position_world_to_clip(globals, self.raymarch_end_ws).xy);
     const vec2 raymarch_uv_delta = raymarch_end_uv - self.raymarch_start_uv;
     const vec2 raymarch_len_px = raymarch_uv_delta * select(bvec2(self.use_halfres_depth), self.halfres_depth_tex_size, self.fullres_depth_tex_size);
@@ -100,10 +100,10 @@ void march(
 
         if (self.use_halfres_depth) {
             px_at_interp = (uvec2(floor(uv_at_interp * self.fullres_depth_tex_size - HALFRES_SUBSAMPLE_OFFSET)) & ~1u) + HALFRES_SUBSAMPLE_OFFSET;
-            depth_at_interp = texelFetch(daxa_texture2D(self.halfres_depth_tex), daxa_i32vec2(px_at_interp >> 1u), 0).r;
+            depth_at_interp = texelFetch(daxa_texture2D(self.halfres_depth_tex), ivec2(px_at_interp >> 1u), 0).r;
         } else {
             px_at_interp = uvec2(floor(uv_at_interp * self.fullres_depth_tex_size));
-            depth_at_interp = texelFetch(daxa_texture2D(self.fullres_depth_tex), daxa_i32vec2(px_at_interp), 0).r;
+            depth_at_interp = texelFetch(daxa_texture2D(self.fullres_depth_tex), ivec2(px_at_interp), 0).r;
         }
 
         const vec2 quantized_cs_at_interp = uv_to_cs((px_at_interp + 0.5) / self.fullres_depth_tex_size);

@@ -20,9 +20,9 @@
 DAXA_DECL_PUSH_CONSTANT(RtrTraceComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
-daxa_BufferPtr(daxa_i32) ranking_tile_buf = push.uses.ranking_tile_buf;
-daxa_BufferPtr(daxa_i32) scambling_tile_buf = push.uses.scambling_tile_buf;
-daxa_BufferPtr(daxa_i32) sobol_buf = push.uses.sobol_buf;
+daxa_BufferPtr(int) ranking_tile_buf = push.uses.ranking_tile_buf;
+daxa_BufferPtr(int) scambling_tile_buf = push.uses.scambling_tile_buf;
+daxa_BufferPtr(int) sobol_buf = push.uses.sobol_buf;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 IRCACHE_USE_BUFFERS_PUSH_USES()
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;

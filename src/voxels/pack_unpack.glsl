@@ -10,7 +10,7 @@ float unpack_unit(uint x, uint bit_n) {
     return float(x) / scl;
 }
 
-vec3 unpack_rgb(daxa_u32 u) {
+vec3 unpack_rgb(uint u) {
     vec3 result;
     result.r = float((u >> 0) & 0x3f) / 64.0;
     result.g = float((u >> 6) & 0x3f) / 63.0;

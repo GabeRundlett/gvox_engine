@@ -52,16 +52,16 @@ vec3 map_nrm(in vec3 pos) {
         map(pos + eps.yyx).x - map(pos - eps.yyx).x));
 }
 
-VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out daxa_f32vec3 ray_pos) {
+VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
     VoxelTraceResult result;
 
     result.dist = 0;
     result.nrm = -info.ray_dir;
     result.step_n = 0;
     result.voxel_data = PackedVoxel(0);
-    result.vel = daxa_f32vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
+    result.vel = vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
 
-    daxa_f32vec3 offset = daxa_f32vec3(deref(info.ptrs.globals).offset);
+    vec3 offset = vec3(deref(info.ptrs.globals).offset);
     ray_pos += offset;
 
 #if TraceDepthPrepassComputeShader

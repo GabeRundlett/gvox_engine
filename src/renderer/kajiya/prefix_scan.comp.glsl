@@ -7,7 +7,7 @@
 #if PrefixScan1ComputeShader
 
 DAXA_DECL_PUSH_CONSTANT(PrefixScan1ComputePush, push)
-daxa_RWBufferPtr(daxa_u32) inout_buf = push.uses.inout_buf;
+daxa_RWBufferPtr(uint) inout_buf = push.uses.inout_buf;
 
 shared uint shared_data[SEGMENT_SIZE];
 
@@ -65,8 +65,8 @@ void main() {
 #if PrefixScan2ComputeShader
 
 DAXA_DECL_PUSH_CONSTANT(PrefixScan2ComputePush, push)
-daxa_BufferPtr(daxa_u32) input_buf = push.uses.input_buf;
-daxa_RWBufferPtr(daxa_u32) output_buf = push.uses.output_buf;
+daxa_BufferPtr(uint) input_buf = push.uses.input_buf;
+daxa_RWBufferPtr(uint) output_buf = push.uses.output_buf;
 
 shared uint shared_data[SEGMENT_SIZE];
 
@@ -115,8 +115,8 @@ void main() {
 #if PrefixScanMergeComputeShader
 
 DAXA_DECL_PUSH_CONSTANT(PrefixScanMergeComputePush, push)
-daxa_RWBufferPtr(daxa_u32) inout_buf = push.uses.inout_buf;
-daxa_BufferPtr(daxa_u32) segment_sum_buf = push.uses.segment_sum_buf;
+daxa_RWBufferPtr(uint) inout_buf = push.uses.inout_buf;
+daxa_BufferPtr(uint) segment_sum_buf = push.uses.segment_sum_buf;
 
 uvec2 load_input2(uint idx, uint segment) {
     uvec2 internal_sum = uvec2(0);

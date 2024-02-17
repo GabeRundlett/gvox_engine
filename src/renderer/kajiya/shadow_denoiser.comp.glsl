@@ -14,7 +14,7 @@ uvec2 FFX_DNSR_Shadows_GetBufferDimensions() {
 }
 
 bool FFX_DNSR_Shadows_HitsLight(uvec2 px, uvec2 gtid, uvec2 gid) {
-    float shadow_value = safeTexelFetch(input_tex, daxa_i32vec2(px), 0).r;
+    float shadow_value = safeTexelFetch(input_tex, ivec2(px), 0).r;
     return shadow_value != 0.0;
 }
 
@@ -133,59 +133,59 @@ void FFX_DNSR_Shadows_WriteMoments(uvec2 px, vec4 moments) {
 }
 
 float FFX_DNSR_Shadows_HitsLight(uvec2 px) {
-    return safeTexelFetch(shadow_mask_tex, daxa_i32vec2(px), 0).r;
+    return safeTexelFetch(shadow_mask_tex, ivec2(px), 0).r;
 }
 
-daxa_f32vec4 HistoryRemap_remap(daxa_f32vec4 v) {
+vec4 HistoryRemap_remap(vec4 v) {
     return v;
 }
-daxa_f32vec4 cubic_hermite(daxa_f32vec4 A, daxa_f32vec4 B, daxa_f32vec4 C, daxa_f32vec4 D, float t) {
+vec4 cubic_hermite(vec4 A, vec4 B, vec4 C, vec4 D, float t) {
     float t2 = t * t;
     float t3 = t * t * t;
-    daxa_f32vec4 a = -A / 2.0 + (3.0 * B) / 2.0 - (3.0 * C) / 2.0 + D / 2.0;
-    daxa_f32vec4 b = A - (5.0 * B) / 2.0 + 2.0 * C - D / 2.0;
-    daxa_f32vec4 c = -A / 2.0 + C / 2.0;
-    daxa_f32vec4 d = B;
+    vec4 a = -A / 2.0 + (3.0 * B) / 2.0 - (3.0 * C) / 2.0 + D / 2.0;
+    vec4 b = A - (5.0 * B) / 2.0 + 2.0 * C - D / 2.0;
+    vec4 c = -A / 2.0 + C / 2.0;
+    vec4 d = B;
 
     return a * t3 + b * t2 + c * t + d;
 }
 
 #define REMAP_FUNC HistoryRemap_remap
-daxa_f32vec4 image_sample_catmull_rom(daxa_ImageViewIndex img, daxa_f32vec2 P, daxa_f32vec4 img_size) {
+vec4 image_sample_catmull_rom(daxa_ImageViewIndex img, vec2 P, vec4 img_size) {
     // https://www.shadertoy.com/view/MllSzX
 
-    daxa_f32vec2 pixel = P * img_size.xy + 0.5;
-    daxa_f32vec2 c_onePixel = img_size.zw;
-    daxa_f32vec2 c_twoPixels = c_onePixel * 2.0;
+    vec2 pixel = P * img_size.xy + 0.5;
+    vec2 c_onePixel = img_size.zw;
+    vec2 c_twoPixels = c_onePixel * 2.0;
 
-    daxa_f32vec2 frc = fract(pixel);
-    // pixel = floor(pixel) / output_tex_size.xy - daxa_f32vec2(c_onePixel/2.0);
-    daxa_i32vec2 ipixel = daxa_i32vec2(pixel) - 1;
+    vec2 frc = fract(pixel);
+    // pixel = floor(pixel) / output_tex_size.xy - vec2(c_onePixel/2.0);
+    ivec2 ipixel = ivec2(pixel) - 1;
 
-    daxa_f32vec4 C00 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, -1), 0));
-    daxa_f32vec4 C10 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, -1), 0));
-    daxa_f32vec4 C20 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, -1), 0));
-    daxa_f32vec4 C30 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, -1), 0));
+    vec4 C00 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, -1), 0));
+    vec4 C10 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, -1), 0));
+    vec4 C20 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, -1), 0));
+    vec4 C30 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, -1), 0));
 
-    daxa_f32vec4 C01 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 0), 0));
-    daxa_f32vec4 C11 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 0), 0));
-    daxa_f32vec4 C21 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 0), 0));
-    daxa_f32vec4 C31 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 0), 0));
+    vec4 C01 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 0), 0));
+    vec4 C11 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 0), 0));
+    vec4 C21 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 0), 0));
+    vec4 C31 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 0), 0));
 
-    daxa_f32vec4 C02 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 1), 0));
-    daxa_f32vec4 C12 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 1), 0));
-    daxa_f32vec4 C22 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 1), 0));
-    daxa_f32vec4 C32 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 1), 0));
+    vec4 C02 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 1), 0));
+    vec4 C12 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 1), 0));
+    vec4 C22 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 1), 0));
+    vec4 C32 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 1), 0));
 
-    daxa_f32vec4 C03 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(-1, 2), 0));
-    daxa_f32vec4 C13 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(0, 2), 0));
-    daxa_f32vec4 C23 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(1, 2), 0));
-    daxa_f32vec4 C33 = REMAP_FUNC(safeTexelFetch(img, ipixel + daxa_i32vec2(2, 2), 0));
+    vec4 C03 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(-1, 2), 0));
+    vec4 C13 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(0, 2), 0));
+    vec4 C23 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(1, 2), 0));
+    vec4 C33 = REMAP_FUNC(safeTexelFetch(img, ipixel + ivec2(2, 2), 0));
 
-    daxa_f32vec4 CP0X = cubic_hermite(C00, C10, C20, C30, frc.x);
-    daxa_f32vec4 CP1X = cubic_hermite(C01, C11, C21, C31, frc.x);
-    daxa_f32vec4 CP2X = cubic_hermite(C02, C12, C22, C32, frc.x);
-    daxa_f32vec4 CP3X = cubic_hermite(C03, C13, C23, C33, frc.x);
+    vec4 CP0X = cubic_hermite(C00, C10, C20, C30, frc.x);
+    vec4 CP1X = cubic_hermite(C01, C11, C21, C31, frc.x);
+    vec4 CP2X = cubic_hermite(C02, C12, C22, C32, frc.x);
+    vec4 CP3X = cubic_hermite(C03, C13, C23, C33, frc.x);
 
     return cubic_hermite(CP0X, CP1X, CP2X, CP3X, frc.y);
 }

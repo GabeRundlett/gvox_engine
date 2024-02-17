@@ -7,7 +7,7 @@ vec4 blue_noise_for_pixel(daxa_ImageViewIndex blue_noise_tex, uvec2 px, uint n) 
     return blue_noise.xyxy;
 }
 
-vec3 rtdgi_candidate_ray_dir(daxa_ImageViewIndex blue_noise_tex, uint frame_index, uvec2 px, daxa_f32mat3x3 tangent_to_world) {
+vec3 rtdgi_candidate_ray_dir(daxa_ImageViewIndex blue_noise_tex, uint frame_index, uvec2 px, mat3 tangent_to_world) {
     vec2 urand = blue_noise_for_pixel(blue_noise_tex, px, frame_index).xy;
     vec3 wi = uniform_sample_hemisphere(urand);
     return tangent_to_world * wi;

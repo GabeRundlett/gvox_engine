@@ -5,14 +5,14 @@
 DAXA_DECL_PUSH_CONSTANT(AgeIrcacheEntriesComputePush, push)
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 daxa_RWBufferPtr(IrcacheCell) ircache_grid_meta_buf = push.uses.ircache_grid_meta_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_life_buf = push.uses.ircache_life_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_pool_buf = push.uses.ircache_pool_buf;
+daxa_RWBufferPtr(uint) ircache_entry_cell_buf = push.uses.ircache_entry_cell_buf;
+daxa_RWBufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
+daxa_RWBufferPtr(uint) ircache_pool_buf = push.uses.ircache_pool_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
-daxa_RWBufferPtr(daxa_u32) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
-daxa_RWBufferPtr(daxa_f32vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(daxa_u32) entry_occupancy_buf = push.uses.entry_occupancy_buf;
+daxa_RWBufferPtr(uint) ircache_reposition_proposal_count_buf = push.uses.ircache_reposition_proposal_count_buf;
+daxa_RWBufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
+daxa_RWBufferPtr(uint) entry_occupancy_buf = push.uses.entry_occupancy_buf;
 
 void age_ircache_entry(uint entry_idx) {
     const uint prev_age = deref(ircache_life_buf[entry_idx]);

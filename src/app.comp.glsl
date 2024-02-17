@@ -42,13 +42,13 @@ void main() {
     voxel_world_perframe(gpu_input, gpu_output, globals, VOXELS_RW_BUFFER_PTRS);
 
     {
-        daxa_f32vec2 frame_dim = INPUT.frame_dim;
-        daxa_f32vec2 inv_frame_dim = daxa_f32vec2(1.0) / frame_dim;
-        daxa_f32vec2 uv = get_uv(deref(gpu_input).mouse.pos, daxa_f32vec4(frame_dim, inv_frame_dim));
+        vec2 frame_dim = INPUT.frame_dim;
+        vec2 inv_frame_dim = vec2(1.0) / frame_dim;
+        vec2 uv = get_uv(deref(gpu_input).mouse.pos, vec4(frame_dim, inv_frame_dim));
         ViewRayContext vrc = unjittered_vrc_from_uv(globals, uv);
-        daxa_f32vec3 ray_dir = ray_dir_ws(vrc);
-        daxa_f32vec3 cam_pos = ray_origin_ws(vrc);
-        daxa_f32vec3 ray_pos = cam_pos;
+        vec3 ray_dir = ray_dir_ws(vrc);
+        vec3 cam_pos = ray_origin_ws(vrc);
+        vec3 ray_pos = cam_pos;
         voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
         if (BRUSH_STATE.is_editing == 0) {
@@ -66,7 +66,7 @@ void main() {
                 // TODO: Issue a work item with a correct root coordinate. I think that we should turn this
                 // coordinate space from being in root node space, to actually be in root CHILD node space.
                 // This would make it so that we can issue work items with more granularity.
-                // brush_work_item.i = daxa_i32vec3(0, 0, 0);
+                // brush_work_item.i = ivec3(0, 0, 0);
                 // brush_work_item.brush_id = BRUSH_FLAGS_USER_BRUSH_A;
                 // brush_work_item.brush_input = deref(globals).brush_input;
                 // zero_work_item_children(brush_work_item);
@@ -79,7 +79,7 @@ void main() {
             }
             {
                 // ChunkWorkItem brush_work_item;
-                // brush_work_item.i = daxa_i32vec3(0, 0, 0);
+                // brush_work_item.i = ivec3(0, 0, 0);
                 // brush_work_item.brush_id = BRUSH_FLAGS_USER_BRUSH_B;
                 // brush_work_item.brush_input = deref(globals).brush_input;
                 // zero_work_item_children(brush_work_item);
@@ -91,21 +91,21 @@ void main() {
         }
     }
 
-    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + daxa_f32vec3(PLAYER.player_unit_offset);
-    deref(gpu_output[INPUT.fif_index]).player_rot = daxa_f32vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
-    deref(gpu_output[INPUT.fif_index]).player_unit_offset = daxa_f32vec3(PLAYER.player_unit_offset);
+    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + vec3(PLAYER.player_unit_offset);
+    deref(gpu_output[INPUT.fif_index]).player_rot = vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
+    deref(gpu_output[INPUT.fif_index]).player_unit_offset = vec3(PLAYER.player_unit_offset);
 
-    deref(globals).voxel_particles_state.simulation_dispatch = daxa_u32vec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
+    deref(globals).voxel_particles_state.simulation_dispatch = uvec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;
     deref(globals).voxel_particles_state.draw_params.instance_count = 1;
     deref(globals).voxel_particles_state.draw_params.first_vertex = 0;
     deref(globals).voxel_particles_state.draw_params.first_instance = 0;
     deref(globals).voxel_particles_state.place_count = 0;
-    deref(globals).voxel_particles_state.place_bounds_min = daxa_u32vec3(1000000);
-    deref(globals).voxel_particles_state.place_bounds_max = daxa_u32vec3(0);
+    deref(globals).voxel_particles_state.place_bounds_min = uvec3(1000000);
+    deref(globals).voxel_particles_state.place_bounds_max = uvec3(0);
 
     if (INPUT.frame_index == 0) {
-        for (daxa_u32 i = 0; i < MAX_SIMULATED_VOXEL_PARTICLES; ++i) {
+        for (uint i = 0; i < MAX_SIMULATED_VOXEL_PARTICLES; ++i) {
             SimulatedVoxelParticle self = deref(simulated_voxel_particles[i]);
             particle_spawn(self, i);
             deref(simulated_voxel_particles[i]) = self;
