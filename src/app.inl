@@ -36,6 +36,8 @@ struct TestComputePush {
 
 #if defined(__cplusplus)
 
+#include <utilities/record_context.hpp>
+
 inline void test_compute(RecordContext &record_ctx) {
     auto test_buffer = record_ctx.task_graph.create_transient_buffer({
         .size = static_cast<daxa_u32>(sizeof(uint32_t) * 8 * 8 * 8 * 64 * 64 * 64),

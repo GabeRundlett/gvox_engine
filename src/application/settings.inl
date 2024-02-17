@@ -55,7 +55,7 @@ struct SkySettings {
 #define IBL_CUBE_RES 16
 
 #define MAX_SIMULATED_VOXEL_PARTICLES (1 << 8)
-#define MAX_RENDERED_VOXEL_PARTICLES  (1 << 8)
+#define MAX_RENDERED_VOXEL_PARTICLES (1 << 8)
 
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
@@ -77,8 +77,6 @@ struct DebugImageSettings {
     daxa_f32 brightness;
 };
 
-#define IMMEDIATE_SKY true
-
 #define IRCACHE_GRID_CELL_DIAMETER (1.0f / 8.0f)
 #define IRCACHE_CASCADE_SIZE 32
 #define IRCACHE_CASCADE_COUNT 12
@@ -93,3 +91,5 @@ struct BrushSettings {
     daxa_u32 flags;
     daxa_f32 radius;
 };
+
+#define FRAMES_IN_FLIGHT 1

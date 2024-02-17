@@ -71,13 +71,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
 
     auto &self = *impl;
 
-#if IMMEDIATE_SKY
     auto [sky_lut, transmittance_lut, sky_cube, ibl_cube] = generate_procedural_sky(record_ctx);
-#else
-    sky.use_images(record_ctx);
-    auto sky_cube = sky.task_sky_cube.view().view({.layer_count = 6});
-    auto ibl_cube = sky.task_ibl_cube.view().view({.layer_count = 6});
-#endif
     debug_utils::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 

@@ -3,7 +3,8 @@
 #include <application/settings.inl>
 
 #if defined(__cplusplus)
-#include <utilities/core.hpp>
+#include <utilities/debug.hpp>
+#include <utilities/record_context.hpp>
 #define CPU_ONLY(x) x
 #define GPU_ONLY(x)
 #else

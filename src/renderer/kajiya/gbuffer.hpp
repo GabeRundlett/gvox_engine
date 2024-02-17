@@ -2,7 +2,8 @@
 
 #include <renderer/kajiya/downscale.inl>
 
-#include <utilities/core.hpp>
+#include <utilities/record_context.hpp>
+#include <utilities/ping_pong_resource.hpp>
 
 struct GbufferDepth {
     daxa::TaskImageView gbuffer;

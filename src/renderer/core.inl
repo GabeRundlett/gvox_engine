@@ -5,7 +5,7 @@
 
 #if defined(__cplusplus)
 
-#include <utilities/core.hpp>
+#include <utilities/record_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 
 namespace {

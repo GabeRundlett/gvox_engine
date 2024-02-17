@@ -9,30 +9,12 @@
 #include <voxels/voxel_world.inl>
 #include <voxels/voxel_particles.inl>
 #include <voxels/model.hpp>
+#include <daxa/utils/imgui.hpp>
+
+#include <utilities/gpu_resources.hpp>
 
 #include <chrono>
 #include <future>
-
-struct GpuResources {
-    daxa::ImageId value_noise_image;
-    daxa::ImageId blue_noise_vec2_image;
-    daxa::ImageId debug_texture;
-    daxa::ImageId test_texture;
-    daxa::ImageId test_texture2;
-
-    daxa::BufferId input_buffer;
-    daxa::BufferId output_buffer;
-    daxa::BufferId staging_output_buffer;
-    daxa::BufferId globals_buffer;
-
-    daxa::SamplerId sampler_nnc;
-    daxa::SamplerId sampler_lnc;
-    daxa::SamplerId sampler_llc;
-    daxa::SamplerId sampler_llr;
-
-    void create(daxa::Device &device);
-    void destroy(daxa::Device &device) const;
-};
 
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
@@ -63,17 +45,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     VoxelModelLoader voxel_model_loader;
 
     GpuResources gpu_resources;
-
-    daxa::TaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
-    daxa::TaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
-    daxa::TaskImage task_debug_texture{{.name = "task_debug_texture"}};
-    daxa::TaskImage task_test_texture{{.name = "task_test_texture"}};
-    daxa::TaskImage task_test_texture2{{.name = "task_test_texture2"}};
-
-    daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
-    daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
-    daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
-    daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
@@ -113,7 +84,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     void compute_image_sizes();
 
-    void update_seeded_value_noise();
     void run_startup(daxa::TaskGraph &temp_task_graph);
 
     auto record_main_task_graph() -> daxa::TaskGraph;

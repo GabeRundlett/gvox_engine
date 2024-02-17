@@ -227,11 +227,7 @@ struct SkyRenderer {
     }
 };
 
-#if IMMEDIATE_SKY
 inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<daxa::TaskImageView, 4> {
-#else
-inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImageView {
-#endif
     auto transmittance_lut = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
@@ -317,8 +313,6 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
 
     // debug_utils::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
-#if IMMEDIATE_SKY
-
     auto ibl_cube = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
@@ -330,9 +324,6 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> daxa::TaskImag
     convolve_cube(record_ctx, sky_cube, ibl_cube);
 
     return {sky_lut, transmittance_lut, sky_cube, ibl_cube};
-#else
-    return sky_cube;
-#endif
 }
 
 #endif
