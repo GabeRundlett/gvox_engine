@@ -4,3 +4,6 @@
 [submodule "deps/Daxa"]
 	path = deps/Daxa
 	url = https://github.com/Ipotrick/Daxa
+[submodule "deps/blue-noise-sampler"]
+	path = deps/blue-noise-sampler
+	url = https://github.com/GabeRundlett/blue-noise-sampler
