@@ -17,7 +17,6 @@ add_executable(${PROJECT_NAME}
     "src/utilities/mesh/mesh_model.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
-    "src/renderer/kajiya/spp64.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
@@ -53,6 +52,8 @@ FIXUP_TARGET(OpenEXR::OpenEXRCore)
 FIXUP_TARGET(OpenEXR::OpenEXR)
 FIXUP_TARGET(OpenEXR::OpenEXRUtil)
 
+add_subdirectory("deps/blue-noise-sampler")
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     daxa::daxa
     gvox::gvox
@@ -68,6 +69,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     # soloud
     fsr2::ffx_fsr2_api
     fsr2::ffx_fsr2_api_vk
+    blue_noise_sampler::blue_noise_sampler
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"
