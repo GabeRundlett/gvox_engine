@@ -41,7 +41,7 @@ Reservoir1spp Reservoir1spp_from_raw(uvec2 raw) {
 }
 
 uvec2 as_raw(inout Reservoir1spp self) {
-    return uvec2(self.payload, packHalf2x16(vec2(self.M, self.W)));
+    return uvec2(self.payload, packHalf2x16(vec2(self.M, max(0.0, self.W))));
 }
 
 bool update(inout Reservoir1spp self, float w, uint sample_payload, inout uint rng) {

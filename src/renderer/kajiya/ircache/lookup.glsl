@@ -117,14 +117,20 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
 
                     uint alloc_idx = atomicAdd(deref(ircache_meta_buf).alloc_count, 1);
 
-                    uint entry_idx = deref(ircache_pool_buf[alloc_idx]);
-                    atomicMax(deref(ircache_meta_buf).entry_count, entry_idx + 1);
+                    // Ref: 2af64eb1-745a-4778-8c80-04af6e2225e0
+                    if (alloc_idx >= 1024 * 64) {
+                        atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
+                        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags, ~(IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED));
+                    } else {
+                        uint entry_idx = deref(ircache_pool_buf[alloc_idx]);
+                        atomicMax(deref(ircache_meta_buf).entry_count, entry_idx + 1);
 
-                    // Clear dead state, mark used.
+                        // Clear dead state, mark used.
 
-                    deref(ircache_life_buf[entry_idx]) = ircache_entry_life_for_rank(self.query_rank);
-                    deref(ircache_entry_cell_buf[entry_idx]) = cell_idx;
-                    deref(ircache_grid_meta_buf[cell_idx]).entry_index = entry_idx;
+                        deref(ircache_life_buf[entry_idx]) = ircache_entry_life_for_rank(self.query_rank);
+                        deref(ircache_entry_cell_buf[entry_idx]) = cell_idx;
+                        deref(ircache_grid_meta_buf[cell_idx]).entry_index = entry_idx;
+                    }
                 }
             }
         }
