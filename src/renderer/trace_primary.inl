@@ -69,7 +69,7 @@ struct GbufferRenderer {
 
         gbuffer_depth.depth = PingPongImage{};
         auto [depth_image, prev_depth_image] = gbuffer_depth.depth.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R32_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},

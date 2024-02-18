@@ -232,7 +232,7 @@ struct RtdgiRenderer {
     auto reproject(RecordContext &record_ctx, daxa::TaskImageView reprojection_map) -> ReprojectedRtdgi {
         temporal2_tex = PingPongImage{};
         auto [temporal_output_tex, history_tex] = temporal2_tex.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -241,7 +241,7 @@ struct RtdgiRenderer {
             });
         record_ctx.task_graph.use_persistent_image(temporal_output_tex);
         record_ctx.task_graph.use_persistent_image(history_tex);
-        clear_task_images(record_ctx.device, std::array{temporal_output_tex, history_tex});
+        clear_task_images(record_ctx.gpu_context->device, std::array{temporal_output_tex, history_tex});
 
         auto reprojected_history_tex = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -283,7 +283,7 @@ struct RtdgiRenderer {
         daxa::TaskImageView temporal_output_tex) -> daxa::TaskImageView {
         temporal2_variance_tex = PingPongImage{};
         auto [temporal_variance_output_tex, variance_history_tex] = temporal2_variance_tex.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -292,7 +292,7 @@ struct RtdgiRenderer {
             });
         record_ctx.task_graph.use_persistent_image(temporal_variance_output_tex);
         record_ctx.task_graph.use_persistent_image(variance_history_tex);
-        clear_task_images(record_ctx.device, std::array{temporal_variance_output_tex, variance_history_tex});
+        clear_task_images(record_ctx.gpu_context->device, std::array{temporal_variance_output_tex, variance_history_tex});
 
         auto temporal_filtered_tex = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -380,7 +380,7 @@ struct RtdgiRenderer {
 
         temporal_hit_normal_tex = PingPongImage{};
         auto [hit_normal_output_tex, hit_normal_history_tex] = temporal_hit_normal_tex.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R8G8B8A8_UNORM,
                 .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -389,11 +389,11 @@ struct RtdgiRenderer {
             });
         record_ctx.task_graph.use_persistent_image(hit_normal_output_tex);
         record_ctx.task_graph.use_persistent_image(hit_normal_history_tex);
-        clear_task_images(record_ctx.device, std::array{hit_normal_output_tex, hit_normal_history_tex});
+        clear_task_images(record_ctx.gpu_context->device, std::array{hit_normal_output_tex, hit_normal_history_tex});
 
         temporal_candidate_tex = PingPongImage{};
         auto [candidate_output_tex, candidate_history_tex] = temporal_candidate_tex.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -402,7 +402,7 @@ struct RtdgiRenderer {
             });
         record_ctx.task_graph.use_persistent_image(candidate_output_tex);
         record_ctx.task_graph.use_persistent_image(candidate_history_tex);
-        clear_task_images(record_ctx.device, std::array{candidate_output_tex, candidate_history_tex});
+        clear_task_images(record_ctx.gpu_context->device, std::array{candidate_output_tex, candidate_history_tex});
 
         auto candidate_radiance_tex = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -430,7 +430,7 @@ struct RtdgiRenderer {
 
         temporal_invalidity_tex = PingPongImage{};
         auto [invalidity_output_tex, invalidity_history_tex] = temporal_invalidity_tex.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
                 .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -439,7 +439,7 @@ struct RtdgiRenderer {
             });
         record_ctx.task_graph.use_persistent_image(invalidity_output_tex);
         record_ctx.task_graph.use_persistent_image(invalidity_history_tex);
-        clear_task_images(record_ctx.device, std::array{invalidity_output_tex, invalidity_history_tex});
+        clear_task_images(record_ctx.gpu_context->device, std::array{invalidity_output_tex, invalidity_history_tex});
 
         // auto [radiance_tex, temporal_reservoir_tex] =
         auto radiance_tex = daxa::TaskImageView{};
@@ -447,7 +447,7 @@ struct RtdgiRenderer {
         {
             temporal_radiance_tex = PingPongImage{};
             auto [radiance_output_tex, radiance_history_tex] = temporal_radiance_tex.get(
-                record_ctx.device,
+                *record_ctx.gpu_context,
                 {
                     .format = daxa::Format::R16G16B16A16_SFLOAT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -456,11 +456,11 @@ struct RtdgiRenderer {
                 });
             record_ctx.task_graph.use_persistent_image(radiance_output_tex);
             record_ctx.task_graph.use_persistent_image(radiance_history_tex);
-            clear_task_images(record_ctx.device, std::array{radiance_output_tex, radiance_history_tex});
+            clear_task_images(record_ctx.gpu_context->device, std::array{radiance_output_tex, radiance_history_tex});
 
             temporal_ray_orig_tex = PingPongImage{};
             auto [ray_orig_output_tex, ray_orig_history_tex] = temporal_ray_orig_tex.get(
-                record_ctx.device,
+                *record_ctx.gpu_context,
                 {
                     .format = daxa::Format::R32G32B32A32_SFLOAT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -469,11 +469,11 @@ struct RtdgiRenderer {
                 });
             record_ctx.task_graph.use_persistent_image(ray_orig_output_tex);
             record_ctx.task_graph.use_persistent_image(ray_orig_history_tex);
-            clear_task_images(record_ctx.device, std::array{ray_orig_output_tex, ray_orig_history_tex});
+            clear_task_images(record_ctx.gpu_context->device, std::array{ray_orig_output_tex, ray_orig_history_tex});
 
             temporal_ray_tex = PingPongImage{};
             auto [ray_output_tex, ray_history_tex] = temporal_ray_tex.get(
-                record_ctx.device,
+                *record_ctx.gpu_context,
                 {
                     .format = daxa::Format::R16G16B16A16_SFLOAT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -482,7 +482,7 @@ struct RtdgiRenderer {
                 });
             record_ctx.task_graph.use_persistent_image(ray_output_tex);
             record_ctx.task_graph.use_persistent_image(ray_history_tex);
-            clear_task_images(record_ctx.device, std::array{ray_output_tex, ray_history_tex});
+            clear_task_images(record_ctx.gpu_context->device, std::array{ray_output_tex, ray_history_tex});
 
             auto half_view_normal_tex = gbuffer_depth.get_downscaled_view_normal(record_ctx);
 
@@ -494,7 +494,7 @@ struct RtdgiRenderer {
 
             pp_temporal_reservoir_tex = PingPongImage{};
             auto [reservoir_output_tex, reservoir_history_tex] = pp_temporal_reservoir_tex.get(
-                record_ctx.device,
+                *record_ctx.gpu_context,
                 {
                     .format = daxa::Format::R32G32_UINT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
@@ -503,7 +503,7 @@ struct RtdgiRenderer {
                 });
             record_ctx.task_graph.use_persistent_image(reservoir_output_tex);
             record_ctx.task_graph.use_persistent_image(reservoir_history_tex);
-            clear_task_images(record_ctx.device, std::array{reservoir_output_tex, reservoir_history_tex});
+            clear_task_images(record_ctx.gpu_context->device, std::array{reservoir_output_tex, reservoir_history_tex});
 
             record_ctx.add(ComputeTask<RtdgiValidateCompute, RtdgiValidateComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/diffuse_validate.comp.glsl"},

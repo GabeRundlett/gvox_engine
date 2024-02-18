@@ -88,12 +88,10 @@ inline auto get_sky_settings() -> SkySettings {
 }
 
 struct SkyRenderer {
-    daxa::ImageId sky_cube_image;
-    daxa::ImageId ibl_cube_image;
-    daxa::TaskImage task_sky_cube{{.name = "task_sky_cube"}};
-    daxa::TaskImage task_ibl_cube{{.name = "task_ibl_cube"}};
+    TemporalImage temporal_sky_cube;
+    TemporalImage temporal_ibl_cube;
 
-    void create(daxa::Device &device) {
+    void add_settings() {
         auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {
             AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
             AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_exp_scale", {.value = factory_default.exp_scale, .min = -1.0f, .max = 1.0f}});
@@ -170,8 +168,12 @@ struct SkyRenderer {
                 .layer_width = 0.0f,
                 .lin_term = -0.06666599959135056f,
             });
+    }
 
-        sky_cube_image = device.create_image({
+    void render(RecordContext &record_ctx, daxa::TaskImageView input_sky_cube) {
+        add_settings();
+
+        temporal_sky_cube = record_ctx.gpu_context->find_or_add_temporal_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {SKY_CUBE_RES, SKY_CUBE_RES, 1},
@@ -179,7 +181,7 @@ struct SkyRenderer {
             .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_SRC | daxa::ImageUsageFlagBits::TRANSFER_DST,
             .name = "sky_cube",
         });
-        ibl_cube_image = device.create_image({
+        temporal_ibl_cube = record_ctx.gpu_context->find_or_add_temporal_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
@@ -187,22 +189,12 @@ struct SkyRenderer {
             .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_SRC | daxa::ImageUsageFlagBits::TRANSFER_DST,
             .name = "ibl_cube",
         });
-        task_sky_cube.set_images({.images = std::array{sky_cube_image}});
-        task_ibl_cube.set_images({.images = std::array{ibl_cube_image}});
-    }
-    void destroy(daxa::Device &device) const {
-        device.destroy_image(sky_cube_image);
-        device.destroy_image(ibl_cube_image);
-    }
 
-    void use_images(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_image(task_sky_cube);
-        record_ctx.task_graph.use_persistent_image(task_ibl_cube);
-    }
+        record_ctx.task_graph.use_persistent_image(temporal_sky_cube.task_resource);
+        record_ctx.task_graph.use_persistent_image(temporal_ibl_cube.task_resource);
 
-    void render(RecordContext &record_ctx, daxa::TaskImageView input_sky_cube) {
-        auto sky_cube = task_sky_cube.view().view({.layer_count = 6});
-        auto ibl_cube = task_ibl_cube.view().view({.layer_count = 6});
+        auto sky_cube = temporal_sky_cube.task_resource.view().view({.layer_count = 6});
+        auto ibl_cube = temporal_ibl_cube.task_resource.view().view({.layer_count = 6});
 
         record_ctx.task_graph.add_task({
             .attachments = {

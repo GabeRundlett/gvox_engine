@@ -31,45 +31,30 @@ struct VoxelParticleRasterPush {
 #if defined(__cplusplus)
 
 struct VoxelParticles {
-    daxa::BufferId simulated_voxel_particles_buffer;
-    daxa::BufferId rendered_voxel_particles_buffer;
-    daxa::BufferId placed_voxel_particles_buffer;
-    daxa::TaskBuffer task_simulated_voxel_particles_buffer{{.name = "task_simulated_voxel_particles_buffer"}};
-    daxa::TaskBuffer task_rendered_voxel_particles_buffer{{.name = "task_rendered_voxel_particles_buffer"}};
-    daxa::TaskBuffer task_placed_voxel_particles_buffer{{.name = "task_placed_voxel_particles_buffer"}};
-
-    void create(daxa::Device &device) {
-        simulated_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
-            .name = "simulated_voxel_particles_buffer",
-        });
-        rendered_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
-            .name = "rendered_voxel_particles_buffer",
-        });
-        placed_voxel_particles_buffer = device.create_buffer({
-            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
-            .name = "placed_voxel_particles_buffer",
-        });
-        task_simulated_voxel_particles_buffer.set_buffers({.buffers = std::array{simulated_voxel_particles_buffer}});
-        task_rendered_voxel_particles_buffer.set_buffers({.buffers = std::array{rendered_voxel_particles_buffer}});
-        task_placed_voxel_particles_buffer.set_buffers({.buffers = std::array{placed_voxel_particles_buffer}});
-    }
-
-    void destroy(daxa::Device &device) {
-        device.destroy_buffer(simulated_voxel_particles_buffer);
-        device.destroy_buffer(rendered_voxel_particles_buffer);
-        device.destroy_buffer(placed_voxel_particles_buffer);
-    }
+    TemporalBuffer simulated_voxel_particles;
+    TemporalBuffer rendered_voxel_particles;
+    TemporalBuffer placed_voxel_particles;
 
     void use_buffers(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_buffer(task_simulated_voxel_particles_buffer);
-        record_ctx.task_graph.use_persistent_buffer(task_rendered_voxel_particles_buffer);
-        record_ctx.task_graph.use_persistent_buffer(task_placed_voxel_particles_buffer);
+        simulated_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
+            .name = "simulated_voxel_particles",
+        });
+        rendered_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
+            .name = "rendered_voxel_particles",
+        });
+        placed_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
+            .name = "placed_voxel_particles",
+        });
+
+        record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
+        record_ctx.task_graph.use_persistent_buffer(rendered_voxel_particles.task_resource);
+        record_ctx.task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
     }
 
-    void simulate(RecordContext &record_ctx,
-                  VoxelWorldBuffers &voxel_world_buffers) {
+    void simulate(RecordContext &record_ctx, VoxelWorldBuffers &voxel_world_buffers) {
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
         }
@@ -79,9 +64,9 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticleSimCompute, voxel_world_buffers),
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::placed_voxel_particles, task_placed_voxel_particles_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, rendered_voxel_particles.task_resource}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::placed_voxel_particles, placed_voxel_particles.task_resource}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelParticleSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
@@ -124,8 +109,8 @@ struct VoxelParticles {
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::globals, record_ctx.gpu_context->task_globals_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::simulated_voxel_particles, task_simulated_voxel_particles_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::rendered_voxel_particles, task_rendered_voxel_particles_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::rendered_voxel_particles, rendered_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::render_image, raster_color_image}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::depth_image_id, raster_depth_image}},
             },

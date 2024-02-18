@@ -7,7 +7,6 @@
 
 #define INVALID_CHUNK_I ivec3(0x80000000)
 #define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / voxel_scl)
-#define VOXELS_ORIGINAL_IMPL
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                   \
     uint uniformity_lod_index_##N(uvec3 index_within_lod) {            \

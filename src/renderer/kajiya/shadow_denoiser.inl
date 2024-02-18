@@ -98,7 +98,7 @@ struct ShadowDenoiser {
 
         ping_pong_moments_image = PingPongImage{};
         auto [moments_image, prev_moments_image] = ping_pong_moments_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -110,7 +110,7 @@ struct ShadowDenoiser {
 
         ping_pong_accum_image = PingPongImage{};
         auto [accum_image, prev_accum_image] = ping_pong_accum_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -120,7 +120,7 @@ struct ShadowDenoiser {
         record_ctx.task_graph.use_persistent_image(accum_image);
         record_ctx.task_graph.use_persistent_image(prev_accum_image);
 
-        clear_task_images(record_ctx.device, std::array{prev_moments_image, prev_accum_image});
+        clear_task_images(record_ctx.gpu_context->device, std::array{prev_moments_image, prev_accum_image});
 
         auto spatial_input_image = record_ctx.task_graph.create_transient_image({
             .format = daxa::Format::R16G16_SFLOAT,

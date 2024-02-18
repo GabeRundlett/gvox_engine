@@ -16,25 +16,12 @@ struct RendererImpl {
 };
 
 Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
-}
-Renderer::~Renderer() = default;
-
-void Renderer::create(daxa::Device &device) {
-    auto &self = *impl;
-    self.kajiya_renderer.create(device);
-    self.sky.create(device);
-
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip High", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = -2.5f, .min = -15.0f, .max = 15.0f}});
 }
-
-void Renderer::destroy(daxa::Device &device) {
-    auto &self = *impl;
-    self.kajiya_renderer.destroy(device);
-    self.sky.destroy(device);
-}
+Renderer::~Renderer() = default;
 
 void Renderer::begin_frame(GpuInput &gpu_input, GpuOutput &gpu_output) {
     auto &self = *impl;
@@ -76,7 +63,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
     auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
-    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles.task_simulated_voxel_particles_buffer, particles_color_image, particles_depth_image);
+    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles.simulated_voxel_particles.task_resource, particles_color_image, particles_depth_image);
 
     auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_buffers);
 
@@ -90,7 +77,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         transmittance_lut,
         voxel_buffers);
 
-    self.fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
+    self.fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.gpu_context->device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
 
     auto antialiased_image = [&]() {
         if constexpr (ENABLE_TAA) {

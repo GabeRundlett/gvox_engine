@@ -61,7 +61,7 @@ struct SsaoRenderer {
         auto scaled_view_normal_image = gbuffer_depth.get_downscaled_view_normal(record_ctx);
         ping_pong_ssao_image = PingPongImage{};
         auto [ssao_image, prev_ssao_image] = ping_pong_ssao_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16_SFLOAT,
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
@@ -69,7 +69,7 @@ struct SsaoRenderer {
                 .name = "ssao_image",
             });
 
-        clear_task_images(record_ctx.device, std::array{prev_ssao_image});
+        clear_task_images(record_ctx.gpu_context->device, std::array{prev_ssao_image});
 
         record_ctx.task_graph.use_persistent_image(ssao_image);
         record_ctx.task_graph.use_persistent_image(prev_ssao_image);

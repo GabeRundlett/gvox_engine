@@ -131,7 +131,7 @@ struct TaaRenderer {
         ping_pong_taa_vel_image = PingPongImage{};
         ping_pong_smooth_var_image = PingPongImage{};
         auto [temporal_output_tex, history_tex] = ping_pong_taa_col_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
@@ -139,7 +139,7 @@ struct TaaRenderer {
                 .name = "taa_col",
             });
         auto [temporal_velocity_output_tex, velocity_history_tex] = ping_pong_taa_vel_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
                 .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
@@ -147,7 +147,7 @@ struct TaaRenderer {
                 .name = "taa_vel",
             });
         auto [smooth_var_output_tex, smooth_var_history_tex] = ping_pong_smooth_var_image.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},

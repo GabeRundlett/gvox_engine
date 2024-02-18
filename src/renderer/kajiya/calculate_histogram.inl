@@ -19,7 +19,7 @@ struct CalculateHistogramComputePush {
 
 #if defined(__cplusplus)
 
-inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskImageView blur_pyramid, daxa::TaskBufferView dst_histogram, daxa_u32vec2 image_size) {
+inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskImageView blur_pyramid, daxa::TaskBufferView dst_histogram, daxa_u32vec2 image_size, uint32_t &histogram_index) {
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
@@ -74,10 +74,11 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, tmp_histogram),
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, dst_histogram),
         },
-        .task = [=](daxa::TaskInterface const &ti) {
+        .task = [=, &histogram_index](daxa::TaskInterface const &ti) {
             ti.recorder.copy_buffer_to_buffer({
                 .src_buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).ids[0],
                 .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0],
+                .dst_offset = histogram_index * hist_size,
                 .size = hist_size,
             });
         },

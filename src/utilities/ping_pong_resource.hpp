@@ -1,24 +1,23 @@
 #pragma once
 
 #include <daxa/daxa.hpp>
+#include "gpu_context.hpp"
 
 struct PingPongImage_impl {
     using ResourceType = daxa::ImageId;
     using ResourceInfoType = daxa::ImageInfo;
     using TaskResourceType = daxa::TaskImage;
     using TaskResourceInfoType = daxa::TaskImageInfo;
+    using TemporalResourceType = TemporalImage;
 
-    static auto create(daxa::Device &device, ResourceInfoType const &info) -> ResourceType {
-        return device.create_image(info);
+    static auto create(GpuContext &gpu_context, ResourceInfoType const &info) -> TemporalResourceType {
+        return gpu_context.find_or_add_temporal_image(info);
     }
-    static void destroy(daxa::Device &device, ResourceType rsrc_id) {
-        device.destroy_image(rsrc_id);
+    static void destroy(GpuContext &gpu_context, TemporalResourceType &rsrc_id) {
+        gpu_context.remove_temporal_image(rsrc_id.resource_id);
     }
-    static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
-        return TaskResourceType(TaskResourceInfoType{.initial_images = {std::array{rsrc_id}}, .name = name});
-    }
-    static void swap(TaskResourceType &resource_a, TaskResourceType &resource_b) {
-        resource_a.swap_images(resource_b);
+    static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
+        resource_a.task_resource.swap_images(resource_b.task_resource);
     }
 };
 
@@ -27,18 +26,16 @@ struct PingPongBuffer_impl {
     using ResourceInfoType = daxa::BufferInfo;
     using TaskResourceType = daxa::TaskBuffer;
     using TaskResourceInfoType = daxa::TaskBufferInfo;
+    using TemporalResourceType = TemporalBuffer;
 
-    static auto create(daxa::Device &device, ResourceInfoType const &info) -> ResourceType {
-        return device.create_buffer(info);
+    static auto create(GpuContext &gpu_context, ResourceInfoType const &info) -> TemporalResourceType {
+        return gpu_context.find_or_add_temporal_buffer(info);
     }
-    static void destroy(daxa::Device &device, ResourceType rsrc_id) {
-        device.destroy_buffer(rsrc_id);
+    static void destroy(GpuContext &gpu_context, TemporalResourceType rsrc_id) {
+        gpu_context.remove_temporal_buffer(rsrc_id.resource_id);
     }
-    static auto create_task_resource(ResourceType rsrc_id, std::string const &name) -> TaskResourceType {
-        return TaskResourceType(TaskResourceInfoType{.initial_buffers = {std::array{rsrc_id}}, .name = name});
-    }
-    static void swap(TaskResourceType &resource_a, TaskResourceType &resource_b) {
-        resource_a.swap_buffers(resource_b);
+    static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
+        resource_a.task_resource.swap_buffers(resource_b.task_resource);
     }
 };
 
@@ -48,6 +45,7 @@ struct PingPongResource {
     using ResourceInfoType = typename Impl::ResourceInfoType;
     using TaskResourceType = typename Impl::TaskResourceType;
     using TaskResourceInfoType = typename Impl::TaskResourceInfoType;
+    using TemporalResourceType = typename Impl::TemporalResourceType;
 
     struct Resources {
         Resources() = default;
@@ -55,57 +53,108 @@ struct PingPongResource {
         Resources(Resources &&) = delete;
         Resources &operator=(Resources const &) = delete;
         Resources &operator=(Resources &&other) {
-            std::swap(this->device, other.device);
+            std::swap(this->gpu_context, other.gpu_context);
             std::swap(this->resource_a, other.resource_a);
             std::swap(this->resource_b, other.resource_b);
             return *this;
         }
 
-        daxa::Device device{};
-        ResourceType resource_a{};
-        ResourceType resource_b{};
+        GpuContext *gpu_context{};
+        TemporalResourceType resource_a;
+        TemporalResourceType resource_b;
 
         ~Resources() {
-            if (!resource_a.is_empty()) {
-                Impl::destroy(device, resource_a);
-                Impl::destroy(device, resource_b);
+            if (!resource_a.resource_id.is_empty()) {
+                Impl::destroy(*gpu_context, resource_a);
+                Impl::destroy(*gpu_context, resource_b);
             }
         }
     };
-    struct TaskResources {
-        TaskResourceType output_resource;
-        TaskResourceType history_resource;
-    };
     Resources resources;
-    TaskResources task_resources;
 
     void swap() {
-        Impl::swap(task_resources.output_resource, task_resources.history_resource);
+        Impl::swap(resources.resource_a, resources.resource_b);
     }
 
-    auto current() -> TaskResourceType & { return task_resources.output_resource; }
-    auto history() -> TaskResourceType & { return task_resources.history_resource; }
-    auto current() const -> TaskResourceType const & { return task_resources.output_resource; }
-    auto history() const -> TaskResourceType const & { return task_resources.history_resource; }
+    auto current() -> TaskResourceType & { return resources.resource_a.task_resource; }
+    auto history() -> TaskResourceType & { return resources.resource_b.task_resource; }
+    auto current() const -> TaskResourceType const & { return resources.resource_a.task_resource; }
+    auto history() const -> TaskResourceType const & { return resources.resource_b.task_resource; }
 
-    auto get(daxa::Device a_device, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
-        if (!resources.device.is_valid()) {
-            resources.device = a_device;
-        }
+    auto get(GpuContext &gpu_context, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
+        resources.gpu_context = &gpu_context;
         // assert(resources.device == a_device);
-        if (resources.resource_a.is_empty()) {
+        if (resources.resource_a.resource_id.is_empty()) {
             auto info_a = a_info;
             auto info_b = a_info;
             info_a.name = std::string(info_a.name.view()) + "_a";
             info_b.name = std::string(info_b.name.view()) + "_b";
-            resources.resource_a = Impl::create(a_device, info_a);
-            resources.resource_b = Impl::create(a_device, info_b);
-            task_resources.output_resource = Impl::create_task_resource(resources.resource_a, std::string(a_info.name.view()));
-            task_resources.history_resource = Impl::create_task_resource(resources.resource_b, std::string(a_info.name.view()) + "_hist");
+            resources.resource_a = Impl::create(*resources.gpu_context, info_a);
+            resources.resource_b = Impl::create(*resources.gpu_context, info_b);
         }
         return {current(), history()};
     }
 };
+
+
+template <typename Impl>
+struct PerFrameResource {
+    using ResourceType = typename Impl::ResourceType;
+    using ResourceInfoType = typename Impl::ResourceInfoType;
+    using TaskResourceType = typename Impl::TaskResourceType;
+    using TaskResourceInfoType = typename Impl::TaskResourceInfoType;
+    using TemporalResourceType = typename Impl::TemporalResourceType;
+
+    struct Resources {
+        Resources() = default;
+        Resources(Resources const &) = delete;
+        Resources(Resources &&) = delete;
+        Resources &operator=(Resources const &) = delete;
+        Resources &operator=(Resources &&other) {
+            std::swap(this->gpu_context, other.gpu_context);
+            std::swap(this->resource_a, other.resource_a);
+            std::swap(this->resource_b, other.resource_b);
+            return *this;
+        }
+
+        GpuContext *gpu_context{};
+        std::array<TemporalResourceType, FRAMES_IN_FLIGHT + 1> resources;
+
+        ~Resources() {
+            if (!resource_a.resource_id.is_empty()) {
+                Impl::destroy(*gpu_context, resource_a);
+                Impl::destroy(*gpu_context, resource_b);
+            }
+        }
+    };
+    Resources resources;
+    daxa::TaskBuffer task_histogram_buffer;
+    uint64_t index{};
+
+    void next() {
+        Impl::swap(resources.resource_a, resources.resource_b);
+    }
+
+    auto current() -> TaskResourceType & { return resources.resource_a.task_resource; }
+    auto history() -> TaskResourceType & { return resources.resource_b.task_resource; }
+    auto current() const -> TaskResourceType const & { return resources.resource_a.task_resource; }
+    auto history() const -> TaskResourceType const & { return resources.resource_b.task_resource; }
+
+    auto get(GpuContext &gpu_context, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
+        resources.gpu_context = &gpu_context;
+        // assert(resources.device == a_device);
+        if (resources.resource_a.resource_id.is_empty()) {
+            auto info_a = a_info;
+            auto info_b = a_info;
+            info_a.name = std::string(info_a.name.view()) + "_a";
+            info_b.name = std::string(info_b.name.view()) + "_b";
+            resources.resource_a = Impl::create(*resources.gpu_context, info_a);
+            resources.resource_b = Impl::create(*resources.gpu_context, info_b);
+        }
+        return {current(), history()};
+    }
+};
+
 
 using PingPongImage = PingPongResource<PingPongImage_impl>;
 using PingPongBuffer = PingPongResource<PingPongBuffer_impl>;

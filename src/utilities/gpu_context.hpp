@@ -6,15 +6,23 @@
 #include "gpu_task.hpp"
 
 struct TemporalBuffer {
-    daxa::BufferId buffer_id;
-    daxa::TaskBuffer task_buffer;
+    daxa::BufferId resource_id;
+    daxa::TaskBuffer task_resource;
+};
+struct TemporalImage {
+    daxa::ImageId resource_id;
+    daxa::TaskImage task_resource;
 };
 
 using TemporalBuffers = std::unordered_map<std::string, TemporalBuffer>;
+using TemporalImages = std::unordered_map<std::string, TemporalImage>;
 
 struct RecordContext;
 
 struct GpuContext {
+    daxa::Instance daxa_instance;
+    daxa::Device device;
+
     daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec2_image;
     daxa::ImageId debug_texture;
@@ -44,14 +52,20 @@ struct GpuContext {
 
     std::shared_ptr<AsyncPipelineManager> pipeline_manager;
     TemporalBuffers temporal_buffers;
+    TemporalImages temporal_images;
 
-    void create(daxa::Device &device);
-    void destroy(daxa::Device &device) const;
+    GpuContext();
+    ~GpuContext();
 
     void use_resources(RecordContext &record_ctx);
     void update_seeded_value_noise(daxa::Device &device, uint64_t seed);
 
-    auto find_or_add_temporal_buffer(daxa::Device &device, daxa::BufferInfo const &info) -> TemporalBuffer;
+    auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer;
+    auto find_or_add_temporal_image(daxa::ImageInfo const &info) -> TemporalImage;
+    void remove_temporal_buffer(std::string const &id);
+    void remove_temporal_image(std::string const &id);
+    void remove_temporal_buffer(daxa::BufferId id);
+    void remove_temporal_image(daxa::ImageId id);
 
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
     std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;

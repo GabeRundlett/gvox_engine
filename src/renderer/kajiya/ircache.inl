@@ -412,16 +412,14 @@ struct IrcacheRenderState {
 };
 
 inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
-    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer(
-        record_ctx.device,
-        {
-            .size = static_cast<uint32_t>(size),
-            .name = name,
-        });
+    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        .size = static_cast<uint32_t>(size),
+        .name = name,
+    });
 
-    record_ctx.task_graph.use_persistent_buffer(result.task_buffer);
+    record_ctx.task_graph.use_persistent_buffer(result.task_resource);
 
-    return result.task_buffer;
+    return result.task_resource;
 }
 
 struct IrcacheRenderer {
@@ -475,7 +473,7 @@ struct IrcacheRenderer {
         constexpr auto INDIRECTION_BUF_ELEM_COUNT = size_t{1024 * 1024};
 
         auto [ircache_grid_meta_buf_, ircache_grid_meta_buf2_] = ping_pong_ircache_grid_meta_buf.get(
-            record_ctx.device,
+            *record_ctx.gpu_context,
             daxa::BufferInfo{
                 .size = static_cast<uint32_t>(sizeof(IrcacheCell) * MAX_GRID_CELLS),
                 .name = "ircache.grid_meta_buf",
@@ -530,9 +528,8 @@ struct IrcacheRenderer {
 
         if (!this->initialized) {
             auto temp_record_ctx = RecordContext{
-                .device = record_ctx.device,
                 .task_graph = daxa::TaskGraph({
-                    .device = record_ctx.device,
+                    .device = record_ctx.gpu_context->device,
                     .name = "temp_task_graph",
                 }),
                 .gpu_context = record_ctx.gpu_context,

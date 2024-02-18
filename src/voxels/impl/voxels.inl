@@ -4,6 +4,8 @@
 #include <voxels/gvox_model.inl>
 #include <voxels/brushes.inl>
 
+#define VOXELS_ORIGINAL_IMPL
+
 // 1364 daxa_u32's
 // 10.65625 bytes per 8x8x8
 struct TempVoxelChunkUniformity {
@@ -76,8 +78,8 @@ DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
     ptr_type(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
 
 #define VOXELS_BUFFER_USES_ASSIGN(TaskHeadName, voxel_buffers)                                                    \
-    daxa::TaskViewVariant{std::pair{TaskHeadName::voxel_globals, voxel_buffers.task_voxel_globals_buffer}},       \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::voxel_chunks, voxel_buffers.task_voxel_chunks_buffer}},     \
+    daxa::TaskViewVariant{std::pair{TaskHeadName::voxel_globals, voxel_buffers.voxel_globals.task_resource}},     \
+        daxa::TaskViewVariant{std::pair{TaskHeadName::voxel_chunks, voxel_buffers.voxel_chunks.task_resource}},   \
         daxa::TaskViewVariant {                                                                                   \
         std::pair { TaskHeadName::voxel_malloc_page_allocator, voxel_buffers.voxel_malloc.task_allocator_buffer } \
     }
@@ -107,10 +109,8 @@ struct VoxelRWBufferPtrs {
 #include <utilities/allocator.inl>
 
 struct VoxelWorldBuffers {
-    daxa::BufferId voxel_globals_buffer;
-    daxa::TaskBuffer task_voxel_globals_buffer{{.name = "task_voxel_globals_buffer"}};
-    daxa::BufferId voxel_chunks_buffer;
-    daxa::TaskBuffer task_voxel_chunks_buffer{{.name = "task_voxel_chunks_buffer"}};
+    TemporalBuffer voxel_globals;
+    TemporalBuffer voxel_chunks;
     AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
     // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
     // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;

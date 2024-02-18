@@ -7,24 +7,6 @@
 struct VoxelWorld {
     VoxelWorldBuffers buffers;
 
-    void create(daxa::Device &device) {
-        buffers.voxel_globals = device.create_buffer({
-            .size = static_cast<daxa_u32>(sizeof(daxa_u32)),
-            .name = "voxel_globals",
-        });
-
-        buffers.task_voxel_globals.set_buffers({.buffers = std::array{buffers.voxel_globals}});
-    }
-    void destroy(daxa::Device &device) const {
-        if (!buffers.voxel_globals.is_empty()) {
-            device.destroy_buffer(buffers.voxel_globals);
-        }
-    }
-
-    void for_each_buffer(auto func) {
-        func(buffers.voxel_globals);
-    }
-
     void record_startup(RecordContext &) {
     }
 
@@ -32,7 +14,12 @@ struct VoxelWorld {
     }
 
     void use_buffers(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_buffer(buffers.task_voxel_globals);
+        buffers.voxel_globals = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = static_cast<daxa_u32>(sizeof(VoxelWorldGlobals)),
+            .name = "voxel_globals",
+        });
+
+        record_ctx.task_graph.use_persistent_buffer(buffers.voxel_globals.task_resource);
     }
 
     void record_frame(RecordContext &, daxa::TaskBufferView, daxa::TaskImageView) {

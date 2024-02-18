@@ -8,7 +8,6 @@
 #include "gpu_context.hpp"
 
 struct RecordContext {
-    daxa::Device device;
     daxa::TaskGraph task_graph;
     daxa_u32vec2 render_resolution;
     daxa_u32vec2 output_resolution;

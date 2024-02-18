@@ -16,9 +16,9 @@ DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 #define VOXELS_USE_BUFFERS_PUSH_USES(ptr_type) \
     ptr_type(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 
-#define VOXELS_BUFFER_USES_ASSIGN(TaskHeadName, voxel_buffers)                      \
-    daxa::TaskViewVariant {                                                         \
-        std::pair { TaskHeadName::voxel_globals, voxel_buffers.task_voxel_globals } \
+#define VOXELS_BUFFER_USES_ASSIGN(TaskHeadName, voxel_buffers)                               \
+    daxa::TaskViewVariant {                                                                  \
+        std::pair { TaskHeadName::voxel_globals, voxel_buffers.voxel_globals.task_resource } \
     }
 
 struct VoxelWorldOutput {
@@ -38,8 +38,7 @@ struct VoxelRWBufferPtrs {
 #if defined(__cplusplus)
 
 struct VoxelWorldBuffers {
-    daxa::BufferId voxel_globals;
-    daxa::TaskBuffer task_voxel_globals{{.name = "task_voxel_globals"}};
+    TemporalBuffer voxel_globals;
 };
 
 #endif

@@ -56,6 +56,7 @@ struct AllocatorConstants {
 
 template <typename T>
 struct AllocatorBufferState {
+    daxa::Device device;
     daxa::BufferId allocator_buffer;
     daxa::BufferId element_buffer;
     daxa::BufferId available_element_stack_buffer;
@@ -66,7 +67,8 @@ struct AllocatorBufferState {
     daxa_u32 current_element_count = 0;
     daxa_u32 next_element_count = 0;
     daxa_u32 prev_element_count = 0;
-    void create(daxa::Device &device) {
+    void create(GpuContext &gpu_context) {
+        device = gpu_context.device;
         constexpr auto MAX_ELEMENT_ALLOCATIONS_PER_FRAME = AllocatorConstants<T>::MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
         daxa_u32 element_count = (FRAMES_IN_FLIGHT + 1) * MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
         current_element_count = element_count;
@@ -102,7 +104,7 @@ struct AllocatorBufferState {
             },
         });
     }
-    void destroy(daxa::Device &device) const {
+    ~AllocatorBufferState() {
         if (!element_buffer.is_empty()) {
             device.destroy_buffer(element_buffer);
         }
@@ -199,12 +201,6 @@ struct AllocatorBufferState {
             .dst_buffer = allocator_buffer,
             .size = offsetof(AllocatorConstants<T>::AllocatorType, element_count),
         });
-    }
-    void for_each_buffer(auto const &functor) {
-        functor(allocator_buffer);
-        functor(element_buffer);
-        functor(available_element_stack_buffer);
-        functor(released_element_stack_buffer);
     }
     void for_each_task_buffer(auto const &functor) {
         functor(task_allocator_buffer);

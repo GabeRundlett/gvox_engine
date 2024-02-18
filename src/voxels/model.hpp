@@ -11,8 +11,7 @@ struct GvoxModelData {
 
 struct VoxelModelLoader {
     GvoxContext *gvox_ctx;
-    daxa::Device device;
-    std::shared_ptr<AsyncPipelineManager> main_pipeline_manager;
+    GpuContext *gpu_context;
 
     bool has_model = false;
     std::future<GvoxModelData> gvox_model_data_future;
@@ -26,7 +25,7 @@ struct VoxelModelLoader {
     daxa::BufferId prev_gvox_model_buffer{};
     daxa::TaskBuffer task_gvox_model_buffer{{.name = "task_gvox_model_buffer"}};
 
-    void create(daxa::Device &device);
+    void create(GpuContext &gpu_context);
     void destroy();
 
     void update(AppUi &ui);

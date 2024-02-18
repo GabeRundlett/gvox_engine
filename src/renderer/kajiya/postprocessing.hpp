@@ -38,42 +38,20 @@ struct DynamicExposureState {
 };
 
 struct PostProcessor {
-    std::array<daxa::BufferId, FRAMES_IN_FLIGHT + 1> histogram_buffers;
-    daxa::TaskBuffer task_histogram_buffer;
-    size_t histogram_buffer_index = 0;
+    TemporalBuffer histogram_buffer;
+    uint32_t histogram_buffer_index = 0;
 
     ExposureState exposure_state{};
     DynamicExposureState dynamic_exposure{};
 
     std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT> histogram{};
 
-    void create(daxa::Device &device) {
-        uint32_t i = 0;
-        for (auto &histogram_buffer : histogram_buffers) {
-            histogram_buffer = device.create_buffer(daxa::BufferInfo{
-                .size = static_cast<uint32_t>(sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT),
-                .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                .name = "histogram_buffer " + std::to_string(i++),
-            });
-        }
-        task_histogram_buffer = daxa::TaskBuffer({.name = "histogram_buffer"});
-        task_histogram_buffer.set_buffers({.buffers = std::array{histogram_buffers[histogram_buffer_index]}});
-    }
-
-    void destroy(daxa::Device &device) const {
-        for (auto &histogram_buffer : histogram_buffers) {
-            device.destroy_buffer(histogram_buffer);
-        }
-    }
-
     void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
         ++histogram_buffer_index;
+        histogram_buffer_index = (histogram_buffer_index + 0) % (FRAMES_IN_FLIGHT + 1);
         {
-            auto buffer_i = (histogram_buffer_index + 0) % histogram_buffers.size();
-            auto readable_buffer_i = (histogram_buffer_index + 1) % histogram_buffers.size();
-            task_histogram_buffer.set_buffers({.buffers = std::array{histogram_buffers[buffer_i]}});
-            auto const &histogram_buffer = histogram_buffers[readable_buffer_i];
-            histogram = *device.get_host_address_as<std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT>>(histogram_buffer).value();
+            auto readable_buffer_i = (histogram_buffer_index + 1) % (FRAMES_IN_FLIGHT + 1);
+            histogram = (*device.get_host_address_as<std::array<std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT>, FRAMES_IN_FLIGHT + 1>>(histogram_buffer.resource_id).value())[readable_buffer_i];
 
             // operate on histogram
             auto outlier_frac_lo = std::min<double>(auto_exposure_settings.histogram_clip_low, 1.0);
@@ -119,9 +97,15 @@ struct PostProcessor {
     }
 
     auto process(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
-        record_ctx.task_graph.use_persistent_buffer(task_histogram_buffer);
+        histogram_buffer = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT * (FRAMES_IN_FLIGHT + 1),
+            .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .name = "histogram",
+        });
+        record_ctx.task_graph.use_persistent_buffer(histogram_buffer.task_resource);
+
         auto blur_pyramid = ::blur_pyramid(record_ctx, input_image, image_size);
-        calculate_luminance_histogram(record_ctx, blur_pyramid, task_histogram_buffer, image_size);
+        calculate_luminance_histogram(record_ctx, blur_pyramid, histogram_buffer.task_resource, image_size, histogram_buffer_index);
         // auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, blur_pyramid, image_size);
         return blur_pyramid;
     }

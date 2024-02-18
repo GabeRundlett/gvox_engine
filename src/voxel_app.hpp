@@ -21,8 +21,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     Clock::time_point start = Clock::now();
     Clock::time_point prev_time;
 
-    daxa::Instance daxa_instance;
-    daxa::Device device;
+    GpuContext gpu_context;
 
     daxa::Swapchain swapchain;
     daxa::ImageId swapchain_image{};
@@ -38,8 +37,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     VoxelWorld voxel_world;
     VoxelParticles particles;
     VoxelModelLoader voxel_model_loader;
-
-    GpuContext gpu_context;
 
     GpuInput gpu_input{};
     GpuOutput gpu_output{};

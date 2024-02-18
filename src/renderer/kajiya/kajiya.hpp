@@ -21,15 +21,6 @@ struct KajiyaRenderer {
 
     bool do_global_illumination = true;
 
-    void create(daxa::Device &device) {
-        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
-        post_processor.create(device);
-    }
-
-    void destroy(daxa::Device &device) const {
-        post_processor.destroy(device);
-    }
-
     void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
         if (do_global_illumination) {
             ssao_renderer.next_frame();
@@ -58,6 +49,8 @@ struct KajiyaRenderer {
 
         auto rtr = daxa::TaskImageView{};
         auto rtdgi = daxa::TaskImageView{};
+
+        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
 
         do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
 
