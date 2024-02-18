@@ -25,5 +25,5 @@ void main() {
     uint chunk_index = chunk_i.x + chunk_i.y * chunk_n + chunk_i.z * chunk_n * chunk_n;
     uint in_chunk_index = in_chunk_i.x + in_chunk_i.y * 64 + in_chunk_i.z * 64 * 64;
     uint out_index = chunk_index * 64 * 64 * 64 + in_chunk_index;
-    deref(data[out_index]) = v;
+    deref(advance(data, out_index)) = v;
 }

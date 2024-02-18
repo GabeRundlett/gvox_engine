@@ -13,11 +13,11 @@ daxa_RWBufferPtr(uint) placed_voxel_particles = push.uses.placed_voxel_particles
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint particle_index = gl_GlobalInvocationID.x;
-    SimulatedVoxelParticle self = deref(simulated_voxel_particles[particle_index]);
+    SimulatedVoxelParticle self = deref(advance(simulated_voxel_particles, particle_index));
 
     bool should_place = false;
     particle_update(self, VOXELS_BUFFER_PTRS, gpu_input, should_place);
-    deref(simulated_voxel_particles[particle_index]) = self;
+    deref(advance(simulated_voxel_particles, particle_index)) = self;
 
     // if (self.pos.z < 600.5) {
     //     return;
@@ -38,7 +38,7 @@ void main() {
             //     zero_work_item_children(brush_work_item);
             //     queue_root_work_item(globals, brush_work_item);
             // }
-            // deref(placed_voxel_particles[my_place_index]) = particle_index;
+            // deref(advance(placed_voxel_particles, my_place_index)) = particle_index;
             // atomicMin(deref(globals).voxel_particles_state.place_bounds_min.x, my_voxel_i.x);
             // atomicMin(deref(globals).voxel_particles_state.place_bounds_min.y, my_voxel_i.y);
             // atomicMin(deref(globals).voxel_particles_state.place_bounds_min.z, my_voxel_i.z);
@@ -54,5 +54,5 @@ void main() {
 
     uint my_render_index = atomicAdd(deref(globals).voxel_particles_state.draw_params.vertex_count, 36) / 36;
 
-    deref(rendered_voxel_particles[my_render_index]) = particle_index;
+    deref(advance(rendered_voxel_particles, my_render_index)) = particle_index;
 }

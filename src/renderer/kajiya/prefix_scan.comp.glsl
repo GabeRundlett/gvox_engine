@@ -15,10 +15,10 @@ uvec2 load_input2(uint idx, uint segment) {
     uvec2 result = uvec2(0);
     uint i = idx + segment * SEGMENT_SIZE;
     if (i + 1 < push.element_n) {
-        result.x = deref(inout_buf[i]);
-        result.y = deref(inout_buf[i + 1]);
+        result.x = deref(advance(inout_buf, i));
+        result.y = deref(advance(inout_buf, i + 1));
     } else if (i < push.element_n) {
-        result.x = deref(inout_buf[i]);
+        result.x = deref(advance(inout_buf, i));
     }
     return result;
 }
@@ -26,10 +26,10 @@ uvec2 load_input2(uint idx, uint segment) {
 void store_output2(uint idx, uint segment, uvec2 val) {
     uint i = idx + segment * SEGMENT_SIZE;
     if (i + 1 < push.element_n) {
-        deref(inout_buf[i]) = val.x;
-        deref(inout_buf[i + 1]) = val.y;
+        deref(advance(inout_buf, i)) = val.x;
+        deref(advance(inout_buf, i + 1)) = val.y;
     } else if (i < push.element_n) {
-        deref(inout_buf[i]) = val.x;
+        deref(advance(inout_buf, i)) = val.x;
     }
 }
 
@@ -73,15 +73,15 @@ shared uint shared_data[SEGMENT_SIZE];
 uint load_input(uint idx) {
     const uint segment_sum_idx = idx * SEGMENT_SIZE + SEGMENT_SIZE - 1;
     if (segment_sum_idx < push.element_n) {
-        return deref(input_buf[segment_sum_idx]);
+        return deref(advance(input_buf, segment_sum_idx));
     } else {
         return 0;
     }
 }
 
 void store_output2(uint idx, uvec2 val) {
-    deref(output_buf[idx]) = val.x;
-    deref(output_buf[idx + 1]) = val.y;
+    deref(advance(output_buf, idx)) = val.x;
+    deref(advance(output_buf, idx + 1)) = val.y;
 }
 
 layout(local_size_x = THREAD_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
@@ -122,15 +122,15 @@ uvec2 load_input2(uint idx, uint segment) {
     uvec2 internal_sum = uvec2(0);
     uint i = idx + segment * SEGMENT_SIZE;
     if (i + 1 < push.element_n) {
-        internal_sum.x = deref(inout_buf[i]);
-        internal_sum.y = deref(inout_buf[i + 1]);
+        internal_sum.x = deref(advance(inout_buf, i));
+        internal_sum.y = deref(advance(inout_buf, i + 1));
     } else if (i < push.element_n) {
-        internal_sum.x = deref(inout_buf[i]);
+        internal_sum.x = deref(advance(inout_buf, i));
     }
 
     uint prev_segment_sum = 0;
     if (segment != 0) {
-        prev_segment_sum = deref(segment_sum_buf[segment - 1]);
+        prev_segment_sum = deref(advance(segment_sum_buf, segment - 1));
     }
     return internal_sum + prev_segment_sum;
 }
@@ -138,10 +138,10 @@ uvec2 load_input2(uint idx, uint segment) {
 void store_output2(uint idx, uint segment, uvec2 val) {
     uint i = idx + segment * SEGMENT_SIZE;
     if (i + 1 < push.element_n) {
-        deref(inout_buf[i]) = val.x;
-        deref(inout_buf[i + 1]) = val.y;
+        deref(advance(inout_buf, i)) = val.x;
+        deref(advance(inout_buf, i + 1)) = val.y;
     } else if (i < push.element_n) {
-        deref(inout_buf[i]) = val.x;
+        deref(advance(inout_buf, i)) = val.x;
     }
 }
 

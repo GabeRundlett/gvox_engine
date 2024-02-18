@@ -46,20 +46,20 @@ void main() {
     }
 #endif
 
-    const uint entry_idx = deref(ircache_entry_indirection_buf[dispatch_idx / IRCACHE_OCTA_DIMS2]);
+    const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx / IRCACHE_OCTA_DIMS2));
     const uint octa_idx = dispatch_idx % IRCACHE_OCTA_DIMS2;
-    const uint life = deref(ircache_life_buf[entry_idx]);
+    const uint life = deref(advance(ircache_life_buf, entry_idx));
 
     if (!is_ircache_entry_life_valid(life)) {
         return;
     }
 
-    const Vertex entry = unpack_vertex(deref(ircache_spatial_buf[entry_idx]));
+    const Vertex entry = unpack_vertex(deref(advance(ircache_spatial_buf, entry_idx)));
 
     const uint output_idx = entry_idx * IRCACHE_AUX_STRIDE + octa_idx;
 
-    Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(ircache_aux_buf[output_idx]).xy));
-    Vertex prev_entry = unpack_vertex(VertexPacked(deref(ircache_aux_buf[output_idx + IRCACHE_OCTA_DIMS2 * 2])));
+    Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, output_idx)).xy));
+    Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2 * 2))));
 
     // Reduce weight of samples whose trace origins are not accessible now
     if (rt_is_shadowed(new_ray(
@@ -68,6 +68,6 @@ void main() {
             0.001,
             0.999))) {
         r.M *= 0.8;
-        deref(ircache_aux_buf[output_idx]).xy = vec2(uintBitsToFloat(as_raw(r)));
+        deref(advance(ircache_aux_buf, output_idx)).xy = vec2(uintBitsToFloat(as_raw(r)));
     }
 }

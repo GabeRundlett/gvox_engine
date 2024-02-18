@@ -12,8 +12,8 @@ void main() {
     uint entry_idx = gl_GlobalInvocationID.x;
     const uint total_entry_count = deref(ircache_meta_buf).entry_count;
 
-    const uint life = deref(ircache_life_buf[entry_idx]);
+    const uint life = deref(advance(ircache_life_buf, entry_idx));
     if (entry_idx < total_entry_count && is_ircache_entry_life_valid(life)) {
-        deref(ircache_entry_indirection_buf[deref(entry_occupancy_buf[entry_idx])]) = entry_idx;
+        deref(advance(ircache_entry_indirection_buf, deref(advance(entry_occupancy_buf, entry_idx)))) = entry_idx;
     }
 }

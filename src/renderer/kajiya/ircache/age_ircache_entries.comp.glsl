@@ -15,30 +15,30 @@ daxa_RWBufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf
 daxa_RWBufferPtr(uint) entry_occupancy_buf = push.uses.entry_occupancy_buf;
 
 void age_ircache_entry(uint entry_idx) {
-    const uint prev_age = deref(ircache_life_buf[entry_idx]);
+    const uint prev_age = deref(advance(ircache_life_buf, entry_idx));
     const uint new_age = prev_age + 1;
 
     if (is_ircache_entry_life_valid(new_age)) {
-        deref(ircache_life_buf[entry_idx]) = new_age;
+        deref(advance(ircache_life_buf, entry_idx)) = new_age;
 
         // TODO: just `Store` it (AMD doesn't like it unless it's a byte address buffer)
-        const uint cell_idx = deref(ircache_entry_cell_buf[entry_idx]);
-        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags, ~IRCACHE_ENTRY_META_JUST_ALLOCATED);
+        const uint cell_idx = deref(advance(ircache_entry_cell_buf, entry_idx));
+        atomicAnd(deref(advance(ircache_grid_meta_buf, cell_idx)).flags, ~IRCACHE_ENTRY_META_JUST_ALLOCATED);
     } else {
-        deref(ircache_life_buf[entry_idx]) = IRCACHE_ENTRY_LIFE_RECYCLED;
+        deref(advance(ircache_life_buf, entry_idx)) = IRCACHE_ENTRY_LIFE_RECYCLED;
         // onoz, we killed it!
         // deallocate.
 
         for (uint i = 0; i < IRCACHE_IRRADIANCE_STRIDE; ++i) {
-            deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + i]) = 0.0.xxxx;
+            deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE + i)) = 0.0.xxxx;
         }
 
         uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
-        deref(ircache_pool_buf[entry_alloc_count - 1]) = entry_idx;
+        deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
 
         // TODO: just `Store` it (AMD doesn't like it unless it's a byte address buffer)
-        const uint cell_idx = deref(ircache_entry_cell_buf[entry_idx]);
-        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags,
+        const uint cell_idx = deref(advance(ircache_entry_cell_buf, entry_idx));
+        atomicAnd(deref(advance(ircache_grid_meta_buf, cell_idx)).flags,
                   ~(IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED));
     }
 }
@@ -54,7 +54,7 @@ void main() {
 
     if (!IRCACHE_FREEZE) {
         if (entry_idx < total_entry_count) {
-            const uint life = deref(ircache_life_buf[entry_idx]);
+            const uint life = deref(advance(ircache_life_buf, entry_idx));
 
             if (ircache_entry_life_needs_aging(life)) {
                 age_ircache_entry(entry_idx);
@@ -71,20 +71,20 @@ void main() {
             {
 
                 // Flush the reposition proposal
-                VertexPacked proposal = deref(ircache_reposition_proposal_buf[entry_idx]);
-                deref(ircache_spatial_buf[entry_idx]) = proposal;
+                VertexPacked proposal = deref(advance(ircache_reposition_proposal_buf, entry_idx));
+                deref(advance(ircache_spatial_buf, entry_idx)) = proposal;
             }
 #endif
 
-            deref(ircache_reposition_proposal_count_buf[entry_idx]) = 0;
+            deref(advance(ircache_reposition_proposal_count_buf, entry_idx)) = 0;
         } else {
             VertexPacked invalid;
             invalid.data0 = vec4(uintBitsToFloat(0));
-            deref(ircache_spatial_buf[entry_idx]) = invalid;
+            deref(advance(ircache_spatial_buf, entry_idx)) = invalid;
         }
     }
 
-    const uint life = deref(ircache_life_buf[entry_idx]);
+    const uint life = deref(advance(ircache_life_buf, entry_idx));
     uint valid = uint(entry_idx < total_entry_count && is_ircache_entry_life_valid(life));
-    deref(entry_occupancy_buf[entry_idx]) = valid;
+    deref(advance(entry_occupancy_buf, entry_idx)) = valid;
 }

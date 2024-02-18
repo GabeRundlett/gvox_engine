@@ -14,14 +14,14 @@ UserIndexType FUNC_NAME(malloc)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
         // Create new page.
         return UserIndexType(atomicAdd(deref(allocator).element_count, 1));
     } else {
-        return UserIndexType(deref(deref(allocator).available_element_stack[index_in_avail_stack]));
+        return UserIndexType(deref(advance(deref(allocator).available_element_stack, index_in_avail_stack)));
     }
 }
 
 void FUNC_NAME(free)(daxa_RWBufferPtr(UserAllocatorType) allocator, UserIndexType element_ptr) {
     // Push a new element onto the released stack. This will be moved to the available stack for the next frame.
     const uint index_in_free_stack = atomicAdd(deref(allocator).released_element_stack_size, 1);
-    deref(deref(allocator).released_element_stack[index_in_free_stack]) = element_ptr;
+    deref(advance(deref(allocator).released_element_stack, index_in_free_stack)) = element_ptr;
 }
 
 void FUNC_NAME(perframe)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
@@ -30,8 +30,8 @@ void FUNC_NAME(perframe)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
     // Move all released elements from the released stack to the available element stack.
     while (deref(allocator).released_element_stack_size > 0) {
         --deref(allocator).released_element_stack_size;
-        deref(deref(allocator).available_element_stack[deref(allocator).available_element_stack_size]) =
-            deref(deref(allocator).released_element_stack[deref(allocator).released_element_stack_size]);
+        deref(advance(deref(allocator).available_element_stack, deref(allocator).available_element_stack_size)) =
+            deref(advance(deref(allocator).released_element_stack, deref(allocator).released_element_stack_size));
         ++deref(allocator).available_element_stack_size;
     }
 }

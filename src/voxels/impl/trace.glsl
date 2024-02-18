@@ -18,7 +18,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
             // intersect(ray_pos, info.ray_dir, vec3(1) / info.ray_dir, b);
         }
 
-        daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr = info.ptrs.voxel_chunks_ptr + (TOTAL_CHUNKS_PER_LOD * lod_index);
+        daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr = advance(info.ptrs.voxel_chunks_ptr, TOTAL_CHUNKS_PER_LOD * lod_index);
         float voxel_scl = float(VOXEL_SCL) / float(1 << lod_index);
         vec3 offset = vec3((deref(info.ptrs.globals).offset) & ((1 << (lod_index + 3)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
         ray_pos += offset;

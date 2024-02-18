@@ -198,7 +198,7 @@ void main() {
         vs_velocity = vec3(0);
 
         uint simulated_particle_index = uint(particle_id) - 1;
-        SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
+        SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
         float dt = min(deref(gpu_input).delta_time, 0.01);
         vec3 pos = get_particle_worldspace_origin(globals, particle.pos);
         vec3 extra_vel = vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);

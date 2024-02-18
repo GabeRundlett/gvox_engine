@@ -3,6 +3,7 @@
 #include <core.inl>
 #include <gvox/gvox.h>
 #include <application/ui.hpp>
+#include <future>
 
 struct GvoxModelData {
     size_t size = 0;

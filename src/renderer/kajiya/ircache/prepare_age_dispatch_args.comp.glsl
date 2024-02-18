@@ -13,5 +13,5 @@ void main() {
     const uint entries_per_thread = 1;
     const uint divisor = threads_per_group * entries_per_thread;
 
-    deref(dispatch_args[0]) = uvec4((entry_count + divisor - 1) / divisor, 1, 1, 0);
+    deref(advance(dispatch_args, 0)) = uvec4((entry_count + divisor - 1) / divisor, 1, 1, 0);
 }

@@ -15,7 +15,7 @@ daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 #define VOXEL_WORLD deref(voxel_globals)
 #define PLAYER deref(globals).player
-#define CHUNKS(i) deref(voxel_chunks[i])
+#define CHUNKS(i) deref(advance(voxel_chunks, i))
 #define INDIRECT deref(globals).indirect_dispatch
 
 void try_elect(in out VoxelChunkUpdateInfo work_item, in out uint update_index) {
@@ -168,9 +168,9 @@ void main() {
     uint lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     // Pointer to the previous chunk
-    temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    temp_voxel_chunk_ptr = advance(temp_voxel_chunks, temp_chunk_index);
     // Pointer to the new chunk
-    voxel_chunk_ptr = voxel_chunks + chunk_index;
+    voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     // Voxel offset in chunk
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - uvec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     // Voxel 3D position (in voxel buffer)
@@ -380,9 +380,9 @@ void main() {
     uint lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
     chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
     // Pointer to the previous chunk
-    temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
+    temp_voxel_chunk_ptr = advance(temp_voxel_chunks, temp_chunk_index);
     // Pointer to the new chunk
-    voxel_chunk_ptr = voxel_chunks + chunk_index;
+    voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     // Voxel offset in chunk
     inchunk_voxel_i = gl_GlobalInvocationID.xyz - uvec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     // Voxel 3D position (in voxel buffer)
@@ -552,8 +552,8 @@ void main() {
     chunk_n.z = chunk_n.x;
     uint lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
     uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
-    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, gl_WorkGroupID.z);
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
 }
 #undef VOXEL_WORLD
@@ -762,8 +762,8 @@ void main() {
     chunk_n.z = chunk_n.x;
     uint lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
     uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
-    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + gl_WorkGroupID.z;
-    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, gl_WorkGroupID.z);
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
 
     // Finish the chunk
@@ -845,8 +845,8 @@ void main() {
         palette_i.y * PALETTES_PER_CHUNK_AXIS +
         palette_i.z * PALETTES_PER_CHUNK_AXIS * PALETTES_PER_CHUNK_AXIS;
 
-    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + temp_chunk_index;
-    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks + chunk_index;
+    daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, temp_chunk_index);
+    daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
 
     uint my_voxel = deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_index].data;
     uint my_palette_index = 0;
@@ -918,20 +918,20 @@ void main() {
 
     if (palette_region_voxel_index < compressed_size) {
         daxa_RWBufferPtr(uint) blob_u32s;
-        voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), blob_ptr, blob_u32s);
-        deref(blob_u32s[PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S + palette_region_voxel_index]) = compression_result[palette_region_voxel_index];
+        voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(voxel_malloc_page_allocator)), blob_ptr, blob_u32s);
+        deref(advance(blob_u32s, PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S + palette_region_voxel_index)) = compression_result[palette_region_voxel_index];
     }
 
     if (palette_size > 1 && palette_region_voxel_index < 1) {
         // write accel structure
         // TODO: remove for a parallel option instead
         daxa_RWBufferPtr(uint) blob_u32s;
-        voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(voxel_malloc_page_allocator), blob_ptr, blob_u32s);
+        voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(voxel_malloc_page_allocator)), blob_ptr, blob_u32s);
         uint i = palette_region_voxel_index;
 
-        deref(blob_u32s[0]) = 0x0;
-        deref(blob_u32s[1]) = 0x0;
-        deref(blob_u32s[2]) = 0x0;
+        deref(advance(blob_u32s, 0)) = 0x0;
+        deref(advance(blob_u32s, 1)) = 0x0;
+        deref(advance(blob_u32s, 2)) = 0x0;
 
         uvec3 x8_i = palette_i;
 
@@ -945,7 +945,7 @@ void main() {
                     uint new_index = new_uniformity_lod_index(4)(local_i);
                     uint new_mask = new_uniformity_lod_mask(4)(local_i);
                     if (has_occluding) {
-                        deref(blob_u32s[new_index]) |= new_mask;
+                        deref(advance(blob_u32s, new_index)) |= new_mask;
                     }
                 }
         for (uint x = 0; x < 4; ++x)
@@ -958,7 +958,7 @@ void main() {
                     uint new_index = new_uniformity_lod_index(2)(local_i);
                     uint new_mask = new_uniformity_lod_mask(2)(local_i);
                     if (has_occluding) {
-                        deref(blob_u32s[new_index]) |= new_mask;
+                        deref(advance(blob_u32s, new_index)) |= new_mask;
                     }
                 }
     }

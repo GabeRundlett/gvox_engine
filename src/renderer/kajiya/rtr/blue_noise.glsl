@@ -29,13 +29,13 @@ float blue_noise_sampler(
 
     // xor index based on optimized ranking
     // jb: 1spp blue noise has all 0 in ranking_tile_buf so we can skip the load
-    int rankedSampleIndex = sampleIndex ^ deref(ranking_tile_buf[sampleDimension + (pixel_i + pixel_j * 128) * 8]);
+    int rankedSampleIndex = sampleIndex ^ deref(advance(ranking_tile_buf, sampleDimension + (pixel_i + pixel_j * 128) * 8));
 
     // fetch value in sequence
-    int value = deref(sobol_buf[sampleDimension + rankedSampleIndex * 256]);
+    int value = deref(advance(sobol_buf, sampleDimension + rankedSampleIndex * 256));
 
     // If the dimension is optimized, xor sequence value based on optimized scrambling
-    value = value ^ deref(scambling_tile_buf[(sampleDimension % 8) + (pixel_i + pixel_j * 128) * 8]);
+    value = value ^ deref(advance(scambling_tile_buf, (sampleDimension % 8) + (pixel_i + pixel_j * 128) * 8));
 
     // convert to float and return
     float v = (0.5f + value) / 256.0f;

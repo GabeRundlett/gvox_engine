@@ -57,7 +57,7 @@ void main() {
 
     for (uint sample_i = 0; sample_i < sample_count; ++sample_i) {
         // TODO: precalculate temporal variants
-        ivec2 sample_px = ivec2(px) + kernel_scale * deref(spatial_resolve_offsets[(px_idx_in_quad * 16 + sample_i) + 64 * filter_idx]).xy;
+        ivec2 sample_px = ivec2(px) + kernel_scale * deref(advance(spatial_resolve_offsets, (px_idx_in_quad * 16 + sample_i) + 64 * filter_idx)).xy;
 
         const vec3 neigh = linear_to_working(safeTexelFetch(input_tex, sample_px, 0)).rgb;
         const float sample_depth = safeTexelFetch(depth_tex, sample_px, 0).r;

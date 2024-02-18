@@ -24,5 +24,5 @@ void main() {
     const float infl = exp(-8 * pow(length(uv - 0.5), 2));
     const uint quantized_infl = uint(infl * 256.0);
 
-    atomicAdd(deref(output_buffer[bin]), quantized_infl);
+    atomicAdd(deref(advance(output_buffer, bin)), quantized_infl);
 }

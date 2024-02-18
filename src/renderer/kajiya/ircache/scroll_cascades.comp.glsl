@@ -15,20 +15,20 @@ daxa_RWBufferPtr(uint) ircache_pool_buf = push.uses.ircache_pool_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 
 void deallocate_cell(uint cell_idx) {
-    const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
+    const IrcacheCell cell = deref(advance(ircache_grid_meta_buf, cell_idx));
 
     if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
         // Clear the just-nuked entry
         const uint entry_idx = cell.entry_index;
 
-        deref(ircache_life_buf[entry_idx]) = IRCACHE_ENTRY_LIFE_RECYCLED;
+        deref(advance(ircache_life_buf, entry_idx)) = IRCACHE_ENTRY_LIFE_RECYCLED;
 
         for (uint i = 0; i < IRCACHE_IRRADIANCE_STRIDE; ++i) {
-            deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + i]) = 0.0.xxxx;
+            deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE + i)) = 0.0.xxxx;
         }
 
         uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
-        deref(ircache_pool_buf[entry_alloc_count - 1]) = entry_idx;
+        deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
     }
 }
 
@@ -53,15 +53,15 @@ void main() {
     if (all(lessThan(src_vx, uvec3(IRCACHE_CASCADE_SIZE)))) {
         const uint src_cell_idx = cell_idx(IrcacheCoord_from_coord_cascade(src_vx, cascade));
 
-        const IrcacheCell cell = deref(ircache_grid_meta_buf[src_cell_idx]);
-        deref(ircache_grid_meta_buf2[dst_cell_idx]) = cell;
+        const IrcacheCell cell = deref(advance(ircache_grid_meta_buf, src_cell_idx));
+        deref(advance(ircache_grid_meta_buf2, dst_cell_idx)) = cell;
 
         // Update the cell idx in the `ircache_entry_cell_buf`
         if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
             const uint entry_idx = cell.entry_index;
-            deref(ircache_entry_cell_buf[entry_idx]) = dst_cell_idx;
+            deref(advance(ircache_entry_cell_buf, entry_idx)) = dst_cell_idx;
         }
     } else {
-        deref(ircache_grid_meta_buf2[dst_cell_idx]) = IrcacheCell(0, 0);
+        deref(advance(ircache_grid_meta_buf2, dst_cell_idx)) = IrcacheCell(0, 0);
     }
 }

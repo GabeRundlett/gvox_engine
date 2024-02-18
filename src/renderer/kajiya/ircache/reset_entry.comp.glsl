@@ -21,13 +21,13 @@ void main() {
         return;
     }
 
-    const uint entry_idx = deref(ircache_entry_indirection_buf[dispatch_idx]);
+    const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx));
 
-    const bool should_reset = all(equal(vec4(0.0), deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE])));
+    const bool should_reset = all(equal(vec4(0.0), deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE))));
 
     if (should_reset) {
         for (uint i = 0; i < IRCACHE_AUX_STRIDE; ++i) {
-            deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + i]) = 0.0.xxxx;
+            deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + i)) = 0.0.xxxx;
         }
     }
 }

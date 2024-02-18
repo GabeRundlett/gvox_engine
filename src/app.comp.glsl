@@ -35,7 +35,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 #define INPUT deref(gpu_input)
 #define BRUSH_STATE deref(globals).brush_state
 #define PLAYER deref(globals).player
-#define CHUNKS(i) deref(voxel_chunks[i])
+#define CHUNKS(i) deref(advance(voxel_chunks, i))
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     player_perframe(gpu_input, globals);
@@ -91,9 +91,9 @@ void main() {
         }
     }
 
-    deref(gpu_output[INPUT.fif_index]).player_pos = PLAYER.pos + vec3(PLAYER.player_unit_offset);
-    deref(gpu_output[INPUT.fif_index]).player_rot = vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
-    deref(gpu_output[INPUT.fif_index]).player_unit_offset = vec3(PLAYER.player_unit_offset);
+    deref(advance(gpu_output, INPUT.fif_index)).player_pos = PLAYER.pos + vec3(PLAYER.player_unit_offset);
+    deref(advance(gpu_output, INPUT.fif_index)).player_rot = vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
+    deref(advance(gpu_output, INPUT.fif_index)).player_unit_offset = vec3(PLAYER.player_unit_offset);
 
     deref(globals).voxel_particles_state.simulation_dispatch = uvec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;
@@ -106,9 +106,9 @@ void main() {
 
     if (INPUT.frame_index == 0) {
         for (uint i = 0; i < MAX_SIMULATED_VOXEL_PARTICLES; ++i) {
-            SimulatedVoxelParticle self = deref(simulated_voxel_particles[i]);
+            SimulatedVoxelParticle self = deref(advance(simulated_voxel_particles, i));
             particle_spawn(self, i);
-            deref(simulated_voxel_particles[i]) = self;
+            deref(advance(simulated_voxel_particles, i)) = self;
         }
     }
 }

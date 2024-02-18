@@ -65,7 +65,7 @@ bool VoxelUniformityChunk_lod_nonuniform_2(daxa_BufferPtr(VoxelMallocPageAllocat
 
     daxa_RWBufferPtr(uint) blob_u32s;
     voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
-    return (deref(blob_u32s[index]) & mask) != 0;
+    return (deref(advance(blob_u32s, index)) & mask) != 0;
 }
 bool VoxelUniformityChunk_lod_nonuniform_4(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, uint index, uint mask) {
     if (palette_header.variant_n < 2) {
@@ -73,7 +73,7 @@ bool VoxelUniformityChunk_lod_nonuniform_4(daxa_BufferPtr(VoxelMallocPageAllocat
     }
     daxa_RWBufferPtr(uint) blob_u32s;
     voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
-    return (deref(blob_u32s[index]) & mask) != 0;
+    return (deref(advance(blob_u32s, index)) & mask) != 0;
 }
 bool VoxelUniformityChunk_lod_nonuniform_8(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, PaletteHeader palette_header, uint index, uint mask) {
     return palette_header.variant_n > 1;
@@ -123,11 +123,11 @@ PackedVoxel sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, P
 #if READ_FROM_HEAP
     daxa_RWBufferPtr(uint) blob_u32s;
     voxel_malloc_address_to_u32_ptr(allocator, palette_header.blob_ptr, blob_u32s);
-    blob_u32s = blob_u32s + PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S;
+    blob_u32s = advance(blob_u32s, PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S);
 #endif
     if (palette_header.variant_n > PALETTE_MAX_COMPRESSED_VARIANT_N) {
 #if READ_FROM_HEAP
-        return PackedVoxel(deref(blob_u32s[palette_voxel_index]));
+        return PackedVoxel(deref(advance(blob_u32s, palette_voxel_index)));
 #else
         return PackedVoxel(0x01ffff00);
 #endif
@@ -138,12 +138,12 @@ PackedVoxel sample_palette(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, P
     uint bit_index = palette_voxel_index * bits_per_variant;
     uint data_index = bit_index / 32;
     uint data_offset = bit_index - data_index * 32;
-    uint my_palette_index = (deref(blob_u32s[palette_header.variant_n + data_index + 0]) >> data_offset) & mask;
+    uint my_palette_index = (deref(advance(blob_u32s, palette_header.variant_n + data_index + 0)) >> data_offset) & mask;
     if (data_offset + bits_per_variant > 32) {
         uint shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
-        my_palette_index |= (deref(blob_u32s[palette_header.variant_n + data_index + 1]) << shift) & mask;
+        my_palette_index |= (deref(advance(blob_u32s, palette_header.variant_n + data_index + 1)) << shift) & mask;
     }
-    uint voxel_data = deref(blob_u32s[my_palette_index]);
+    uint voxel_data = deref(advance(blob_u32s, my_palette_index));
     return PackedVoxel(voxel_data);
 #else
     return PackedVoxel(0x01ffff00);
@@ -166,7 +166,7 @@ PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, uvec3 chunk_n, vec3 voxel_p
     uvec3 voxel_i = uvec3(floor((voxel_p + offset) * voxel_scl + bias));
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
     uint chunk_index = calc_chunk_index(ptrs.globals, chunk_i, chunk_n, lod_index);
-    return sample_voxel_chunk(ptrs.allocator, ptrs.voxel_chunks_ptr[chunk_index], voxel_i - chunk_i * CHUNK_SIZE);
+    return sample_voxel_chunk(ptrs.allocator, advance(ptrs.voxel_chunks_ptr, chunk_index), voxel_i - chunk_i * CHUNK_SIZE);
 }
 
 PackedVoxel sample_temp_voxel_chunk(
@@ -180,12 +180,12 @@ PackedVoxel sample_temp_voxel_chunk(
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
     uvec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
     uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n, lod_index);
-    daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = voxel_chunks_ptr[chunk_index];
+    daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks_ptr, chunk_index);
     uint update_index = deref(voxel_chunk_ptr).update_index;
     if (update_index == 0) {
         return sample_voxel_chunk(allocator, voxel_chunk_ptr, inchunk_voxel_i);
     } else {
-        daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = temp_voxel_chunks + (update_index - 1);
+        daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, update_index - 1);
         return deref(temp_voxel_chunk_ptr).voxels[inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE];
     }
 }
@@ -262,5 +262,5 @@ uint sample_lod(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(
     uvec3 voxel_i = uvec3(voxel_p * voxel_scl);
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
     uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n, lod_index);
-    return sample_lod(allocator, voxel_chunks_ptr[chunk_index], chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
+    return sample_lod(allocator, advance(voxel_chunks_ptr, chunk_index), chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }

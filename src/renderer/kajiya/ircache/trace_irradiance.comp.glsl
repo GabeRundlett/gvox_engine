@@ -62,12 +62,12 @@ void main() {
     }
 #endif
 
-    const uint entry_idx = deref(ircache_entry_indirection_buf[dispatch_idx / IRCACHE_SAMPLES_PER_FRAME]);
+    const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx / IRCACHE_SAMPLES_PER_FRAME));
     const uint sample_idx = dispatch_idx % IRCACHE_SAMPLES_PER_FRAME;
-    const uint life = deref(ircache_life_buf[entry_idx * 4]);
+    const uint life = deref(advance(ircache_life_buf, entry_idx * 4));
     const uint rank = ircache_entry_life_to_rank(life);
 
-    VertexPacked packed_entry = deref(ircache_spatial_buf[entry_idx]);
+    VertexPacked packed_entry = deref(advance(ircache_spatial_buf, entry_idx));
     const Vertex entry = unpack_vertex(packed_entry);
 
     DiffuseBrdf brdf;
@@ -109,7 +109,7 @@ void main() {
     const uint output_idx = entry_idx * IRCACHE_AUX_STRIDE + octa_idx;
 
     vec4 prev_value_and_count =
-        deref(ircache_aux_buf[output_idx + IRCACHE_OCTA_DIMS2]) * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
+        deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2)) * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
 
     vec3 val_sel = new_value;
     bool selected_new = true;
@@ -117,11 +117,11 @@ void main() {
     {
         const uint M_CLAMP = 30;
 
-        Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(ircache_aux_buf[output_idx]).xy));
+        Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, output_idx)).xy));
         if (r.M > 0) {
             r.M = min(r.M, M_CLAMP);
 
-            Vertex prev_entry = unpack_vertex(VertexPacked(deref(ircache_aux_buf[output_idx + IRCACHE_OCTA_DIMS2 * 2])));
+            Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2 * 2))));
             // prev_entry.position = entry.position;
 
             if (update_with_stream(reservoir,
@@ -135,10 +135,10 @@ void main() {
 
     finish_stream(reservoir, stream_state);
 
-    deref(ircache_aux_buf[output_idx]).xy = uintBitsToFloat(as_raw(reservoir));
-    deref(ircache_aux_buf[output_idx + IRCACHE_OCTA_DIMS2]) = vec4(val_sel, reservoir.W);
+    deref(advance(ircache_aux_buf, output_idx)).xy = uintBitsToFloat(as_raw(reservoir));
+    deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2)) = vec4(val_sel, reservoir.W);
 
     if (selected_new) {
-        deref(ircache_aux_buf[output_idx + IRCACHE_OCTA_DIMS2 * 2]) = packed_entry.data0;
+        deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2 * 2)) = packed_entry.data0;
     }
 }

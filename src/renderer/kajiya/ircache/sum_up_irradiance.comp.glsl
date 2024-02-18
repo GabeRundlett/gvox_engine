@@ -54,7 +54,7 @@ void main() {
         return;
     }
 
-    const uint entry_idx = deref(ircache_entry_indirection_buf[dispatch_idx]);
+    const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx));
     const uint output_idx = entry_idx * IRCACHE_IRRADIANCE_STRIDE;
 
     Contribution contribution_sum = Contribution_new();
@@ -65,10 +65,10 @@ void main() {
         for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
             const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-            const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + octa_idx]).xy));
+            const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + octa_idx)).xy));
             const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
-            const vec4 contrib = deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx]);
+            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx));
 
             add_radiance_in_direction(contribution_sum,
                                       contrib.rgb * contrib.w,
@@ -83,7 +83,7 @@ void main() {
     for (uint basis_i = 0; basis_i < IRCACHE_IRRADIANCE_STRIDE; ++basis_i) {
         const vec4 new_value = contribution_sum.sh_rgb[basis_i];
         vec4 prev_value =
-            deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i]) * deref(gpu_input).pre_exposure_delta;
+            deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i)) * deref(gpu_input).pre_exposure_delta;
 
         const bool should_reset = !any(notEqual(vec4(0.0), prev_value));
         if (should_reset) {
@@ -94,6 +94,6 @@ void main() {
         // float blend_factor_new = 1;
         const vec4 blended_value = mix(prev_value, new_value, blend_factor_new);
 
-        deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i]) = blended_value;
+        deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i)) = blended_value;
     }
 }

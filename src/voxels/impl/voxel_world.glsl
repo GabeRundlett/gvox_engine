@@ -49,10 +49,10 @@ void voxel_world_perframe(
     // VoxelLeafChunkAllocator_perframe(ptrs.voxel_leaf_chunk_allocator);
     // VoxelParentChunkAllocator_perframe(ptrs.voxel_parent_chunk_allocator);
 
-    deref(gpu_output[deref(gpu_input).fif_index]).voxel_world.voxel_malloc_output.current_element_count =
-        VoxelMallocPageAllocator_get_consumed_element_count(daxa_BufferPtr(VoxelMallocPageAllocator)(ptrs.allocator));
-    // deref(gpu_output[deref(gpu_input).fif_index]).voxel_world.voxel_leaf_chunk_output.current_element_count =
+    deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_malloc_output.current_element_count =
+        VoxelMallocPageAllocator_get_consumed_element_count(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(ptrs.allocator)));
+    // deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_leaf_chunk_output.current_element_count =
     //     VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
-    // deref(gpu_output[deref(gpu_input).fif_index]).voxel_world.voxel_parent_chunk_output.current_element_count =
+    // deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_parent_chunk_output.current_element_count =
     //     VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
 }

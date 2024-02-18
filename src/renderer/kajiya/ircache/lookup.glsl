@@ -22,7 +22,7 @@ IrcacheLookup ircache_lookup(vec3 pt_ws, vec3 normal_ws, vec3 jitter) {
     const IrcacheCoord rcoord = ws_pos_to_ircache_coord(globals, gpu_input, pt_ws, normal_ws, jitter);
     const uint cell_idx = cell_idx(rcoord);
 
-    const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
+    const IrcacheCell cell = deref(advance(ircache_grid_meta_buf, cell_idx));
 
     if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
         const uint entry_idx = cell.entry_index;
@@ -95,7 +95,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
             self.query_rank >= IRCACHE_ENTRY_RANK_COUNT || (any(was_just_scrolled_in) && self.query_rank > 0);
 
         const uint cell_idx = cell_idx(rcoord);
-        const IrcacheCell cell = deref(ircache_grid_meta_buf[cell_idx]);
+        const IrcacheCell cell = deref(advance(ircache_grid_meta_buf, cell_idx));
         const uint entry_flags = cell.flags;
 
         just_allocated = (entry_flags & IRCACHE_ENTRY_META_JUST_ALLOCATED) != 0;
@@ -104,7 +104,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
             if ((entry_flags & IRCACHE_ENTRY_META_OCCUPIED) == 0) {
                 // Allocate
 
-                uint prev = atomicOr(deref(ircache_grid_meta_buf[cell_idx]).flags, IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED);
+                uint prev = atomicOr(deref(advance(ircache_grid_meta_buf, cell_idx)).flags, IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED);
                 // ircache_grid_meta_buf.InterlockedOr(
                 //     sizeof(uvec2) * cell_idx + sizeof(uint),
                 //     IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED,
@@ -120,16 +120,16 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
                     // Ref: 2af64eb1-745a-4778-8c80-04af6e2225e0
                     if (alloc_idx >= 1024 * 64) {
                         atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
-                        atomicAnd(deref(ircache_grid_meta_buf[cell_idx]).flags, ~(IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED));
+                        atomicAnd(deref(advance(ircache_grid_meta_buf, cell_idx)).flags, ~(IRCACHE_ENTRY_META_OCCUPIED | IRCACHE_ENTRY_META_JUST_ALLOCATED));
                     } else {
-                        uint entry_idx = deref(ircache_pool_buf[alloc_idx]);
+                        uint entry_idx = deref(advance(ircache_pool_buf, alloc_idx));
                         atomicMax(deref(ircache_meta_buf).entry_count, entry_idx + 1);
 
                         // Clear dead state, mark used.
 
-                        deref(ircache_life_buf[entry_idx]) = ircache_entry_life_for_rank(self.query_rank);
-                        deref(ircache_entry_cell_buf[entry_idx]) = cell_idx;
-                        deref(ircache_grid_meta_buf[cell_idx]).entry_index = entry_idx;
+                        deref(advance(ircache_life_buf, entry_idx)) = ircache_entry_life_for_rank(self.query_rank);
+                        deref(advance(ircache_entry_cell_buf, entry_idx)) = cell_idx;
+                        deref(advance(ircache_grid_meta_buf, cell_idx)).entry_index = entry_idx;
                     }
                 }
             }
@@ -163,7 +163,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
         for (uint i = 0; i < IRCACHE_LOOKUP_MAX; ++i)
             if (i < lookup.count) {
                 const uint entry_idx = lookup.entry_idx[i];
-                deref(ircache_reposition_proposal_buf[entry_idx]) = pack_vertex(new_entry);
+                deref(advance(ircache_reposition_proposal_buf, entry_idx)) = pack_vertex(new_entry);
             }
     }
 
@@ -238,12 +238,12 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
                 for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
                     const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + octa_idx]).xy));
+                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + octa_idx)).xy));
                     const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
                     const float wt = dot(dir, self.normal_ws);
                     if (wt > 0.0) {
-                        const vec4 contrib = deref(ircache_aux_buf[entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx]);
+                        const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx));
                         irradiance += contrib.rgb * wt * contrib.w;
                         weight_sum += wt;
                     }
@@ -253,7 +253,7 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
             }
 #else
             for (uint basis_i = 0; basis_i < 3; ++basis_i) {
-                irradiance[basis_i] += eval_sh(deref(ircache_irradiance_buf[entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i]), self.normal_ws);
+                irradiance[basis_i] += eval_sh(deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE + basis_i)), self.normal_ws);
             }
 #endif
 
@@ -262,24 +262,24 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
 
             if (!IRCACHE_FREEZE && should_propose_position) {
 #ifndef IRCACHE_LOOKUP_DONT_KEEP_ALIVE
-                const uint prev_life = deref(ircache_life_buf[entry_idx]);
+                const uint prev_life = deref(advance(ircache_life_buf, entry_idx));
 
                 if (prev_life < IRCACHE_ENTRY_LIFE_RECYCLE) {
                     const uint new_life = ircache_entry_life_for_rank(self.query_rank);
                     if (new_life < prev_life) {
-                        atomicMin(deref(ircache_life_buf[entry_idx]), new_life);
+                        atomicMin(deref(advance(ircache_life_buf, entry_idx)), new_life);
                         // ircache_life_buf.Store(entry_idx * 4, new_life);
                     }
 
                     const uint prev_rank = ircache_entry_life_to_rank(prev_life);
                     if (self.query_rank <= prev_rank) {
-                        uint prev_vote_count = atomicAdd(deref(ircache_reposition_proposal_count_buf[entry_idx]), 1);
+                        uint prev_vote_count = atomicAdd(deref(advance(ircache_reposition_proposal_count_buf, entry_idx)), 1);
 
                         const float dart = uint_to_u01_float(hash1_mut(rng));
                         const float prob = 1.0 / (prev_vote_count + 1.0);
 
                         if (IRCACHE_USE_UNIFORM_VOTING == 0 || dart <= prob) {
-                            deref(ircache_reposition_proposal_buf[entry_idx]) = pack_vertex(lookup.proposal);
+                            deref(advance(ircache_reposition_proposal_buf, entry_idx)) = pack_vertex(lookup.proposal);
                         }
                     }
                 }

@@ -63,8 +63,8 @@ void main() {
     positions[4 + 6 * 5] = vec3(+1.0, +0.0, +1.0);
     positions[5 + 6 * 5] = vec3(+1.0, +1.0, +1.0);
 
-    uint simulated_particle_index = deref(rendered_voxel_particles[particle_index]);
-    SimulatedVoxelParticle particle = deref(simulated_voxel_particles[simulated_particle_index]);
+    uint simulated_particle_index = deref(advance(rendered_voxel_particles, particle_index));
+    SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
 
     vec3 particle_worldspace_origin = get_particle_worldspace_origin(globals, particle.pos);
     vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
