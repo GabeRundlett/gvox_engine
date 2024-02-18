@@ -59,8 +59,8 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
 
     const float reflected_cone_spread_angle = 0.03;
     const RayCone ray_cone = propagate(
-        pixel_ray_cone_from_image_height(globals, push.gbuffer_tex_size.y * 0.5),
-        reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(globals)));
+        pixel_ray_cone_from_image_height(gpu_input, push.gbuffer_tex_size.y * 0.5),
+        reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(gpu_input)));
 
     GbufferRaytrace primary_hit_ = GbufferRaytrace_with_ray(outgoing_ray);
     primary_hit_ = with_cone(primary_hit_, ray_cone);
@@ -74,7 +74,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
         hit_normal_ws = gbuffer.normal;
 
         // Project the sample into clip space, and check if it's on-screen
-        const vec3 primary_hit_cs = position_world_to_sample(globals, primary_hit.position);
+        const vec3 primary_hit_cs = position_world_to_sample(gpu_input, primary_hit.position);
         const vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
         const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, g_sampler_nnc), primary_hit_uv, 0).r;
         // const GbufferDataPacked primary_hit_screen_gbuffer = GbufferDataPacked::from_uint4(asuint(gbuffer_tex[ivec2(primary_hit_uv * gbuffer_tex_size.xy)]));

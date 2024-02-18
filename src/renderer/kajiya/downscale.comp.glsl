@@ -19,7 +19,7 @@ void main() {
 #elif DOWNSCALE_NRM
     uvec4 g_buffer_value = safeTexelFetchU(src_image_id, src_px, 0);
     vec3 normal_ws = u16_to_nrm_unnormalized(g_buffer_value.y);
-    vec3 normal_vs = normalize((deref(globals).player.cam.world_to_view * vec4(normal_ws, 0)).xyz);
+    vec3 normal_vs = normalize((deref(gpu_input).player.cam.world_to_view * vec4(normal_ws, 0)).xyz);
     vec4 output_val = vec4(normal_vs, 1);
 #endif
 

@@ -42,6 +42,31 @@ struct IrcacheCascadeConstants {
     daxa_i32vec4 voxels_scrolled_this_frame;
 };
 
+struct Camera {
+    daxa_f32mat4x4 view_to_clip;
+    daxa_f32mat4x4 clip_to_view;
+    daxa_f32mat4x4 view_to_sample;
+    daxa_f32mat4x4 sample_to_view;
+    daxa_f32mat4x4 world_to_view;
+    daxa_f32mat4x4 view_to_world;
+    daxa_f32mat4x4 clip_to_prev_clip;
+    daxa_f32mat4x4 prev_view_to_prev_clip;
+    daxa_f32mat4x4 prev_clip_to_prev_view;
+    daxa_f32mat4x4 prev_world_to_prev_view;
+    daxa_f32mat4x4 prev_view_to_prev_world;
+};
+
+struct Player {
+    Camera cam;
+    daxa_f32vec3 pos; // Player (mod 1) position centered around 0.5 [0-1] (in meters)
+    daxa_f32vec3 vel;
+    daxa_f32 pitch, yaw, roll;
+    daxa_f32vec3 forward, lateral;
+    daxa_i32vec3 player_unit_offset;
+    daxa_i32vec3 prev_unit_offset;
+    daxa_f32 max_speed;
+};
+
 struct GpuInput {
     daxa_u32vec2 frame_dim;
     daxa_u32vec2 rounded_frame_dim;
@@ -52,8 +77,6 @@ struct GpuInput {
     daxa_f32 pre_exposure_delta;
     daxa_f32 render_res_scl;
     daxa_f32 resize_factor;
-    daxa_f32 fov;
-    daxa_f32 sensitivity;
     daxa_u32 frame_index;
     daxa_u32 fif_index;
     daxa_u32 flags;
@@ -65,16 +88,11 @@ struct GpuInput {
     BrushSettings world_brush_settings;
     BrushSettings brush_a_settings;
     BrushSettings brush_b_settings;
-    MouseInput mouse;
-    daxa_u32 actions[GAME_ACTION_LAST + 1];
+    Player player;
 };
 DAXA_DECL_BUFFER_PTR(GpuInput)
 
 struct GpuOutput {
-    daxa_f32vec3 player_pos;
-    daxa_f32vec3 player_rot;
-    daxa_f32vec3 player_unit_offset;
-
     VoxelWorldOutput voxel_world;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)

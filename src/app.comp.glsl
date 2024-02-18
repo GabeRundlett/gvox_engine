@@ -7,12 +7,10 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
-#include <utilities/gpu/player.glsl>
 #include <voxels/core.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    player_startup(gpu_input, globals);
     voxel_world_startup(globals, VOXELS_RW_BUFFER_PTRS);
 }
 
@@ -27,25 +25,23 @@ daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
-#include <utilities/gpu/player.glsl>
-
+#include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/core.glsl>
 #include <voxels/voxel_particle.glsl>
 
 #define INPUT deref(gpu_input)
 #define BRUSH_STATE deref(globals).brush_state
-#define PLAYER deref(globals).player
+#define PLAYER deref(gpu_input).player
 #define CHUNKS(i) deref(advance(voxel_chunks, i))
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    player_perframe(gpu_input, globals);
     voxel_world_perframe(gpu_input, gpu_output, globals, VOXELS_RW_BUFFER_PTRS);
 
     {
         vec2 frame_dim = INPUT.frame_dim;
         vec2 inv_frame_dim = vec2(1.0) / frame_dim;
-        vec2 uv = get_uv(deref(gpu_input).mouse.pos, vec4(frame_dim, inv_frame_dim));
-        ViewRayContext vrc = unjittered_vrc_from_uv(globals, uv);
+        vec2 uv = vec2(0.5); // get_uv(deref(gpu_input).mouse.pos, vec4(frame_dim, inv_frame_dim));
+        ViewRayContext vrc = unjittered_vrc_from_uv(gpu_input, uv);
         vec3 ray_dir = ray_dir_ws(vrc);
         vec3 cam_pos = ray_origin_ws(vrc);
         vec3 ray_pos = cam_pos;
@@ -58,42 +54,10 @@ void main() {
         deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
         deref(globals).brush_input.prev_pos_offset = deref(globals).brush_input.pos_offset;
         deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos;
-        deref(globals).brush_input.pos_offset = deref(globals).player.player_unit_offset;
+        deref(globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
 
-        if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
-            {
-                // ChunkWorkItem brush_work_item;
-                // TODO: Issue a work item with a correct root coordinate. I think that we should turn this
-                // coordinate space from being in root node space, to actually be in root CHILD node space.
-                // This would make it so that we can issue work items with more granularity.
-                // brush_work_item.i = ivec3(0, 0, 0);
-                // brush_work_item.brush_id = BRUSH_FLAGS_USER_BRUSH_A;
-                // brush_work_item.brush_input = deref(globals).brush_input;
-                // zero_work_item_children(brush_work_item);
-                // queue_root_work_item(globals, brush_work_item);
-            }
-            BRUSH_STATE.is_editing = 1;
-        } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
-            if (BRUSH_STATE.is_editing == 0) {
-                BRUSH_STATE.initial_frame = INPUT.frame_index;
-            }
-            {
-                // ChunkWorkItem brush_work_item;
-                // brush_work_item.i = ivec3(0, 0, 0);
-                // brush_work_item.brush_id = BRUSH_FLAGS_USER_BRUSH_B;
-                // brush_work_item.brush_input = deref(globals).brush_input;
-                // zero_work_item_children(brush_work_item);
-                // queue_root_work_item(globals, brush_work_item);
-            }
-            BRUSH_STATE.is_editing = 1;
-        } else {
-            BRUSH_STATE.is_editing = 0;
-        }
+        BRUSH_STATE.is_editing = 0;
     }
-
-    deref(advance(gpu_output, INPUT.fif_index)).player_pos = PLAYER.pos + vec3(PLAYER.player_unit_offset);
-    deref(advance(gpu_output, INPUT.fif_index)).player_rot = vec3(PLAYER.yaw, PLAYER.pitch, PLAYER.roll);
-    deref(advance(gpu_output, INPUT.fif_index)).player_unit_offset = vec3(PLAYER.player_unit_offset);
 
     deref(globals).voxel_particles_state.simulation_dispatch = uvec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
     deref(globals).voxel_particles_state.draw_params.vertex_count = 0;

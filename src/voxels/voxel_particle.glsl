@@ -11,12 +11,12 @@
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
 vec3 get_particle_worldspace_origin(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
-    // return pos - deref(globals).player.player_unit_offset;
-    return floor(pos * VOXEL_SCL) / VOXEL_SCL - deref(globals).player.player_unit_offset;
+    // return pos - deref(gpu_input).player.player_unit_offset;
+    return floor(pos * VOXEL_SCL) / VOXEL_SCL - deref(gpu_input).player.player_unit_offset;
 }
 
 vec3 get_particle_worldspace_pos(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
-    return pos - deref(globals).player.player_unit_offset;
+    return pos - deref(gpu_input).player.player_unit_offset;
 }
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
@@ -28,9 +28,9 @@ void particle_spawn(in out SimulatedVoxelParticle self, uint index) {
     self.flags = PARTICLE_ALIVE_FLAG;
 
     // self.pos = vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
-    // self.vel = deref(globals).player.forward * 0 + vec3(0, 0, -10);
-    self.pos = deref(globals).player.pos + deref(globals).player.player_unit_offset + deref(globals).player.forward * 1 + vec3(0, 0, -2.5) + deref(globals).player.lateral * 1.5;
-    self.vel = deref(globals).player.forward * 8 + rand_dir() * 2; // + deref(globals).player.vel;
+    // self.vel = deref(gpu_input).player.forward * 0 + vec3(0, 0, -10);
+    self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + deref(gpu_input).player.forward * 1 + vec3(0, 0, -2.5) + deref(gpu_input).player.lateral * 1.5;
+    self.vel = deref(gpu_input).player.forward * 8 + rand_dir() * 2; // + deref(gpu_input).player.vel;
 
     vec3 col = vec3(0.3, 0.4, 0.9) * (rand() * 0.5 + 0.5); // vec3(0.5);
     vec3 nrm = vec3(0, 0, 1);
@@ -43,7 +43,7 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
 
     // if (PER_VOXEL_NORMALS != 0) {
     //     Voxel particle_voxel = unpack_voxel(self.packed_voxel);
-    //     particle_voxel.normal = normalize(deref(globals).player.pos - get_particle_worldspace_pos(globals, self.pos));
+    //     particle_voxel.normal = normalize(deref(gpu_input).player.pos - get_particle_worldspace_pos(globals, self.pos));
     //     self.packed_voxel = pack_voxel(particle_voxel);
     // }
 

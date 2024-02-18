@@ -19,13 +19,13 @@ void main() {
     output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
     vec2 uv = get_uv(gl_GlobalInvocationID.xy * PREPASS_SCL, output_tex_size);
 
-    ViewRayContext vrc = vrc_from_uv(globals, uv);
+    ViewRayContext vrc = vrc_from_uv(gpu_input, uv);
     vec3 ray_dir = ray_dir_ws(vrc);
     vec3 cam_pos = ray_origin_ws(vrc);
     vec3 ray_pos = cam_pos;
 
 #if ENABLE_DEPTH_PREPASS
-    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 16.0 * output_tex_size.w * deref(globals).player.cam.clip_to_view[1][1], true), ray_pos);
+    VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 16.0 * output_tex_size.w * deref(gpu_input).player.cam.clip_to_view[1][1], true), ray_pos);
     uint step_n = trace_result.step_n;
 #else
     uint step_n = 0;
@@ -64,7 +64,7 @@ void main() {
     output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
     vec2 uv = get_uv(PIXEL_I, output_tex_size);
 
-    ViewRayContext vrc = vrc_from_uv(globals, uv);
+    ViewRayContext vrc = vrc_from_uv(gpu_input, uv);
     vec3 ray_dir = ray_dir_ws(vrc);
     vec3 cam_pos = ray_origin_ws(vrc);
 
@@ -99,9 +99,9 @@ void main() {
 
     // float depth = length(cam_pos - ray_pos);
     // transform depth to ndc space
-    vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos, 1));
-    vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(ray_pos + trace_result.vel, 1)); // when animated objects exist, this is where they'd put their velocity
-    vec4 ss_pos = (deref(globals).player.cam.view_to_sample * vs_pos);
+    vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(ray_pos, 1));
+    vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(ray_pos + trace_result.vel, 1)); // when animated objects exist, this is where they'd put their velocity
+    vec4 ss_pos = (deref(gpu_input).player.cam.view_to_sample * vs_pos);
     float depth = ss_pos.z / ss_pos.w;
     vec3 vs_nrm = vec3(0);
     vec3 vs_velocity = vec3(0);
@@ -147,7 +147,7 @@ void main() {
     } else {
         output_value.x = trace_result.voxel_data.data;
         output_value.y = nrm_to_u16(trace_result.nrm);
-        vs_nrm = (deref(globals).player.cam.world_to_view * vec4(trace_result.nrm, 0)).xyz;
+        vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(trace_result.nrm, 0)).xyz;
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
     }
     output_value.z = floatBitsToUint(depth);
@@ -201,13 +201,13 @@ void main() {
         SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
         float dt = min(deref(gpu_input).delta_time, 0.01);
         vec3 pos = get_particle_worldspace_origin(globals, particle.pos);
-        vec3 extra_vel = vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);
+        vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
         vec3 prev_pos = get_particle_worldspace_origin(globals, particle.pos - particle.vel * dt + extra_vel);
-        vec4 vs_pos = (deref(globals).player.cam.world_to_view * vec4(pos, 1));
-        vec4 prev_vs_pos = (deref(globals).player.cam.world_to_view * vec4(prev_pos, 1));
+        vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
+        vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 
-        ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv, particles_depth);
+        ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
         vec3 ppos = ray_hit_ws(vrc);
         nrm = ppos - (pos + 0.5 / VOXEL_SCL);
         ppos = abs(nrm);
@@ -225,14 +225,14 @@ void main() {
             }
         }
 
-        // nrm = normalize(deref(globals).player.pos - pos);
+        // nrm = normalize(deref(gpu_input).player.pos - pos);
 
         g_buffer_value.x = particle.packed_voxel.data;
         g_buffer_value.y = nrm_to_u16(nrm);
     }
 #endif
     g_buffer_value.z = floatBitsToUint(depth);
-    vec3 vs_nrm = (deref(globals).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
 
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
         return;

@@ -30,7 +30,7 @@ void main() {
     uvec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), ivec2(gl_GlobalInvocationID.xy), 0);
     vec3 nrm = u16_to_nrm(g_buffer_value.y);
 
-    ViewRayContext vrc = vrc_from_uv_and_depth(globals, uv, depth);
+    ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, depth);
     vec3 cam_dir = ray_dir_ws(vrc);
     vec3 cam_pos = ray_origin_ws(vrc);
     vec3 ray_pos = biased_secondary_ray_origin_ws_with_normal(vrc, nrm);

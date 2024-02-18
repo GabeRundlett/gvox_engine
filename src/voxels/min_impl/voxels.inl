@@ -32,8 +32,8 @@ struct VoxelRWBufferPtrs {
     daxa_RWBufferPtr(VoxelWorldGlobals) globals;
 };
 
-#define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelWorldGlobals)(voxel_globals))
-#define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelWorldGlobals)(voxel_globals))
+#define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelWorldGlobals)(as_address(voxel_globals)))
+#define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelWorldGlobals)(as_address(voxel_globals)))
 
 #if defined(__cplusplus)
 

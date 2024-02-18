@@ -58,20 +58,20 @@ vec2 FFX_DNSR_Shadows_GetInvBufferDimensions() {
 }
 
 mat4 FFX_DNSR_Shadows_GetProjectionInverse() {
-    return deref(globals).player.cam.clip_to_view;
+    return deref(gpu_input).player.cam.clip_to_view;
 }
 
 mat4 FFX_DNSR_Shadows_GetReprojectionMatrix() {
-    return deref(globals).player.cam.clip_to_prev_clip;
+    return deref(gpu_input).player.cam.clip_to_prev_clip;
 }
 
 mat4 FFX_DNSR_Shadows_GetViewProjectionInverse() {
     // TODO: replace the temporal component in the denoiser
-    return deref(globals).player.cam.clip_to_view;
+    return deref(gpu_input).player.cam.clip_to_view;
 }
 
 vec3 get_eye_position() {
-    vec4 eye_pos_h = deref(globals).player.cam.view_to_world * vec4(0, 0, 0, 1);
+    vec4 eye_pos_h = deref(gpu_input).player.cam.view_to_world * vec4(0, 0, 0, 1);
     return eye_pos_h.xyz / eye_pos_h.w;
 }
 
@@ -250,7 +250,7 @@ vec2 FFX_DNSR_Shadows_GetInvBufferDimensions() {
 }
 
 mat4 FFX_DNSR_Shadows_GetProjectionInverse() {
-    return deref(globals).player.cam.clip_to_view;
+    return deref(gpu_input).player.cam.clip_to_view;
 }
 
 float FFX_DNSR_Shadows_GetDepthSimilaritySigma() {

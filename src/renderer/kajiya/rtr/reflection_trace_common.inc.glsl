@@ -67,8 +67,8 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
     const float reflected_cone_spread_angle = sqrt(roughness) * 0.05;
 
     const RayCone ray_cone = propagate(
-        pixel_ray_cone_from_image_height(globals, push.gbuffer_tex_size.y * 0.5),
-        reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(globals)));
+        pixel_ray_cone_from_image_height(gpu_input, push.gbuffer_tex_size.y * 0.5),
+        reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(gpu_input)));
 
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY == 0) {
         GbufferRaytrace primary_hit_ = GbufferRaytrace_with_ray(outgoing_ray);
@@ -85,7 +85,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
             const LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
 
             // Project the sample into clip space, and check if it's on-screen
-            const vec3 primary_hit_cs = position_world_to_sample(globals, primary_hit.position);
+            const vec3 primary_hit_cs = position_world_to_sample(gpu_input, primary_hit.position);
             const vec2 primary_hit_uv = cs_to_uv(primary_hit_cs.xy);
             const float primary_hit_screen_depth = textureLod(daxa_sampler2D(depth_tex, g_sampler_nnc), primary_hit_uv, 0).r;
             GbufferData primary_hit_screen_gbuffer = unpack(GbufferDataPacked(safeTexelFetchU(gbuffer_tex, ivec2(primary_hit_uv * push.gbuffer_tex_size.xy), 0)));
@@ -130,7 +130,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
                     total_radiance += brdf_value * light_radiance;
                 }
 
-                reflected_normal_vs = direction_world_to_view(globals, gbuffer.normal);
+                reflected_normal_vs = direction_world_to_view(gpu_input, gbuffer.normal);
 
                 if (USE_EMISSIVE) {
                     total_radiance += gbuffer.emissive;
@@ -224,7 +224,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
 #endif
 
     result.hit_t = hit_t;
-    result.hit_normal_vs = -direction_world_to_view(globals, outgoing_ray.Direction);
+    result.hit_normal_vs = -direction_world_to_view(gpu_input, outgoing_ray.Direction);
 
     return result;
 }

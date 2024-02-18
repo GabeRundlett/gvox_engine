@@ -432,12 +432,16 @@ struct IrcacheRenderer {
 
     PingPongBuffer ping_pong_ircache_grid_meta_buf;
 
-    void update_eye_position(GpuInput &gpu_input, GpuOutput const &gpu_output) {
+    void update_eye_position(GpuInput &gpu_input) {
         if (!this->enable_scroll) {
             return;
         }
 
-        gpu_input.ircache_grid_center = daxa_f32vec3{gpu_output.player_pos.x, gpu_output.player_pos.y, gpu_output.player_pos.z};
+        gpu_input.ircache_grid_center = daxa_f32vec3{
+            gpu_input.player.pos.x + gpu_input.player.player_unit_offset.x,
+            gpu_input.player.pos.y + gpu_input.player.player_unit_offset.y,
+            gpu_input.player.pos.z + gpu_input.player.player_unit_offset.z,
+        };
 
         this->grid_center = glm::vec3(gpu_input.ircache_grid_center.x, gpu_input.ircache_grid_center.y, gpu_input.ircache_grid_center.z);
 

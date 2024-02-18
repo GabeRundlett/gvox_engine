@@ -69,10 +69,10 @@ void main() {
     const mat3 tangent_to_world = build_orthonormal_basis(gbuffer.normal);
 
 #if RTR_USE_TIGHTER_RAY_BIAS
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, gbuffer.normal);
 #else
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws(view_ray_context);
 #endif
 
@@ -141,7 +141,7 @@ void main() {
         safeImageStore(rng_out_tex, ivec2(px), uvec4(rng));
         RtrTraceResult result = do_the_thing(px, gbuffer.normal, gbuffer.roughness, rng, outgoing_ray);
 
-        const vec3 direction_vs = direction_world_to_view(globals, outgoing_ray.Direction);
+        const vec3 direction_vs = direction_world_to_view(gpu_input, outgoing_ray.Direction);
         const float to_surface_area_measure =
 #if RTR_APPROX_MEASURE_CONVERSION
             1

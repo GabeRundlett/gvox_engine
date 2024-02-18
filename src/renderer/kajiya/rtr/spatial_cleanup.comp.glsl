@@ -24,7 +24,7 @@ const bool SHUFFLE_SUBPIXELS = true;
 float depth_to_view_z(float depth) {
     // NOTE(grundlett): In Kajiya, this is `clip_to_view._43`, which
     // I have no clue what corresponds to in GLSL.
-    return rcp(depth * -deref(globals).player.cam.clip_to_view[2][3]);
+    return rcp(depth * -deref(gpu_input).player.cam.clip_to_view[2][3]);
 }
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -44,7 +44,7 @@ void main() {
     const vec3 center_normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(px), 0).xyz * 2.0 - 1.0;
 
     // TODO: project the BRDF lobe footprint; this only works for certain roughness ranges
-    const float filter_radius_ss = 0.5 * deref(globals).player.cam.view_to_clip[1][1] / -depth_to_view_z(center_depth);
+    const float filter_radius_ss = 0.5 * deref(gpu_input).player.cam.view_to_clip[1][1] / -depth_to_view_z(center_depth);
     const uint filter_idx = uint(clamp(filter_radius_ss * 7.0, 0.0, 7.0));
 
     vec3 vsum = 0.0.xxx;

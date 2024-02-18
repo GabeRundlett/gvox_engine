@@ -55,10 +55,10 @@ void main() {
     uint rng = hash3(uvec3(px, seed));
 
     vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
 
     const vec3 center_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).rgb;
-    const vec3 center_normal_ws = direction_view_to_world(globals, center_normal_vs);
+    const vec3 center_normal_ws = direction_view_to_world(gpu_input, center_normal_vs);
     const float center_depth = safeTexelFetch(half_depth_tex, ivec2(px), 0).r;
     const float center_ssao = safeTexelFetch(half_ssao_tex, ivec2(px), 0).r;
 
@@ -195,12 +195,12 @@ void main() {
             continue;
         }
 
-        const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(globals, rpx_uv, rpx_depth);
+        const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(gpu_input, rpx_uv, rpx_depth);
 
         const vec2 spx_uv = get_uv(
             spx * 2 + HALFRES_SUBSAMPLE_OFFSET,
             push.gbuffer_tex_size);
-        const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(globals, spx_uv, spx_packed.depth);
+        const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(gpu_input, spx_uv, spx_packed.depth);
         const vec3 sample_hit_ws = spx_packed.ray_hit_offset_ws + ray_hit_ws(spx_ray_ctx);
 
         const vec3 reused_dir_to_sample_hit_unnorm_ws = sample_hit_ws - ray_hit_ws(rpx_ray_ctx);
@@ -234,7 +234,7 @@ void main() {
             const float surface_offset_len = length(
                 // Use the center depth for simplicity; this doesn't need to be exact.
                 // Faster, looks about the same.
-                ray_hit_vs(vrc_from_uv_and_depth(globals, ray_orig_uv, depth)) - ray_hit_vs(view_ray_context));
+                ray_hit_vs(vrc_from_uv_and_depth(gpu_input, ray_orig_uv, depth)) - ray_hit_vs(view_ray_context));
 
             // Multiplier over the surface offset from the center to the neighbor
             const float MAX_RAYMARCH_DIST_MULT = 3.0;

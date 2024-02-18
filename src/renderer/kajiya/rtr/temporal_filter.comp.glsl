@@ -56,15 +56,15 @@ void main() {
     vec2 uv = get_uv(px, push.output_tex_size);
 
     const float center_depth = safeTexelFetch(depth_tex, ivec2(px), 0).r;
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, center_depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, center_depth);
     const vec3 reflector_vs = ray_hit_vs(view_ray_context);
     const vec3 reflection_hit_vs = reflector_vs + ray_dir_vs(view_ray_context) * refl_ray_length;
 
-    const vec4 reflection_hit_cs = deref(globals).player.cam.view_to_sample * vec4(reflection_hit_vs, 1);
-    const vec4 prev_hit_cs = deref(globals).player.cam.clip_to_prev_clip * reflection_hit_cs;
+    const vec4 reflection_hit_cs = deref(gpu_input).player.cam.view_to_sample * vec4(reflection_hit_vs, 1);
+    const vec4 prev_hit_cs = deref(gpu_input).player.cam.clip_to_prev_clip * reflection_hit_cs;
     vec2 hit_prev_uv = cs_to_uv(prev_hit_cs.xy / prev_hit_cs.w);
 
-    const vec4 prev_reflector_cs = deref(globals).player.cam.clip_to_prev_clip * view_ray_context.ray_hit_cs;
+    const vec4 prev_reflector_cs = deref(gpu_input).player.cam.clip_to_prev_clip * view_ray_context.ray_hit_cs;
     const vec2 reflector_prev_uv = cs_to_uv(prev_reflector_cs.xy / prev_reflector_cs.w);
 
     vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(px), 0);
@@ -163,8 +163,8 @@ void main() {
     float wo_similarity;
     {
         // TODO: take object motion into account too
-        const vec3 current_wo = normalize(ray_hit_ws(view_ray_context) - get_eye_position(globals));
-        const vec3 prev_wo = normalize(ray_hit_ws(view_ray_context) - get_prev_eye_position(globals));
+        const vec3 current_wo = normalize(ray_hit_ws(view_ray_context) - get_eye_position(gpu_input));
+        const vec3 prev_wo = normalize(ray_hit_ws(view_ray_context) - get_prev_eye_position(gpu_input));
 
         const float clamped_roughness = max(0.1, gbuffer.roughness);
 

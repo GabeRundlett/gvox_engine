@@ -39,12 +39,12 @@ void main() {
 
     if (depth == 0.0) {
         vec4 pos_cs = vec4(uv_to_cs(uv), 0.0, 1.0);
-        vec4 pos_vs = deref(globals).player.cam.clip_to_view * pos_cs;
+        vec4 pos_vs = deref(gpu_input).player.cam.clip_to_view * pos_cs;
 
         vec4 prev_vs = pos_vs;
 
-        vec4 prev_cs = deref(globals).player.cam.view_to_clip * prev_vs;
-        vec4 prev_pcs = deref(globals).player.cam.clip_to_prev_clip * prev_cs;
+        vec4 prev_cs = deref(gpu_input).player.cam.view_to_clip * prev_vs;
+        vec4 prev_pcs = deref(gpu_input).player.cam.clip_to_prev_clip * prev_cs;
 
         vec2 prev_uv = cs_to_uv(prev_pcs.xy);
         vec2 uv_diff = prev_uv - uv;
@@ -53,24 +53,24 @@ void main() {
         return;
     }
 
-    vec3 eye_pos = (deref(globals).player.cam.view_to_world * vec4(0, 0, 0, 1)).xyz;
+    vec3 eye_pos = (deref(gpu_input).player.cam.view_to_world * vec4(0, 0, 0, 1)).xyz;
 
     vec3 normal_vs = fetch_nrm(px) * 2.0 - 1.0;
-    vec3 normal_pvs = (deref(globals).player.cam.prev_clip_to_prev_view *
-                       (deref(globals).player.cam.clip_to_prev_clip *
-                        (deref(globals).player.cam.view_to_clip * vec4(normal_vs, 0))))
+    vec3 normal_pvs = (deref(gpu_input).player.cam.prev_clip_to_prev_view *
+                       (deref(gpu_input).player.cam.clip_to_prev_clip *
+                        (deref(gpu_input).player.cam.view_to_clip * vec4(normal_vs, 0))))
                           .xyz;
 
     vec4 pos_cs = vec4(uv_to_cs(uv), depth, 1.0);
-    vec4 pos_vs = (deref(globals).player.cam.clip_to_view * pos_cs);
+    vec4 pos_vs = (deref(gpu_input).player.cam.clip_to_view * pos_cs);
     float dist_to_point = -(pos_vs.z / pos_vs.w);
 
     vec4 prev_vs = pos_vs / pos_vs.w;
     prev_vs.xyz += vec4(fetch_vel(px).xyz, 0).xyz;
 
-    // vec4 prev_cs = mul(deref(globals).player.cam.prev_view_to_prev_clip, prev_vs);
-    vec4 prev_cs = (deref(globals).player.cam.view_to_clip * prev_vs);
-    vec4 prev_pcs = (deref(globals).player.cam.clip_to_prev_clip * prev_cs);
+    // vec4 prev_cs = mul(deref(gpu_input).player.cam.prev_view_to_prev_clip, prev_vs);
+    vec4 prev_cs = (deref(gpu_input).player.cam.view_to_clip * prev_vs);
+    vec4 prev_pcs = (deref(gpu_input).player.cam.clip_to_prev_clip * prev_cs);
 
     vec2 prev_uv = cs_to_uv(prev_pcs.xy / prev_pcs.w);
     vec2 uv_diff = prev_uv - uv;
@@ -80,7 +80,7 @@ void main() {
     uv_diff = floor(uv_diff * 32767.0 + 0.5) / 32767.0;
     prev_uv = uv + uv_diff;
 
-    vec4 prev_pvs = (deref(globals).player.cam.prev_clip_to_prev_view * prev_pcs);
+    vec4 prev_pvs = (deref(gpu_input).player.cam.prev_clip_to_prev_view * prev_pcs);
     prev_pvs /= prev_pvs.w;
 
     // Based on "Fast Denoising with Self Stabilizing Recurrent Blurs"
@@ -102,8 +102,8 @@ void main() {
     vec2 prev_gather_uv = (bilinear_at_prev.origin + 1.0) / deref(gpu_input).rounded_frame_dim.xy;
     vec4 prev_depth = textureGather(daxa_sampler2D(prev_depth_image_id, g_sampler_nnc), prev_gather_uv).wzxy;
 
-    // vec4 prev_view_z = rcp(prev_depth * -deref(globals).player.cam.prev_clip_to_prev_view._43);
-    vec4 prev_view_z = 1.0 / (prev_depth * -deref(globals).player.cam.prev_clip_to_prev_view[2][3]);
+    // vec4 prev_view_z = rcp(prev_depth * -deref(gpu_input).player.cam.prev_clip_to_prev_view._43);
+    vec4 prev_view_z = 1.0 / (prev_depth * -deref(gpu_input).player.cam.prev_clip_to_prev_view[2][3]);
 
     // Note: departure from the quoted technique: linear offset from zero distance at previous position instead of scaling.
     vec4 quad_dists = abs(plane_dist_prev_dz * (prev_view_z - prev_pvs.z));

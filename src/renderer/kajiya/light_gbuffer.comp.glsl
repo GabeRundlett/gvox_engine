@@ -69,7 +69,7 @@ void main() {
     // }
 
     RayDesc outgoing_ray;
-    ViewRayContext view_ray_context = vrc_from_uv(globals, uv);
+    ViewRayContext view_ray_context = vrc_from_uv(gpu_input, uv);
     {
         outgoing_ray = new_ray(
             ray_origin_ws(view_ray_context),
@@ -179,11 +179,11 @@ void main() {
     vec3 output_ = total_radiance;
 
     // vec4 pt_cs = vec4(uv_to_cs(uv), depth, 1.0);
-    // vec4 pt_ws = deref(globals).player.cam.view_to_world * deref(globals).player.cam.sample_to_view * pt_cs;
+    // vec4 pt_ws = deref(gpu_input).player.cam.view_to_world * deref(gpu_input).player.cam.sample_to_view * pt_cs;
     // pt_ws /= pt_ws.w;
     // uint rng = hash3(uvec3(px, deref(gpu_input).frame_index));
     // if (FORCE_IRCACHE_DEBUG || push.debug_shading_mode == SHADING_MODE_IRCACHE) {
-    //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(globals), pt_ws.xyz, gbuffer.normal);
+    //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(gpu_input), pt_ws.xyz, gbuffer.normal);
     //     output_ = lookup(ircache_params, rng);
     // }
 

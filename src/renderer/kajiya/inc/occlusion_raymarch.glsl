@@ -69,7 +69,7 @@ void march(
     OcclusionScreenRayMarch self,
     inout float visibility,
     inout vec3 sample_radiance) {
-    const vec2 raymarch_end_uv = cs_to_uv(position_world_to_clip(globals, self.raymarch_end_ws).xy);
+    const vec2 raymarch_end_uv = cs_to_uv(position_world_to_clip(gpu_input, self.raymarch_end_ws).xy);
     const vec2 raymarch_uv_delta = raymarch_end_uv - self.raymarch_start_uv;
     const vec2 raymarch_len_px = raymarch_uv_delta * select(bvec2(self.use_halfres_depth), self.halfres_depth_tex_size, self.fullres_depth_tex_size);
 
@@ -81,7 +81,7 @@ void march(
     const float Z_LAYER_THICKNESS = 0.05;
 
     // const vec3 raymarch_start_cs = view_ray_context.ray_hit_cs.xyz;
-    const vec3 raymarch_end_cs = position_world_to_clip(globals, self.raymarch_end_ws).xyz;
+    const vec3 raymarch_end_cs = position_world_to_clip(gpu_input, self.raymarch_end_ws).xyz;
     const float depth_step_per_px = (raymarch_end_cs.z - self.raymarch_start_cs.z) / length(raymarch_len_px);
     const float depth_step_per_z = (raymarch_end_cs.z - self.raymarch_start_cs.z) / length(raymarch_end_cs.xy - self.raymarch_start_cs.xy);
 

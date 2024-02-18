@@ -23,7 +23,7 @@ Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
 }
 Renderer::~Renderer() = default;
 
-void Renderer::begin_frame(GpuInput &gpu_input, GpuOutput &gpu_output) {
+void Renderer::begin_frame(GpuInput &gpu_input) {
     auto &self = *impl;
 
     gpu_input.sky_settings = get_sky_settings();
@@ -32,7 +32,7 @@ void Renderer::begin_frame(GpuInput &gpu_input, GpuOutput &gpu_output) {
     gpu_input.pre_exposure_prev = self.kajiya_renderer.post_processor.exposure_state.pre_mult_prev;
     gpu_input.pre_exposure_delta = self.kajiya_renderer.post_processor.exposure_state.pre_mult_delta;
 
-    self.kajiya_renderer.ircache_renderer.update_eye_position(gpu_input, gpu_output);
+    self.kajiya_renderer.ircache_renderer.update_eye_position(gpu_input);
 
     if constexpr (!ENABLE_TAA) {
         self.fsr2_renderer->next_frame();

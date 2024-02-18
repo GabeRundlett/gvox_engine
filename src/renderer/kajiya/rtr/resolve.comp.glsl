@@ -108,14 +108,14 @@ void main() {
     GbufferData gbuffer = unpack(GbufferDataPacked(safeTexelFetchU(gbuffer_tex, ivec2(px), 0)));
 
 #if RTR_USE_TIGHTER_RAY_BIAS
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, gbuffer.normal);
 #else
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws(view_ray_context);
 #endif
 
-    const vec3 refl_ray_origin_vs = position_world_to_view(globals, refl_ray_origin_ws);
+    const vec3 refl_ray_origin_vs = position_world_to_view(gpu_input, refl_ray_origin_ws);
 
     // Clamp to fix moire on mirror-like surfaces
     gbuffer.roughness = max(gbuffer.roughness, RTR_ROUGHNESS_CLAMP);
@@ -170,7 +170,7 @@ void main() {
     // float ex = 0.0;
     // float ex2 = 0.0;
 
-    const vec3 normal_vs = direction_world_to_view(globals, gbuffer.normal);
+    const vec3 normal_vs = direction_world_to_view(gpu_input, gbuffer.normal);
 
     // The footprint of our kernel increases with roughness, and scales with distance.
     // The latter is a simple relationship of distance to camera and distance to hit point,
@@ -197,7 +197,7 @@ void main() {
         // that would result in small circles appearing as reflections.
         float clamped_ray_len_avg = max(
             ray_len_avg,
-            eye_to_surf_dist / eye_ray_z_scale * deref(globals).player.cam.clip_to_view[1][1] * 0.2
+            eye_to_surf_dist / eye_ray_z_scale * deref(gpu_input).player.cam.clip_to_view[1][1] * 0.2
                 // Keep contacts sharp
                 * smoothstep(0, 0.05 * eye_to_surf_dist, ray_len_avg));
 
@@ -207,7 +207,7 @@ void main() {
     }
 
     {
-        const float scale_factor = eye_to_surf_dist * eye_ray_z_scale * deref(globals).player.cam.clip_to_view[1][1];
+        const float scale_factor = eye_to_surf_dist * eye_ray_z_scale * deref(gpu_input).player.cam.clip_to_view[1][1];
 
         // Clamp the kernel size so we don't sample the same point, but also don't thrash all the caches.
         kernel_size_ws = min(kernel_size_ws, 0.1 * scale_factor);
@@ -282,7 +282,7 @@ void main() {
 
             vec3 offset_ws = (cos(ang) * kernel_t1 + sin(ang) * kernel_t2) * radius;
             vec3 sample_ws = refl_ray_origin_ws + offset_ws;
-            vec3 sample_cs = position_world_to_sample(globals, sample_ws);
+            vec3 sample_cs = position_world_to_sample(gpu_input, sample_ws);
             vec2 sample_uv = cs_to_uv(sample_cs.xy);
 
             // TODO: pass in `input_tex_size`
@@ -356,7 +356,7 @@ void main() {
 
                 RtrRestirRayOrigin sample_origin = RtrRestirRayOrigin_from_raw(safeTexelFetch(restir_ray_orig_tex, ivec2(spx), 0));
 
-                sample_origin_ws = sample_origin.ray_origin_eye_offset_ws + get_eye_position(globals);
+                sample_origin_ws = sample_origin.ray_origin_eye_offset_ws + get_eye_position(gpu_input);
                 const float sample_roughness = sample_origin.roughness;
 
                 if (
@@ -370,7 +370,7 @@ void main() {
                 }
 
                 const vec3 sample_hit_ws = safeTexelFetch(restir_ray_tex, ivec2(spx), 0).xyz + sample_origin_ws;
-                sample_origin_vs = position_world_to_view(globals, sample_origin_ws);
+                sample_origin_vs = position_world_to_view(gpu_input, sample_origin_ws);
 
                 sample_hit_normal_ws = decode_restir_hit_normal(safeTexelFetch(restir_hit_normal_tex, ivec2(spx), 0).xyz);
 
@@ -381,9 +381,9 @@ void main() {
                 sample_radiance = safeTexelFetch(restir_irradiance_tex, ivec2(spx), 0).rgb;
                 sample_ray_pdf = safeTexelFetch(restir_ray_tex, ivec2(spx), 0).a;
                 neighbor_sampling_pdf = 1.0 / r.W;
-                center_to_hit_vs = position_world_to_view(globals, sample_hit_ws) - mix(refl_ray_origin_vs, sample_origin_vs, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS);
+                center_to_hit_vs = position_world_to_view(gpu_input, sample_hit_ws) - mix(refl_ray_origin_vs, sample_origin_vs, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS);
                 center_to_hit_ws = sample_hit_ws - mix(refl_ray_origin_ws, sample_origin_ws, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS);
-                sample_hit_vs = center_to_hit_vs + position_world_to_view(globals, sample_origin_ws);
+                sample_hit_vs = center_to_hit_vs + position_world_to_view(gpu_input, sample_origin_ws);
                 sample_cos_theta = rtr_decode_cos_theta_from_fp16(safeTexelFetch(restir_irradiance_tex, ivec2(spx), 0).a);
                 // safeImageStore(rtr_debug_image, ivec2(px), vec4(vec3(sample_origin_vs), 1));
 
@@ -403,7 +403,7 @@ void main() {
                     // and none of this nonsense is needed then, but that has its own issues.
 
                     const float center_to_hit_dist_wat_i_dont_even = length(
-                        position_world_to_view(globals, sample_hit_ws)
+                        position_world_to_view(gpu_input, sample_hit_ws)
                         // At low roughness pretend we're directly using neighbor positions for hits ¯\_(ツ)_/¯
                         - mix(refl_ray_origin_vs, sample_origin_vs, mix(1.0, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS,
                                                                             // eyeballed bullshit
@@ -431,9 +431,9 @@ void main() {
 #endif
 
 #if !RTR_APPROX_MEASURE_CONVERSION
-                vec3 wi = normalize(direction_view_to_world(globals, center_to_hit_vs) * tangent_to_world);
+                vec3 wi = normalize(direction_view_to_world(gpu_input, center_to_hit_vs) * tangent_to_world);
 
-                const vec3 sample_origin_to_hit_vs = position_world_to_view(globals, sample_hit_ws) - sample_origin_vs;
+                const vec3 sample_origin_to_hit_vs = position_world_to_view(gpu_input, sample_hit_ws) - sample_origin_vs;
                 const float sample_wi_z = dot(sample_normal_vs, normalize(sample_origin_to_hit_vs));
                 const float wi_measure_fix = sample_wi_z / wi.z;
 
@@ -449,20 +449,20 @@ void main() {
 
                 const vec4 packed0 = safeTexelFetch(hit0_tex, ivec2(sample_px), 0);
 
-                const ViewRayContext sample_ray_ctx = vrc_from_uv_and_biased_depth(globals, sample_uv, sample_depth);
+                const ViewRayContext sample_ray_ctx = vrc_from_uv_and_biased_depth(gpu_input, sample_uv, sample_depth);
                 sample_origin_vs = ray_hit_vs(sample_ray_ctx);
 
                 neighbor_sampling_pdf = packed1.w;
                 sample_radiance = packed0.xyz;
                 sample_cos_theta = 1;
 
-                const vec3 real_sample_hit_vs = direction_world_to_view(globals, packed1.xyz) + sample_origin_vs;
+                const vec3 real_sample_hit_vs = direction_world_to_view(gpu_input, packed1.xyz) + sample_origin_vs;
 
                 center_to_hit_vs = real_sample_hit_vs - mix(refl_ray_origin_vs, sample_origin_vs, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS);
                 sample_hit_vs = center_to_hit_vs + refl_ray_origin_vs;
             }
 
-            const vec3 wi = normalize(direction_view_to_world(globals, center_to_hit_vs) * tangent_to_world);
+            const vec3 wi = normalize(direction_view_to_world(gpu_input, center_to_hit_vs) * tangent_to_world);
 
             if (USE_RESTIR) {
                 if (wi.z < 1e-5

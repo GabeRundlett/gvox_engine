@@ -39,7 +39,7 @@ void voxel_world_perframe(
     deref(ptrs.globals).chunk_update_n = 0;
 
     deref(ptrs.globals).prev_offset = deref(ptrs.globals).offset;
-    deref(ptrs.globals).offset = deref(globals_ptr).player.player_unit_offset;
+    deref(ptrs.globals).offset = deref(gpu_input).player.player_unit_offset;
 
     deref(globals_ptr).indirect_dispatch.chunk_edit_dispatch = uvec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
     deref(globals_ptr).indirect_dispatch.subchunk_x2x4_dispatch = uvec3(1, 64, 0);

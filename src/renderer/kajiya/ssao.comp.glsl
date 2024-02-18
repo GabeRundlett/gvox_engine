@@ -72,7 +72,7 @@ vec3 project_point_on_plane(vec3 pt, vec3 normal) {
 
 float process_sample(uint i, float intsgn, float n_angle, inout vec3 prev_sample_vs, vec4 sample_cs, vec3 center_vs, vec3 normal_vs, vec3 v_vs, float kernel_radius_ws, float theta_cos_max) {
     if (sample_cs.z > 0) {
-        vec4 sample_vs4 = (deref(globals).player.cam.sample_to_view * sample_cs);
+        vec4 sample_vs4 = (deref(gpu_input).player.cam.sample_to_view * sample_cs);
         vec3 sample_vs = sample_vs4.xyz / sample_vs4.w;
         vec3 sample_vs_offset = sample_vs - center_vs;
         float sample_vs_offset_len = length(sample_vs_offset);
@@ -111,7 +111,7 @@ void main() {
         return;
     }
 
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     vec3 v_vs = -normalize(ray_dir_vs(view_ray_context));
 
     vec4 ray_hit_cs = view_ray_context.ray_hit_cs;
@@ -130,7 +130,7 @@ void main() {
     float kernel_radius_ws;
     float kernel_radius_shrinkage = 1;
     {
-        const float ws_to_cs = 0.5 / -ray_hit_vs.z * deref(globals).player.cam.view_to_clip[1][1];
+        const float ws_to_cs = 0.5 / -ray_hit_vs.z * deref(gpu_input).player.cam.view_to_clip[1][1];
 
 #if WORLDSPACE_SSAO
         kernel_radius_ws = SSGI_KERNEL_RADIUS;
@@ -156,7 +156,7 @@ void main() {
     vec3 center_vs = ray_hit_vs.xyz;
 
     cs_slice_dir *= 1.0 / float(SSGI_HALF_SAMPLE_COUNT);
-    vec2 vs_slice_dir = (vec4(cs_slice_dir, 0, 0) * deref(globals).player.cam.sample_to_view).xy;
+    vec2 vs_slice_dir = (vec4(cs_slice_dir, 0, 0) * deref(gpu_input).player.cam.sample_to_view).xy;
     vec3 slice_normal_vs = normalize(cross(v_vs, vec3(vs_slice_dir, 0)));
 
     vec3 proj_normal_vs = normal_vs - slice_normal_vs * dot(slice_normal_vs, normal_vs);

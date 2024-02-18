@@ -66,7 +66,7 @@ void main() {
     }
 
     const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
 
     const float NEAR_FIELD_FADE_OUT_END = -ray_hit_vs(view_ray_context).z * (SSGI_NEAR_FIELD_RADIUS * push.gbuffer_tex_size.w * 0.5);
 
@@ -77,7 +77,7 @@ void main() {
 #endif
     {
         const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
-        const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+        const vec3 normal_ws = direction_view_to_world(gpu_input, normal_vs);
         const mat3 tangent_to_world = build_orthonormal_basis(normal_ws);
         const vec3 outgoing_dir = rtdgi_candidate_ray_dir(blue_noise_vec2, deref(gpu_input).frame_index, px, tangent_to_world);
 
@@ -109,7 +109,7 @@ void main() {
         const float cos_theta = dot(normalize(outgoing_dir - ray_dir_ws(view_ray_context)), normal_ws);
         safeImageStore(candidate_irradiance_out_tex, ivec2(px), vec4(result.out_value, rtr_encode_cos_theta_for_fp16(cos_theta)));
         safeImageStore(candidate_hit_out_tex, ivec2(px), vec4(hit_offset_ws, result.pdf * select(is_rtdgi_tracing_frame(deref(gpu_input).frame_index), 1, -1)));
-        safeImageStore(candidate_normal_out_tex, ivec2(px), vec4(direction_world_to_view(globals, result.hit_normal_ws), 0));
+        safeImageStore(candidate_normal_out_tex, ivec2(px), vec4(direction_world_to_view(gpu_input, result.hit_normal_ws), 0));
     }
     // } else {
     //     const vec4 reproj = reprojection_tex[hi_px];

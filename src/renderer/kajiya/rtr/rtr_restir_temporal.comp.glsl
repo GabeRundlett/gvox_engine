@@ -93,7 +93,7 @@ TraceResult do_the_thing(uvec2 px, vec3 primary_hit_normal) {
     result.cos_theta = rtr_decode_cos_theta_from_fp16(hit0.a);
     result.hit_vs = hit1.xyz;
     result.hit_t = length(hit1.xyz);
-    result.hit_normal_ws = direction_view_to_world(globals, hit2.xyz);
+    result.hit_normal_ws = direction_view_to_world(gpu_input, hit2.xyz);
     return result;
 }
 
@@ -111,17 +111,17 @@ vec4 encode_hit_normal_and_dot(vec4 val) {
 void find_best_reprojection_in_neighborhood(vec2 base_px, inout ivec2 best_px, vec3 refl_ray_origin_ws, bool wide) {
     float best_dist = 1e10;
 
-    const vec2 clip_scale = vec2(deref(globals).player.cam.clip_to_view[0][0], deref(globals).player.cam.clip_to_view[1][1]);
+    const vec2 clip_scale = vec2(deref(gpu_input).player.cam.clip_to_view[0][0], deref(gpu_input).player.cam.clip_to_view[1][1]);
     const vec2 offset_scale = vec2(1, -1) * -2 * clip_scale * push.gbuffer_tex_size.zw;
 
-    const vec3 look_direction = direction_view_to_world(globals, vec3(0, 0, -1));
+    const vec3 look_direction = direction_view_to_world(gpu_input, vec3(0, 0, -1));
 
     {
-        const float z_offset = dot(look_direction, refl_ray_origin_ws - get_eye_position(globals));
+        const float z_offset = dot(look_direction, refl_ray_origin_ws - get_eye_position(gpu_input));
 
         // Subtract the subsample XY offset from the comparison position.
         // This will prevent the search from constantly re-shuffling pixels due to the sub-sample jitters.
-        refl_ray_origin_ws += direction_view_to_world(globals, vec3(vec2(HALFRES_SUBSAMPLE_OFFSET) * offset_scale * z_offset, 0));
+        refl_ray_origin_ws += direction_view_to_world(gpu_input, vec3(vec2(HALFRES_SUBSAMPLE_OFFSET) * offset_scale * z_offset, 0));
     }
 
     const int start_coord = select(wide, -1, 0);
@@ -130,14 +130,14 @@ void find_best_reprojection_in_neighborhood(vec2 base_px, inout ivec2 best_px, v
             ivec2 spx = ivec2(floor(base_px + vec2(x, y)));
 
             RtrRestirRayOrigin ray_orig = RtrRestirRayOrigin_from_raw(safeTexelFetch(ray_orig_history_tex, ivec2(spx), 0));
-            vec3 orig = ray_orig.ray_origin_eye_offset_ws + get_prev_eye_position(globals);
+            vec3 orig = ray_orig.ray_origin_eye_offset_ws + get_prev_eye_position(gpu_input);
             uvec2 orig_jitter = hi_px_subpixels[ray_orig.frame_index_mod4];
 
             {
                 const float z_offset = dot(look_direction, orig);
 
                 // Similarly subtract the subsample XY offset that the ray was traced with.
-                orig += direction_view_to_world(globals, vec3(vec2(orig_jitter) * offset_scale * z_offset, 0));
+                orig += direction_view_to_world(gpu_input, vec3(vec2(orig_jitter) * offset_scale * z_offset, 0));
             }
 
             float d = length(orig - refl_ray_origin_ws);
@@ -167,7 +167,7 @@ void main() {
 
     const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
     const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
-    const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+    const vec3 normal_ws = direction_view_to_world(gpu_input, normal_vs);
 
     float local_normal_flatness = 1;
     {
@@ -191,14 +191,14 @@ void main() {
     }
 
 #if RTR_USE_TIGHTER_RAY_BIAS
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
 #else
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws(view_ray_context);
 #endif
 
-    const vec3 refl_ray_origin_vs = position_world_to_view(globals, refl_ray_origin_ws);
+    const vec3 refl_ray_origin_vs = position_world_to_view(gpu_input, refl_ray_origin_ws);
 
     const mat3 tangent_to_world = build_orthonormal_basis(normal_ws);
     vec3 outgoing_dir = vec3(0, 0, 1);
@@ -354,7 +354,7 @@ void main() {
             const uvec2 spx = reservoir_payload_to_px(r.payload);
 
             const vec2 sample_uv = get_uv(rpx_hi, push.gbuffer_tex_size);
-            const vec4 prev_ray_orig_and_roughness = safeTexelFetch(ray_orig_history_tex, ivec2(spx), 0) + vec4(get_prev_eye_position(globals), 0);
+            const vec4 prev_ray_orig_and_roughness = safeTexelFetch(ray_orig_history_tex, ivec2(spx), 0) + vec4(get_prev_eye_position(gpu_input), 0);
 
             // Reject disocclusions
             if (length_squared(refl_ray_origin_ws - prev_ray_orig_and_roughness.xyz) > 0.05 * refl_ray_origin_vs.z * refl_ray_origin_vs.z) {
@@ -400,8 +400,8 @@ void main() {
                 // const vec3 prev_wo = normalize(ViewRayContext::from_uv(uv + center_reproj.xy).ray_dir_vs());
 
                 // TODO: take object motion into account too
-                const vec3 current_wo = normalize(ray_hit_ws(view_ray_context) - get_eye_position(globals));
-                const vec3 prev_wo = normalize(ray_hit_ws(view_ray_context) - get_prev_eye_position(globals));
+                const vec3 current_wo = normalize(ray_hit_ws(view_ray_context) - get_eye_position(gpu_input));
+                const vec3 prev_wo = normalize(ray_hit_ws(view_ray_context) - get_prev_eye_position(gpu_input));
 
                 const float wo_dot = saturate(dot(current_wo, prev_wo));
 
@@ -471,7 +471,7 @@ void main() {
                 // as darkening in corners. Since it's mostly useful for smoother surfaces,
                 // fade it out when they're rough.
                 const float dist_to_hit_vs_scaled =
-                    dist_to_sample_hit / -refl_ray_origin_vs.z * deref(globals).player.cam.view_to_clip[1][1];
+                    dist_to_sample_hit / -refl_ray_origin_vs.z * deref(gpu_input).player.cam.view_to_clip[1][1];
                 {
                     float dist2 = dot(ray_hit_sel_ws - refl_ray_origin_ws, ray_hit_sel_ws - refl_ray_origin_ws);
                     dist2 = min(dist2, 2 * dist_to_hit_vs_scaled * dist_to_hit_vs_scaled);
@@ -517,7 +517,7 @@ void main() {
 
     safeImageStore(irradiance_out_tex, ivec2(px), vec4(irradiance_sel, rtr_encode_cos_theta_for_fp16(cos_theta)));
     // Note: relies on the `xyz` being directly encoded by `RtrRestirRayOrigin`
-    safeImageStore(ray_orig_output_tex, ivec2(px), vec4(ray_orig_sel.xyz - get_eye_position(globals), ray_orig_sel.w));
+    safeImageStore(ray_orig_output_tex, ivec2(px), vec4(ray_orig_sel.xyz - get_eye_position(gpu_input), ray_orig_sel.w));
     safeImageStore(hit_normal_output_tex, ivec2(px), encode_hit_normal_and_dot(hit_normal_ws_dot));
     safeImageStore(ray_output_tex, ivec2(px), vec4(ray_hit_sel_ws - ray_orig_sel.xyz, pdf_sel));
     safeImageStoreU(rng_output_tex, ivec2(px), uvec4(rng_sel, 0, 0, 0));

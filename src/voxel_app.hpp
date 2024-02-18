@@ -3,6 +3,7 @@
 #include <application/window.hpp>
 #include <application/ui.hpp>
 #include <application/audio.hpp>
+#include <application/player.hpp>
 
 #include <app.inl>
 #include <renderer/renderer.hpp>
@@ -38,6 +39,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     VoxelParticles particles;
     VoxelModelLoader voxel_model_loader;
 
+    Input player_input{};
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
     std::vector<std::string> ui_strings;

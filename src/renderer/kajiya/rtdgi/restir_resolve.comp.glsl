@@ -62,12 +62,12 @@ void main() {
     uint rng = hash3(uvec3(px, seed));
 
     const vec2 uv = get_uv(px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
 
     GbufferData gbuffer = unpack(GbufferDataPacked(safeTexelFetchU(gbuffer_tex, ivec2(px), 0)));
 
     const vec3 center_normal_ws = gbuffer.normal;
-    const vec3 center_normal_vs = direction_world_to_view(globals, center_normal_ws);
+    const vec3 center_normal_vs = direction_world_to_view(gpu_input, center_normal_ws);
     const float center_depth = depth;
     const float center_ssao = safeTexelFetch(ssao_tex, ivec2(px), 0).r;
 
@@ -106,7 +106,7 @@ void main() {
                 rpx * 2 + HALFRES_SUBSAMPLE_OFFSET,
                 push.gbuffer_tex_size);
             const float rpx_depth = safeTexelFetch(half_depth_tex, ivec2(rpx), 0).r;
-            const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(globals, rpx_uv, rpx_depth);
+            const ViewRayContext rpx_ray_ctx = vrc_from_uv_and_depth(gpu_input, rpx_uv, rpx_depth);
 
             if (USE_SPLIT_RT_NEAR_FIELD) {
                 const vec3 hit_ws = safeTexelFetch(candidate_hit_tex, ivec2(rpx), 0).xyz + ray_hit_ws(rpx_ray_ctx);
@@ -161,7 +161,7 @@ void main() {
             const vec2 spx_uv = get_uv(
                 spx * 2 + HALFRES_SUBSAMPLE_OFFSET,
                 push.gbuffer_tex_size);
-            const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(globals, spx_uv, spx_packed.depth);
+            const ViewRayContext spx_ray_ctx = vrc_from_uv_and_depth(gpu_input, spx_uv, spx_packed.depth);
 
             {
                 const float spx_depth = spx_packed.depth;

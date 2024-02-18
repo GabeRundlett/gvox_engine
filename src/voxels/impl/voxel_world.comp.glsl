@@ -14,7 +14,7 @@ daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 #include <voxels/impl/voxels.glsl>
 
 #define VOXEL_WORLD deref(voxel_globals)
-#define PLAYER deref(globals).player
+#define PLAYER deref(gpu_input).player
 #define CHUNKS(i) deref(advance(voxel_chunks, i))
 #define INDIRECT deref(globals).indirect_dispatch
 
@@ -89,13 +89,13 @@ void main() {
         ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> 3;
         bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
 
-        if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
-            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
-            try_elect(terrain_work_item, update_index);
-        } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
-            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
-            try_elect(terrain_work_item, update_index);
-        }
+        // if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
+        //     terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
+        //     try_elect(terrain_work_item, update_index);
+        // } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
+        //     terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
+        //     try_elect(terrain_work_item, update_index);
+        // }
     }
 
     CHUNKS(chunk_index).update_index = update_index;
@@ -242,7 +242,7 @@ BrushInput brush_input;
 
 Voxel get_temp_voxel(ivec3 offset_i) {
     // TODO: Simplify this, and improve precision
-    vec3 i = vec3(world_voxel + offset_i) / VOXEL_SCL - deref(globals).player.player_unit_offset;
+    vec3 i = vec3(world_voxel + offset_i) / VOXEL_SCL - deref(gpu_input).player.player_unit_offset;
     float voxel_scl = float(VOXEL_SCL);
     vec3 offset = vec3((deref(voxel_globals).offset) & ((1 << 3) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
     uvec3 voxel_i = uvec3(floor((i + offset) * voxel_scl));

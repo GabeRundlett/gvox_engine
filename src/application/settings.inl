@@ -1,6 +1,6 @@
 #pragma once
 
-#define DAXA_BUFFER_PTR_COMPAT
+// #define DAXA_BUFFER_PTR_COMPAT
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
 #include <daxa/daxa.inl>
@@ -61,6 +61,7 @@ struct SkySettings {
 #define PREPASS_SCL 2
 #define SHADING_SCL 2
 
+#define ENABLE_CHUNK_WRAPPING 1
 #define ENABLE_TAA true
 
 #define DEBUG_IMAGE_TYPE_DEFAULT 0

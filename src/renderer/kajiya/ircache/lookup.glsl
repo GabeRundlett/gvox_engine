@@ -80,7 +80,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
 
 #ifndef IRCACHE_LOOKUP_DONT_KEEP_ALIVE
     if (!IRCACHE_FREEZE) {
-        const vec3 eye_pos = get_eye_position(globals);
+        const vec3 eye_pos = get_eye_position(gpu_input);
 
         const IrcacheCoord rcoord = ws_pos_to_ircache_coord(globals, gpu_input, self.pt_ws, self.normal_ws, jitter);
 
@@ -142,7 +142,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
     const uint cascade = ws_pos_to_ircache_coord(globals, gpu_input, self.pt_ws, self.normal_ws, jitter).cascade;
     const float cell_diameter = ircache_grid_cell_diameter_in_cascade(cascade);
 
-    vec3 to_eye = normalize(get_eye_position(globals) - self.pt_ws.xyz);
+    vec3 to_eye = normalize(get_eye_position(gpu_input) - self.pt_ws.xyz);
     vec3 offset_towards_query = self.query_from_ws - self.pt_ws.xyz;
     const float MAX_OFFSET = cell_diameter; // world units
     const float MAX_OFFSET_AS_FRAC = 0.5;   // fraction of the distance from query point

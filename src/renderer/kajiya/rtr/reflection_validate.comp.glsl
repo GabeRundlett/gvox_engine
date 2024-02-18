@@ -71,17 +71,17 @@ void main() {
     const mat3 tangent_to_world = build_orthonormal_basis(gbuffer.normal);
 
 #if RTR_USE_TIGHTER_RAY_BIAS
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, gbuffer.normal);
 #else
-    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws(view_ray_context);
 #endif
 
     // TODO: frame consistency
     const uint noise_offset = deref(gpu_input).frame_index * select(USE_TEMPORAL_JITTER, 1, 0);
 
-    const vec3 ray_orig_ws = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz + get_prev_eye_position(globals);
+    const vec3 ray_orig_ws = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz + get_prev_eye_position(gpu_input);
     const vec3 ray_hit_ws = safeTexelFetch(ray_history_tex, ivec2(px), 0).xyz + ray_orig_ws;
 
     RayDesc outgoing_ray;

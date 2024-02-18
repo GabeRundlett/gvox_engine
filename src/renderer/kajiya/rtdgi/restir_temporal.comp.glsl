@@ -64,7 +64,7 @@ TraceResult do_the_thing(uvec2 px, inout uint rng, RayDesc outgoing_ray, vec3 pr
     TraceResult result;
     result.out_value = candidate_radiance_inv_pdf.rgb;
     result.inv_pdf = 1;
-    result.hit_normal_ws = direction_view_to_world(globals, safeTexelFetch(candidate_normal_tex, ivec2(px), 0).xyz);
+    result.hit_normal_ws = direction_view_to_world(gpu_input, safeTexelFetch(candidate_normal_tex, ivec2(px), 0).xyz);
     return result;
 }
 
@@ -98,9 +98,9 @@ void main() {
     }
 
     const vec2 uv = get_uv(hi_px, push.gbuffer_tex_size);
-    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(globals, uv, depth);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
-    const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+    const vec3 normal_ws = direction_view_to_world(gpu_input, normal_vs);
     const mat3 tangent_to_world = tbn_from_normal(normal_ws);
     const vec3 refl_ray_origin_ws = biased_secondary_ray_origin_ws_with_normal(view_ray_context, normal_ws);
 

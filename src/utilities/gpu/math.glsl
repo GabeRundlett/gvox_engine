@@ -289,61 +289,6 @@ ivec3 imod3(ivec3 p, ivec3 m) {
     return ivec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
 
-mat4 rotation_matrix(float yaw, float pitch, float roll) {
-    float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
-    float sin_rot_y = sin(roll), cos_rot_y = cos(roll);
-    float sin_rot_z = sin(yaw), cos_rot_z = cos(yaw);
-    return mat4(
-               cos_rot_z, -sin_rot_z, 0, 0,
-               sin_rot_z, cos_rot_z, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1) *
-           mat4(
-               1, 0, 0, 0,
-               0, cos_rot_x, sin_rot_x, 0,
-               0, -sin_rot_x, cos_rot_x, 0,
-               0, 0, 0, 1) *
-           mat4(
-               cos_rot_y, -sin_rot_y, 0, 0,
-               sin_rot_y, cos_rot_y, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1);
-}
-mat4 inv_rotation_matrix(float yaw, float pitch, float roll) {
-    float sin_rot_x = sin(-pitch), cos_rot_x = cos(-pitch);
-    float sin_rot_y = sin(-roll), cos_rot_y = cos(-roll);
-    float sin_rot_z = sin(-yaw), cos_rot_z = cos(-yaw);
-    return mat4(
-               cos_rot_y, -sin_rot_y, 0, 0,
-               sin_rot_y, cos_rot_y, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1) *
-           mat4(
-               1, 0, 0, 0,
-               0, cos_rot_x, sin_rot_x, 0,
-               0, -sin_rot_x, cos_rot_x, 0,
-               0, 0, 0, 1) *
-           mat4(
-               cos_rot_z, -sin_rot_z, 0, 0,
-               sin_rot_z, cos_rot_z, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1);
-}
-mat4 translation_matrix(vec3 pos) {
-    return mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        pos, 1);
-}
-
-vec3 apply_inv_rotation(vec3 pt, vec3 ypr) {
-    float yaw = ypr[0];
-    float pitch = ypr[1];
-    float roll = ypr[2];
-    return (inv_rotation_matrix(ypr[0], ypr[1], ypr[2]) * vec4(pt, 0.0)).xyz;
-}
-
 mat3 CUBE_MAP_FACE_ROTATION(uint face) {
     switch (face) {
     case 0: return mat3(+0, +0, -1, +0, -1, +0, -1, +0, +0);

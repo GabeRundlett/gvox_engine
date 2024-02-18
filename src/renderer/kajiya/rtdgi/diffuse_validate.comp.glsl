@@ -62,12 +62,12 @@ void main() {
     // NOTE(grundlett): Here we fix the ray origin for when the player causes the world to wrap.
     // We technically don't need to write out if the world does not wrap in this frame, but IDC for now.
     vec3 prev_ray_orig = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz;
-    prev_ray_orig -= vec3(deref(globals).player.player_unit_offset - deref(globals).player.prev_unit_offset);
+    prev_ray_orig -= vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
     safeImageStore(ray_orig_history_tex, ivec2(px), vec4(prev_ray_orig, 0));
 
     if (RESTIR_USE_PATH_VALIDATION && is_rtdgi_validation_frame(deref(gpu_input).frame_index)) {
         const vec3 normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(px), 0).xyz;
-        const vec3 normal_ws = direction_view_to_world(globals, normal_vs);
+        const vec3 normal_ws = direction_view_to_world(gpu_input, normal_vs);
 
         const vec3 prev_ray_delta = safeTexelFetch(reservoir_ray_history_tex, ivec2(px), 0).xyz;
 
