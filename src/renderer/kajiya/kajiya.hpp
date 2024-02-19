@@ -54,8 +54,9 @@ struct KajiyaRenderer {
 
         do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
 
+        auto ircache_state = IrcacheRenderState{};
         if (do_global_illumination) {
-            auto ircache_state = ircache_renderer.prepare(record_ctx);
+            ircache_state = ircache_renderer.prepare(record_ctx);
             auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_buffers, sky_cube, transmittance_lut);
             ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
 
@@ -109,6 +110,7 @@ struct KajiyaRenderer {
             denoised_shadow_mask,
             rtr,
             rtdgi,
+            ircache_state,
             sky_cube,
             ibl_cube,
             transmittance_lut);

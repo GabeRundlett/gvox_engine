@@ -21,6 +21,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
     Clock::time_point start = Clock::now();
     Clock::time_point prev_time;
+    Clock::time_point prev_phys_update_time = Clock::now();
 
     GpuContext gpu_context;
 
@@ -31,32 +32,20 @@ struct VoxelApp : AppWindow<VoxelApp> {
     AppUi ui;
     AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
-
-    // gpu_app
     Renderer renderer;
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
     VoxelModelLoader voxel_model_loader;
 
-    Input player_input{};
+    PlayerInput player_input{};
     GpuInput gpu_input{};
     GpuOutput gpu_output{};
     std::vector<std::string> ui_strings;
 
     bool needs_vram_calc = true;
 
-    using Clock = std::chrono::high_resolution_clock;
-    Clock::time_point prev_phys_update_time = Clock::now();
-    // end gpu_app
-
-    std::array<daxa_f32vec2, 128> halton_offsets{};
     daxa_f32 render_res_scl{1.0f};
-
-    enum class Conditions {
-        COUNT,
-    };
-    std::array<bool, static_cast<size_t>(Conditions::COUNT)> condition_values{};
     daxa::TaskGraph main_task_graph;
 
     VoxelApp();
@@ -76,16 +65,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_resize(daxa_u32 sx, daxa_u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
-    void compute_image_sizes();
-
     void run_startup(daxa::TaskGraph &temp_task_graph);
 
     auto record_main_task_graph() -> daxa::TaskGraph;
 
-    void gpu_app_draw_ui();
-    void gpu_app_calc_vram_usage(daxa::TaskGraph &task_graph);
-    void gpu_app_begin_frame(daxa::TaskGraph &task_graph);
-    void gpu_app_dynamic_buffers_realloc();
-    void gpu_app_record_startup(RecordContext &record_ctx);
-    void gpu_app_record_frame(RecordContext &record_ctx);
+    void calc_vram_usage(daxa::TaskGraph &task_graph);
 };

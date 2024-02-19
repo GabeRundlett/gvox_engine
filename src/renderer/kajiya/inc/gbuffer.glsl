@@ -1,6 +1,6 @@
 #pragma once
 
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 
 struct GbufferDataPacked {
     uvec4 data0;

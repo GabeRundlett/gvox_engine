@@ -1,7 +1,7 @@
 #include <renderer/trace_secondary.inl>
 
 #include <renderer/kajiya/inc/camera.glsl>
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 #include <renderer/sky.glsl>
 #include <renderer/kajiya/inc/downscale.glsl>
 

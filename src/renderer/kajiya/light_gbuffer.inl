@@ -15,6 +15,7 @@
 DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11 /* + IRCACHE_BUFFER_USE_N */)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+// IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
@@ -24,7 +25,6 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-// IRCACHE_USE_BUFFERS()
 DAXA_DECL_TASK_HEAD_END
 struct LightGbufferComputePush {
     daxa_f32vec4 output_tex_size;
@@ -41,7 +41,7 @@ inline auto light_gbuffer(
     daxa::TaskImageView shadow_mask,
     daxa::TaskImageView rtr,
     daxa::TaskImageView rtdgi,
-    // IrcacheRenderState &ircache,
+    IrcacheRenderState &ircache,
     daxa::TaskImageView sky_cube,
     daxa::TaskImageView convolved_sky_cube,
     daxa::TaskImageView transmittance_lut) -> daxa::TaskImageView {
@@ -57,6 +57,7 @@ inline auto light_gbuffer(
         .views = std::array{
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+            // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},
@@ -66,7 +67,6 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::unconvolved_sky_cube_tex, sky_cube}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_cube_tex, convolved_sky_cube}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
-            // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::gbuffer_tex).ids[0]).value();

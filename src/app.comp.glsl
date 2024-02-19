@@ -7,7 +7,7 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -26,7 +26,7 @@ daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.s
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <renderer/kajiya/inc/camera.glsl>
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 #include <voxels/voxel_particle.glsl>
 
 #define INPUT deref(gpu_input)

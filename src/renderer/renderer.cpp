@@ -13,13 +13,34 @@ struct RendererImpl {
     KajiyaRenderer kajiya_renderer;
     std::unique_ptr<Fsr2Renderer> fsr2_renderer;
     SkyRenderer sky;
+
+    std::array<daxa_f32vec2, 128> halton_offsets{};
 };
 
 Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
+    auto &self = *impl;
+
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip High", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
-    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = -2.5f, .min = -15.0f, .max = 15.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = -0.5f, .min = -15.0f, .max = 15.0f}});
+
+    auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
+        auto val = 0.0f;
+        auto inv_base = 1.0f / static_cast<daxa_f32>(base);
+        auto inv_bi = inv_base;
+        while (n > 0) {
+            auto d_i = n % base;
+            val += static_cast<daxa_f32>(d_i) * inv_bi;
+            n = static_cast<daxa_u32>(static_cast<daxa_f32>(n) * inv_base);
+            inv_bi *= inv_base;
+        }
+        return val;
+    };
+
+    for (daxa_u32 i = 0; i < self.halton_offsets.size(); ++i) {
+        self.halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
+    }
 }
 Renderer::~Renderer() = default;
 
@@ -38,6 +59,8 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
         self.fsr2_renderer->next_frame();
         self.fsr2_renderer->state.delta_time = gpu_input.delta_time;
         gpu_input.halton_jitter = self.fsr2_renderer->state.jitter;
+    } else {
+        gpu_input.halton_jitter = self.halton_offsets[gpu_input.frame_index % self.halton_offsets.size()];
     }
 }
 

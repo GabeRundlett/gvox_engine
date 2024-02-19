@@ -66,18 +66,18 @@ auto VoxelModelLoader::open_mesh_model() -> GvoxModelData {
     });
     auto preprocess_pipeline = gpu_context->pipeline_manager->add_compute_pipeline({
         .shader_info = {
-            .source = daxa::ShaderFile{"mesh/preprocess.comp.glsl"},
+            .source = daxa::ShaderFile{"utilities/mesh/preprocess.comp.glsl"},
         },
         .push_constant_size = sizeof(MeshPreprocessPush),
         .name = "preprocess_pipeline",
     });
     auto raster_pipeline = gpu_context->pipeline_manager->add_raster_pipeline({
         .vertex_shader_info = daxa::ShaderCompileInfo{
-            .source = daxa::ShaderFile{"mesh/voxelize.raster.glsl"},
+            .source = daxa::ShaderFile{"utilities/mesh/voxelize.raster.glsl"},
             .compile_options = {.defines = {{"RASTER_VERT", "1"}}},
         },
         .fragment_shader_info = daxa::ShaderCompileInfo{
-            .source = daxa::ShaderFile{"mesh/voxelize.raster.glsl"},
+            .source = daxa::ShaderFile{"utilities/mesh/voxelize.raster.glsl"},
             .compile_options = {.defines = {{"RASTER_FRAG", "1"}}},
         },
         .raster = {

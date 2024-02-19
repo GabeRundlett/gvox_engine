@@ -1,7 +1,7 @@
 #include <renderer/trace_primary.inl>
 
 #include <renderer/kajiya/inc/camera.glsl>
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 
 #if TraceDepthPrepassComputeShader
 

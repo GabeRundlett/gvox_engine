@@ -21,7 +21,7 @@ daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 
 #include "inc/layered_brdf.glsl"
 
-// #define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
+#define IRCACHE_LOOKUP_DONT_KEEP_ALIVE
 // #include <renderer/kajiya/ircache/lookup.glsl>
 
 #define USE_RTDGI true
@@ -173,8 +173,6 @@ void main() {
 
         total_radiance += rtr_radiance;
     }
-
-    // temporal_output_tex[px] = vec4(total_radiance, 1.0);
 
     vec3 output_ = total_radiance;
 

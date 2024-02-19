@@ -2,7 +2,7 @@
 
 #include <voxels/voxel_particles.inl>
 #include <utilities/gpu/math.glsl>
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 
 #define PARTICLE_ALIVE_FLAG (1 << 0)
 #define PARTICLE_SMOKE_FLAG (1 << 1)

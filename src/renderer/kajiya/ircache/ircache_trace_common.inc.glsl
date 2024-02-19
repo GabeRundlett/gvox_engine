@@ -10,7 +10,7 @@
 
 #include <renderer/sky.glsl>
 
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 
 bool rt_is_shadowed(RayDesc ray) {
     ShadowRayPayload shadow_payload = ShadowRayPayload_new_hit();

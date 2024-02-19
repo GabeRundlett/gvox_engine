@@ -5,7 +5,7 @@
 
 #if SsaoComputeShader
 
-#include <voxels/core.glsl>
+#include <voxels/voxels.glsl>
 #include "inc/downscale.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(SsaoComputePush, push)

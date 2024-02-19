@@ -117,7 +117,7 @@ void player_startup(Player &PLAYER) {
     // PLAYER.pos = vec3(66.01, 38.02, 14.01);
 
     // Inside beach hut
-    PLAYER.pos = vec3(173.78f - 125, 113.72f - 125, 12.09f);
+    // PLAYER.pos = vec3(173.78f - 125, 113.72f - 125, 12.09f);
 
     PLAYER.pitch = float(M_PI * 0.349);
     PLAYER.yaw = float(M_PI * 0.25);
@@ -133,7 +133,7 @@ void player_startup(Player &PLAYER) {
     player_fix_chunk_offset(PLAYER);
 }
 
-void player_perframe(Input &INPUT, Player &PLAYER) {
+void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     const float mouse_sens = 1.0f;
 
     if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
