@@ -40,8 +40,8 @@ struct KajiyaRenderer {
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView velocity_image,
         daxa::TaskImageView shadow_mask,
-        daxa::TaskImageView sky_cube,
         daxa::TaskImageView ibl_cube,
+        daxa::TaskImageView sky_lut,
         daxa::TaskImageView transmittance_lut,
         VoxelWorldBuffers &voxel_buffers) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
@@ -57,7 +57,7 @@ struct KajiyaRenderer {
         auto ircache_state = IrcacheRenderState{};
         if (do_global_illumination) {
             ircache_state = ircache_renderer.prepare(record_ctx);
-            auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_buffers, sky_cube, transmittance_lut);
+            auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_buffers, ibl_cube, transmittance_lut);
             ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
 
             auto reprojected_rtdgi = rtdgi_renderer.reproject(record_ctx, reprojection_map);
@@ -81,7 +81,7 @@ struct KajiyaRenderer {
                 record_ctx,
                 gbuffer_depth,
                 reprojection_map,
-                sky_cube,
+                sky_lut,
                 transmittance_lut,
                 voxel_buffers,
                 rtdgi_irradiance,
@@ -111,7 +111,7 @@ struct KajiyaRenderer {
             rtr,
             rtdgi,
             ircache_state,
-            sky_cube,
+            sky_lut,
             ibl_cube,
             transmittance_lut);
 

@@ -54,7 +54,7 @@ daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_
 daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 
-#include <renderer/sky.glsl>
+#include <renderer/atmosphere/sky.glsl>
 
 #define PIXEL_I gl_GlobalInvocationID.xy
 #define INPUT deref(gpu_input)

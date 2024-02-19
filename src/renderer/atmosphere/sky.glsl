@@ -5,15 +5,14 @@
 
 #define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
-const vec3 sun_color = vec3(255, 240, 233); // 5000 kelvin blackbody
+const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
 #define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIRECTION) * SUN_INTENSITY)
-#define ATMOSPHERE_CAMERA_HEIGHT 3.0
 
 vec3 get_sky_world_camera_position(daxa_BufferPtr(GpuInput) gpu_input) {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
-    const vec3 camera_position = vec3(0.0, 0.0, ATMOSPHERE_CAMERA_HEIGHT);
-    vec3 world_camera_position = camera_position;
+    const vec3 camera_position = (deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset) * 0.001 + vec3(0.0, 0.0, 2.0);
+    vec3 world_camera_position = camera_position * vec3(0, 0, 1);
     world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
     return world_camera_position;
 }
@@ -298,9 +297,13 @@ vec3 get_atmosphere_illuminance_along_ray(
     const vec3 world_up = normalize(world_camera_position);
 
     const float view_zenith_angle = acos(dot(ray, world_up));
-    const float light_view_angle = acos(dot(
-        normalize(vec3(sun_direction.xy, 0.0)),
-        normalize(vec3(ray.xy, 0.0))));
+    // NOTE(grundlett): Minor imprecision in the dot-product can result in a value
+    // just barely outside the valid range of acos (-1.0, 1.0). Sanity check and
+    // clamp the
+    const float light_view_angle =
+        acos(clamp(dot(normalize(vec3(sun_direction.xy, 0.0)),
+                       normalize(vec3(ray.xy, 0.0))),
+                   -1.0, 1.0));
 
     const float atmosphere_intersection_distance = ray_sphere_intersect_nearest(
         world_camera_position,
@@ -326,28 +329,12 @@ vec3 get_atmosphere_illuminance_along_ray(
     return atmosphere_scattering_illuminance;
 }
 
-struct AtmosphereLightingInfo {
-    // illuminance from atmosphere along normal vector
-    vec3 atmosphere_normal_illuminance;
-    // illuminance from atmosphere along view vector
-    vec3 atmosphere_direct_illuminance;
-    // direct sun illuminance
-    vec3 sun_direct_illuminance;
-};
-
-AtmosphereLightingInfo get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, vec3 view_direction, vec3 normal) {
+vec3 get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, vec3 view_direction) {
     const vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
     const vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 
     bool normal_ray_intersects_ground;
     bool view_ray_intersects_ground;
-    const vec3 atmosphere_normal_illuminance = get_atmosphere_illuminance_along_ray(
-        gpu_input,
-        _skyview,
-        normal,
-        world_camera_position,
-        sun_direction,
-        normal_ray_intersects_ground);
     const vec3 atmosphere_view_illuminance = get_atmosphere_illuminance_along_ray(
         gpu_input,
         _skyview,
@@ -358,10 +345,7 @@ AtmosphereLightingInfo get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_inpu
 
     const vec3 direct_sun_illuminance = view_ray_intersects_ground ? vec3(0.0) : get_sun_illuminance(gpu_input, _transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
 
-    return AtmosphereLightingInfo(
-        atmosphere_normal_illuminance,
-        atmosphere_view_illuminance,
-        direct_sun_illuminance);
+    return atmosphere_view_illuminance + direct_sun_illuminance;
 }
 
 vec3 sample_sun_direction(

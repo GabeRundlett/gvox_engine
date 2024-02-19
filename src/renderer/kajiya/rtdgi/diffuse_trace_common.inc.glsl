@@ -13,7 +13,7 @@ const bool USE_LIGHTS = true;
 
 #define USE_SKY_CUBE_TEX 1
 
-#include <renderer/sky.glsl>
+#include <renderer/atmosphere/sky.glsl>
 
 const float SKY_DIST = 1e4;
 

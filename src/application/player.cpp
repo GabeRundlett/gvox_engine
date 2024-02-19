@@ -1,6 +1,8 @@
 #include "player.hpp"
+#include <application/settings.hpp>
 #include <renderer/kajiya/inc/math_const.glsl>
 #include <glm/glm.hpp>
+#include <bit>
 
 using vec4 = daxa_f32vec4;
 using vec2 = daxa_f32vec2;
@@ -40,7 +42,6 @@ vec3 operator*(vec3 a, float b) {
 
 using std::clamp;
 
-#include <bit>
 
 glm::mat4 rotation_matrix(float yaw, float pitch, float roll) {
     float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
@@ -111,8 +112,12 @@ void player_fix_chunk_offset(Player &PLAYER) {
 }
 
 void player_startup(Player &PLAYER) {
+    AppSettings::add<settings::InputFloat>({"Player", "Movement Speed", {.value = 2.5f}});
+    AppSettings::add<settings::InputFloat>({"Player", "Sprint Multiplier", {.value = 25.0f}});
+
     PLAYER.pos = vec3(0.01f, 0.02f, 0.03f);
     PLAYER.vel = vec3(0.0);
+    PLAYER.player_unit_offset = ivec3(0, 0, 0);
     // PLAYER.pos = vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = vec3(66.01, 38.02, 14.01);
 
@@ -154,8 +159,8 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
 
     const bool is_flying = true;
 
-    const float speed = 2.5f;
-    const float sprint_speed = is_flying ? 25.5f : 2.5f;
+    const float speed = AppSettings::get<settings::InputFloat>("Player", "Movement Speed").value;
+    const float sprint_speed = AppSettings::get<settings::InputFloat>("Player", "Sprint Multiplier").value;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
         move_vec = move_vec + PLAYER.forward;

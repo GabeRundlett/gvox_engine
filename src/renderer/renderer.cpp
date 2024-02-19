@@ -3,7 +3,7 @@
 #include <renderer/trace_primary.inl>
 #include <renderer/trace_secondary.inl>
 #include <renderer/postprocessing.inl>
-#include <renderer/sky.inl>
+#include <renderer/atmosphere/sky.inl>
 #include <renderer/fsr.inl>
 
 #include <renderer/kajiya/kajiya.hpp>
@@ -81,8 +81,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
 
     auto &self = *impl;
 
-    auto [sky_lut, transmittance_lut, sky_cube, ibl_cube] = generate_procedural_sky(record_ctx);
-    debug_utils::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+    auto [sky_lut, transmittance_lut, ibl_cube] = generate_procedural_sky(record_ctx);
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
 
     auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
@@ -95,8 +94,8 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         gbuffer_depth,
         velocity_image,
         shadow_mask,
-        sky_cube,
         ibl_cube,
+        sky_lut,
         transmittance_lut,
         voxel_buffers);
 

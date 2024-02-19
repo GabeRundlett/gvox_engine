@@ -10,13 +10,12 @@ daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
 daxa_ImageViewIndex rtr_tex = push.uses.rtr_tex;
 daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
 daxa_ImageViewIndex output_tex = push.uses.output_tex;
-daxa_ImageViewIndex unconvolved_sky_cube_tex = push.uses.unconvolved_sky_cube_tex;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 // IRCACHE_USE_BUFFERS_PUSH_USES()
 
 #include "inc/rt.glsl"
-#include <renderer/sky.glsl>
+#include <renderer/atmosphere/sky.glsl>
 #include "inc/gbuffer.glsl"
 
 #include "inc/layered_brdf.glsl"
@@ -94,11 +93,7 @@ void main() {
         float current_sun_angular_radius = acos(sun_angular_radius_cos);
         float sun_radius_ratio = real_sun_angular_radius / current_sun_angular_radius;
 
-        vec3 output_ = texture(daxa_samplerCube(unconvolved_sky_cube_tex, g_sampler_llr), outgoing_ray.Direction).rgb;
-        if (dot(outgoing_ray.Direction, SUN_DIRECTION) > sun_angular_radius_cos) {
-            // TODO: what's the correct value?
-            output_ += 800.0 * sun_color_in_direction(gpu_input, transmittance_lut, outgoing_ray.Direction) * sun_radius_ratio * sun_radius_ratio;
-        }
+        vec3 output_ = get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, outgoing_ray.Direction);
 
         output_ *= deref(gpu_input).pre_exposure;
         // temporal_output_tex[px] = vec4(output_, 1);

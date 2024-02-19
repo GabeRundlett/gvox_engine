@@ -2,7 +2,7 @@
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
-#include <renderer/sky.glsl>
+#include <renderer/atmosphere/sky.glsl>
 #include <renderer/kajiya/inc/downscale.glsl>
 
 #if TraceSecondaryComputeShader

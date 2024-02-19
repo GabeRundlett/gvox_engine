@@ -9,8 +9,7 @@
 #include "../inc/layered_brdf.glsl"
 #include "blue_noise.glsl"
 #include "../inc/rt.glsl"
-// #include <utilities/gpu/atmosphere.glsl>
-#include <renderer/sky.glsl>
+#include <renderer/atmosphere/sky.glsl>
 // #include <utilities/gpu/sun.glsl>
 // #include <utilities/gpu/lights/triangle.glsl>
 // #include "../ircache/bindings.glsl"
@@ -28,7 +27,7 @@ IRCACHE_USE_BUFFERS_PUSH_USES()
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
 daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex out0_tex = push.uses.out0_tex;
 daxa_ImageViewIndex out1_tex = push.uses.out1_tex;

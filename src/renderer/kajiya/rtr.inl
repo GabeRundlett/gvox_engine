@@ -16,7 +16,7 @@ IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, out0_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, out1_tex)
@@ -36,7 +36,7 @@ IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, refl_restir_invalidity_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, ray_orig_history_tex)
@@ -310,7 +310,7 @@ struct RtrRenderer {
         RecordContext &record_ctx,
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView reprojection_map,
-        daxa::TaskImageView sky_cube,
+        daxa::TaskImageView sky_lut,
         daxa::TaskImageView transmittance_lut,
         VoxelWorldBuffers &voxel_buffers,
         daxa::TaskImageView rtdgi_irradiance,
@@ -432,7 +432,7 @@ struct RtrRenderer {
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::rtdgi_tex, rtdgi_irradiance}},
-                daxa::TaskViewVariant{std::pair{RtrTraceCompute::sky_cube_tex, sky_cube}},
+                daxa::TaskViewVariant{std::pair{RtrTraceCompute::sky_lut, sky_lut}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::transmittance_lut, transmittance_lut}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::out0_tex, refl0_tex}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::out1_tex, refl1_tex}},
@@ -540,7 +540,7 @@ struct RtrRenderer {
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::depth_tex, gbuffer_depth.depth.current()}},
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::rtdgi_tex, rtdgi_irradiance}},
-                    daxa::TaskViewVariant{std::pair{RtrValidateCompute::sky_cube_tex, sky_cube}},
+                    daxa::TaskViewVariant{std::pair{RtrValidateCompute::sky_lut, sky_lut}},
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::transmittance_lut, transmittance_lut}},
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::refl_restir_invalidity_tex, refl_restir_invalidity_tex}},
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::ray_orig_history_tex, ray_orig_history_tex}},

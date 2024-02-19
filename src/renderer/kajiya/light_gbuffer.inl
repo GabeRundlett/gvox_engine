@@ -12,7 +12,7 @@
 #define SHADING_MODE_RTX_OFF 4
 #define SHADING_MODE_IRCACHE 5
 
-DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11 /* + IRCACHE_BUFFER_USE_N */)
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 10 /* + IRCACHE_BUFFER_USE_N */)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 // IRCACHE_USE_BUFFERS()
@@ -22,8 +22,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, unconvolved_sky_cube_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
 struct LightGbufferComputePush {
@@ -42,7 +41,7 @@ inline auto light_gbuffer(
     daxa::TaskImageView rtr,
     daxa::TaskImageView rtdgi,
     IrcacheRenderState &ircache,
-    daxa::TaskImageView sky_cube,
+    daxa::TaskImageView sky_lut,
     daxa::TaskImageView convolved_sky_cube,
     daxa::TaskImageView transmittance_lut) -> daxa::TaskImageView {
 
@@ -64,8 +63,7 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtr_tex, rtr}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::rtdgi_tex, rtdgi}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::output_tex, output_image}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::unconvolved_sky_cube_tex, sky_cube}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_cube_tex, convolved_sky_cube}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_lut, sky_lut}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {

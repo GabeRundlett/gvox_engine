@@ -1,7 +1,7 @@
-#include <renderer/sky.inl>
+#include "sky.inl"
 
 #include <utilities/gpu/math.glsl>
-#include <renderer/sky.glsl>
+#include "sky.glsl"
 
 #if SkyTransmittanceComputeShader
 
@@ -402,7 +402,7 @@ void main() {
     }
 
     // Hardcode player position to be 100 meters above sea level
-    vec3 world_position = vec3(0.0, 0.0, deref(gpu_input).sky_settings.atmosphere_bottom + ATMOSPHERE_CAMERA_HEIGHT);
+    vec3 world_position = get_sky_world_camera_position(gpu_input);
 
     vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(SKY_SKY_RES);
     SkyviewParams skyview_params = uv_to_skyview_lut_params(
@@ -453,8 +453,7 @@ void main() {
     vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
     const mat3 basis = build_orthonormal_basis(output_dir);
 
-    AtmosphereLightingInfo sky_lighting = get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, output_dir, output_dir);
-    vec4 result = vec4(sky_lighting.atmosphere_direct_illuminance, 1);
+    vec4 result = vec4(get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, output_dir), 1);
 
     imageStore(daxa_image2DArray(sky_cube), ivec3(px), result);
 }

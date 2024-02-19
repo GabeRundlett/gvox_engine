@@ -25,7 +25,7 @@ IRCACHE_USE_BUFFERS_PUSH_USES()
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
 daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
-daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex refl_restir_invalidity_tex = push.uses.refl_restir_invalidity_tex;
 daxa_ImageViewIndex ray_orig_history_tex = push.uses.ray_orig_history_tex;
