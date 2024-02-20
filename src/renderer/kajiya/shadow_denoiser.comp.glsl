@@ -37,6 +37,8 @@ void main() {
 
 #if ShadowTemporalFilterComputeShader
 
+#include "inc/camera.glsl"
+
 DAXA_DECL_PUSH_CONSTANT(ShadowTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
@@ -70,13 +72,8 @@ mat4 FFX_DNSR_Shadows_GetViewProjectionInverse() {
     return deref(gpu_input).player.cam.clip_to_view;
 }
 
-vec3 get_eye_position() {
-    vec4 eye_pos_h = deref(gpu_input).player.cam.view_to_world * vec4(0, 0, 0, 1);
-    return eye_pos_h.xyz / eye_pos_h.w;
-}
-
 vec3 FFX_DNSR_Shadows_GetEye() {
-    return get_eye_position();
+    return get_eye_position(gpu_input);
 }
 
 vec3 FFX_DNSR_Shadows_ReadNormals(uvec2 px) {

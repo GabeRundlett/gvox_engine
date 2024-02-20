@@ -81,8 +81,16 @@ void main() {
     // TODO: frame consistency
     const uint noise_offset = deref(gpu_input).frame_index * select(USE_TEMPORAL_JITTER, 1, 0);
 
-    const vec3 ray_orig_ws = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz + get_prev_eye_position(gpu_input);
-    const vec3 ray_hit_ws = safeTexelFetch(ray_history_tex, ivec2(px), 0).xyz + ray_orig_ws;
+    vec3 ray_orig_ws = safeTexelFetch(ray_orig_history_tex, ivec2(px), 0).xyz + get_prev_eye_position(gpu_input);
+    vec3 ray_hit_ws = safeTexelFetch(ray_history_tex, ivec2(px), 0).xyz + ray_orig_ws;
+
+    // NOTE(grundlett): Here we fix the ray origin/hit for when the player causes the world to wrap.
+    // We technically don't need to write out if the world does not wrap in this frame, but IDC for now.
+    vec3 offset = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
+    ray_orig_ws -= offset;
+    ray_hit_ws -= offset;
+    safeImageStore(ray_orig_history_tex, ivec2(px), vec4(ray_orig_ws, 0));
+    safeImageStore(ray_history_tex, ivec2(px), vec4(ray_hit_ws, 0));
 
     RayDesc outgoing_ray;
     outgoing_ray.Direction = normalize(ray_hit_ws - ray_orig_ws);

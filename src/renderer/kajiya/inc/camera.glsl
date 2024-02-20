@@ -78,18 +78,18 @@ ViewRayContext vrc_from_uv_and_depth(daxa_BufferPtr(GpuInput) gpu_input, vec2 uv
     res.ray_hit_ws_h = deref(gpu_input).player.cam.view_to_world * res.ray_hit_vs_h;
     return res;
 }
-#define BIAS uintBitsToFloat(0x3f800040) // uintBitsToFloat(0x3f800040) == 1.00000762939453125
 ViewRayContext vrc_from_uv_and_biased_depth(daxa_BufferPtr(GpuInput) gpu_input, vec2 uv, float depth) {
+    const float BIAS = uintBitsToFloat(0x3f800040); // uintBitsToFloat(0x3f800040) == 1.00000762939453125
     return vrc_from_uv_and_depth(gpu_input, uv, min(1.0, depth * BIAS));
 }
 
 vec3 get_eye_position(daxa_BufferPtr(GpuInput) gpu_input) {
     vec4 eye_pos_h = deref(gpu_input).player.cam.view_to_world * vec4(0, 0, 0, 1);
-    return eye_pos_h.xyz / eye_pos_h.w + deref(gpu_input).player.player_unit_offset;
+    return eye_pos_h.xyz / eye_pos_h.w;
 }
 vec3 get_prev_eye_position(daxa_BufferPtr(GpuInput) gpu_input) {
     vec4 eye_pos_h = deref(gpu_input).player.cam.prev_view_to_prev_world * vec4(0, 0, 0, 1);
-    return eye_pos_h.xyz / eye_pos_h.w + deref(gpu_input).player.player_unit_offset;
+    return eye_pos_h.xyz / eye_pos_h.w;
 }
 vec3 direction_view_to_world(daxa_BufferPtr(GpuInput) gpu_input, vec3 v) {
     return (deref(gpu_input).player.cam.view_to_world * vec4(v, 0)).xyz;
