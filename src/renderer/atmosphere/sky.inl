@@ -46,11 +46,10 @@ struct SkyCubeComputePush {
 
 inline void add_sky_settings() {
     auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {
-        AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_exp_scale", {.value = factory_default.exp_scale, .min = -1.0f, .max = 1.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
     };
 
     auto mie_scale_height = 1.2000000476837158f;
@@ -129,11 +128,10 @@ inline auto get_sky_settings() -> SkySettings {
     };
     auto get_DensityProfileLayer = [](std::string_view name) -> DensityProfileLayer {
         return DensityProfileLayer{
-            .const_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_const_term").value,
-            .exp_scale = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_exp_scale").value,
-            .exp_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_exp_term").value,
-            .layer_width = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_layer_width").value,
-            .lin_term = AppSettings::get<settings::SliderFloat>("Atmosphere", std::string{name} + "_lin_term").value,
+            .const_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_const_term").value,
+            .exp_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_exp_term").value,
+            .layer_width = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_layer_width").value,
+            .lin_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_lin_term").value,
         };
     };
 
