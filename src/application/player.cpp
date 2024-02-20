@@ -1,8 +1,12 @@
 #include "player.hpp"
+
+#include <bit>
+#include <glm/glm.hpp>
+#include <fmt/format.h>
+
 #include <application/settings.hpp>
 #include <renderer/kajiya/inc/math_const.glsl>
-#include <glm/glm.hpp>
-#include <bit>
+#include <utilities/debug.hpp>
 
 using vec4 = daxa_f32vec4;
 using vec2 = daxa_f32vec2;
@@ -41,7 +45,6 @@ vec3 operator*(vec3 a, float b) {
 }
 
 using std::clamp;
-
 
 glm::mat4 rotation_matrix(float yaw, float pitch, float roll) {
     float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
@@ -129,6 +132,8 @@ void player_startup(Player &PLAYER) {
 
     // PLAYER.pitch = M_PI * 0.249;
     // PLAYER.yaw = M_PI * 1.25;
+
+    PLAYER.roll = 0.0f;
 
     // Inside Bistro
     // PLAYER.pos = vec3(22.63, 51.60, 43.82);
@@ -235,4 +240,8 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         std::bit_cast<glm::mat4>(PLAYER.cam.prev_world_to_prev_view) *
         std::bit_cast<glm::mat4>(PLAYER.cam.view_to_world) *
         std::bit_cast<glm::mat4>(PLAYER.cam.clip_to_view));
+
+    debug_utils::DebugDisplay::set_debug_string("Player Pos", fmt::format("{:.3f}, {:.3f}, {:.3f}", PLAYER.pos.x, PLAYER.pos.y, PLAYER.pos.z));
+    debug_utils::DebugDisplay::set_debug_string("Player Rot (Y/P/R)", fmt::format("{:.3f}, {:.3f}, {:.3f}", PLAYER.yaw, PLAYER.pitch, PLAYER.roll));
+    debug_utils::DebugDisplay::set_debug_string("Player Unit Offset", fmt::format("{}, {}, {}", PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z));
 }

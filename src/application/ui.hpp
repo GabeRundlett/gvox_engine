@@ -30,7 +30,6 @@ struct AppUi {
     daxa_u64 frametime_rotation_index = 0;
 
     daxa_f32 debug_menu_size{};
-    char const *debug_gpu_name{};
 
     bool needs_saving = false;
     Clock::time_point last_save_time{};

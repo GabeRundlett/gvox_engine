@@ -67,7 +67,7 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
     AppSettings::add<settings::SliderFloat>({"Graphics", "Render Res Scale", {.value = 1.0f, .min = 0.2f, .max = 4.0f}, {.task_graph_depends = true}});
 
     auto const &device_props = gpu_context.device.properties();
-    ui.debug_gpu_name = reinterpret_cast<char const *>(device_props.device_name);
+    debug_utils::DebugDisplay::set_debug_string("GPU", reinterpret_cast<char const *>(device_props.device_name));
     imgui_renderer = daxa::ImGuiRenderer({
         .device = gpu_context.device,
         .format = swapchain.get_format(),
@@ -268,8 +268,10 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
         start = Clock::now();
     }
 
-    if (ui.settings.keybinds.contains(key_id)) {
-        player_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
+    if (!ui.paused) {
+        if (ui.settings.keybinds.contains(key_id)) {
+            player_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
+        }
     }
 }
 void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {

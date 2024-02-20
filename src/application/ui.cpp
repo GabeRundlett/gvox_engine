@@ -230,11 +230,11 @@ namespace {
         std::visit(
             overloaded{
                 [&](settings::InputFloat &data) {
-                    changed = ImGui::InputFloat(id.c_str(), &data.value);
+                    changed = ImGui::InputFloat(id.c_str(), &data.value, 0.0f, 0.0f, "%.6f");
                     context_menu([]() {});
                 },
                 [&](settings::InputFloat3 &data) {
-                    changed = ImGui::InputFloat3(id.c_str(), &data.value.x);
+                    changed = ImGui::InputFloat3(id.c_str(), &data.value.x, "%.6f");
                     context_menu([]() {});
                 },
                 [&](settings::SliderFloat &data) {
@@ -654,7 +654,9 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
             frametime_graph(cpu_frametimes, frametime_rotation_index);
             ImGui::TreePop();
         }
-        ImGui::Text("GPU: %s", debug_gpu_name);
+        for (auto const &[id, value] : debug_utils::DebugDisplay::s_instance->debug_strings) {
+            ImGui::Text("%s: %s", id.c_str(), value.c_str());
+        }
         if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =
                 ImGuiTableFlags_Resizable |

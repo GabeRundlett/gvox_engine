@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <map>
 
 #include <application/settings.inl>
 #include <imgui.h>
@@ -47,6 +48,8 @@ namespace debug_utils {
         uint32_t selected_pass{};
         std::string selected_pass_name{};
 
+        std::map<std::string, std::string> debug_strings{};
+
         inline static DebugDisplay *s_instance = nullptr;
 
         DebugDisplay();
@@ -54,5 +57,7 @@ namespace debug_utils {
 
         static void begin_passes();
         static void add_pass(Pass const &info);
+
+        static void set_debug_string(std::string const &id, std::string const &value);
     };
 } // namespace debug_utils

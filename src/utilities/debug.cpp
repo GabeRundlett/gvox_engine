@@ -286,3 +286,8 @@ void debug_utils::DebugDisplay::add_pass(Pass const &info) {
     }
     self.passes.push_back(new_info);
 }
+
+void debug_utils::DebugDisplay::set_debug_string(std::string const &id, std::string const &value) {
+    auto &self = *s_instance;
+    self.debug_strings[id] = value;
+}
