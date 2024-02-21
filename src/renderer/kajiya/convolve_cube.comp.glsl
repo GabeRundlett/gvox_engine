@@ -40,7 +40,7 @@ void main() {
         vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
         // TODO: Now that we sample the atmosphere directly, computing this IBL is really slow.
         // We should cache the IBL cubemap, and only re-render it when necessary.
-        result += get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, input_dir);
+        result += sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
     }
 
     imageStore(daxa_image2DArray(ibl_cube), ivec3(px), vec4(result / sample_count, 1.0));

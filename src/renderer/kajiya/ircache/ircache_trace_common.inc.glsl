@@ -122,7 +122,7 @@ IrcacheTraceResult ircache_trace(Vertex entry, DiffuseBrdf brdf, SampleParams sa
             }
 
             const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi);
-            const vec3 light_radiance = select(bvec3(is_shadowed), vec3(0.0), sun_color_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION));
+            const vec3 light_radiance = select(bvec3(is_shadowed), vec3(0.0), sun_radiance_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION));
             irradiance_sum += throughput * brdf_value * light_radiance * max(0.0, wi.z);
 
             if (USE_EMISSIVE) {

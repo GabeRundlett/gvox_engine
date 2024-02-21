@@ -101,7 +101,7 @@ TraceResult do_the_thing(uvec2 px, vec3 normal_ws, inout uint rng, RayDesc outgo
         const LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
 
         // Sun
-        vec3 sun_radiance = sun_color_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
+        vec3 sun_radiance = sun_radiance_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
 
         if (any(greaterThan(sun_radiance, vec3(0)))) {
             const vec3 to_light_norm = sample_sun_direction(

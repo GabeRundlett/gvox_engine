@@ -99,7 +99,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
             vec3 reflected_normal_vs;
             {
                 // Sun
-                vec3 sun_radiance = sun_color_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
+                vec3 sun_radiance = sun_radiance_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
                 {
 #if 1
                     const vec2 urand = vec2(
@@ -215,7 +215,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
 
     float hit_t = SKY_DIST;
     vec3 far_gi;
-    far_gi = get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, outgoing_ray.Direction);
+    far_gi = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, outgoing_ray.Direction);
 
 #if COLOR_CODE_GROUND_SKY_BLACK_WHITE
     result.total_radiance = 2.0.xxx;

@@ -93,7 +93,7 @@ void main() {
         float current_sun_angular_radius = acos(sun_angular_radius_cos);
         float sun_radius_ratio = real_sun_angular_radius / current_sun_angular_radius;
 
-        vec3 output_ = get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, outgoing_ray.Direction);
+        vec3 output_ = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, outgoing_ray.Direction);
 
         output_ *= deref(gpu_input).pre_exposure;
         // temporal_output_tex[px] = vec4(output_, 1);
@@ -129,7 +129,7 @@ void main() {
 
     LayeredBrdf brdf = LayeredBrdf_from_gbuffer_ndotv(gbuffer, wo.z);
     const vec3 brdf_value = evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z);
-    const vec3 light_radiance = shadow_mask * sun_color_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
+    const vec3 light_radiance = shadow_mask * sun_radiance_in_direction(gpu_input, transmittance_lut, SUN_DIRECTION);
     vec3 total_radiance = brdf_value * light_radiance;
 
     total_radiance += gbuffer.emissive;

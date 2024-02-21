@@ -2,6 +2,7 @@
 
 #include <utilities/gpu/math.glsl>
 #include "sky.glsl"
+#include "atmosphere.glsl"
 
 #if SkyTransmittanceComputeShader
 
