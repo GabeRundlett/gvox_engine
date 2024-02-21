@@ -403,14 +403,18 @@ void main() {
 
     // Hardcode player position to be 100 meters above sea level
     vec3 world_position = get_sky_world_camera_position(gpu_input);
+    float camera_height = length(world_position);
+
+    bool inside_atmosphere = camera_height < deref(gpu_input).sky_settings.atmosphere_top;
 
     vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(SKY_SKY_RES);
     SkyviewParams skyview_params = uv_to_skyview_lut_params(
+        inside_atmosphere,
         uv,
         deref(gpu_input).sky_settings.atmosphere_bottom,
         deref(gpu_input).sky_settings.atmosphere_top,
         SKY_SKY_RES,
-        length(world_position));
+        camera_height);
 
     float sun_zenith_cos_angle = dot(normalize(world_position), deref(gpu_input).sky_settings.sun_direction);
     // sin^2 + cos^2 = 1 -> sqrt(1 - cos^2) = sin

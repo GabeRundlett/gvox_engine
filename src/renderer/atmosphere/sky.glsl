@@ -122,24 +122,30 @@ TransmittanceParams uv_to_transmittance_lut_params(vec2 uv, float atmosphere_bot
 /// @param skyview dimensions
 /// @param view_height - view_height in world coordinates -> distance from planet center
 /// @return - SkyviewParams structure
-SkyviewParams uv_to_skyview_lut_params(vec2 uv, float atmosphere_bottom,
+SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float atmosphere_bottom,
                                        float atmosphere_top, vec2 skyview_dimensions, float view_height) {
     /* Constrain uvs to valid sub texel range
     (avoid zenith derivative issue making LUT usage visible) */
     uv = vec2(from_subuv_to_unit(uv.x, skyview_dimensions.x),
               from_subuv_to_unit(uv.y, skyview_dimensions.y));
 
-    float beta = asin(atmosphere_bottom / view_height);
-    float zenith_horizon_angle = M_PI - beta;
-
     float view_zenith_angle;
     float light_view_angle;
     /* Nonuniform mapping near the horizon to avoid artefacts */
-    if (uv.y < 0.5) {
-        float coord = 1.0 - (1.0 - 2.0 * uv.y) * (1.0 - 2.0 * uv.y);
-        view_zenith_angle = zenith_horizon_angle * coord;
+    if (inside_atmosphere) {
+        float beta = asin(atmosphere_bottom / view_height);
+        float zenith_horizon_angle = M_PI - beta;
+        if (uv.y < 0.5) {
+            float coord = 1.0 - (1.0 - 2.0 * uv.y) * (1.0 - 2.0 * uv.y);
+            view_zenith_angle = zenith_horizon_angle * coord;
+        } else {
+            float coord = (uv.y * 2.0 - 1.0) * (uv.y * 2.0 - 1.0);
+            view_zenith_angle = zenith_horizon_angle + beta * coord;
+        }
     } else {
-        float coord = (uv.y * 2.0 - 1.0) * (uv.y * 2.0 - 1.0);
+        float beta = asin(atmosphere_top / view_height);
+        float zenith_horizon_angle = M_PI - beta;
+        float coord = uv.y * uv.y;
         view_zenith_angle = zenith_horizon_angle + beta * coord;
     }
     light_view_angle = (uv.x * uv.x) * M_PI;
@@ -243,19 +249,27 @@ ScatteringSample sample_medium_scattering_detailed(daxa_BufferPtr(GpuInput) gpu_
 /// @param skyview_dimensions - skyViewLUT dimensions
 /// @param view_height - view_height in world coordinates -> distance from planet center
 /// @return - uv for the skyview LUT sampling
-vec2 skyview_lut_params_to_uv(bool intersects_ground, SkyviewParams params,
+vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, SkyviewParams params,
                               float atmosphere_bottom, float atmosphere_top, vec2 skyview_dimensions, float view_height) {
     vec2 uv;
-    float beta = asin(atmosphere_bottom / view_height);
-    float zenith_horizon_angle = M_PI - beta;
 
-    if (!intersects_ground) {
-        float coord = params.view_zenith_angle / zenith_horizon_angle;
-        coord = (1.0 - safe_sqrt(1.0 - coord)) / 2.0;
-        uv.y = coord;
+    if (inside_atmosphere) {
+        float beta = asin(atmosphere_bottom / view_height);
+        float zenith_horizon_angle = M_PI - beta;
+        if (!intersects_ground) {
+            float coord = params.view_zenith_angle / zenith_horizon_angle;
+            coord = (1.0 - safe_sqrt(1.0 - coord)) / 2.0;
+            uv.y = coord;
+        } else {
+            float coord = (params.view_zenith_angle - zenith_horizon_angle) / beta;
+            coord = (safe_sqrt(coord) + 1.0) / 2.0;
+            uv.y = coord;
+        }
     } else {
+        float beta = asin(atmosphere_top / view_height);
+        float zenith_horizon_angle = M_PI - beta;
         float coord = (params.view_zenith_angle - zenith_horizon_angle) / beta;
-        coord = (safe_sqrt(coord) + 1.0) / 2.0;
+        coord = safe_sqrt(coord);
         uv.y = coord;
     }
     uv.x = safe_sqrt(params.light_view_angle / M_PI);
@@ -316,8 +330,10 @@ vec3 get_atmosphere_illuminance_along_ray(
 
     intersects_ground = atmosphere_intersection_distance >= 0.0;
     const float camera_height = length(world_camera_position);
+    bool inside_atmosphere = camera_height < deref(gpu_input).sky_settings.atmosphere_top;
 
     vec2 skyview_uv = skyview_lut_params_to_uv(
+        inside_atmosphere,
         intersects_ground,
         SkyviewParams(view_zenith_angle, light_view_angle),
         deref(gpu_input).sky_settings.atmosphere_bottom,
@@ -325,7 +341,7 @@ vec3 get_atmosphere_illuminance_along_ray(
         vec2(SKY_SKY_RES.xy),
         camera_height);
 
-    const vec4 skyview_val = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv);
+    vec4 skyview_val = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv);
     const vec3 unitless_atmosphere_illuminance = skyview_val.rgb * skyview_val.a;
     const vec3 sun_color_weighed_atmosphere_illuminance = sun_color.rgb * unitless_atmosphere_illuminance;
     const vec3 atmosphere_scattering_illuminance = sun_color_weighed_atmosphere_illuminance * SUN_INTENSITY;
@@ -339,7 +355,7 @@ vec3 get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewI
 
     bool normal_ray_intersects_ground;
     bool view_ray_intersects_ground;
-    const vec3 atmosphere_view_illuminance = get_atmosphere_illuminance_along_ray(
+    vec3 atmosphere_view_illuminance = get_atmosphere_illuminance_along_ray(
         gpu_input,
         _skyview,
         view_direction,
@@ -374,6 +390,7 @@ vec3 get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewI
     bool intersects_sky = atmosphere_intersection_distance >= 0.0;
     if (!intersects_sky) {
         atmosphere_transmittance = vec3(1);
+        atmosphere_view_illuminance = vec3(0);
     }
 
     return atmosphere_view_illuminance + direct_sun_illuminance + atmosphere_transmittance * get_star_radiance(gpu_input, view_direction * sun_basis) * float(!view_ray_intersects_ground);
