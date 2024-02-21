@@ -3,6 +3,8 @@
 #include <core.inl>
 #include <g_samplers>
 
+#include "stars.glsl"
+
 #define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
 const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
@@ -323,7 +325,8 @@ vec3 get_atmosphere_illuminance_along_ray(
         vec2(SKY_SKY_RES.xy),
         camera_height);
 
-    const vec3 unitless_atmosphere_illuminance = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv).rgb;
+    const vec4 skyview_val = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv);
+    const vec3 unitless_atmosphere_illuminance = skyview_val.rgb * skyview_val.a;
     const vec3 sun_color_weighed_atmosphere_illuminance = sun_color.rgb * unitless_atmosphere_illuminance;
     const vec3 atmosphere_scattering_illuminance = sun_color_weighed_atmosphere_illuminance * SUN_INTENSITY;
 
@@ -344,9 +347,36 @@ vec3 get_atmosphere_lighting(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewI
         sun_direction,
         view_ray_intersects_ground);
 
-    const vec3 direct_sun_illuminance = view_ray_intersects_ground ? vec3(0.0) : get_sun_illuminance(gpu_input, _transmittance, view_direction, length(world_camera_position), dot(sun_direction, normalize(world_camera_position)), deref(gpu_input).sky_settings.sun_angular_radius_cos);
+    float height = length(world_camera_position);
+    float zenith_cos_angle = dot(sun_direction, normalize(world_camera_position));
+    float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
 
-    return atmosphere_view_illuminance + direct_sun_illuminance;
+    const vec3 direct_sun_illuminance = view_ray_intersects_ground ? vec3(0.0) : get_sun_illuminance(gpu_input, _transmittance, view_direction, height, zenith_cos_angle, sun_angular_radius_cos);
+
+    TransmittanceParams transmittance_lut_params = TransmittanceParams(height, dot(view_direction, normalize(world_camera_position)));
+    vec2 transmittance_texture_uv = transmittance_lut_to_uv(
+        transmittance_lut_params,
+        deref(gpu_input).sky_settings.atmosphere_bottom,
+        deref(gpu_input).sky_settings.atmosphere_top);
+    vec3 atmosphere_transmittance = texture(
+                                        daxa_sampler2D(_transmittance, g_sampler_llc),
+                                        transmittance_texture_uv)
+                                        .rgb;
+
+    const mat3 sun_basis = build_orthonormal_basis(normalize(SUN_DIRECTION));
+
+    const float atmosphere_intersection_distance = ray_sphere_intersect_nearest(
+        world_camera_position,
+        view_direction,
+        vec3(0.0, 0.0, 0.0),
+        deref(gpu_input).sky_settings.atmosphere_top);
+
+    bool intersects_sky = atmosphere_intersection_distance >= 0.0;
+    if (!intersects_sky) {
+        atmosphere_transmittance = vec3(1);
+    }
+
+    return atmosphere_view_illuminance + direct_sun_illuminance + atmosphere_transmittance * get_star_radiance(gpu_input, view_direction * sun_basis) * float(!view_ray_intersects_ground);
 }
 
 vec3 sample_sun_direction(

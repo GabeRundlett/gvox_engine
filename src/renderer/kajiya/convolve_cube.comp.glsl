@@ -1,10 +1,11 @@
 #include <renderer/kajiya/convolve_cube.inl>
 #include <utilities/gpu/math.glsl>
-#include <g_samplers>
+#include <renderer/atmosphere/sky.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(ConvolveCubeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
+daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex ibl_cube = push.uses.ibl_cube;
 
 float radical_inverse_vdc(uint bits) {
@@ -29,16 +30,18 @@ void main() {
     vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
     const mat3 basis = build_orthonormal_basis(output_dir);
 
-    const uint sample_count = 512;
+    const uint sample_count = 128;
 
     uint rng = hash2(px.xy);
 
-    vec4 result = vec4(0);
+    vec3 result = vec3(0);
     for (uint i = 0; i < sample_count; ++i) {
         vec2 urand = hammersley(i, sample_count);
         vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
-        result += texture(daxa_samplerCube(sky_cube, g_sampler_llr), input_dir);
+        // TODO: Now that we sample the atmosphere directly, computing this IBL is really slow.
+        // We should cache the IBL cubemap, and only re-render it when necessary.
+        result += get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, input_dir);
     }
 
-    imageStore(daxa_image2DArray(ibl_cube), ivec3(px), result / sample_count);
+    imageStore(daxa_image2DArray(ibl_cube), ivec3(px), vec4(result / sample_count, 1.0));
 }

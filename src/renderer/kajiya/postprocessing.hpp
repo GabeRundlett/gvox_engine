@@ -19,7 +19,7 @@ struct DynamicExposureState {
     float ev_slow = 0.0f;
 
     auto ev_smoothed() -> float {
-        const float DYNAMIC_EXPOSURE_BIAS = -2.0f;
+        const float DYNAMIC_EXPOSURE_BIAS = -2.5f;
         auto &self = *this;
         return (self.ev_slow + self.ev_fast) * 0.5f + DYNAMIC_EXPOSURE_BIAS;
     }

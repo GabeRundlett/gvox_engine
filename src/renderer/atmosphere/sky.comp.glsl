@@ -431,31 +431,9 @@ void main() {
         return;
     }
     vec3 luminance = integrate_scattered_luminance(world_position, world_direction, local_sun_direction, 30);
-    imageStore(daxa_image2D(sky_lut), ivec2(gl_GlobalInvocationID.xy), vec4(luminance, 1.0));
-}
-
-#endif
-
-#if SkyCubeComputeShader
-
-DAXA_DECL_PUSH_CONSTANT(SkyCubeComputePush, push)
-daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
-daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
-daxa_ImageViewIndex sky_cube = push.uses.sky_cube;
-
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-void main() {
-    uvec3 px = gl_GlobalInvocationID.xyz;
-    uint face = px.z;
-    vec2 uv = (px.xy + 0.5) / SKY_CUBE_RES;
-
-    vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
-    const mat3 basis = build_orthonormal_basis(output_dir);
-
-    vec4 result = vec4(get_atmosphere_lighting(gpu_input, sky_lut, transmittance_lut, output_dir), 1);
-
-    imageStore(daxa_image2DArray(sky_cube), ivec3(px), result);
+    vec3 inv_luminance = 1.0 / max(luminance, vec3(1.0 / 524288.0));
+    float inv_mult = min(524288.0, max(inv_luminance.x, max(inv_luminance.y, inv_luminance.z)));
+    imageStore(daxa_image2D(sky_lut), ivec2(gl_GlobalInvocationID.xy), vec4(luminance * inv_mult, 1.0 / inv_mult));
 }
 
 #endif

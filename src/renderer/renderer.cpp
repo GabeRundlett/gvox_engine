@@ -23,7 +23,7 @@ Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip High", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
-    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = -0.5f, .min = -15.0f, .max = 15.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = 0.0f, .min = -15.0f, .max = 15.0f}});
 
     auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
         auto val = 0.0f;
@@ -47,7 +47,7 @@ Renderer::~Renderer() = default;
 void Renderer::begin_frame(GpuInput &gpu_input) {
     auto &self = *impl;
 
-    gpu_input.sky_settings = get_sky_settings();
+    gpu_input.sky_settings = get_sky_settings(gpu_input.time);
 
     gpu_input.pre_exposure = self.kajiya_renderer.post_processor.exposure_state.pre_mult;
     gpu_input.pre_exposure_prev = self.kajiya_renderer.post_processor.exposure_state.pre_mult_prev;

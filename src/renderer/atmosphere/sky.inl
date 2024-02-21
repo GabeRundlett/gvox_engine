@@ -29,15 +29,6 @@ DAXA_DECL_TASK_HEAD_END
 struct SkySkyComputePush {
     SkySkyCompute uses;
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkyCubeCompute, 4)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D_ARRAY, sky_cube)
-DAXA_DECL_TASK_HEAD_END
-struct SkyCubeComputePush {
-    SkyCubeCompute uses;
-};
 
 #if defined(__cplusplus)
 
@@ -57,6 +48,8 @@ inline void add_sky_settings() {
     AppSettings::add<settings::SliderFloat>({"Sun", "Angle X", {.value = 210.0f, .min = 0.0f, .max = 360.0f}});
     AppSettings::add<settings::SliderFloat>({"Sun", "Angle Y", {.value = 25.0f, .min = 0.0f, .max = 180.0f}});
     AppSettings::add<settings::SliderFloat>({"Sun", "Angular Radius", {.value = 0.25f, .min = 0.25f, .max = 30.0f}});
+    AppSettings::add<settings::Checkbox>({"Sun", "Animate", {.value = false}});
+    AppSettings::add<settings::SliderFloat>({"Sun", "Animate Speed", {.value = 0.1f, .min = 0.001f, .max = 1.0f}});
     AppSettings::add<settings::InputFloat>({"Atmosphere", "atmosphere_bottom", {.value = 6360.0f}});
     AppSettings::add<settings::InputFloat>({"Atmosphere", "atmosphere_top", {.value = 6460.0f}});
     AppSettings::add<settings::InputFloat3>({"Atmosphere", "mie_scattering", {.value = {0.003996000159531832f, 0.003996000159531832f, 0.003996000159531832f}}});
@@ -121,7 +114,7 @@ inline void add_sky_settings() {
             .lin_term = -0.06666599959135056f,
         });
 }
-inline auto get_sky_settings() -> SkySettings {
+inline auto get_sky_settings(float time) -> SkySettings {
     add_sky_settings();
     auto radians = [](float x) -> float {
         return x * std::numbers::pi_v<float> / 180.0f;
@@ -156,29 +149,26 @@ inline auto get_sky_settings() -> SkySettings {
     result.absorption_extinction = AppSettings::get<settings::InputFloat3>("Atmosphere", "absorption_extinction").value;
     result.absorption_density[0] = get_DensityProfileLayer("absorption_density_0");
     result.absorption_density[1] = get_DensityProfileLayer("absorption_density_1");
+
+    sun_angle_y = radians(sun_angle_y);
+    if (AppSettings::get<settings::Checkbox>("Sun", "Animate").value) {
+        sun_angle_y += time * AppSettings::get<settings::SliderFloat>("Sun", "Animate Speed").value;
+    }
+
     result.sun_direction = {
-        daxa_f32(std::cos(radians(sun_angle_x)) * std::sin(radians(sun_angle_y))),
-        daxa_f32(std::sin(radians(sun_angle_x)) * std::sin(radians(sun_angle_y))),
-        daxa_f32(std::cos(radians(sun_angle_y))),
+        daxa_f32(std::cos(radians(sun_angle_x)) * std::sin(sun_angle_y)),
+        daxa_f32(std::sin(radians(sun_angle_x)) * std::sin(sun_angle_y)),
+        daxa_f32(std::cos(sun_angle_y)),
     };
     return result;
 }
 
 struct SkyRenderer {
-    TemporalImage temporal_sky_cube;
     TemporalImage temporal_ibl_cube;
 
-    void render(RecordContext &record_ctx, daxa::TaskImageView input_sky_cube) {
+    void render(RecordContext &record_ctx, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut) {
         add_sky_settings();
 
-        temporal_sky_cube = record_ctx.gpu_context->find_or_add_temporal_image({
-            .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
-            .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {SKY_CUBE_RES, SKY_CUBE_RES, 1},
-            .array_layer_count = 6,
-            .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_SRC | daxa::ImageUsageFlagBits::TRANSFER_DST,
-            .name = "sky_cube",
-        });
         temporal_ibl_cube = record_ctx.gpu_context->find_or_add_temporal_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -188,32 +178,11 @@ struct SkyRenderer {
             .name = "ibl_cube",
         });
 
-        record_ctx.task_graph.use_persistent_image(temporal_sky_cube.task_resource);
         record_ctx.task_graph.use_persistent_image(temporal_ibl_cube.task_resource);
 
-        auto sky_cube = temporal_sky_cube.task_resource.view().view({.layer_count = 6});
         auto ibl_cube = temporal_ibl_cube.task_resource.view().view({.layer_count = 6});
 
-        record_ctx.task_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, input_sky_cube),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, sky_cube),
-            },
-            .task = [=](daxa::TaskInterface const &ti) {
-                ti.recorder.copy_image_to_image({
-                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
-                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
-                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0],
-                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
-                    .src_slice = {.layer_count = 6},
-                    .dst_slice = {.layer_count = 6},
-                    .extent = ti.device.info_image(ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0]).value().size,
-                });
-            },
-            .name = "transfer sky cube",
-        });
-
-        convolve_cube(record_ctx, sky_cube, ibl_cube);
+        convolve_cube(record_ctx, sky_lut, transmittance_lut, ibl_cube);
     }
 };
 
@@ -278,31 +247,6 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     debug_utils::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-    auto sky_cube = record_ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {SKY_CUBE_RES, SKY_CUBE_RES, 1},
-        .array_layer_count = 6,
-        .name = "procedural_sky_cube",
-    });
-    sky_cube = sky_cube.view({.layer_count = 6});
-
-    record_ctx.add(ComputeTask<SkyCubeCompute, SkyCubeComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyCubeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{SkyCubeCompute::transmittance_lut, transmittance_lut}},
-            daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_lut, sky_lut}},
-            daxa::TaskViewVariant{std::pair{SkyCubeCompute::sky_cube, sky_cube}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyCubeComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({(SKY_CUBE_RES + 7) / 8, (SKY_CUBE_RES + 7) / 8, 6});
-        },
-    });
-
-    // debug_utils::DebugDisplay::add_pass({.name = "sky_cube", .task_image_id = sky_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
-
     auto ibl_cube = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
@@ -311,7 +255,7 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
     });
     ibl_cube = ibl_cube.view({.layer_count = 6});
 
-    convolve_cube(record_ctx, sky_cube, ibl_cube);
+    convolve_cube(record_ctx, sky_lut, transmittance_lut, ibl_cube);
 
     return {sky_lut, transmittance_lut, ibl_cube};
 }
