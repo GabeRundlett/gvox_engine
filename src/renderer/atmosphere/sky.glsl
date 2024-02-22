@@ -37,15 +37,16 @@ vec3 get_atmosphere_radiance_along_ray(
     daxa_BufferPtr(GpuInput) gpu_input,
     daxa_ImageViewIndex _skyview,
     vec3 ray,
-    vec3 world_camera_position,
+    float camera_height,
     vec3 sun_direction,
     out bool intersects_ground) {
-    const vec3 world_up = normalize(world_camera_position);
+    const vec3 world_camera_position = vec3(0, 0, camera_height);
+    const vec3 world_up = vec3(0, 0, 1);
 
     const float view_zenith_angle = acos(dot(ray, world_up));
     // NOTE(grundlett): Minor imprecision in the dot-product can result in a value
     // just barely outside the valid range of acos (-1.0, 1.0). Sanity check and
-    // clamp the
+    // clamp it.
     const float light_view_angle =
         acos(clamp(dot(normalize(vec3(sun_direction.xy, 0.0)),
                        normalize(vec3(ray.xy, 0.0))),
@@ -58,7 +59,6 @@ vec3 get_atmosphere_radiance_along_ray(
         deref(gpu_input).sky_settings.atmosphere_bottom);
 
     intersects_ground = atmosphere_intersection_distance >= 0.0;
-    const float camera_height = length(world_camera_position);
     bool inside_atmosphere = camera_height < deref(gpu_input).sky_settings.atmosphere_top;
 
     vec2 skyview_uv = skyview_lut_params_to_uv(
@@ -80,8 +80,14 @@ vec3 get_atmosphere_radiance_along_ray(
 
 // Sky represents everything, the atmosphere, sun, and stars.
 vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, vec3 view_direction) {
-    const vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
-    const vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+    vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
+    vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+    float height = length(world_camera_position);
+
+    const mat3 basis = build_orthonormal_basis(world_camera_position / height);
+    world_camera_position = vec3(0, 0, height);
+    view_direction = view_direction * basis;
+    sun_direction = sun_direction * basis;
 
     bool normal_ray_intersects_ground;
     bool view_ray_intersects_ground;
@@ -89,11 +95,10 @@ vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
         gpu_input,
         _skyview,
         view_direction,
-        world_camera_position,
+        height,
         sun_direction,
         view_ray_intersects_ground);
 
-    float height = length(world_camera_position);
     float zenith_cos_angle = dot(sun_direction, normalize(world_camera_position));
     float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
 
@@ -120,7 +125,7 @@ vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
         atmosphere_view_illuminance = vec3(0);
     }
 
-    return atmosphere_view_illuminance + direct_sun_illuminance + atmosphere_transmittance * get_star_radiance(gpu_input, view_direction * sun_basis) * float(!view_ray_intersects_ground);
+    return atmosphere_view_illuminance + direct_sun_illuminance + atmosphere_transmittance * get_star_radiance(gpu_input, (basis * view_direction) * sun_basis) * float(!view_ray_intersects_ground);
 }
 
 // Returns just the radiance from the sun in that direction

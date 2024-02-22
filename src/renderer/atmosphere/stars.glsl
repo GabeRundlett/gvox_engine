@@ -87,5 +87,5 @@ vec3 get_star_radiance(daxa_BufferPtr(GpuInput) gpu_input, vec3 view_direction) 
     vec2 sp = toSpherical(view_direction.xzy).yz;
     float sf = 0.0;
 
-    return stars(ro, view_direction, sp, sf) * 0.001;
+    return stars(ro, view_direction, sp, sf) * 0.00001;
 }

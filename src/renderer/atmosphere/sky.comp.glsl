@@ -1,8 +1,9 @@
 #include "sky.inl"
 
 #include <utilities/gpu/math.glsl>
-#include "sky.glsl"
+#include "sky_utils.glsl"
 #include "atmosphere.glsl"
+#include <g_samplers>
 
 #if SkyTransmittanceComputeShader
 
@@ -402,9 +403,8 @@ void main() {
         return;
     }
 
-    // Hardcode player position to be 100 meters above sea level
-    vec3 world_position = get_sky_world_camera_position(gpu_input);
-    float camera_height = length(world_position);
+    vec3 camera_ws = get_sky_world_camera_position(gpu_input);
+    float camera_height = length(camera_ws);
 
     bool inside_atmosphere = camera_height < deref(gpu_input).sky_settings.atmosphere_top;
 
@@ -417,7 +417,15 @@ void main() {
         SKY_SKY_RES,
         camera_height);
 
-    float sun_zenith_cos_angle = dot(normalize(world_position), deref(gpu_input).sky_settings.sun_direction);
+    vec3 ray_direction = vec3(
+        cos(skyview_params.light_view_angle) * sin(skyview_params.view_zenith_angle),
+        sin(skyview_params.light_view_angle) * sin(skyview_params.view_zenith_angle),
+        cos(skyview_params.view_zenith_angle));
+
+    const mat3 camera_basis = build_orthonormal_basis(camera_ws / camera_height);
+    camera_ws = vec3(0, 0, camera_height);
+
+    float sun_zenith_cos_angle = dot(vec3(0, 0, 1), deref(gpu_input).sky_settings.sun_direction * camera_basis);
     // sin^2 + cos^2 = 1 -> sqrt(1 - cos^2) = sin
     // rotate the sun direction so that we are aligned with the y = 0 axis
     vec3 local_sun_direction = normalize(vec3(
@@ -425,20 +433,73 @@ void main() {
         0.0,
         sun_zenith_cos_angle));
 
-    vec3 world_direction = vec3(
-        cos(skyview_params.light_view_angle) * sin(skyview_params.view_zenith_angle),
-        sin(skyview_params.light_view_angle) * sin(skyview_params.view_zenith_angle),
-        cos(skyview_params.view_zenith_angle));
-
-    if (!move_to_top_atmosphere(world_position, world_direction, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top)) {
+    if (!move_to_top_atmosphere(camera_ws, ray_direction, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top)) {
         /* No intersection with the atmosphere */
         imageStore(daxa_image2D(sky_lut), ivec2(gl_GlobalInvocationID.xy), vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
-    vec3 luminance = integrate_scattered_luminance(world_position, world_direction, local_sun_direction, 30);
-    vec3 inv_luminance = 1.0 / max(luminance, vec3(1.0 / 524288.0));
-    float inv_mult = min(524288.0, max(inv_luminance.x, max(inv_luminance.y, inv_luminance.z)));
+    vec3 luminance = integrate_scattered_luminance(camera_ws, ray_direction, local_sun_direction, 30);
+    const float F16_SCALE_LIMIT = 524288.0;
+    vec3 inv_luminance = 1.0 / max(luminance, vec3(1.0 / F16_SCALE_LIMIT));
+    float inv_mult = 1.0; // min(F16_SCALE_LIMIT, max(inv_luminance.x, max(inv_luminance.y, inv_luminance.z)));
     imageStore(daxa_image2D(sky_lut), ivec2(gl_GlobalInvocationID.xy), vec4(luminance * inv_mult, 1.0 / inv_mult));
+
+    // imageStore(daxa_image2D(sky_lut), ivec2(gl_GlobalInvocationID.xy), vec4(vec3(sun_zenith_cos_angle), 1.0));
+}
+
+#endif
+
+#if SkyAerialPerspectiveComputeShader
+
+void main() {
+    // Terms:
+    // _rs is render space (made-up term by grundlett)
+    // _fs is froxel space
+
+    vec3 camera_rs = deref(gpu_input).player.pos;
+    vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+
+    const vec3 ae_dim = deref(gpu_input).sky_settings.AEPerspectiveTexDimensions;
+
+    vec4 froxel_ws_h = deref(gpu_input).player.cam.view_to_world *
+                       deref(gpu_input).player.cam.sample_to_view *
+                       vec4(uv_to_cs(get_uv(gl_GlobalInvocationID.xy, vec4(0, 0, 1.0 / ae_dim.xy))), 0.0, 1.0);
+    vec3 froxel_rs = froxel_ws_h.xyz / froxel_ws_h.w;
+
+    vec3 camera_to_froxel_ws_dir = normalize(froxel_rs - camera_rs);
+    vec3 camera_ws = get_sky_world_camera_position(gpu_input);
+
+    float slice_begin_fs = float(gl_GlobalInvocationID.z + 0) / ae_dim.z;
+    float slice_end_fs = float(gl_GlobalInvocationID.z + 1) / ae_dim.z;
+    slice_begin_fs *= slice_begin_fs; // bias samples nearer to the camera.
+    slice_end_fs *= slice_end_fs;
+
+    const float MAX_DIST = 200.0; // kilometers
+    // vec3 froxel_begin_ws =
+
+    float camera_height = length(camera_ws);
+
+    viewHeight = length(cameraPosition);
+    vec2 atmosphereBoundaries = vec2(deref(gpu_input).sky_settings.bottom_radius, deref(gpu_input).sky_settings.top_radius);
+    if (viewHeight >= deref(gpu_input).sky_settings.top_radius) {
+        vec3 prevWorldPos = cameraPosition;
+        if (!moveToTopAtmosphere(cameraPosition, worldDirection, atmosphereBoundaries)) {
+            imageStore(AEPerspective, ivec3(gl_GlobalInvocationID.xyz), vec4(0.0, 0.0, 0.0, 1.0));
+            return;
+        }
+        float lengthToAtmosphere = length(prevWorldPos - cameraPosition);
+        if (tMax < lengthToAtmosphere) {
+            imageStore(AEPerspective, ivec3(gl_GlobalInvocationID.xyz), vec4(0.0, 0.0, 0.0, 1.0));
+            return;
+        }
+        tMax = max(0.0, tMax - lengthToAtmosphere);
+    }
+    int sampleCount = int(max(1.0, float(gl_GlobalInvocationID.z + 1.0) * 2.0));
+    RaymarchResult res = integrateScatteredLuminance(cameraPosition, worldDirection, sun_direction,
+                                                     sampleCount, tMax);
+    float averageTransmittance = (res.Transmittance.x + res.Transmittance.y + res.Transmittance.z) / 3.0;
+
+    imageStore(AEPerspective, ivec3(gl_GlobalInvocationID.xyz), vec4(res.Luminance, averageTransmittance));
 }
 
 #endif

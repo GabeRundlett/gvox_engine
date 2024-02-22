@@ -9,7 +9,7 @@ vec3 get_sky_world_camera_position(daxa_BufferPtr(GpuInput) gpu_input) {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
     const vec3 camera_position = (deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset) * 0.001 + vec3(0.0, 0.0, 2.0);
-    vec3 world_camera_position = camera_position * vec3(0, 0, 1);
+    vec3 world_camera_position = camera_position; // * vec3(0, 0, 1);
     world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
     return world_camera_position;
 }
