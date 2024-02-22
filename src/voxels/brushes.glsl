@@ -81,6 +81,7 @@ TreeSDF sd_spruce_tree(in vec3 p, in vec3 seed) {
 vec3 get_closest_surface(vec3 center_cell_world, float current_noise, float rep, inout float scale) {
     vec3 offset = hash33(center_cell_world);
     scale = offset.z * .3 + .7;
+    scale *= 2.0;
     center_cell_world.xy += (offset.xy * 2 - 1) * max(0, rep / scale - 5);
 
     float step_size = rep / 2 / TREE_MARCH_STEPS;
@@ -171,7 +172,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
         }
     } else if (ENABLE_TREE_GENERATION != 0) {
         // Meters per cell
-        float rep = 6;
+        float rep = 12;
 
         // Global cell ID
         vec3 qid = floor(voxel_pos / rep);
@@ -229,13 +230,13 @@ void brushgen_world_terrain(in out Voxel voxel) {
             } else if (tree.leaves < 0) {
                 voxel.material_type = 1;
                 voxel.color = forest_biome_color * 0.5;
-                voxel.roughness = 0.5;
+                voxel.roughness = 0.95;
             }
         }
     }
 }
 
-#define GEN_MODEL 1
+#define GEN_MODEL 0
 
 void brushgen_world(in out Voxel voxel) {
     if (false) { // Mandelbulb world
@@ -283,12 +284,11 @@ void brushgen_world(in out Voxel voxel) {
         voxel.material_type = ((packed_col_data >> 0x18) != 0 || voxel.color != vec3(0)) ? 1 : 0;
         voxel.roughness = 0.9;
 
-        float test = length(vec3(1.0, 0.25, 0.0) - voxel.color);
-        if (test <= 0.7) {
-            // voxel.color = vec3(0.1);
-            voxel.material_type = 3;
-            voxel.roughness = test * 0.1;
-        }
+        // float test = length(vec3(1.0, 0.25, 0.0) - voxel.color);
+        // if (test <= 0.7) {
+        //     voxel.material_type = 3;
+        //     voxel.roughness = test * 0.1;
+        // }
         // uint packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
         // if (voxel.material_type != 0) {
         //     voxel.material_type = 2;
@@ -356,9 +356,9 @@ void brushgen_b(in out Voxel voxel) {
         // }
         // voxel.color = vec3(good_rand(), good_rand(), good_rand());
         // voxel.color = vec3(floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0);
-        voxel.material_type = 3;
+        voxel.material_type = 1;
         voxel.color = vec3(0.95, 0.05, 0.05);
-        voxel.roughness = 0.2;
+        voxel.roughness = 0.9;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }
     if (sd < 2.5 / VOXEL_SCL) {

@@ -2,6 +2,7 @@
 
 #include <utilities/gpu/math.glsl>
 #include "../inc/color.glsl"
+#include "../inc/camera.glsl"
 // #include "../inc/frame_constants.glsl"
 // #include "../inc/quasi_random.glsl"
 // #include <utilities/gpu/uv.glsl>
@@ -52,6 +53,9 @@ void main() {
     const vec3 center_value = input_value.rgb;
     const vec3 center_normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(px), 0).xyz * 2.0 - 1.0;
 
+    const vec2 uv = get_uv(px, push.output_tex_size);
+    const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, center_depth);
+
     if (center_validity == 1) {
         safeImageStore(output_tex, ivec2(px), vec4(center_value, 1.0));
         return;
@@ -89,11 +93,22 @@ void main() {
 
             if (sample_depth != 0 && sample_i < sample_count) {
                 float wt = 1;
+
+#if PER_VOXEL_NORMALS
+                const vec2 sample_uv = get_uv(sample_px, push.output_tex_size);
+                const ViewRayContext sample_ray_ctx = vrc_from_uv_and_depth(gpu_input, sample_uv, sample_depth);
+                if (ray_hit_ws(sample_ray_ctx) == ray_hit_ws(view_ray_context)) {
+                    wt = 1;
+                } else {
+                    wt = 0;
+                }
+#else
                 // wt *= pow(saturate(dot(center_normal_vs, sample_normal_vs)), 20);
                 wt *= exp2(-100.0 * abs(center_normal_vs.z * (center_depth / sample_depth - 1.0)));
 
 #if USE_SSAO_STEERING
                 wt *= exp2(-20.0 * abs(sample_ssao - center_ssao));
+#endif
 #endif
 
                 sum += vec4(crunch(sample_val), 1.0) * wt;

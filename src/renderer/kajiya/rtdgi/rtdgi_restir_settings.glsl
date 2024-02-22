@@ -14,7 +14,8 @@ const bool RESTIR_USE_PATH_VALIDATION = true;
 // Narrow down the spatial resampling kernel when M is already high.
 #define RTDGI_RESTIR_SPATIAL_USE_KERNEL_NARROWING true
 
-const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH = true;
+// NOTE(grundlett): This should be disabled for per-voxel normals.
+const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH = !true;
 const bool RTDGI_RESTIR_SPATIAL_USE_RAYMARCH_COLOR_BOUNCE = !true;
 const bool RTDGI_RESTIR_USE_JACOBIAN_BASED_REJECTION = true;
 #define RTDGI_RESTIR_JACOBIAN_BASED_REJECTION_VALUE 8

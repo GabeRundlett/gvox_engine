@@ -207,8 +207,8 @@ void main() {
         vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 
-        ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
-        vec3 ppos = ray_hit_ws(vrc);
+        ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
+        vec3 ppos = ray_hit_ws(vrc_particle);
         nrm = ppos - (pos + 0.5 / VOXEL_SCL);
         ppos = abs(nrm);
         if (ppos.x > ppos.y) {
@@ -233,6 +233,9 @@ void main() {
 #endif
     g_buffer_value.z = floatBitsToUint(depth);
     vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+
+    ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, depth);
+    vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
 
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
         return;

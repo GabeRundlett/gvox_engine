@@ -186,6 +186,8 @@ void VoxelApp::on_update() {
     player_input.delta_time = gpu_input.delta_time;
     player_input.sensitivity = ui.settings.mouse_sensitivity;
     player_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
+    player_input.mouse = gpu_input.mouse;
+    std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
     player_perframe(player_input, gpu_input.player);
 
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
@@ -193,8 +195,8 @@ void VoxelApp::on_update() {
 
     gpu_input.resize_factor = 1.0f;
 
-    player_input.mouse.pos_delta = {0.0f, 0.0f};
-    player_input.mouse.scroll_delta = {0.0f, 0.0f};
+    gpu_input.mouse.pos_delta = {0.0f, 0.0f};
+    gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
     renderer.end_frame(gpu_context.device, gpu_input.delta_time);
 
@@ -206,14 +208,14 @@ void VoxelApp::on_update() {
 }
 void VoxelApp::on_mouse_move(daxa_f32 x, daxa_f32 y) {
     daxa_f32vec2 const center = {static_cast<daxa_f32>(window_size.x / 2), static_cast<daxa_f32>(window_size.y / 2)};
-    player_input.mouse.pos = daxa_f32vec2{x, y};
-    auto offset = daxa_f32vec2{player_input.mouse.pos.x - center.x, player_input.mouse.pos.y - center.y};
-    player_input.mouse.pos = daxa_f32vec2{
-        player_input.mouse.pos.x * static_cast<daxa_f32>(gpu_input.frame_dim.x) / static_cast<daxa_f32>(window_size.x),
-        player_input.mouse.pos.y * static_cast<daxa_f32>(gpu_input.frame_dim.y) / static_cast<daxa_f32>(window_size.y),
+    gpu_input.mouse.pos = daxa_f32vec2{x, y};
+    auto offset = daxa_f32vec2{gpu_input.mouse.pos.x - center.x, gpu_input.mouse.pos.y - center.y};
+    gpu_input.mouse.pos = daxa_f32vec2{
+        gpu_input.mouse.pos.x * static_cast<daxa_f32>(gpu_input.frame_dim.x) / static_cast<daxa_f32>(window_size.x),
+        gpu_input.mouse.pos.y * static_cast<daxa_f32>(gpu_input.frame_dim.y) / static_cast<daxa_f32>(window_size.y),
     };
     if (!ui.paused) {
-        player_input.mouse.pos_delta = daxa_f32vec2{player_input.mouse.pos_delta.x + offset.x, player_input.mouse.pos_delta.y + offset.y};
+        gpu_input.mouse.pos_delta = daxa_f32vec2{gpu_input.mouse.pos_delta.x + offset.x, gpu_input.mouse.pos_delta.y + offset.y};
         set_mouse_pos(center.x, center.y);
     }
 }
@@ -223,7 +225,7 @@ void VoxelApp::on_mouse_scroll(daxa_f32 dx, daxa_f32 dy) {
         return;
     }
 
-    player_input.mouse.scroll_delta = daxa_f32vec2{player_input.mouse.scroll_delta.x + dx, player_input.mouse.scroll_delta.y + dy};
+    gpu_input.mouse.scroll_delta = daxa_f32vec2{gpu_input.mouse.scroll_delta.x + dx, gpu_input.mouse.scroll_delta.y + dy};
 }
 void VoxelApp::on_mouse_button(daxa_i32 button_id, daxa_i32 action) {
     auto &io = ImGui::GetIO();
@@ -235,7 +237,7 @@ void VoxelApp::on_mouse_button(daxa_i32 button_id, daxa_i32 action) {
     }
 
     if (ui.settings.mouse_button_binds.contains(button_id)) {
-        player_input.actions[ui.settings.mouse_button_binds.at(button_id)] = static_cast<daxa_u32>(action);
+        gpu_input.actions[ui.settings.mouse_button_binds.at(button_id)] = static_cast<daxa_u32>(action);
     }
 }
 void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
@@ -248,7 +250,7 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     }
 
     if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        std::fill(std::begin(player_input.actions), std::end(player_input.actions), 0);
+        std::fill(std::begin(gpu_input.actions), std::end(gpu_input.actions), 0);
         ui.toggle_pause();
         set_mouse_capture(!ui.paused);
     }
@@ -270,7 +272,7 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
 
     if (!ui.paused) {
         if (ui.settings.keybinds.contains(key_id)) {
-            player_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
+            gpu_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
         }
     }
 }

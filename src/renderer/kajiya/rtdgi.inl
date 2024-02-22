@@ -77,7 +77,7 @@ struct RtdgiValidityIntegrateComputePush {
     DAXA_TH_BLOB(RtdgiValidityIntegrateCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 23)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 22)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -100,7 +100,6 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, hit_normal_ou
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, reservoir_out_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, candidate_out_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, temporal_reservoir_packed_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, rtdgi_debug_image)
 DAXA_DECL_TASK_HEAD_END
 struct RtdgiRestirTemporalComputePush {
     daxa_f32vec4 gbuffer_tex_size;
@@ -131,7 +130,7 @@ struct RtdgiRestirSpatialComputePush {
     DAXA_TH_BLOB(RtdgiRestirSpatialCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 15)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 16)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
@@ -147,6 +146,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, candidate_hit_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, temporal_reservoir_packed_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, bounced_radiance_input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, irradiance_output_tex)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, rtdgi_debug_image)
 DAXA_DECL_TASK_HEAD_END
 struct RtdgiRestirResolveComputePush {
     daxa_f32vec4 gbuffer_tex_size;
@@ -601,12 +601,6 @@ struct RtdgiRenderer {
 
             debug_utils::DebugDisplay::add_pass({.name = "rtdgi temporal validate", .task_image_id = invalidity_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-            auto rtdgi_debug_image = record_ctx.task_graph.create_transient_image({
-                .format = daxa::Format::R32G32B32A32_SFLOAT,
-                .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
-                .name = "rtdgi_debug_image",
-            });
-
             record_ctx.add(ComputeTask<RtdgiRestirTemporalCompute, RtdgiRestirTemporalComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/restir_temporal.comp.glsl"},
                 .views = std::array{
@@ -632,7 +626,6 @@ struct RtdgiRenderer {
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::reservoir_out_tex, reservoir_output_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::candidate_out_tex, candidate_output_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::temporal_reservoir_packed_tex, temporal_reservoir_packed_tex}},
-                    daxa::TaskViewVariant{std::pair{RtdgiRestirTemporalCompute::rtdgi_debug_image, rtdgi_debug_image}},
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RtdgiRestirTemporalComputePush &push, NoTaskInfo const &) {
                     auto const image_info = ti.device.info_image(ti.get(RtdgiRestirTemporalCompute::depth_tex).ids[0]).value();
@@ -645,7 +638,6 @@ struct RtdgiRenderer {
             });
 
             debug_utils::DebugDisplay::add_pass({.name = "restir temporal", .task_image_id = radiance_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-            debug_utils::DebugDisplay::add_pass({.name = "rtdgi debug", .task_image_id = rtdgi_debug_image, .type = DEBUG_IMAGE_TYPE_RTDGI_DEBUG});
 
             // return std::pair{radiance_output_tex, reservoir_output_tex};
             radiance_tex = radiance_output_tex;
@@ -742,6 +734,12 @@ struct RtdgiRenderer {
                 .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
                 .name = "irradiance_output_tex",
             });
+            
+            auto rtdgi_debug_image = record_ctx.task_graph.create_transient_image({
+                .format = daxa::Format::R32G32B32A32_SFLOAT,
+                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .name = "rtdgi_debug_image",
+            });
 
             record_ctx.add(ComputeTask<RtdgiRestirResolveCompute, RtdgiRestirResolveComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtdgi/restir_resolve.comp.glsl"},
@@ -761,6 +759,7 @@ struct RtdgiRenderer {
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::temporal_reservoir_packed_tex, temporal_reservoir_packed_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::bounced_radiance_input_tex, bounced_radiance_input_tex}},
                     daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::irradiance_output_tex, irradiance_output_tex}},
+                    daxa::TaskViewVariant{std::pair{RtdgiRestirResolveCompute::rtdgi_debug_image, rtdgi_debug_image}},
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RtdgiRestirResolveComputePush &push, NoTaskInfo const &) {
                     auto const image_info = ti.device.info_image(ti.get(RtdgiRestirResolveCompute::gbuffer_tex).ids[0]).value();
@@ -772,6 +771,7 @@ struct RtdgiRenderer {
                     ti.recorder.dispatch({(out_image_info.size.x + 7) / 8, (out_image_info.size.y + 7) / 8});
                 },
             });
+            debug_utils::DebugDisplay::add_pass({.name = "rtdgi debug", .task_image_id = rtdgi_debug_image, .type = DEBUG_IMAGE_TYPE_RTDGI_DEBUG});
 
             irradiance_tex = irradiance_output_tex;
             debug_utils::DebugDisplay::add_pass({.name = "restir resolve", .task_image_id = irradiance_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});

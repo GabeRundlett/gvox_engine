@@ -44,7 +44,6 @@ daxa_ImageViewIndex hit_normal_output_tex = push.uses.hit_normal_output_tex;
 daxa_ImageViewIndex reservoir_out_tex = push.uses.reservoir_out_tex;
 daxa_ImageViewIndex candidate_out_tex = push.uses.candidate_out_tex;
 daxa_ImageViewIndex temporal_reservoir_packed_tex = push.uses.temporal_reservoir_packed_tex;
-daxa_ImageViewIndex rtdgi_debug_image = push.uses.rtdgi_debug_image;
 
 const float SKY_DIST = 1e4;
 
@@ -418,6 +417,4 @@ void main() {
     res_packed.luminance = max(0.0, sRGB_to_luminance(radiance_sel));
     res_packed.hit_normal_ws = hit_normal_ws_dot.xyz;
     safeImageStoreU(temporal_reservoir_packed_tex, ivec2(px), as_raw(res_packed));
-
-    // safeImageStore(rtdgi_debug_image, ivec2(px), vec4(vec3(res_packed.luminance * 0.01), 1));
 }

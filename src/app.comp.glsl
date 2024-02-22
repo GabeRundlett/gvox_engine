@@ -40,7 +40,7 @@ void main() {
     {
         vec2 frame_dim = INPUT.frame_dim;
         vec2 inv_frame_dim = vec2(1.0) / frame_dim;
-        vec2 uv = vec2(0.5); // get_uv(deref(gpu_input).mouse.pos, vec4(frame_dim, inv_frame_dim));
+        vec2 uv = get_uv(deref(gpu_input).mouse.pos, vec4(frame_dim, inv_frame_dim));
         ViewRayContext vrc = unjittered_vrc_from_uv(gpu_input, uv);
         vec3 ray_dir = ray_dir_ws(vrc);
         vec3 cam_pos = ray_origin_ws(vrc);
@@ -56,7 +56,16 @@ void main() {
         deref(globals).brush_input.pos = length(BRUSH_STATE.initial_ray) * ray_dir + cam_pos;
         deref(globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
 
-        BRUSH_STATE.is_editing = 0;
+        if (INPUT.actions[GAME_ACTION_BRUSH_A] != 0) {
+            BRUSH_STATE.is_editing = 1;
+        } else if (INPUT.actions[GAME_ACTION_BRUSH_B] != 0) {
+            if (BRUSH_STATE.is_editing == 0) {
+                BRUSH_STATE.initial_frame = INPUT.frame_index;
+            }
+            BRUSH_STATE.is_editing = 1;
+        } else {
+            BRUSH_STATE.is_editing = 0;
+        }
     }
 
     deref(globals).voxel_particles_state.simulation_dispatch = uvec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);

@@ -89,13 +89,13 @@ void main() {
         ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> 3;
         bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
 
-        // if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
-        //     terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
-        //     try_elect(terrain_work_item, update_index);
-        // } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
-        //     terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
-        //     try_elect(terrain_work_item, update_index);
-        // }
+        if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
+            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
+            try_elect(terrain_work_item, update_index);
+        } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
+            terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
+            try_elect(terrain_work_item, update_index);
+        }
     }
 
     CHUNKS(chunk_index).update_index = update_index;

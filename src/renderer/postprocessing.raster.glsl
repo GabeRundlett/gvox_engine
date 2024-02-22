@@ -136,8 +136,11 @@ void main() {
 
     if (push.type == DEBUG_IMAGE_TYPE_GBUFFER) {
         ivec2 in_pixel_i = ivec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);
-        GbufferData gbuffer = unpack(GbufferDataPacked(texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0)));
+        GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(image_id), in_pixel_i, 0));
+        GbufferData gbuffer = unpack(gbuffer_packed);
+        float depth = uintBitsToFloat(gbuffer_packed.data0.z);
         tex_color = vec3(gbuffer.albedo);
+        // tex_color = vec3(depth);
         // tex_color = vec3(g_buffer_value.x * 0.00001, g_buffer_value.y * 0.0001, depth * 0.01);
     } else if (push.type == DEBUG_IMAGE_TYPE_SHADOW_BITMAP) {
         ivec2 in_pixel_i = ivec2(uv * textureSize(daxa_utexture2D(image_id), 0).xy);

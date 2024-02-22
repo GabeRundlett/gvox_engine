@@ -111,6 +111,7 @@ void main() {
         return;
     }
 
+#if !PER_VOXEL_NORMALS
     const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     vec3 v_vs = -normalize(ray_dir_vs(view_ray_context));
 
@@ -214,6 +215,9 @@ void main() {
     col.rgb = col.aaa;
 
     col *= slice_contrib_weight;
+#else
+    vec4 col = vec4(1);
+#endif
 
     safeImageStore(ssao_image_id, ivec2(px), vec4(col));
 }

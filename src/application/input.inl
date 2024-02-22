@@ -89,6 +89,8 @@ struct GpuInput {
     BrushSettings brush_a_settings;
     BrushSettings brush_b_settings;
     Player player;
+    MouseInput mouse;
+    daxa_u32 actions[GAME_ACTION_LAST + 1];
 };
 DAXA_DECL_BUFFER_PTR(GpuInput)
 

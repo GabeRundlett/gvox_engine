@@ -105,8 +105,11 @@ vec3 apply_inv_rotation(vec3 pt, vec3 ypr) {
 void player_fix_chunk_offset(Player &PLAYER) {
     PLAYER.prev_unit_offset = PLAYER.player_unit_offset;
 #if ENABLE_CHUNK_WRAPPING
-    PLAYER.player_unit_offset = PLAYER.player_unit_offset + ivec3(floor(PLAYER.pos.x), floor(PLAYER.pos.y), floor(PLAYER.pos.z));
-    PLAYER.pos = {PLAYER.pos.x - floor(PLAYER.pos.x), PLAYER.pos.y - floor(PLAYER.pos.y), PLAYER.pos.z - floor(PLAYER.pos.z)};
+    const bool wrap_position = AppSettings::get<settings::Checkbox>("Player", "Wrap Position").value;
+    if (wrap_position) {
+        PLAYER.player_unit_offset = PLAYER.player_unit_offset + ivec3(floor(PLAYER.pos.x), floor(PLAYER.pos.y), floor(PLAYER.pos.z));
+        PLAYER.pos = {PLAYER.pos.x - floor(PLAYER.pos.x), PLAYER.pos.y - floor(PLAYER.pos.y), PLAYER.pos.z - floor(PLAYER.pos.z)};
+    }
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
     PLAYER.pos = PLAYER.pos + vec3(PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z);
@@ -117,6 +120,7 @@ void player_fix_chunk_offset(Player &PLAYER) {
 void player_startup(Player &PLAYER) {
     AppSettings::add<settings::InputFloat>({"Player", "Movement Speed", {.value = 2.5f}});
     AppSettings::add<settings::InputFloat>({"Player", "Sprint Multiplier", {.value = 25.0f}});
+    AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = true}});
 
     PLAYER.pos = vec3(0.01f, 0.02f, 0.03f);
     PLAYER.vel = vec3(0.0);
