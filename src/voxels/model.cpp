@@ -529,6 +529,8 @@ auto VoxelModelLoader::load_gvox_data() -> GvoxModelData {
         } else if (ext == ".vxl") {
             i_config_ptr = &voxlap_config;
             gvox_model_type = "voxlap";
+        } else if (ext == ".gvox") {
+            gvox_model_type = "gvox_palette";
         } else {
             return open_mesh_model();
         }

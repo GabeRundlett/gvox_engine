@@ -279,9 +279,17 @@ void brushgen_world(in out Voxel voxel) {
     } else if (GEN_MODEL != 0) { // Model world
         uint packed_col_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
         // voxel.material_type = sample_gvox_palette_voxel(gvox_model, world_voxel, 0);
-        voxel.material_type = (packed_col_data >> 0x18) != 0 ? 1 : 0;
-        // uint packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
         voxel.color = uint_rgba8_to_f32vec4(packed_col_data).rgb;
+        voxel.material_type = ((packed_col_data >> 0x18) != 0 || voxel.color != vec3(0)) ? 1 : 0;
+        voxel.roughness = 0.9;
+
+        float test = length(vec3(1.0, 0.25, 0.0) - voxel.color);
+        if (test <= 0.7) {
+            // voxel.color = vec3(0.1);
+            voxel.material_type = 3;
+            voxel.roughness = test * 0.1;
+        }
+        // uint packed_emi_data = sample_gvox_palette_voxel(gvox_model, world_voxel, 2);
         // if (voxel.material_type != 0) {
         //     voxel.material_type = 2;
         // }
@@ -290,7 +298,6 @@ void brushgen_world(in out Voxel voxel) {
             voxel.material_type = 1;
         }
 
-        voxel.roughness = 0.9;
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)

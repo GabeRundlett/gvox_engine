@@ -12,7 +12,7 @@ float unpack_unit(uint x, uint bit_n) {
 
 vec3 unpack_rgb(uint u) {
     vec3 result;
-    result.r = float((u >> 0) & 0x3f) / 64.0;
+    result.r = float((u >> 0) & 0x3f) / 63.0;
     result.g = float((u >> 6) & 0x3f) / 63.0;
     result.b = float((u >> 12) & 0x3f) / 63.0;
     result = pow(result, vec3(2.2));
@@ -23,7 +23,7 @@ uint pack_rgb(vec3 f) {
     // f = rgb2hsv(f);
     f = pow(f, vec3(1.0 / 2.2));
     uint result = 0;
-    result |= (uint(f.r * 64.0) & 63) << 0;
+    result |= uint(clamp(f.r * 63.0, 0, 63)) << 0;
     result |= uint(clamp(f.g * 63.0, 0, 63)) << 6;
     result |= uint(clamp(f.b * 63.0, 0, 63)) << 12;
     return result;
