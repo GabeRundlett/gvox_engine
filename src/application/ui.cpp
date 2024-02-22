@@ -249,6 +249,31 @@ namespace {
                     changed = ImGui::Checkbox(id.c_str(), &data.value);
                     context_menu([]() {});
                 },
+                [&](settings::ComboBox &data) {
+                    auto &item_current_idx = data.value;
+                    if (item_current_idx >= entry.config.options.size()) {
+                        // ???
+                        item_current_idx = 0;
+                        changed = true;
+                    }
+                    if (ImGui::BeginCombo(id.c_str(), entry.config.options[item_current_idx].c_str())) {
+                        for (int32_t option_i = 0; option_i < entry.config.options.size(); ++option_i) {
+                            auto const &option_str = entry.config.options[option_i];
+                            const bool is_selected = (item_current_idx == option_i);
+                            if (ImGui::Selectable(option_str.c_str(), is_selected)) {
+                                item_current_idx = option_i;
+                                changed = true;
+                            }
+                            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    context_menu([]() {});
+                },
             },
             entry.data);
 

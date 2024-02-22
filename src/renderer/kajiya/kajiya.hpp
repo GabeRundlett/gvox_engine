@@ -29,7 +29,8 @@ struct KajiyaRenderer {
             ircache_renderer.next_frame();
         }
         post_processor.next_frame(device, auto_exposure_settings, dt);
-        if constexpr (ENABLE_TAA) {
+        const auto taa_method = AppSettings::get<settings::ComboBox>("Graphics", "TAA Method").value;
+        if (taa_method == 1) {
             taa_renderer.next_frame();
         }
         shadow_denoiser.next_frame();

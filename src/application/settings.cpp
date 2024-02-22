@@ -81,6 +81,13 @@ namespace settings {
     void from_json(const nlohmann::json &j, Checkbox &x) {
         j.at("value").get_to(x.value);
     }
+
+    void to_json(nlohmann::json &j, ComboBox const &x) {
+        j = nlohmann::json{{"value", x.value}};
+    }
+    void from_json(const nlohmann::json &j, ComboBox &x) {
+        j.at("value").get_to(x.value);
+    }
 } // namespace settings
 
 #include <typeinfo>

@@ -62,7 +62,6 @@ struct SkySettings {
 #define SHADING_SCL 2
 
 #define ENABLE_CHUNK_WRAPPING 1
-#define ENABLE_TAA true
 
 #define DEBUG_IMAGE_TYPE_DEFAULT 0
 #define DEBUG_IMAGE_TYPE_DEFAULT_UINT 1

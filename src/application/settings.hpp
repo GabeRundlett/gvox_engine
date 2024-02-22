@@ -25,16 +25,22 @@ namespace settings {
     struct Checkbox {
         bool value;
     };
+    struct ComboBox {
+        int32_t value;
+    };
 } // namespace settings
 
 using SettingValue = std::variant<
     settings::InputFloat,
     settings::InputFloat3,
     settings::SliderFloat,
-    settings::Checkbox>;
+    settings::Checkbox,
+    settings::ComboBox>;
 
 struct SettingConfig {
     bool task_graph_depends = false;
+    // NOTE(grundlett): This is weird. Where should this go?
+    std::vector<std::string> options;
 };
 
 struct SettingEntry {

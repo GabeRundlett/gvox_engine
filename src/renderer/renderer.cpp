@@ -25,6 +25,8 @@ Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = 0.0f, .min = -15.0f, .max = 15.0f}});
 
+    AppSettings::add<settings::ComboBox>({"Graphics", "TAA Method", {.value = 1}, {.task_graph_depends = true, .options = {"None", "Kajiya TAA", "FSR 2.2"}}});
+
     auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
         auto val = 0.0f;
         auto inv_base = 1.0f / static_cast<daxa_f32>(base);
@@ -55,12 +57,19 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
 
     self.kajiya_renderer.ircache_renderer.update_eye_position(gpu_input);
 
-    if constexpr (!ENABLE_TAA) {
-        self.fsr2_renderer->next_frame();
-        self.fsr2_renderer->state.delta_time = gpu_input.delta_time;
-        gpu_input.halton_jitter = self.fsr2_renderer->state.jitter;
-    } else {
+    const auto taa_method = AppSettings::get<settings::ComboBox>("Graphics", "TAA Method").value;
+    switch (taa_method) {
+    case 0: break;
+    case 1:
         gpu_input.halton_jitter = self.halton_offsets[gpu_input.frame_index % self.halton_offsets.size()];
+        break;
+    case 2:
+        if (self.fsr2_renderer) {
+            self.fsr2_renderer->next_frame();
+            self.fsr2_renderer->state.delta_time = gpu_input.delta_time;
+            gpu_input.halton_jitter = self.fsr2_renderer->state.jitter;
+        }
+        break;
     }
 }
 
@@ -99,12 +108,47 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         transmittance_lut,
         voxel_buffers);
 
-    self.fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.gpu_context->device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
-
     auto antialiased_image = [&]() {
-        if constexpr (ENABLE_TAA) {
+        const auto taa_method = AppSettings::get<settings::ComboBox>("Graphics", "TAA Method").value;
+        switch (taa_method) {
+        default: [[fallthrough]];
+        case 0: {
+            auto output_image = record_ctx.task_graph.create_transient_image({
+                .format = daxa::Format::R16G16B16A16_SFLOAT,
+                .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
+                .name = "output_image",
+            });
+
+            record_ctx.task_graph.add_task({
+                .attachments = {
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, debug_out_tex),
+                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, output_image),
+                },
+                .task = [=](daxa::TaskInterface const &ti) {
+                    auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
+                    auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
+                    auto image_a_info = ti.device.info_image(image_a).value();
+                    auto image_b_info = ti.device.info_image(image_b).value();
+
+                    ti.recorder.blit_image_to_image({
+                        .src_image = image_a,
+                        .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
+                        .dst_image = image_b,
+                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
+                        .src_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_a_info.size.x), static_cast<int32_t>(image_a_info.size.y), static_cast<int32_t>(image_a_info.size.z)}}},
+                        .dst_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_b_info.size.x), static_cast<int32_t>(image_b_info.size.y), static_cast<int32_t>(image_b_info.size.z)}}},
+                        .filter = daxa::Filter::LINEAR,
+                    });
+                },
+                .name = "upscale_output_image",
+            });
+
+            return output_image;
+        }
+        case 1:
             return self.kajiya_renderer.upscale(record_ctx, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
-        } else {
+        case 2:
+            self.fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.gpu_context->device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
             return self.fsr2_renderer->upscale(record_ctx, gbuffer_depth, debug_out_tex, reprojection_map);
         }
     }();
