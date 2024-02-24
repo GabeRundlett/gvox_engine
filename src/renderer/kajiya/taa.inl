@@ -182,7 +182,7 @@ struct TaaRenderer {
         };
 
         record_ctx.add(ComputeTask<TaaReprojectCompute, TaaReprojectComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+            .source = daxa::ShaderFile{"kajiya/taa/reproject_history.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TaaReprojectCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{TaaReprojectCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -222,7 +222,7 @@ struct TaaRenderer {
         });
 
         record_ctx.add(ComputeTask<TaaFilterInputCompute, TaaFilterInputComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+            .source = daxa::ShaderFile{"kajiya/taa/filter_input.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -256,7 +256,7 @@ struct TaaRenderer {
         });
 
         record_ctx.add(ComputeTask<TaaFilterHistoryCompute, TaaFilterHistoryComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+            .source = daxa::ShaderFile{"kajiya/taa/filter_history.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -288,7 +288,7 @@ struct TaaRenderer {
                 .name = "input_prob_img",
             });
             record_ctx.add(ComputeTask<TaaInputProbCompute, TaaInputProbComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+                .source = daxa::ShaderFile{"kajiya/taa/input_prob.comp.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{TaaInputProbCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                     daxa::TaskViewVariant{std::pair{TaaInputProbCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -328,7 +328,7 @@ struct TaaRenderer {
             });
 
             record_ctx.add(ComputeTask<TaaProbFilterCompute, TaaProbFilterComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+                .source = daxa::ShaderFile{"kajiya/taa/filter_prob.comp.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                     daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -360,7 +360,7 @@ struct TaaRenderer {
             });
 
             record_ctx.add(ComputeTask<TaaProbFilter2Compute, TaaProbFilter2ComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+                .source = daxa::ShaderFile{"kajiya/taa/filter_prob2.comp.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                     daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::globals, record_ctx.gpu_context->task_globals_buffer}},
@@ -395,7 +395,7 @@ struct TaaRenderer {
         });
 
         record_ctx.add(ComputeTask<TaaCompute, TaaComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa.comp.glsl"},
+            .source = daxa::ShaderFile{"kajiya/taa/taa.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TaaCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{TaaCompute::globals, record_ctx.gpu_context->task_globals_buffer}},

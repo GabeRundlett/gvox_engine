@@ -1,6 +1,6 @@
-#include "../inc/math.hlsl"
+#pragma once
 
-#define TAA_NONLINEARITY_TYPE 1
+#define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
 
 float linear_to_perceptual(float a) {

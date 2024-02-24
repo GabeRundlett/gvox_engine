@@ -1,81 +1,78 @@
-#include "../inc/samplers.hlsl"
-#include "../inc/uv.hlsl"
-#include "../inc/color.hlsl"
-#include "../inc/image.hlsl"
-#include "../inc/frame_constants.hlsl"
-#include "../inc/hash.hlsl"
-#include "../inc/unjitter_taa.hlsl"
-#include "../inc/soft_color_clamp.hlsl"
-#include "taa_common.hlsl"
+#include <renderer/kajiya/taa.inl>
 
-[[vk::binding(0)]] Texture2D<vec4> input_tex;
-[[vk::binding(1)]] Texture2D<vec4> filtered_input_tex;
-[[vk::binding(2)]] Texture2D<vec3> filtered_input_dev_tex;
-[[vk::binding(3)]] Texture2D<vec4> history_tex;
-[[vk::binding(4)]] Texture2D<vec4> filtered_history_tex;
-[[vk::binding(5)]] Texture2D<vec4> reprojection_tex;
-[[vk::binding(6)]] Texture2D<float> depth_tex;
-[[vk::binding(7)]] Texture2D<vec3> smooth_var_history_tex;
-[[vk::binding(8)]] Texture2D<vec2> velocity_history_tex;
-[[vk::binding(9)]] RWTexture2D<float> output_tex;
-[[vk::binding(10)]] cbuffer _ {
-    vec4 input_tex_size;
-};
+#include <g_samplers>
+#include "../inc/camera.glsl"
+#include "../inc/color.glsl"
+#include "../inc/image.glsl"
+#include "taa_common.glsl"
 
-struct InputRemap {
-    static InputRemap create() {
-        InputRemap res;
-        return res;
-    }
+DAXA_DECL_PUSH_CONSTANT(TaaInputProbComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex input_image = push.uses.input_image;
+daxa_ImageViewIndex filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewIndex filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
+daxa_ImageViewIndex filtered_history_img = push.uses.filtered_history_img;
+daxa_ImageViewIndex reprojection_map = push.uses.reprojection_map;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex smooth_var_history_tex = push.uses.smooth_var_history_tex;
+daxa_ImageViewIndex velocity_history_tex = push.uses.velocity_history_tex;
+daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
 
-    vec4 remap(vec4 v) {
-        return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
-    }
-};
+vec4 InputRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+}
 
-struct HistoryRemap {
-    static HistoryRemap create() {
-        HistoryRemap res;
-        return res;
-    }
+vec4 HistoryRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(v.rgb), 1);
+}
 
-    vec4 remap(vec4 v) {
-        return vec4(sRGB_to_YCbCr(v.rgb), 1);
-    }
-};
+vec4 fetch_filtered_input(ivec2 px) {
+    return safeTexelFetch(filtered_input_img, px, 0);
+}
 
-[numthreads(8, 8, 1)]
-void main(uvec2 px: SV_DispatchThreadID) {
+vec3 fetch_filtered_input_dev(ivec2 px) {
+    return safeTexelFetch(filtered_input_deviation_img, px, 0).rgb;
+}
+
+vec4 fetch_reproj(ivec2 px) {
+    return safeTexelFetch(reprojection_map, px, 0);
+}
+
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
+void main() {
     float input_prob = 0;
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 
     {
-        InputRemap input_remap = InputRemap::create();
+        // InputRemap input_remap = InputRemap::create();
 
         // Estimate input variance from a pretty large spatial neighborhood
         // We'll combine it with a temporally-filtered variance estimate later.
-        vec3 ivar = 0;
+        vec3 ivar = vec3(0);
         {
             const int k = 1;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    ivar = max(ivar, filtered_input_dev_tex[px + ivec2(x, y) * 2]);
+                    ivar = max(ivar, fetch_filtered_input_dev(px + ivec2(x, y) * 2));
                 }
             }
             ivar = square(ivar);
         }
 
-        const vec2 input_uv = (px + frame_constants.view_constants.sample_offset_pixels) * input_tex_size.zw;
+        const vec2 input_uv = (px + vec2(deref(gpu_input).halton_jitter)) / push.input_tex_size.xy;
 
-        const vec4 closest_history = filtered_history_tex.SampleLevel(sampler_nnc, input_uv, 0);
-        const vec3 closest_smooth_var = smooth_var_history_tex.SampleLevel(sampler_lnc, input_uv + reprojection_tex[px].xy, 0);
-        const vec2 closest_vel = velocity_history_tex.SampleLevel(sampler_lnc, input_uv + reprojection_tex[px].xy, 0).xy * frame_constants.delta_time_seconds;
+        const vec4 closest_history = textureLod(daxa_sampler2D(filtered_history_img, g_sampler_nnc), input_uv, 0);
+        const vec3 closest_smooth_var = textureLod(daxa_sampler2D(smooth_var_history_tex, g_sampler_lnc), input_uv + fetch_reproj(px).xy, 0).rgb;
+        const vec2 closest_vel = textureLod(daxa_sampler2D(velocity_history_tex, g_sampler_lnc), input_uv + fetch_reproj(px).xy, 0).xy * deref(gpu_input).delta_time;
 
         // Combine spaital and temporla variance. We generally want to use
         // the smoothed temporal estimate, but bound it by this frame's input,
         // to quickly react for large-scale temporal changes.
         const vec3 combined_var = min(closest_smooth_var, ivar * 10);
-        //const vec3 combined_var = closest_smooth_var;
-        //const vec3 combined_var = ivar;
+        // const vec3 combined_var = closest_smooth_var;
+        // const vec3 combined_var = ivar;
 
         // Check this frame's input, and see how closely it resembles history,
         // taking the variance estimate into account.
@@ -91,13 +88,13 @@ void main(uvec2 px: SV_DispatchThreadID) {
             int k = 1;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    const vec3 s = filtered_input_tex[px + ivec2(x, y)].rgb;
+                    const vec3 s = fetch_filtered_input(px + ivec2(x, y)).rgb;
                     const vec3 idiff = s - closest_history.rgb;
 
-                    const vec2 vel = reprojection_tex[px + ivec2(x, y)].xy;
-                    const float vdiff = length((vel - closest_vel) / max(1, abs(vel + closest_vel)));
+                    const vec2 vel = fetch_reproj(px + ivec2(x, y)).xy;
+                    const float vdiff = length((vel - closest_vel) / max(vec2(1.0), abs(vel + closest_vel)));
 
-                    float prob = exp2(-1.0 * length(idiff * idiff / max(1e-6, combined_var)) - 1000 * vdiff);
+                    float prob = exp2(-1.0 * length(idiff * idiff / max(vec3(1e-6), combined_var)) - 1000 * vdiff);
 
                     input_prob = max(input_prob, prob);
                 }
@@ -105,5 +102,5 @@ void main(uvec2 px: SV_DispatchThreadID) {
         }
     }
 
-    output_tex[px] = input_prob;
+    safeImageStore(input_prob_img, ivec2(px), vec4(input_prob, 0, 0, 0));
 }

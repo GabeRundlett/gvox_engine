@@ -1,56 +1,58 @@
-#include "../inc/samplers.hlsl"
-#include "../inc/uv.hlsl"
-#include "../inc/color.hlsl"
-#include "../inc/hash.hlsl"
-#include "../inc/frame_constants.hlsl"
-#include "../inc/math.hlsl"
-#include "taa_common.hlsl"
+#include <renderer/kajiya/taa.inl>
 
-[[vk::binding(0)]] Texture2D<vec4> input_tex;
-[[vk::binding(1)]] Texture2D<float> depth_tex;
-[[vk::binding(2)]] RWTexture2D<vec3> output_tex;
-[[vk::binding(3)]] RWTexture2D<vec3> dev_output_tex;
+#include <g_samplers>
+#include "../inc/camera.glsl"
+#include "../inc/color.glsl"
+#include "taa_common.glsl"
 
-struct InputRemap {
-    static InputRemap create() {
-        InputRemap res;
-        return res;
-    }
+#include "../inc/safety.glsl"
 
-    vec4 remap(vec4 v) {
-        return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
-    }
-};
+DAXA_DECL_PUSH_CONSTANT(TaaFilterInputComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
+daxa_ImageViewIndex input_image = push.uses.input_image;
+daxa_ImageViewIndex depth_image = push.uses.depth_image;
+daxa_ImageViewIndex filtered_input_img = push.uses.filtered_input_img;
+daxa_ImageViewIndex filtered_input_deviation_img = push.uses.filtered_input_deviation_img;
+
+vec4 InputRemap_remap(vec4 v) {
+    return vec4(sRGB_to_YCbCr(decode_rgb(v.rgb)), 1);
+}
 
 struct FilteredInput {
     vec3 clamped_ex;
     vec3 var;
 };
 
+float fetch_depth(ivec2 px) {
+    return safeTexelFetch(depth_image, px, 0).r;
+}
+vec4 fetch_input(ivec2 px) {
+    return safeTexelFetch(input_image, px, 0);
+}
+
 FilteredInput filter_input_inner(uvec2 px, float center_depth, float luma_cutoff, float depth_scale) {
-    vec3 iex = 0;
-    vec3 iex2 = 0;
+    vec3 iex = vec3(0);
+    vec3 iex2 = vec3(0);
     float iwsum = 0;
 
-    vec3 clamped_iex = 0;
+    vec3 clamped_iex = vec3(0);
     float clamped_iwsum = 0;
-
-    InputRemap input_remap = InputRemap::create();
 
     const int k = 1;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
             const ivec2 spx_offset = ivec2(x, y);
-            const float distance_w = exp(-(0.8 / (k * k)) * dot(spx_offset, spx_offset));
+            const float distance_w = exp(-(0.8 / (k * k)) * dot(vec2(spx_offset), vec2(spx_offset)));
 
             const ivec2 spx = ivec2(px) + spx_offset;
-            vec3 s = input_remap.remap(input_tex[spx]).rgb;
+            vec3 s = InputRemap_remap(fetch_input(spx)).rgb;
 
-            const float depth = depth_tex[spx];
+            const float depth = fetch_depth(spx);
             float w = 1;
             w *= exp2(-min(16, depth_scale * inverse_depth_relative_diff(center_depth, depth)));
             w *= distance_w;
-            w *= pow(saturate(luma_cutoff / s.x), 8);
+            w *= pow(clamp(luma_cutoff / s.x, 0.0, 1.0), 8);
 
             clamped_iwsum += w;
             clamped_iex += s * w;
@@ -68,14 +70,15 @@ FilteredInput filter_input_inner(uvec2 px, float center_depth, float luma_cutoff
 
     FilteredInput res;
     res.clamped_ex = clamped_iex;
-    res.var = max(0, iex2 - iex * iex);
-    
+    res.var = max(vec3(0.0), iex2 - iex * iex);
+
     return res;
 }
 
-[numthreads(8, 8, 1)]
-void main(uvec2 px: SV_DispatchThreadID) {
-    const float center_depth = depth_tex[px];
+layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    const float center_depth = fetch_depth(px);
 
     // Filter the input, with a cross-bilateral weight based on depth
     FilteredInput filtered_input = filter_input_inner(px, center_depth, 1e10, 200);
@@ -84,6 +87,6 @@ void main(uvec2 px: SV_DispatchThreadID) {
     // inputs brighter than the just-estimated luminance mean. This clamps bright outliers in the input.
     FilteredInput clamped_filtered_input = filter_input_inner(px, center_depth, filtered_input.clamped_ex.x * 1.001, 200);
 
-    output_tex[px] = clamped_filtered_input.clamped_ex;
-    dev_output_tex[px] = sqrt(filtered_input.var);
+    safeImageStore(filtered_input_img, px, vec4(clamped_filtered_input.clamped_ex, 0.0));
+    safeImageStore(filtered_input_deviation_img, px, vec4(sqrt(filtered_input.var), 0.0));
 }
