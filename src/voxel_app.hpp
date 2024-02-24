@@ -5,7 +5,6 @@
 #include <application/audio.hpp>
 #include <application/player.hpp>
 
-#include <app.inl>
 #include <renderer/renderer.hpp>
 #include <voxels/voxel_world.inl>
 #include <voxels/voxel_particles.inl>

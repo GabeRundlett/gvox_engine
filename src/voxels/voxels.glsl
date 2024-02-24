@@ -22,8 +22,4 @@ struct VoxelTraceResult {
 // These are the functions that this file must define!
 VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos);
 
-void voxel_world_startup(daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBufferPtrs ptrs);
-void voxel_world_perframe(daxa_BufferPtr(GpuInput) gpu_input, daxa_RWBufferPtr(GpuOutput) gpu_output, daxa_RWBufferPtr(GpuGlobals) globals_ptr, VoxelRWBufferPtrs ptrs);
-
 #include <voxels/impl/trace.glsl>
-#include <voxels/impl/voxel_world.glsl>

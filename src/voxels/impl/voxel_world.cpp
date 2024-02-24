@@ -10,6 +10,8 @@ void VoxelWorld::init_gpu_malloc(GpuContext &gpu_context) {
 }
 
 void VoxelWorld::record_startup(RecordContext &record_ctx) {
+    use_buffers(record_ctx);
+
     record_ctx.task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, buffers.voxel_globals.task_resource),
@@ -54,6 +56,20 @@ void VoxelWorld::record_startup(RecordContext &record_ctx) {
             // buffers.voxel_parent_chunk_malloc.init(ti.device, ti.recorder);
         },
         .name = "Initialize",
+    });
+
+    record_ctx.add(ComputeTask<VoxelWorldStartupCompute, VoxelWorldStartupComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"voxels/impl/startup.comp.glsl"},
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+            VOXELS_BUFFER_USES_ASSIGN(VoxelWorldStartupCompute, buffers),
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldStartupComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({1, 1, 1});
+        },
     });
 }
 
@@ -131,6 +147,23 @@ void VoxelWorld::use_buffers(RecordContext &record_ctx) {
 }
 
 void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image) {
+    use_buffers(record_ctx);
+
+    record_ctx.add(ComputeTask<VoxelWorldPerframeCompute, VoxelWorldPerframeComputePush, NoTaskInfo>{
+        .source = daxa::ShaderFile{"voxels/impl/perframe.comp.glsl"},
+        .views = std::array{
+            daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
+            daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+            VOXELS_BUFFER_USES_ASSIGN(VoxelWorldPerframeCompute, buffers),
+        },
+        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldPerframeComputePush &push, NoTaskInfo const &) {
+            ti.recorder.set_pipeline(pipeline);
+            set_push_constant(ti, push);
+            ti.recorder.dispatch({1, 1, 1});
+        },
+    });
+
     record_ctx.add(ComputeTask<PerChunkCompute, PerChunkComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{

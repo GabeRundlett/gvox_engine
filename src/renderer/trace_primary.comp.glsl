@@ -207,23 +207,25 @@ void main() {
         vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 
-        ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
-        vec3 ppos = ray_hit_ws(vrc_particle);
-        nrm = ppos - (pos + 0.5 / VOXEL_SCL);
-        ppos = abs(nrm);
-        if (ppos.x > ppos.y) {
-            if (ppos.x > ppos.z) {
-                nrm = vec3(sign(nrm.x), 0, 0);
-            } else {
-                nrm = vec3(0, 0, sign(nrm.z));
-            }
-        } else {
-            if (ppos.y > ppos.z) {
-                nrm = vec3(0, sign(nrm.y), 0);
-            } else {
-                nrm = vec3(0, 0, sign(nrm.z));
-            }
-        }
+        // TODO: Fix the face-normals for particles. The ray_hit_ws function returns the voxel center.
+
+        // ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
+        // vec3 ppos = ray_hit_ws(vrc_particle);
+        // nrm = ppos - (pos + 0.5 / VOXEL_SCL);
+        // ppos = abs(nrm);
+        // if (ppos.x > ppos.y) {
+        //     if (ppos.x > ppos.z) {
+        //         nrm = vec3(sign(nrm.x), 0, 0);
+        //     } else {
+        //         nrm = vec3(0, 0, sign(nrm.z));
+        //     }
+        // } else {
+        //     if (ppos.y > ppos.z) {
+        //         nrm = vec3(0, sign(nrm.y), 0);
+        //     } else {
+        //         nrm = vec3(0, 0, sign(nrm.z));
+        //     }
+        // }
 
         // nrm = normalize(deref(gpu_input).player.pos - pos);
 

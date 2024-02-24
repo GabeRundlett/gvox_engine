@@ -4,6 +4,25 @@
 #include <application/globals.inl>
 #include "voxels.inl"
 
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldStartupCompute, 2 + VOXEL_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_END
+struct VoxelWorldStartupComputePush {
+    DAXA_TH_BLOB(VoxelWorldStartupCompute, uses)
+};
+
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldPerframeCompute, 3 + VOXEL_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_END
+struct VoxelWorldPerframeComputePush {
+    DAXA_TH_BLOB(VoxelWorldPerframeCompute, uses)
+};
+
 DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
@@ -92,8 +111,9 @@ struct VoxelWorld {
     void init_gpu_malloc(GpuContext &gpu_context);
     void record_startup(RecordContext &record_ctx);
     void begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_output);
-    void use_buffers(RecordContext &record_ctx);
     void record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image);
+
+    void use_buffers(RecordContext &record_ctx);
 };
 
 #endif

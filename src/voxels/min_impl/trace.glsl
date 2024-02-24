@@ -22,6 +22,7 @@ vec2 iBox(in vec3 ro, in vec3 rd, in vec3 rad) {
 }
 
 vec4 map(in vec3 p) {
+    p = p / (pow(3.0, 2.0) / VOXEL_SCL);
     float d = sdBox(p, vec3(1.0));
     vec4 res = vec4(d, 1.0, 0.0, 0.0);
 
@@ -102,7 +103,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
         voxel.color = vec3(0.5);
         voxel.material_type = 1;
         voxel.normal = map_nrm(ro + rd * t);
-        voxel.roughness = 0.1;
+        voxel.roughness = 0.9;
         result.nrm = voxel.normal;
 
         result.voxel_data = pack_voxel(voxel);

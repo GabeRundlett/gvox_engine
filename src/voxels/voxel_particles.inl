@@ -4,6 +4,17 @@
 #include <application/input.inl>
 #include <application/globals.inl>
 
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute, 4 + VOXEL_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
+VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
+DAXA_DECL_TASK_HEAD_END
+struct VoxelParticlePerframeComputePush {
+    DAXA_TH_BLOB(VoxelParticlePerframeCompute, uses)
+};
+
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -35,7 +46,7 @@ struct VoxelParticles {
     TemporalBuffer rendered_voxel_particles;
     TemporalBuffer placed_voxel_particles;
 
-    void use_buffers(RecordContext &record_ctx) {
+    void simulate(RecordContext &record_ctx, VoxelWorldBuffers &voxel_world_buffers) {
         simulated_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
             .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "simulated_voxel_particles",
@@ -52,12 +63,26 @@ struct VoxelParticles {
         record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
         record_ctx.task_graph.use_persistent_buffer(rendered_voxel_particles.task_resource);
         record_ctx.task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
-    }
 
-    void simulate(RecordContext &record_ctx, VoxelWorldBuffers &voxel_world_buffers) {
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
         }
+
+        record_ctx.add(ComputeTask<VoxelParticlePerframeCompute, VoxelParticlePerframeComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"voxels/voxel_particle_perframe.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
+                VOXELS_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, voxel_world_buffers),
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelParticlePerframeComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({1, 1, 1});
+            },
+        });
         record_ctx.add(ComputeTask<VoxelParticleSimCompute, VoxelParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},
             .views = std::array{

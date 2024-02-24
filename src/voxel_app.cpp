@@ -331,8 +331,6 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     record_ctx.task_graph.use_persistent_buffer(gpu_context.task_input_buffer);
     record_ctx.task_graph.use_persistent_buffer(gpu_context.task_globals_buffer);
 
-    voxel_world.use_buffers(record_ctx);
-
     voxel_world.record_startup(record_ctx);
     record_ctx.task_graph.add_task({
         .attachments = {
@@ -347,20 +345,6 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
             });
         },
         .name = "StartupTask (Globals Clear)",
-    });
-
-    record_ctx.add(ComputeTask<StartupCompute, StartupComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"app.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{StartupCompute::gpu_input, gpu_context.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{StartupCompute::globals, gpu_context.task_globals_buffer}},
-            VOXELS_BUFFER_USES_ASSIGN(StartupCompute, voxel_world.buffers),
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, StartupComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({1, 1, 1});
-        },
     });
 
     temp_task_graph.submit({});
@@ -431,8 +415,6 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
     };
 
     gpu_context.use_resources(record_ctx);
-    voxel_world.use_buffers(record_ctx);
-    particles.use_buffers(record_ctx);
     record_ctx.task_graph.use_persistent_buffer(voxel_model_loader.task_gvox_model_buffer);
 
     record_ctx.task_graph.add_task({
@@ -457,25 +439,8 @@ auto VoxelApp::record_main_task_graph() -> daxa::TaskGraph {
         .name = "GpuInputUploadTransferTask",
     });
 
-    // TODO: Refactor this. I hate that due to these tasks, I have to call this "use_buffers" thing above.
-    record_ctx.add(ComputeTask<PerframeCompute, PerframeComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"app.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_input, gpu_context.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{PerframeCompute::gpu_output, gpu_context.task_output_buffer}},
-            daxa::TaskViewVariant{std::pair{PerframeCompute::globals, gpu_context.task_globals_buffer}},
-            daxa::TaskViewVariant{std::pair{PerframeCompute::simulated_voxel_particles, particles.simulated_voxel_particles.task_resource}},
-            VOXELS_BUFFER_USES_ASSIGN(PerframeCompute, voxel_world.buffers),
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerframeComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({1, 1, 1});
-        },
-    });
-
-    particles.simulate(record_ctx, voxel_world.buffers);
     voxel_world.record_frame(record_ctx, voxel_model_loader.task_gvox_model_buffer, gpu_context.task_value_noise_image);
+    particles.simulate(record_ctx, voxel_world.buffers);
 
     renderer.render(record_ctx, voxel_world.buffers, particles, record_ctx.task_swapchain_image, swapchain.get_format());
 
