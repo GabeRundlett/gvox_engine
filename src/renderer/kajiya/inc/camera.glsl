@@ -80,7 +80,13 @@ ViewRayContext vrc_from_uv_and_depth(daxa_BufferPtr(GpuInput) gpu_input, vec2 uv
     return res;
 }
 ViewRayContext vrc_from_uv_and_biased_depth(daxa_BufferPtr(GpuInput) gpu_input, vec2 uv, float depth) {
+#if PER_VOXEL_NORMALS
+    // When using per-voxel normals, we want to ensure the depth represents one within a voxel.
+    // We do this because we'll likely round the position to be the center of the voxel.
+    const float BIAS = uintBitsToFloat(0x3f7ffe00); // uintBitsToFloat(0x3f7ffe00) == 0.999969482421875
+#else
     const float BIAS = uintBitsToFloat(0x3f800040); // uintBitsToFloat(0x3f800040) == 1.00000762939453125
+#endif
     return vrc_from_uv_and_depth(gpu_input, uv, min(1.0, depth * BIAS));
 }
 

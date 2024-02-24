@@ -20,6 +20,7 @@ struct KajiyaRenderer {
     PostProcessor post_processor;
 
     bool do_global_illumination = true;
+    bool denoise_shadow_mask = false;
 
     void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
         if (do_global_illumination) {
@@ -33,7 +34,9 @@ struct KajiyaRenderer {
         if (taa_method == 1) {
             taa_renderer.next_frame();
         }
-        shadow_denoiser.next_frame();
+        if (denoise_shadow_mask) {
+            shadow_denoiser.next_frame();
+        }
     }
 
     auto render(
@@ -45,15 +48,25 @@ struct KajiyaRenderer {
         daxa::TaskImageView sky_lut,
         daxa::TaskImageView transmittance_lut,
         VoxelWorldBuffers &voxel_buffers) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
+        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
+        AppSettings::add<settings::Checkbox>({"Graphics", "denoise_shadow_mask", {.value = denoise_shadow_mask}, {.task_graph_depends = true}});
+
+        do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+        denoise_shadow_mask = AppSettings::get<settings::Checkbox>("Graphics", "denoise_shadow_mask").value;
+
         auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
-        auto denoised_shadow_mask = shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
+        auto denoised_shadow_mask = [&]() {
+            if (denoise_shadow_mask) {
+                return shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
+            } else {
+                return shadow_mask;
+            }
+        }();
 
         auto rtr = daxa::TaskImageView{};
         auto rtdgi = daxa::TaskImageView{};
 
         AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
-
-        do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
 
         auto ircache_state = IrcacheRenderState{};
         if (do_global_illumination) {

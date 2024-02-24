@@ -4,6 +4,7 @@
 #include <voxels/voxels.glsl>
 #include <renderer/atmosphere/sky.glsl>
 #include <renderer/kajiya/inc/downscale.glsl>
+#include <renderer/kajiya/inc/gbuffer.glsl>
 
 #if TraceSecondaryComputeShader
 
@@ -27,10 +28,11 @@ void main() {
 
     vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
     float depth = texelFetch(daxa_texture2D(depth_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r;
-    uvec4 g_buffer_value = texelFetch(daxa_utexture2D(g_buffer_image_id), ivec2(gl_GlobalInvocationID.xy), 0);
-    vec3 nrm = u16_to_nrm(g_buffer_value.y);
+    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(g_buffer_image_id), ivec2(gl_GlobalInvocationID.xy), 0));
+    GbufferData gbuffer = unpack(gbuffer_packed);
+    vec3 nrm = gbuffer.normal;
 
-    ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, depth);
+    ViewRayContext vrc = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
     vec3 cam_dir = ray_dir_ws(vrc);
     vec3 cam_pos = ray_origin_ws(vrc);
     vec3 ray_pos = biased_secondary_ray_origin_ws_with_normal(vrc, nrm);
