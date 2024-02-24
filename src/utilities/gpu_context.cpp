@@ -11,15 +11,18 @@
 
 #include "record_context.hpp"
 
-GpuContext::GpuContext()
-    : daxa_instance{daxa::create_instance({})},
-      device{daxa_instance.create_device({
-          .flags = daxa::DeviceFlags2{
-              // .buffer_device_address_capture_replay_bit = false,
-              // .conservative_rasterization = true,
-          },
-          .name = "device",
-      })} {
+GpuContext::GpuContext() {
+    daxa_instance = daxa::create_instance({});
+    device = daxa_instance.create_device({
+        .flags = daxa::DeviceFlags2{
+            // .buffer_device_address_capture_replay_bit = false,
+            // .conservative_rasterization = true,
+            .shader_float16 = true,
+            // .robust_buffer_access = true,
+            // .robust_image_access = true,
+        },
+        .name = "device",
+    });
     pipeline_manager = std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo{
         .device = device,
         .shader_compile_options = {
@@ -63,6 +66,7 @@ GpuContext::GpuContext()
         .name = "value_noise_image",
     });
     blue_noise_vec2_image = device.create_image({
+        .flags = daxa::ImageCreateFlagBits::COMPATIBLE_2D_ARRAY,
         .dimensions = 3,
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {128, 128, 64},
@@ -136,7 +140,7 @@ GpuContext::GpuContext()
         temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
         temp_task_graph.add_task({
             .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_blue_noise_vec2_image),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_3D, task_blue_noise_vec2_image),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
