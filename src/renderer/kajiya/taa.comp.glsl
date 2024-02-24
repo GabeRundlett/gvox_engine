@@ -12,7 +12,6 @@
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
 
-#define FRAME_CONSTANTS_PRE_EXPOSURE_DELTA deref(gpu_input).pre_exposure_delta
 #define SAMPLE_OFFSET_PIXELS vec2(deref(gpu_input).halton_jitter)
 
 float linear_to_perceptual(float a) {
@@ -89,7 +88,7 @@ daxa_ImageViewIndex closest_velocity_img = push.uses.closest_velocity_img;
 
 vec4 fetch_history(vec2 uv) {
     vec4 h = textureLod(daxa_sampler2D(history_tex, g_sampler_lnc), uv, 0);
-    return vec4(decode_rgb(h.xyz * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), h.w);
+    return vec4(decode_rgb(h.xyz * deref(gpu_input).pre_exposure_delta), h.w);
 }
 
 // struct HistoryRemap {
@@ -101,7 +100,7 @@ vec4 fetch_history(vec2 uv) {
 // }
 
 vec4 HistoryRemap_remap(vec4 v) {
-    return vec4(decode_rgb(v.rgb * FRAME_CONSTANTS_PRE_EXPOSURE_DELTA), v.a);
+    return vec4(decode_rgb(v.rgb * deref(gpu_input).pre_exposure_delta), v.a);
 }
 
 float fetch_depth(ivec2 px) {
