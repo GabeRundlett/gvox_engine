@@ -628,7 +628,7 @@ struct RtrRenderer {
             *record_ctx.gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
-                .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
+                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "rtr.ray_len_tex",
             });

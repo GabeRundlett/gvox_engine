@@ -70,8 +70,7 @@ vec3 get_atmosphere_radiance_along_ray(
         vec2(SKY_SKY_RES.xy),
         camera_height);
 
-    vec4 skyview_val = texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv);
-    const vec3 unitless_atmosphere_illuminance = skyview_val.rgb * skyview_val.a;
+    const vec3 unitless_atmosphere_illuminance = atmosphere_unpack(texture(daxa_sampler2D(_skyview, g_sampler_llc), skyview_uv));
     const vec3 sun_color_weighed_atmosphere_illuminance = sun_color.rgb * unitless_atmosphere_illuminance;
     const vec3 atmosphere_scattering_illuminance = sun_color_weighed_atmosphere_illuminance * SUN_INTENSITY;
 
@@ -80,7 +79,7 @@ vec3 get_atmosphere_radiance_along_ray(
 
 // Sky represents everything, the atmosphere, sun, and stars.
 vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, daxa_ImageViewIndex _transmittance, vec3 view_direction) {
-    vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
+    vec3 world_camera_position = sky_space_camera_position(gpu_input);
     vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
     float height = length(world_camera_position);
 
@@ -130,7 +129,7 @@ vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
 
 // Returns just the radiance from the sun in that direction
 vec3 sun_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
-    const vec3 world_camera_position = get_sky_world_camera_position(gpu_input);
+    const vec3 world_camera_position = sky_space_camera_position(gpu_input);
     const vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 
     const float atmosphere_intersection_distance = ray_sphere_intersect_nearest(

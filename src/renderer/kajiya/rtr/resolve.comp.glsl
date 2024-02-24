@@ -156,7 +156,7 @@ void main() {
 
     const float ray_squish_scale = 16.0 / max(1e-5, eye_to_surf_dist);
     const float ray_len_avg = exponential_unsquish(mix(
-                                                       exponential_squish(textureLod(daxa_sampler2D(ray_len_history_tex, g_sampler_nnc), uv + reprojection_params.xy, 0).y, ray_squish_scale),
+                                                       exponential_squish(textureLod(daxa_sampler2D(ray_len_history_tex, g_sampler_lnc), uv + reprojection_params.xy, 0).y, ray_squish_scale),
                                                        exponential_squish(surf_to_hit_dist, ray_squish_scale),
                                                        0.1),
                                                    ray_squish_scale);
@@ -385,7 +385,6 @@ void main() {
                 center_to_hit_ws = sample_hit_ws - mix(refl_ray_origin_ws, sample_origin_ws, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS);
                 sample_hit_vs = center_to_hit_vs + position_world_to_view(gpu_input, sample_origin_ws);
                 sample_cos_theta = rtr_decode_cos_theta_from_fp16(safeTexelFetch(restir_irradiance_tex, ivec2(spx), 0).a);
-                // safeImageStore(rtr_debug_image, ivec2(px), vec4(vec3(sample_origin_vs), 1));
 
                 // Perform measure conversion
 
@@ -406,8 +405,8 @@ void main() {
                         position_world_to_view(gpu_input, sample_hit_ws)
                         // At low roughness pretend we're directly using neighbor positions for hits ¯\_(ツ)_/¯
                         - mix(refl_ray_origin_vs, sample_origin_vs, mix(1.0, RTR_NEIGHBOR_RAY_ORIGIN_CENTER_BIAS,
-                                                                            // eyeballed bullshit
-                                                                            0.4 * min(1, 3 * sqrt(gbuffer.roughness)))));
+                                                                        // eyeballed bullshit
+                                                                        0.4 * min(1, 3 * sqrt(gbuffer.roughness)))));
                     pdf0_mult *= max(1e-5, pow(center_to_hit_dist_wat_i_dont_even / sample_to_hit_dist, 2));
                     pdf1_mult *= max(1.0, pow(center_to_hit_dist / sample_to_hit_dist, 2));
                 } else {
@@ -612,6 +611,11 @@ void main() {
                     float mis_weight = max(1e-4, spec.pdf / (sample_ray_pdf + spec.pdf));
 
                     contrib_wt = rejection_bias * mis_weight * max(1e-10, spec_weight / bent_sample_pdf);
+
+                    if (pdf_i == 0) {
+                        safeImageStore(rtr_debug_image, ivec2(px), vec4(vec3(bent_sample_pdf / neighbor_sampling_pdf * spec.value_over_pdf * contrib_wt * pdf_influence), 1));
+                    }
+
                     contrib_accum += vec4(
                                          sample_radiance * bent_sample_pdf / neighbor_sampling_pdf * spec.value_over_pdf,
                                          1) *

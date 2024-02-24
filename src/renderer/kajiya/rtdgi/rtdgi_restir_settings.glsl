@@ -41,7 +41,7 @@ const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;
 
 bool is_rtdgi_validation_frame(uint frame_index) {
     #if RTDGI_INTERLEAVE_TRACING_AND_VALIDATION
-        return frame_index % RTDGI_INTERLEAVED_VALIDATION_PERIOD == 0;
+        return (frame_index % RTDGI_INTERLEAVED_VALIDATION_PERIOD) == 0;
     #else
         return true;
     #endif

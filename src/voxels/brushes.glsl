@@ -356,9 +356,9 @@ void brushgen_b(in out Voxel voxel) {
         // }
         // voxel.color = vec3(good_rand(), good_rand(), good_rand());
         // voxel.color = vec3(floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0);
-        voxel.material_type = 1;
-        voxel.color = vec3(0.95, 0.05, 0.05);
-        voxel.roughness = 0.9;
+        voxel.material_type = 3;
+        voxel.color = vec3(0.95, 0.95, 0.95);
+        voxel.roughness = 0.01;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }
     if (sd < 2.5 / VOXEL_SCL) {

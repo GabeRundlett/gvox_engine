@@ -5,13 +5,16 @@
 const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
 #define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIRECTION) * SUN_INTENSITY)
 
-vec3 get_sky_world_camera_position(daxa_BufferPtr(GpuInput) gpu_input) {
+vec3 sky_space_from_ws(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
-    const vec3 camera_position = (deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset) * 0.001 + vec3(0.0, 0.0, 2.0);
-    vec3 world_camera_position = camera_position; // * vec3(0, 0, 1);
-    world_camera_position.z += deref(gpu_input).sky_settings.atmosphere_bottom;
-    return world_camera_position;
+    vec3 sky_space_pos = (pos + deref(gpu_input).player.player_unit_offset) * 0.001 + vec3(0.0, 0.0, 2.0);
+    sky_space_pos.z += deref(gpu_input).sky_settings.atmosphere_bottom;
+    return sky_space_pos;
+}
+
+vec3 sky_space_camera_position(daxa_BufferPtr(GpuInput) gpu_input) {
+    return sky_space_from_ws(gpu_input, deref(gpu_input).player.pos);
 }
 
 struct TransmittanceParams {
@@ -225,4 +228,15 @@ vec3 sample_sun_direction(
         }
     }
     return SUN_DIRECTION;
+}
+
+vec4 atmosphere_pack(vec3 x) {
+    const float F16_SCALE_LIMIT = 524288.0;
+    vec3 inv_x = 1.0 / max(x, vec3(1.0 / F16_SCALE_LIMIT));
+    float inv_mult = min(F16_SCALE_LIMIT, max(inv_x.x, max(inv_x.y, inv_x.z)));
+    return vec4(x * inv_mult, 1.0 / inv_mult);
+}
+
+vec3 atmosphere_unpack(vec4 x) {
+    return x.rgb * x.a;
 }
