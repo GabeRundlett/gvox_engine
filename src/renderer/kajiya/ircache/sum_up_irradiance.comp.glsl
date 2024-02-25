@@ -67,7 +67,7 @@ void main() {
             const Reservoir1spp r = Reservoir1spp_from_raw(deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy);
             const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
-            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx];
+            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).values[octa_idx];
 
             add_radiance_in_direction(contribution_sum,
                                       contrib.rgb * contrib.w,

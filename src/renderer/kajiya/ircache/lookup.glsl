@@ -243,7 +243,7 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
 
                     const float wt = dot(dir, self.normal_ws);
                     if (wt > 0.0) {
-                        const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx];
+                        const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).values[octa_idx];
                         irradiance += contrib.rgb * wt * contrib.w;
                         weight_sum += wt;
                     }

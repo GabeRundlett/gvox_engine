@@ -85,9 +85,9 @@ void main() {
 
         if (r.M > 0) {
             vec4 prev_value_and_count =
-                deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx] * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
+                deref(advance(ircache_aux_buf, entry_idx)).values[octa_idx] * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
 
-            Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx + IRCACHE_OCTA_DIMS2 * 1]));
+            Vertex prev_entry = unpack_vertex(deref(advance(ircache_aux_buf, entry_idx)).vertexes[octa_idx]);
 
             // Validate the previous sample
             IrcacheTraceResult prev_traced = ircache_trace(prev_entry, brdf, SampleParams_from_raw(r.payload), life);
@@ -107,7 +107,7 @@ void main() {
             prev_value_and_count.rgb = a;
 
             deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy = as_raw(r);
-            deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx] = prev_value_and_count;
+            deref(advance(ircache_aux_buf, entry_idx)).values[octa_idx] = prev_value_and_count;
         }
     }
 

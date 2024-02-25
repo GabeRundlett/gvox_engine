@@ -29,8 +29,11 @@ void main() {
         for (uint i = 0; i < IRCACHE_OCTA_DIMS2; ++i) {
             deref(advance(ircache_aux_buf, entry_idx)).reservoirs[i] = uvec2(0);
         }
-        for (uint i = 0; i < IRCACHE_AUX_STRIDE; ++i) {
-            deref(advance(ircache_aux_buf, entry_idx)).aux_data[i] = 0.0.xxxx;
+        for (uint i = 0; i < IRCACHE_OCTA_DIMS2; ++i) {
+            deref(advance(ircache_aux_buf, entry_idx)).values[i] = 0.0.xxxx;
+        }
+        for (uint i = 0; i < IRCACHE_OCTA_DIMS2; ++i) {
+            deref(advance(ircache_aux_buf, entry_idx)).vertexes[i] = VertexPacked(vec4(0.0));
         }
     }
 }
