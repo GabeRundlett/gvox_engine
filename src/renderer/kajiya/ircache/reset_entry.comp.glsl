@@ -26,8 +26,11 @@ void main() {
     const bool should_reset = all(equal(vec4(0.0), deref(advance(ircache_irradiance_buf, entry_idx * IRCACHE_IRRADIANCE_STRIDE))));
 
     if (should_reset) {
+        for (uint i = 0; i < IRCACHE_OCTA_DIMS2; ++i) {
+            deref(advance(ircache_aux_buf, entry_idx)).reservoirs[i] = uvec2(0);
+        }
         for (uint i = 0; i < IRCACHE_AUX_STRIDE; ++i) {
-            deref(advance(ircache_aux_buf, entry_idx)).data[i] = 0.0.xxxx;
+            deref(advance(ircache_aux_buf, entry_idx)).aux_data[i] = 0.0.xxxx;
         }
     }
 }

@@ -29,9 +29,10 @@ struct IrcacheCell {
 DAXA_DECL_BUFFER_PTR(IrcacheCell)
 const daxa_u32 IRCACHE_OCTA_DIMS = 4;
 const daxa_u32 IRCACHE_OCTA_DIMS2 = IRCACHE_OCTA_DIMS * IRCACHE_OCTA_DIMS;
-const daxa_u32 IRCACHE_AUX_STRIDE = 4 * IRCACHE_OCTA_DIMS2;
+const daxa_u32 IRCACHE_AUX_STRIDE = 3 * IRCACHE_OCTA_DIMS2;
 struct IrcacheAux {
-    daxa_f32vec4 data[IRCACHE_AUX_STRIDE];
+    daxa_u32vec2 reservoirs[IRCACHE_OCTA_DIMS2];
+    daxa_f32vec4 aux_data[IRCACHE_AUX_STRIDE];
 };
 DAXA_DECL_BUFFER_PTR(IrcacheAux)
 struct IrcacheBuffers {

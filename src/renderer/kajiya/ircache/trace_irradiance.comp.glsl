@@ -108,7 +108,7 @@ void main() {
     const uint octa_idx = octa_idx(sample_params);
 
     vec4 prev_value_and_count =
-        deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2] * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
+        deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx] * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
 
     vec3 val_sel = new_value;
     bool selected_new = true;
@@ -116,11 +116,11 @@ void main() {
     {
         const uint M_CLAMP = 30;
 
-        Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
+        Reservoir1spp r = Reservoir1spp_from_raw(deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy);
         if (r.M > 0) {
             r.M = min(r.M, M_CLAMP);
 
-            Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2 * 2]));
+            Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx + IRCACHE_OCTA_DIMS2 * 1]));
             // prev_entry.position = entry.position;
 
             if (update_with_stream(reservoir,
@@ -134,10 +134,10 @@ void main() {
 
     finish_stream(reservoir, stream_state);
 
-    deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy = uintBitsToFloat(as_raw(reservoir));
-    deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2] = vec4(val_sel, reservoir.W);
+    deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy = as_raw(reservoir);
+    deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx] = vec4(val_sel, reservoir.W);
 
     if (selected_new) {
-        deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2 * 2] = packed_entry.data0;
+        deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx + IRCACHE_OCTA_DIMS2 * 1] = packed_entry.data0;
     }
 }

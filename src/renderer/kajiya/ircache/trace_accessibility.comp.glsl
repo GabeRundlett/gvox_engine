@@ -56,8 +56,8 @@ void main() {
 
     const Vertex entry = unpack_vertex(deref(advance(ircache_spatial_buf, entry_idx)));
 
-    Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
-    Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2 * 2]));
+    Reservoir1spp r = Reservoir1spp_from_raw(deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy);
+    Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx + IRCACHE_OCTA_DIMS2 * 1]));
 
     // Reduce weight of samples whose trace origins are not accessible now
     if (rt_is_shadowed(new_ray(
@@ -66,6 +66,6 @@ void main() {
             0.001,
             0.999))) {
         r.M *= 0.8;
-        deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy = vec2(uintBitsToFloat(as_raw(r)));
+        deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy = as_raw(r);
     }
 }

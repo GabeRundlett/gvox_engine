@@ -64,10 +64,10 @@ void main() {
         for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
             const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-            const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
+            const Reservoir1spp r = Reservoir1spp_from_raw(deref(advance(ircache_aux_buf, entry_idx)).reservoirs[octa_idx].xy);
             const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
-            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).data[IRCACHE_OCTA_DIMS2 + octa_idx];
+            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).aux_data[octa_idx];
 
             add_radiance_in_direction(contribution_sum,
                                       contrib.rgb * contrib.w,
