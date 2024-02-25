@@ -238,12 +238,12 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
                 for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
                     const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + octa_idx)).xy));
+                    const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
                     const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
                     const float wt = dot(dir, self.normal_ws);
                     if (wt > 0.0) {
-                        const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx));
+                        const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).data[IRCACHE_OCTA_DIMS2 + octa_idx];
                         irradiance += contrib.rgb * wt * contrib.w;
                         weight_sum += wt;
                     }

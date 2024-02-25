@@ -12,7 +12,7 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 daxa_RWBufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_RWBufferPtr(IrcacheAux) ircache_aux_buf = push.uses.ircache_aux_buf;
 daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 struct Contribution {
@@ -55,7 +55,6 @@ void main() {
     }
 
     const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx));
-    const uint output_idx = entry_idx * IRCACHE_IRRADIANCE_STRIDE;
 
     Contribution contribution_sum = Contribution_new();
     {
@@ -65,10 +64,10 @@ void main() {
         for (uint octa_idx = 0; octa_idx < IRCACHE_OCTA_DIMS2; ++octa_idx) {
             const vec2 octa_coord = (vec2(octa_idx % IRCACHE_OCTA_DIMS, octa_idx / IRCACHE_OCTA_DIMS) + 0.5) / IRCACHE_OCTA_DIMS;
 
-            const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + octa_idx)).xy));
+            const Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
             const vec3 dir = direction(SampleParams_from_raw(r.payload));
 
-            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + IRCACHE_OCTA_DIMS2 + octa_idx));
+            const vec4 contrib = deref(advance(ircache_aux_buf, entry_idx)).data[IRCACHE_OCTA_DIMS2 + octa_idx];
 
             add_radiance_in_direction(contribution_sum,
                                       contrib.rgb * contrib.w,

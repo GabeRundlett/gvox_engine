@@ -6,7 +6,7 @@ DAXA_DECL_PUSH_CONSTANT(IrcacheResetComputePush, push)
 daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
 daxa_BufferPtr(vec4) ircache_irradiance_buf = push.uses.ircache_irradiance_buf;
-daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_RWBufferPtr(IrcacheAux) ircache_aux_buf = push.uses.ircache_aux_buf;
 daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -27,7 +27,7 @@ void main() {
 
     if (should_reset) {
         for (uint i = 0; i < IRCACHE_AUX_STRIDE; ++i) {
-            deref(advance(ircache_aux_buf, entry_idx * IRCACHE_AUX_STRIDE + i)) = 0.0.xxxx;
+            deref(advance(ircache_aux_buf, entry_idx)).data[i] = 0.0.xxxx;
         }
     }
 }

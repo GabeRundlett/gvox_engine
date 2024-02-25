@@ -28,10 +28,7 @@ uint ircache_entry_life_for_rank(uint rank) {
     return rank * IRCACHE_ENTRY_LIFE_PER_RANK;
 }
 
-const uint IRCACHE_OCTA_DIMS = 4;
-const uint IRCACHE_OCTA_DIMS2 = IRCACHE_OCTA_DIMS * IRCACHE_OCTA_DIMS;
 const uint IRCACHE_IRRADIANCE_STRIDE = 3;
-const uint IRCACHE_AUX_STRIDE = 4 * IRCACHE_OCTA_DIMS2;
 
 const uint IRCACHE_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_VALIDATION_SAMPLES_PER_FRAME = 4;

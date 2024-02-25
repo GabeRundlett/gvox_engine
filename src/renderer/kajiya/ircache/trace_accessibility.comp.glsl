@@ -11,7 +11,7 @@ daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf
 daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;
 daxa_RWBufferPtr(VertexPacked) ircache_reposition_proposal_buf = push.uses.ircache_reposition_proposal_buf;
 daxa_BufferPtr(IrcacheMetadata) ircache_meta_buf = push.uses.ircache_meta_buf;
-daxa_RWBufferPtr(vec4) ircache_aux_buf = push.uses.ircache_aux_buf;
+daxa_RWBufferPtr(IrcacheAux) ircache_aux_buf = push.uses.ircache_aux_buf;
 daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_indirection_buf;
 
 #include "../inc/rt.glsl"
@@ -56,10 +56,8 @@ void main() {
 
     const Vertex entry = unpack_vertex(deref(advance(ircache_spatial_buf, entry_idx)));
 
-    const uint output_idx = entry_idx * IRCACHE_AUX_STRIDE + octa_idx;
-
-    Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, output_idx)).xy));
-    Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, output_idx + IRCACHE_OCTA_DIMS2 * 2))));
+    Reservoir1spp r = Reservoir1spp_from_raw(floatBitsToUint(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy));
+    Vertex prev_entry = unpack_vertex(VertexPacked(deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx + IRCACHE_OCTA_DIMS2 * 2]));
 
     // Reduce weight of samples whose trace origins are not accessible now
     if (rt_is_shadowed(new_ray(
@@ -68,6 +66,6 @@ void main() {
             0.001,
             0.999))) {
         r.M *= 0.8;
-        deref(advance(ircache_aux_buf, output_idx)).xy = vec2(uintBitsToFloat(as_raw(r)));
+        deref(advance(ircache_aux_buf, entry_idx)).data[octa_idx].xy = vec2(uintBitsToFloat(as_raw(r)));
     }
 }
