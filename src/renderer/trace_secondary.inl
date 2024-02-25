@@ -18,6 +18,8 @@ struct TraceSecondaryComputePush {
 
 #if defined(__cplusplus)
 
+#include <application/settings.hpp>
+
 inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorldBuffers &voxel_buffers) -> daxa::TaskImageView {
     auto shadow_mask = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R8_UNORM,
@@ -25,25 +27,33 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
         .name = "shadow_mask",
     });
 
-    record_ctx.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::shadow_mask, shadow_mask}},
-            VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
-            daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.current()}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceSecondaryComputePush &push, NoTaskInfo const &) {
-            auto const image_info = ti.device.info_image(ti.get(TraceSecondaryCompute::g_buffer_image_id).ids[0]).value();
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
-            ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
-        },
-    });
+    AppSettings::add<settings::Checkbox>({"Graphics", "Render Shadows", {.value = true}, {.task_graph_depends = true}});
+
+    auto render_shadows = AppSettings::get<settings::Checkbox>("Graphics", "Render Shadows").value;
+
+    if (render_shadows) {
+        record_ctx.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::shadow_mask, shadow_mask}},
+                VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.current()}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceSecondaryComputePush &push, NoTaskInfo const &) {
+                auto const image_info = ti.device.info_image(ti.get(TraceSecondaryCompute::g_buffer_image_id).ids[0]).value();
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                // assert((render_size.x % 8) == 0 && (render_size.y % 8) == 0);
+                ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+            },
+        });
+    } else {
+        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{shadow_mask}, std::array<daxa::ClearValue, 1>{std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f}});
+    }
 
     debug_utils::DebugDisplay::add_pass({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
 

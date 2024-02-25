@@ -10,7 +10,7 @@
 
 namespace {
     template <size_t N>
-    inline void clear_task_images(daxa::TaskGraph &task_graph, std::array<daxa::TaskImageView, N> const &task_image_views) {
+    inline void clear_task_images(daxa::TaskGraph &task_graph, std::array<daxa::TaskImageView, N> const &task_image_views, std::array<daxa::ClearValue, N> clear_values = {}) {
         auto uses = std::vector<daxa::TaskAttachmentInfo>{};
         auto use_count = task_image_views.size();
         uses.reserve(use_count);
@@ -19,10 +19,11 @@ namespace {
         }
         task_graph.add_task({
             .attachments = std::move(uses),
-            .task = [use_count](daxa::TaskInterface const &ti) {
+            .task = [use_count, clear_values](daxa::TaskInterface const &ti) {
                 for (uint8_t i = 0; i < use_count; ++i) {
                     ti.recorder.clear_image({
                         .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{i}).layout,
+                        .clear_value = clear_values[i],
                         .dst_image = ti.get(daxa::TaskImageAttachmentIndex{i}).ids[0],
                     });
                 }

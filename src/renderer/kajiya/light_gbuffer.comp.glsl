@@ -142,7 +142,7 @@ void main() {
         }
     }
 
-    // gi_irradiance += vec3(5.0);
+    // gi_irradiance += vec3(0.02);
 
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY != 0) {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo;
