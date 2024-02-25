@@ -242,7 +242,7 @@ struct TracedRtr {
                 ti.recorder.set_pipeline(pipeline);
                 push.output_tex_size = extent_inv_extent_2d(out_image_info);
                 set_push_constant(ti, push);
-                ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
+                ti.recorder.dispatch({(image_info.size.x + 15) / 16, (image_info.size.y + 15) / 16});
             },
         });
         debug_utils::DebugDisplay::add_pass({.name = "rtr temporal filter", .task_image_id = this->temporal_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});

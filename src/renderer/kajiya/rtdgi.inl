@@ -320,7 +320,7 @@ struct RtdgiRenderer {
                 push.gbuffer_tex_size = extent_inv_extent_2d(image_info);
                 push.output_tex_size = extent_inv_extent_2d(out_image_info);
                 set_push_constant(ti, push);
-                ti.recorder.dispatch({(out_image_info.size.x + 7) / 8, (out_image_info.size.y + 7) / 8});
+                ti.recorder.dispatch({(out_image_info.size.x + 15) / 16, (out_image_info.size.y + 15) / 16});
             },
         });
         debug_utils::DebugDisplay::add_pass({.name = "rtdgi temporal filter", .task_image_id = temporal_filtered_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});

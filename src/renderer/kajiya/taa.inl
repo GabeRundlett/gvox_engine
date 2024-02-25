@@ -310,7 +310,7 @@ struct TaaRenderer {
                     push.output_tex_size = info.output_tex_size;
                     ti.recorder.set_pipeline(pipeline);
                     set_push_constant(ti, push);
-                    ti.recorder.dispatch({(info.thread_count.x + (TAA_WG_SIZE_X - 1)) / TAA_WG_SIZE_X, (info.thread_count.y + (TAA_WG_SIZE_Y - 1)) / TAA_WG_SIZE_Y});
+                    ti.recorder.dispatch({(info.thread_count.x + 15) / 16, (info.thread_count.y + 15) / 16});
                 },
                 .info = {
                     .thread_count = record_ctx.render_resolution,

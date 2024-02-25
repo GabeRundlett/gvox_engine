@@ -37,7 +37,23 @@ daxa_ImageViewIndex refl_restir_invalidity_tex = push.uses.refl_restir_invalidit
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex output_tex = push.uses.output_tex;
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+#define PREFETCH_RADIUS 1
+#define PREFETCH_GROUP_SIZE 16
+
+struct FetchResult {
+    vec3 input_val;
+    float depth;
+};
+
+FetchResult do_fetch(ivec2 px) {
+    const vec3 input_val = linear_to_working(safeTexelFetch(input_tex, px, 0)).rgb;
+    const float depth = safeTexelFetch(depth_tex, px, 0).r;
+    return FetchResult(input_val, depth);
+}
+
+#include "../inc/prefetch.glsl"
+
+layout(local_size_x = PREFETCH_GROUP_SIZE, local_size_y = PREFETCH_GROUP_SIZE, local_size_z = 1) in;
 void main() {
     const uvec2 px = gl_GlobalInvocationID.xy;
 #if !RTR_USE_TEMPORAL_FILTERS
@@ -127,17 +143,20 @@ void main() {
     vec4 history0_reproj = textureLod(daxa_sampler2D(reprojection_tex, g_sampler_lnc), uv + reproj.xy, 0);
     vec4 history1_reproj = textureLod(daxa_sampler2D(reprojection_tex, g_sampler_lnc), hit_prev_uv, 0);
 
-    vec4 vsum = 0.0.xxxx;
-    vec4 vsum2 = 0.0.xxxx;
+    vec3 vsum = 0.0.xxx;
+    vec3 vsum2 = 0.0.xxx;
     float wsum = 0.0;
+
+    do_prefetch();
 
     const int k = 1;
     for (int y = -k; y <= k; ++y) {
         for (int x = -k; x <= k; ++x) {
             const ivec2 sample_px = ivec2(px) + ivec2(x, y) * 1;
-            const float sample_depth = safeTexelFetch(depth_tex, sample_px, 0).r;
+            FetchResult fetch_result = prefetch_tap(sample_px);
+            const float sample_depth = fetch_result.depth;
 
-            vec4 neigh = linear_to_working(safeTexelFetch(input_tex, sample_px, 0));
+            vec3 neigh = fetch_result.input_val;
             float w = 1; // exp(-3.0 * float(x * x + y * y) / float((k+1.) * (k+1.)));
 
             w *= exp2(-200.0 * abs(/*center_normal_vs.z **/ (center_depth / sample_depth - 1.0)));
@@ -148,9 +167,9 @@ void main() {
         }
     }
 
-    vec4 ex = vsum / wsum;
-    vec4 ex2 = vsum2 / wsum;
-    vec4 dev = sqrt(max(0.0.xxxx, ex2 - ex * ex));
+    vec3 ex = vsum / wsum;
+    vec3 ex2 = vsum2 / wsum;
+    vec3 dev = sqrt(max(0.0.xxx, ex2 - ex * ex));
 
     GbufferData gbuffer = unpack(GbufferDataPacked(safeTexelFetchU(gbuffer_tex, ivec2(px), 0)));
 

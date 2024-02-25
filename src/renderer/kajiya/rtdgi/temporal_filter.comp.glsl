@@ -37,7 +37,25 @@ float working_luma(vec3 v) { return v.x; }
 
 #define USE_TEMPORAL_FILTER 1
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+vec4 history_mult;
+
+#define PREFETCH_RADIUS 2
+#define PREFETCH_GROUP_SIZE 16
+
+struct FetchResult {
+    vec3 input_val;
+    float history_luma;
+};
+
+FetchResult do_fetch(ivec2 px) {
+    vec4 neigh = linear_to_working(safeTexelFetch(input_tex, px, 0));
+    vec4 hist_neigh = linear_to_working(safeTexelFetch(history_tex, px, 0) * history_mult);
+    return FetchResult(neigh.rgb, working_luma(hist_neigh.rgb));
+}
+
+#include "../inc/prefetch.glsl"
+
+layout(local_size_x = PREFETCH_GROUP_SIZE, local_size_y = PREFETCH_GROUP_SIZE, local_size_z = 1) in;
 void main() {
     uvec2 px = gl_GlobalInvocationID.xy;
 #if USE_TEMPORAL_FILTER == 0
@@ -51,15 +69,15 @@ void main() {
     vec4 center = linear_to_working(safeTexelFetch(input_tex, ivec2(px), 0));
     vec4 reproj = safeTexelFetch(reprojection_tex, ivec2(px), 0);
 
-    const vec4 history_mult = vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
+    history_mult = vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
     vec4 history = linear_to_working(safeTexelFetch(history_tex, ivec2(px), 0) * history_mult);
 
     // output_tex[px] = center;
     // return;
 
 #if 1
-    vec4 vsum = 0.0.xxxx;
-    vec4 vsum2 = 0.0.xxxx;
+    vec3 vsum = 0.0.xxx;
+    vec3 vsum2 = 0.0.xxx;
     float wsum = 0.0;
     float hist_diff = 0.0;
     float hist_vsum = 0.0;
@@ -67,15 +85,16 @@ void main() {
 
     // float dev_sum = 0.0;
 
-    const int k = 2;
+    do_prefetch();
+
+    const int k = int(PREFETCH_RADIUS);
     {
         for (int y = -k; y <= k; ++y) {
             for (int x = -k; x <= k; ++x) {
-                vec4 neigh = linear_to_working(safeTexelFetch(input_tex, ivec2(px + ivec2(x, y)), 0));
-                vec4 hist_neigh = linear_to_working(safeTexelFetch(history_tex, ivec2(px + ivec2(x, y)), 0) * history_mult);
-
+                FetchResult fetch_result = prefetch_tap(ivec2(px + ivec2(x, y)));
+                vec3 neigh = fetch_result.input_val;
+                float hist_luma = fetch_result.history_luma;
                 float neigh_luma = working_luma(neigh.rgb);
-                float hist_luma = working_luma(hist_neigh.rgb);
 
                 float w = exp(-3.0 * float(x * x + y * y) / float((k + 1.) * (k + 1.)));
                 vsum += neigh * w;
@@ -92,9 +111,9 @@ void main() {
         }
     }
 
-    vec4 ex = vsum / wsum;
-    vec4 ex2 = vsum2 / wsum;
-    vec4 dev = sqrt(max(0.0.xxxx, ex2 - ex * ex));
+    vec3 ex = vsum / wsum;
+    vec3 ex2 = vsum2 / wsum;
+    vec3 dev = sqrt(max(0.0.xxx, ex2 - ex * ex));
 
     hist_diff /= wsum;
     hist_vsum /= wsum;
@@ -143,8 +162,8 @@ void main() {
     float clamp_box_size = 1 * mix(0.25, 2.0, 1.0 - rt_invalid) * mix(0.333, 1.0, saturate(reproj.w)) * 2;
     clamp_box_size = max(clamp_box_size, 0.5);
 
-    vec4 nmin = center - dev * clamp_box_size;
-    vec4 nmax = center + dev * clamp_box_size;
+    vec3 nmin = center.rgb - dev * clamp_box_size;
+    vec3 nmax = center.rgb + dev * clamp_box_size;
 
 #if 0
     {

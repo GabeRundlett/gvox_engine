@@ -40,7 +40,23 @@ vec4 fetch_reproj(ivec2 px) {
     return safeTexelFetch(reprojection_map, px, 0);
 }
 
-layout(local_size_x = TAA_WG_SIZE_X, local_size_y = TAA_WG_SIZE_Y, local_size_z = 1) in;
+#define PREFETCH_RADIUS 2
+#define PREFETCH_GROUP_SIZE 16
+
+struct FetchResult {
+    vec3 filtered_input;
+    vec2 vel;
+};
+
+FetchResult do_fetch(ivec2 px) {
+    const vec3 s = fetch_filtered_input(px).rgb;
+    const vec2 vel = fetch_reproj(px).xy;
+    return FetchResult(s, vel);
+}
+
+#include "../inc/prefetch.glsl"
+
+layout(local_size_x = PREFETCH_GROUP_SIZE, local_size_y = PREFETCH_GROUP_SIZE, local_size_z = 1) in;
 void main() {
     float input_prob = 0;
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
@@ -84,14 +100,19 @@ void main() {
         //
         // Use a small neighborhood search, because the input may
         // flicker from frame to frame due to the temporal jitter.
+
+        do_prefetch();
+
         {
             int k = 1;
             for (int y = -k; y <= k; ++y) {
                 for (int x = -k; x <= k; ++x) {
-                    const vec3 s = fetch_filtered_input(px + ivec2(x, y)).rgb;
+                    FetchResult fetch_result = prefetch_tap(ivec2(px + ivec2(x, y)));
+
+                    const vec3 s = fetch_result.filtered_input;
                     const vec3 idiff = s - closest_history.rgb;
 
-                    const vec2 vel = fetch_reproj(px + ivec2(x, y)).xy;
+                    const vec2 vel = fetch_result.vel;
                     const float vdiff = length((vel - closest_vel) / max(vec2(1.0), abs(vel + closest_vel)));
 
                     float prob = exp2(-1.0 * length(idiff * idiff / max(vec3(1e-6), combined_var)) - 1000 * vdiff);
