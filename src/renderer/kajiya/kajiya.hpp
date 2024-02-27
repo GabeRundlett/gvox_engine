@@ -126,7 +126,6 @@ struct KajiyaRenderer {
             rtdgi,
             ircache_state,
             sky_lut,
-            ibl_cube,
             transmittance_lut);
 
         return {debug_out_tex, reprojection_map};

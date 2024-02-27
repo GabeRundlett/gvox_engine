@@ -279,6 +279,17 @@ struct TracedRtr {
     }
 };
 
+inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
+    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        .size = static_cast<uint32_t>(size),
+        .name = name,
+    });
+
+    record_ctx.task_graph.use_persistent_buffer(result.task_resource);
+
+    return result.task_resource;
+}
+
 struct RtrRenderer {
     PingPongImage temporal_tex;
     PingPongImage ray_len_tex;

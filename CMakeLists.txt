@@ -19,6 +19,7 @@ add_executable(${PROJECT_NAME}
     "src/utilities/mesh/mesh_model.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
+    "src/renderer/kajiya/ircache.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 set_project_warnings(${PROJECT_NAME})
