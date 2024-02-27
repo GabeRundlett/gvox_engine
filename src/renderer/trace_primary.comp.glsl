@@ -26,9 +26,6 @@ void main() {
 
 #if ENABLE_DEPTH_PREPASS
     VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 16.0 * output_tex_size.w * deref(gpu_input).player.cam.clip_to_view[1][1], true), ray_pos);
-    uint step_n = trace_result.step_n;
-#else
-    uint step_n = 0;
 #endif
 
     float depth = length(ray_pos - cam_pos);
@@ -36,7 +33,7 @@ void main() {
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, (uvec2(output_tex_size.xy)) / PREPASS_SCL))) {
         return;
     }
-    imageStore(daxa_image2D(render_depth_prepass_image), ivec2(gl_GlobalInvocationID.xy), vec4(depth, step_n, 0, 0));
+    imageStore(daxa_image2D(render_depth_prepass_image), ivec2(gl_GlobalInvocationID.xy), vec4(depth, 0, 0, 0));
 }
 #undef INPUT
 

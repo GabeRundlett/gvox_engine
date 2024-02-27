@@ -164,21 +164,63 @@ inline auto get_sky_settings(float time) -> SkySettings {
 }
 
 struct SkyRenderer {
+    TemporalImage temporal_transmittance_lut;
+    TemporalImage temporal_sky_lut;
     TemporalImage temporal_ibl_cube;
 
     void render(RecordContext &record_ctx, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut) {
         add_sky_settings();
 
+        temporal_transmittance_lut = record_ctx.gpu_context->find_or_add_temporal_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+            .name = "temporal transmittance_lut",
+        });
+        temporal_sky_lut = record_ctx.gpu_context->find_or_add_temporal_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {SKY_SKY_RES.x, SKY_SKY_RES.y, 1},
+            .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+            .name = "temporal sky_lut",
+        });
         temporal_ibl_cube = record_ctx.gpu_context->find_or_add_temporal_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
             .array_layer_count = 6,
-            .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_SRC | daxa::ImageUsageFlagBits::TRANSFER_DST,
-            .name = "ibl_cube",
+            .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
+            .name = "temporal ibl_cube",
         });
 
+        record_ctx.task_graph.use_persistent_image(temporal_transmittance_lut.task_resource);
+        record_ctx.task_graph.use_persistent_image(temporal_sky_lut.task_resource);
         record_ctx.task_graph.use_persistent_image(temporal_ibl_cube.task_resource);
+
+        record_ctx.task_graph.add_task({
+            .attachments = {
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, transmittance_lut),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, temporal_transmittance_lut.task_resource),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, sky_lut),
+                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, temporal_sky_lut.task_resource),
+            },
+            .task = [](daxa::TaskInterface const &ti) {
+                ti.recorder.copy_image_to_image({
+                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
+                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
+                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0],
+                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
+                    .extent = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
+                });
+                ti.recorder.copy_image_to_image({
+                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{2}).ids[0],
+                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{2}).layout,
+                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{3}).ids[0],
+                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{3}).layout,
+                    .extent = {SKY_SKY_RES.x, SKY_SKY_RES.y, 1},
+                });
+            },
+            .name = "copy sky_lut",
+        });
 
         auto ibl_cube = temporal_ibl_cube.task_resource.view().view({.layer_count = 6});
 
@@ -186,7 +228,7 @@ struct SkyRenderer {
     }
 };
 
-inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<daxa::TaskImageView, 3> {
+inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<daxa::TaskImageView, 2> {
     auto transmittance_lut = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
@@ -243,21 +285,13 @@ inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<dax
         },
     });
 
-    debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    debug_utils::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    // TODO(grundlett): You need to fix this. The views can easily be invalid, as these one are.
+    // These views are transients for a different task graph!!!
+    // debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    // debug_utils::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    // debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-    auto ibl_cube = record_ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
-        .array_layer_count = 6,
-        .name = "ibl_cube",
-    });
-    ibl_cube = ibl_cube.view({.layer_count = 6});
-
-    convolve_cube(record_ctx, sky_lut, transmittance_lut, ibl_cube);
-
-    return {sky_lut, transmittance_lut, ibl_cube};
+    return {sky_lut, transmittance_lut};
 }
 
 #endif

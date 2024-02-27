@@ -114,6 +114,8 @@ vec3 forest_biome_palette(float t) {
     return pow(vec3(85, 114, 78) / 255.0, vec3(2.2)); // palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
 }
 
+#define ENABLE_TREE_GENERATION 0
+
 void brushgen_world_terrain(in out Voxel voxel) {
     voxel_pos += vec3(0, 0, 280);
 
@@ -298,6 +300,10 @@ void brushgen_world(in out Voxel voxel) {
             voxel.material_type = 1;
         }
 
+        // if (voxel.material_type == 1) {
+        //     voxel.color = vec3(0.95, 0.05, 0.05);
+        //     voxel.roughness = 0.001;
+        // }
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)
@@ -344,20 +350,19 @@ void brushgen_b(in out Voxel voxel) {
     voxel.normal = prev_voxel.normal;
     voxel.roughness = prev_voxel.roughness;
 
+    // float sd = sd_box(voxel_pos - (brush_input.pos + brush_input.pos_offset), vec3(8));
     float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
+    // if (sd < 0 && voxel.material_type != 0) {
     if (sd < 0) {
-        // float val = noise(voxel_pos) + (good_rand() - 0.5) * 1.2;
-        // if (val > 0.3) {
-        //     voxel.color = vec3(0.99, 0.03, 0.01);
-        // } else if (val > -0.3) {
-        //     voxel.color = vec3(0.91, 0.05, 0.01);
-        // } else {
-        //     voxel.color = vec3(0.91, 0.15, 0.01);
-        // }
-        // voxel.color = vec3(good_rand(), good_rand(), good_rand());
-        // voxel.color = vec3(floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0, floor(good_rand() * 4.0) / 4.0);
+        // FractalNoiseConfig noise_conf = FractalNoiseConfig(
+        //     /* .amplitude   = */ 1.0,
+        //     /* .persistance = */ 0.5,
+        //     /* .scale       = */ 1.0,
+        //     /* .lacunarity  = */ 2.0,
+        //     /* .octaves     = */ 3);
+        // float val = fractal_noise(value_noise_texture, g_sampler_llr, voxel_pos, noise_conf).r;
         voxel.material_type = 3;
-        voxel.color = vec3(0.95, 0.95, 0.95);
+        voxel.color = vec3(0.95, 0.05, 0.05);
         voxel.roughness = 0.01;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }

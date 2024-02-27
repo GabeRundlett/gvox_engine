@@ -15,6 +15,8 @@ struct RendererImpl {
     SkyRenderer sky;
 
     std::array<daxa_f32vec2, 128> halton_offsets{};
+
+    daxa::TaskGraph sky_render_task_graph;
 };
 
 Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
@@ -26,6 +28,7 @@ Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = 0.0f, .min = -15.0f, .max = 15.0f}});
 
     AppSettings::add<settings::ComboBox>({"Graphics", "TAA Method", {.value = 1}, {.task_graph_depends = true, .options = {"None", "Kajiya TAA", "FSR 2.2"}}});
+    AppSettings::add<settings::Checkbox>({"Graphics", "Update Sky", {.value = true}, {.task_graph_depends = true}});
 
     auto radical_inverse = [](daxa_u32 n, daxa_u32 base) -> daxa_f32 {
         auto val = 0.0f;
@@ -71,6 +74,11 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
         }
         break;
     }
+
+    auto update_sky = AppSettings::get<settings::Checkbox>("Graphics", "Update Sky").value;
+    if (update_sky) {
+        self.sky_render_task_graph.execute({});
+    }
 }
 
 void Renderer::end_frame(daxa::Device &device, float dt) {
@@ -90,8 +98,34 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
 
     auto &self = *impl;
 
-    auto [sky_lut, transmittance_lut, ibl_cube] = generate_procedural_sky(record_ctx);
-    debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+    {
+        self.sky_render_task_graph = daxa::TaskGraph({
+            .device = record_ctx.gpu_context->device,
+            .name = "sky_render_task_graph",
+        });
+
+        auto sky_record_ctx = RecordContext{
+            .task_graph = self.sky_render_task_graph,
+            .gpu_context = record_ctx.gpu_context,
+        };
+
+        sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_input_buffer);
+        sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_globals_buffer);
+
+        auto [sky_lut, transmittance_lut] = generate_procedural_sky(sky_record_ctx);
+        self.sky.render(sky_record_ctx, sky_lut, transmittance_lut);
+
+        sky_record_ctx.task_graph.submit({});
+        sky_record_ctx.task_graph.complete({});
+    }
+
+    self.sky_render_task_graph.execute({});
+    auto transmittance_lut = self.sky.temporal_transmittance_lut.task_resource.view();
+    auto sky_lut = self.sky.temporal_sky_lut.task_resource.view();
+    auto ibl_cube = self.sky.temporal_ibl_cube.task_resource.view();
+    record_ctx.task_graph.use_persistent_image(self.sky.temporal_transmittance_lut.task_resource);
+    record_ctx.task_graph.use_persistent_image(self.sky.temporal_sky_lut.task_resource);
+    record_ctx.task_graph.use_persistent_image(self.sky.temporal_ibl_cube.task_resource);
 
     auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles.simulated_voxel_particles.task_resource, particles_color_image, particles_depth_image);

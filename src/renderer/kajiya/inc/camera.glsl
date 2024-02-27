@@ -36,7 +36,7 @@ vec3 biased_secondary_ray_origin_ws_with_normal(in ViewRayContext vrc, vec3 norm
     float max_comp = max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, -ray_hit_vs(vrc).z));
     vec3 origin = ray_hit_ws(vrc) + (normal - ray_dir_ws(vrc)) * max(1e-4, max_comp * 1e-6);
 #if PER_VOXEL_NORMALS
-    return origin + normal * 1.0 / VOXEL_SCL;
+    return origin + normal * 1.5 / VOXEL_SCL;
 #else
     return origin;
 #endif

@@ -97,9 +97,8 @@ void main() {
 #if PER_VOXEL_NORMALS
                 const vec2 sample_uv = get_uv(sample_px, push.output_tex_size);
                 const ViewRayContext sample_ray_ctx = vrc_from_uv_and_depth(gpu_input, sample_uv, sample_depth);
-                if (ray_hit_ws(sample_ray_ctx) == ray_hit_ws(view_ray_context)) {
-                    wt = 1;
-                } else {
+                if (ray_hit_ws(sample_ray_ctx) != ray_hit_ws(view_ray_context)) {
+                    // NOTE(grundlett): Cut-off all samples that don't hit the same voxel
                     wt = 0;
                 }
 #else

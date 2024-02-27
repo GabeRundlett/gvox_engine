@@ -207,11 +207,11 @@ uint sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferP
     if ((chunk_flags & CHUNK_FLAGS_ACCEL_GENERATED) == 0)
         return 7;
 
-#if !defined(TraceDepthPrepassComputeShader) || VOXEL_ACCEL_UNIFORMITY
     uint palette_region_index = calc_palette_region_index(inchunk_voxel_i);
     uint palette_voxel_index = calc_palette_voxel_index(inchunk_voxel_i);
     PaletteHeader palette_header = deref(voxel_chunk_ptr).palette_headers[palette_region_index];
 
+#if (!defined(TraceDepthPrepassComputeShader)) || VOXEL_ACCEL_UNIFORMITY
     if (palette_header.variant_n < 2) {
         voxel_data = PackedVoxel(palette_header.blob_ptr);
     } else {
@@ -224,29 +224,14 @@ uint sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferP
     if (voxel.material_type != 0) {
         return 0;
     }
-
 #endif
-#if TraceSecondaryComputeShader
-    // I have found, at least on memory bound GPUs (all GPUs), that never sampling
-    // the X2 uniformity in the accel structure actually results in about 20% better
-    // perf for the secondary trace, due to the fact that the secondary rays are
-    // very divergent. This improves cache coherency, despite increasing the number
-    // of total steps required to reach the intersection.
-    if (voxel_uniformity_lod_nonuniform(4)(allocator, palette_header, lod_index_x4, lod_mask_x4))
-        return 1;
-    if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
-        return 3;
-#elif RTDGI_TRACE_COMPUTE
-    if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
-        return 1;
-#else
+
     if (voxel_uniformity_lod_nonuniform(2)(allocator, palette_header, lod_index_x2, lod_mask_x2))
         return 1;
     if (voxel_uniformity_lod_nonuniform(4)(allocator, palette_header, lod_index_x4, lod_mask_x4))
         return 2;
     if (voxel_uniformity_lod_nonuniform(8)(allocator, palette_header, lod_index_x8, lod_mask_x8))
         return 3;
-#endif
     if (voxel_uniformity_lod_nonuniform(16)(voxel_chunk_ptr, lod_index_x16, lod_mask_x16))
         return 4;
     if (voxel_uniformity_lod_nonuniform(32)(voxel_chunk_ptr, lod_index_x32, lod_mask_x32))

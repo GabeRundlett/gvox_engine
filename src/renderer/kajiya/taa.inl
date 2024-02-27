@@ -274,8 +274,8 @@ struct TaaRenderer {
             },
             .info = {
                 .thread_count = record_ctx.render_resolution,
-                .input_tex_size = i_extent,
-                .output_tex_size = o_extent,
+                .input_tex_size = o_extent,
+                .output_tex_size = i_extent,
             },
         });
 

@@ -126,13 +126,20 @@ void main() {
                 contribution *= mix(0.0, atten, near_field_influence);
 
                 vec3 sample_normal_vs = safeTexelFetch(half_view_normal_tex, ivec2(rpx), 0).rgb;
-                const float sample_ssao = safeTexelFetch(ssao_tex, ivec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
 
                 float w = 1;
-#if !PER_VOXEL_NORMALS
+
+#if PER_VOXEL_NORMALS
+                // NOTE(grundlett): If we're using per-voxel normals, lets only dampen the weight if the sample
+                // falls on a separate voxel than our own.
+                if (ray_hit_ws(rpx_ray_ctx) != ray_hit_ws(view_ray_context)) {
+                    w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
+                    w *= exp2(-200.0 * abs(center_normal_vs.z * (center_depth / rpx_depth - 1.0)));
+                }
+#else
                 w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
-#endif
                 w *= exp2(-200.0 * abs(center_normal_vs.z * (center_depth / rpx_depth - 1.0)));
+#endif
 
                 weighted_irradiance += contribution * w;
                 w_sum += w;
@@ -197,11 +204,19 @@ void main() {
                 const float sample_ssao = safeTexelFetch(ssao_tex, ivec2(rpx * 2 + HALFRES_SUBSAMPLE_OFFSET), 0).r;
 
                 float w = 1;
-#if !PER_VOXEL_NORMALS
+
+#if PER_VOXEL_NORMALS
+                // NOTE(grundlett): Same as above PER_VOXEL_NORMALS section.
+                if (ray_hit_ws(spx_ray_ctx) != ray_hit_ws(view_ray_context)) {
+                    w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
+                    w *= exp2(-20.0 * abs(center_ssao - sample_ssao));
+                    w *= exp2(-200.0 * abs(center_normal_vs.z * (center_depth / rpx_depth - 1.0)));
+                }
+#else
                 w *= ggx_ndf_unnorm(0.01, saturate(dot(center_normal_vs, sample_normal_vs)));
                 w *= exp2(-20.0 * abs(center_ssao - sample_ssao));
-#endif
                 w *= exp2(-200.0 * abs(center_normal_vs.z * (center_depth / rpx_depth - 1.0)));
+#endif
 
                 weighted_irradiance += contribution * w;
                 w_sum += w;
