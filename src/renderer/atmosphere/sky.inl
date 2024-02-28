@@ -34,6 +34,7 @@ struct SkySkyComputePush {
 
 #include <application/settings.hpp>
 #include <numbers>
+#include <cmath>
 
 inline void add_sky_settings() {
     auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {

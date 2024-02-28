@@ -30,6 +30,10 @@ auto main() -> int {
 
     auto settings = AppSettings{};
 
+    FreeImage_Initialise();
+
     auto app = VoxelApp{};
     app.run();
+
+    FreeImage_DeInitialise();
 }

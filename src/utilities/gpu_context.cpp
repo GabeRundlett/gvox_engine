@@ -6,6 +6,7 @@
 
 #include <minizip/unzip.h>
 #include <FreeImage.h>
+#include <fmt/format.h>
 
 #include <random>
 
@@ -480,7 +481,7 @@ auto GpuContext::find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> Te
     } else {
         auto existing_info = device.info_buffer(iter->second.resource_id).value();
         if (existing_info.size != info.size) {
-            debug_utils::Console::add_log(std::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
+            debug_utils::Console::add_log(fmt::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
         }
     }
 
@@ -500,7 +501,7 @@ auto GpuContext::find_or_add_temporal_image(daxa::ImageInfo const &info) -> Temp
     } else {
         auto existing_info = device.info_image(iter->second.resource_id).value();
         if (existing_info.size != info.size) {
-            debug_utils::Console::add_log(std::format("TemporalImage \"{}\" recreated with bad size... This should NEVER happen!!!", id));
+            debug_utils::Console::add_log(fmt::format("TemporalImage \"{}\" recreated with bad size... This should NEVER happen!!!", id));
         }
     }
 

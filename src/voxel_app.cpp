@@ -1,5 +1,7 @@
 #include "voxel_app.hpp"
 
+#include <fmt/format.h>
+
 #include <thread>
 #include <numbers>
 #include <fstream>
@@ -79,7 +81,7 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
 
     main_task_graph = record_main_task_graph();
     gpu_context.pipeline_manager->wait();
-    debug_utils::Console::add_log(std::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
+    debug_utils::Console::add_log(fmt::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
 }
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();

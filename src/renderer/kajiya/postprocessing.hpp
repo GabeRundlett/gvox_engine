@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <algorithm>
+#include <cmath>
 #include <fmt/format.h>
 
 #include <renderer/kajiya/blur.inl>
@@ -29,10 +30,10 @@ struct DynamicExposureState {
         auto &self = *this;
         ev = std::clamp<float>(ev, LUMINANCE_HISTOGRAM_MIN_LOG2, LUMINANCE_HISTOGRAM_MAX_LOG2);
         dt = dt * speed; // std::exp2f(self.speed_log2);
-        auto t_fast = 1.0f - std::expf(-1.0f * dt);
+        auto t_fast = 1.0f - std::exp(-1.0f * dt);
         self.ev_fast = (ev - self.ev_fast) * t_fast + self.ev_fast;
 
-        auto t_slow = 1.0f - std::expf(-0.25f * dt);
+        auto t_slow = 1.0f - std::exp(-0.25f * dt);
         self.ev_slow = (ev - self.ev_slow) * t_slow + self.ev_slow;
     }
 };

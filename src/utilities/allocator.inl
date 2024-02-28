@@ -199,7 +199,7 @@ struct AllocatorBufferState {
         recorder.copy_buffer_to_buffer({
             .src_buffer = staging_buffer,
             .dst_buffer = allocator_buffer,
-            .size = offsetof(AllocatorConstants<T>::AllocatorType, element_count),
+            .size = offsetof(typename AllocatorConstants<T>::AllocatorType, element_count),
         });
     }
     void for_each_task_buffer(auto const &functor) {
