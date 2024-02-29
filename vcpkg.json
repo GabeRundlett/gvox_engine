@@ -57,8 +57,7 @@
       "./deps/Daxa/cmake/vcpkg-overlay-ports/fsr2",
       "./cmake/vcpkg-overlay-ports/fiber-tasking-lib",
       "./cmake/vcpkg-overlay-ports/soloud",
-      "./cmake/vcpkg-overlay-ports/imgui-node-editor",
-      "./cmake/vcpkg-overlay-ports/fsr2"
+      "./cmake/vcpkg-overlay-ports/imgui-node-editor"
     ]
   }
 }
