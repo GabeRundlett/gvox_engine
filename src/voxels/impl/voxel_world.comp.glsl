@@ -39,16 +39,20 @@ void main() {
 
     VoxelChunkUpdateInfo terrain_work_item;
     terrain_work_item.i = ivec3(gl_GlobalInvocationID.xyz) & (chunk_n - 1);
-    terrain_work_item.lod_index = gl_GlobalInvocationID.z >> LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
 
-    ivec3 offset = (VOXEL_WORLD.offset >> ivec3(3 + terrain_work_item.lod_index));
-    ivec3 prev_offset = (VOXEL_WORLD.prev_offset >> ivec3(3 + terrain_work_item.lod_index));
+#if LOG2_VOXEL_SIZE < 0
+    ivec3 offset = (VOXEL_WORLD.offset >> ivec3(-LOG2_VOXEL_SIZE));
+    ivec3 prev_offset = (VOXEL_WORLD.prev_offset >> ivec3(-LOG2_VOXEL_SIZE));
+#else
+    ivec3 offset = (VOXEL_WORLD.offset << ivec3(LOG2_VOXEL_SIZE));
+    ivec3 prev_offset = (VOXEL_WORLD.prev_offset << ivec3(LOG2_VOXEL_SIZE));
+#endif
 
     terrain_work_item.chunk_offset = offset;
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
 
     // (const) number of chunks in each axis
-    uint chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n) + terrain_work_item.lod_index * TOTAL_CHUNKS_PER_LOD;
+    uint chunk_index = calc_chunk_index_from_worldspace(terrain_work_item.i, chunk_n);
 
     uint update_index = 0;
 
@@ -86,7 +90,7 @@ void main() {
 
         terrain_work_item.brush_input = deref(globals).brush_input;
 
-        ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> 3;
+        ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> (-LOG2_VOXEL_SIZE);
         bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
 
         if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
@@ -165,8 +169,7 @@ void main() {
     // Brush flags
     uint brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
     // Chunk uint index in voxel_chunks buffer
-    uint lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
-    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     // Pointer to the previous chunk
     temp_voxel_chunk_ptr = advance(temp_voxel_chunks, temp_chunk_index);
     // Pointer to the new chunk
@@ -184,8 +187,7 @@ void main() {
     // Voxel position in world space (voxels)
     world_voxel = world_chunk * CHUNK_SIZE + ivec3(inchunk_voxel_i);
     // Voxel position in world space (meters)
-    float voxel_scl = float(VOXEL_SCL) / float(1 << lod_index);
-    voxel_pos = vec3(world_voxel) / voxel_scl;
+    voxel_pos = vec3(world_voxel) * VOXEL_SIZE;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
@@ -242,10 +244,13 @@ BrushInput brush_input;
 
 Voxel get_temp_voxel(ivec3 offset_i) {
     // TODO: Simplify this, and improve precision
-    vec3 i = vec3(world_voxel + offset_i) / VOXEL_SCL - deref(gpu_input).player.player_unit_offset;
-    float voxel_scl = float(VOXEL_SCL);
-    vec3 offset = vec3((deref(voxel_globals).offset) & ((1 << 3) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
-    uvec3 voxel_i = uvec3(floor((i + offset) * voxel_scl));
+    vec3 i = vec3(world_voxel + offset_i) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset;
+#if LOG2_VOXEL_SIZE < 0
+    vec3 offset = vec3((deref(voxel_globals).offset) & ((1 << (-LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+#else
+    vec3 offset = vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+#endif
+    uvec3 voxel_i = uvec3(floor((i + offset) * VOXEL_SCL));
     Voxel default_value = Voxel(0, 0, vec3(0), vec3(0));
     if (any(greaterThanEqual(voxel_i, uvec3(CHUNK_SIZE * chunk_n)))) {
         return default_value;
@@ -377,8 +382,7 @@ void main() {
     // Brush flags
     uint brush_flags = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].brush_flags;
     // Chunk uint index in voxel_chunks buffer
-    uint lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
-    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     // Pointer to the previous chunk
     temp_voxel_chunk_ptr = advance(temp_voxel_chunks, temp_chunk_index);
     // Pointer to the new chunk
@@ -396,8 +400,7 @@ void main() {
     // Voxel position in world space (voxels)
     world_voxel = world_chunk * CHUNK_SIZE + ivec3(inchunk_voxel_i);
     // Voxel position in world space (meters)
-    float voxel_scl = float(VOXEL_SCL) / float(1 << lod_index);
-    voxel_pos = vec3(world_voxel) / voxel_scl;
+    voxel_pos = vec3(world_voxel) * VOXEL_SIZE;
 
     rand_seed(voxel_i.x + voxel_i.y * 1000 + voxel_i.z * 1000 * 1000);
 
@@ -550,8 +553,7 @@ void main() {
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    uint lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
-    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, gl_WorkGroupID.z);
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     chunk_opt_x2x4(temp_voxel_chunk_ptr, voxel_chunk_ptr, gl_WorkGroupID.y);
@@ -760,8 +762,7 @@ void main() {
     chunk_n.x = 1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS;
     chunk_n.y = chunk_n.x;
     chunk_n.z = chunk_n.x;
-    uint lod_index = VOXEL_WORLD.chunk_update_infos[gl_WorkGroupID.z].lod_index;
-    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunk_ptr = advance(temp_voxel_chunks, gl_WorkGroupID.z);
     daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks, chunk_index);
     chunk_opt_x8up(temp_voxel_chunk_ptr, voxel_chunk_ptr);
@@ -831,8 +832,7 @@ void main() {
     if (chunk_i == INVALID_CHUNK_I) {
         return;
     }
-    uint lod_index = VOXEL_WORLD.chunk_update_infos[temp_chunk_index].lod_index;
-    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n) + lod_index * TOTAL_CHUNKS_PER_LOD;
+    uint chunk_index = calc_chunk_index_from_worldspace(chunk_i, chunk_n);
     uvec3 inchunk_voxel_i = gl_GlobalInvocationID.xyz - uvec3(0, 0, temp_chunk_index * CHUNK_SIZE);
     uint inchunk_voxel_index = inchunk_voxel_i.x + inchunk_voxel_i.y * CHUNK_SIZE + inchunk_voxel_i.z * CHUNK_SIZE * CHUNK_SIZE;
     uint palette_region_voxel_index =

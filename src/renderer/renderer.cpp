@@ -112,8 +112,8 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_input_buffer);
         sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_globals_buffer);
 
-        auto [sky_lut, transmittance_lut] = generate_procedural_sky(sky_record_ctx);
-        self.sky.render(sky_record_ctx, sky_lut, transmittance_lut);
+        auto [sky_lut, transmittance_lut, ae_lut] = generate_procedural_sky(sky_record_ctx);
+        self.sky.render(sky_record_ctx, sky_lut, transmittance_lut, ae_lut);
 
         sky_record_ctx.task_graph.submit({});
         sky_record_ctx.task_graph.complete({});
@@ -123,9 +123,16 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
     auto transmittance_lut = self.sky.temporal_transmittance_lut.task_resource.view();
     auto sky_lut = self.sky.temporal_sky_lut.task_resource.view();
     auto ibl_cube = self.sky.temporal_ibl_cube.task_resource.view();
+    auto ae_lut = self.sky.temporal_aerial_perspective_lut.task_resource.view();
     record_ctx.task_graph.use_persistent_image(self.sky.temporal_transmittance_lut.task_resource);
     record_ctx.task_graph.use_persistent_image(self.sky.temporal_sky_lut.task_resource);
     record_ctx.task_graph.use_persistent_image(self.sky.temporal_ibl_cube.task_resource);
+    record_ctx.task_graph.use_persistent_image(self.sky.temporal_aerial_perspective_lut.task_resource);
+
+    debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
+    debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
     auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles.simulated_voxel_particles.task_resource, particles_color_image, particles_depth_image);
@@ -140,6 +147,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         ibl_cube,
         sky_lut,
         transmittance_lut,
+        ae_lut,
         voxel_buffers);
 
     auto antialiased_image = [&]() {

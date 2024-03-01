@@ -14,10 +14,11 @@ struct PostprocessingRasterPush {
     DAXA_TH_BLOB(PostprocessingRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster, 5)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D_ARRAY, cube_image_id)
+DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_3D, image_id_3d)
 DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_DECL_TASK_HEAD_END
 struct DebugImageRasterPush {
@@ -70,8 +71,9 @@ inline void debug_pass(RecordContext &record_ctx, debug_utils::Pass const &pass,
         }},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DebugImageRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? record_ctx.gpu_context->task_debug_texture : pass.task_image_id}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, (pass.type == DEBUG_IMAGE_TYPE_CUBEMAP || pass.type == DEBUG_IMAGE_TYPE_3D) ? record_ctx.gpu_context->task_debug_texture : pass.task_image_id}},
             daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.gpu_context->task_debug_texture}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id_3d, pass.type == DEBUG_IMAGE_TYPE_3D ? pass.task_image_id : record_ctx.gpu_context->task_debug_texture}},
             daxa::TaskViewVariant{std::pair{DebugImageRaster::render_image, output_image}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {

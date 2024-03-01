@@ -123,6 +123,7 @@ DAXA_DECL_PUSH_CONSTANT(DebugImageRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewIndex image_id = push.uses.image_id;
 daxa_ImageViewIndex cube_image_id = push.uses.cube_image_id;
+daxa_ImageViewIndex image_id_3d = push.uses.image_id_3d;
 daxa_ImageViewIndex render_image = push.uses.render_image;
 
 #include <renderer/kajiya/inc/reservoir.glsl>
@@ -169,11 +170,18 @@ void main() {
         ivec2 in_pixel_i = ivec2(uv * textureSize(daxa_texture2D(image_id), 0).xy);
         vec4 value = texelFetch(daxa_texture2D(image_id), in_pixel_i, 0);
         tex_color = vec3(value.rgb);
+    } else if (push.type == DEBUG_IMAGE_TYPE_3D) {
+        ivec3 in_pixel_i = ivec3(uv * textureSize(daxa_texture3D(image_id_3d), 0).xy, push.settings.flags);
+        vec4 value = texelFetch(daxa_texture3D(image_id_3d), in_pixel_i, 0);
+        tex_color = vec3(value.rgb);
     }
 
     tex_color = tex_color * push.settings.brightness;
-    if (((push.settings.flags >> DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX) & 1) != 0) {
-        tex_color = pow(tex_color, vec3(1.0 / 2.2));
+
+    if (push.type != DEBUG_IMAGE_TYPE_3D) {
+        if (((push.settings.flags >> DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX) & 1) != 0) {
+            tex_color = pow(tex_color, vec3(1.0 / 2.2));
+        }
     }
 
     color = vec4(tex_color, 1.0);

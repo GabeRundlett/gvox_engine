@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utilities/gpu/math.glsl>
+
 uint pack_unit(float x, uint bit_n) {
     float scl = float(1u << bit_n) - 1.0;
     return uint(round(x * scl));
@@ -32,8 +33,14 @@ uint pack_rgb(vec3 f) {
 PackedVoxel pack_voxel(Voxel v) {
     PackedVoxel result;
 
+#if DITHER_NORMALS
+    rand_seed(good_rand_hash(floatBitsToUint(v.normal)));
+    const mat3 basis = build_orthonormal_basis(normalize(v.normal));
+    v.normal = basis * uniform_sample_cone(vec2(rand(), rand()), cos(0.19 * 0.5));
+#endif
+
     uint packed_roughness = pack_unit(sqrt(v.roughness), 4);
-    uint packed_normal = octahedral_8(v.normal);
+    uint packed_normal = octahedral_8(normalize(v.normal));
     uint packed_color = pack_rgb(v.color);
 
     result.data = (v.material_type) | (packed_roughness << 2) | (packed_normal << 6) | (packed_color << 14);

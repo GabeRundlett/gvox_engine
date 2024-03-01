@@ -52,6 +52,7 @@ struct SkySettings {
 #define SKY_TRANSMITTANCE_RES daxa_u32vec2(256, 64)
 #define SKY_MULTISCATTERING_RES daxa_u32vec2(32, 32)
 #define SKY_SKY_RES daxa_u32vec2(192, 192)
+#define SKY_AE_RES daxa_u32vec3(32, 32, 32)
 #define SKY_CUBE_RES 64
 #define IBL_CUBE_RES 16
 
@@ -70,6 +71,7 @@ struct SkySettings {
 #define DEBUG_IMAGE_TYPE_CUBEMAP 4
 #define DEBUG_IMAGE_TYPE_RESERVOIR 5
 #define DEBUG_IMAGE_TYPE_RTDGI_DEBUG 6
+#define DEBUG_IMAGE_TYPE_3D 7
 
 #define DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX 0
 

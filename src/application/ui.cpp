@@ -566,7 +566,11 @@ void AppUi::settings_passes_ui() {
         }
         if (self.selected_pass == pass_i) {
             ImGui::SliderFloat("brightness", &pass.settings.brightness, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-            ImGui::CheckboxFlags("gamma correct", &pass.settings.flags, 1u << DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX);
+            if (pass.type == DEBUG_IMAGE_TYPE_3D) {
+                ImGui::InputInt("slice", (int *)&pass.settings.flags);
+            } else {
+                ImGui::CheckboxFlags("gamma correct", &pass.settings.flags, 1u << DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX);
+            }
         }
     }
 }

@@ -78,7 +78,7 @@ void main() {
             ivec2 pt = ivec2(PIXEL_I / PREPASS_SCL) + ivec2(xi, yi);
             pt = clamp(pt, ivec2(0), ivec2(deref(gpu_input).frame_dim / PREPASS_SCL - 1));
             vec2 prepass_data = texelFetch(daxa_texture2D(render_depth_prepass_image), pt, 0).xy;
-            float loaded_depth = prepass_data.x - 1.0 / VOXEL_SCL;
+            float loaded_depth = prepass_data.x - VOXEL_SIZE;
             prepass_depth = max(min(prepass_depth, loaded_depth), 0);
             if (prepass_depth == loaded_depth || prepass_depth == max_depth) {
                 prepass_steps = prepass_data.y / 4.0;
@@ -106,9 +106,8 @@ void main() {
 #if !PER_VOXEL_NORMALS && defined(VOXELS_ORIGINAL_IMPL)
     bool is_valid = true;
     if (trace_result.dist != MAX_DIST) {
-        uint lod_index = 0;
         uvec3 chunk_n = uvec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
-        PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, lod_index, trace_result.nrm * 0.5);
+        PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, trace_result.nrm * 0.5);
         Voxel voxel = unpack_voxel(voxel_data);
         is_valid = voxel.material_type == 0;
     }
@@ -208,7 +207,7 @@ void main() {
 
         // ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
         // vec3 ppos = ray_hit_ws(vrc_particle);
-        // nrm = ppos - (pos + 0.5 / VOXEL_SCL);
+        // nrm = ppos - (pos + 0.5 * VOXEL_SIZE);
         // ppos = abs(nrm);
         // if (ppos.x > ppos.y) {
         //     if (ppos.x > ppos.z) {

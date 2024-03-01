@@ -47,6 +47,7 @@ struct KajiyaRenderer {
         daxa::TaskImageView ibl_cube,
         daxa::TaskImageView sky_lut,
         daxa::TaskImageView transmittance_lut,
+        daxa::TaskImageView ae_lut,
         VoxelWorldBuffers &voxel_buffers) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
         AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
         AppSettings::add<settings::Checkbox>({"Graphics", "denoise_shadow_mask", {.value = denoise_shadow_mask}, {.task_graph_depends = true}});
@@ -126,7 +127,8 @@ struct KajiyaRenderer {
             rtdgi,
             ircache_state,
             sky_lut,
-            transmittance_lut);
+            transmittance_lut,
+            ae_lut);
 
         return {debug_out_tex, reprojection_map};
     }

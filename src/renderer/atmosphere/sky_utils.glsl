@@ -1,5 +1,7 @@
 #pragma once
 
+#include <renderer/kajiya/inc/camera.glsl>
+
 #define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
 #define SUN_INTENSITY 1.0
 const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
@@ -239,4 +241,20 @@ vec4 atmosphere_pack(vec3 x) {
 
 vec3 atmosphere_unpack(vec4 x) {
     return x.rgb * x.a;
+}
+
+const float FRUSTUM_SIZE_Z_WS = 50000.0; // meters
+const float FRUSTUM_BEGIN_Z_WS = 1.0;   // meters
+
+vec3 fs_to_cs(daxa_BufferPtr(GpuInput) gpu_input, vec3 fs) {
+    vec4 cs_h = deref(gpu_input).player.cam.view_to_clip * vec4(0.0, 0.0, pow(fs.z, 2.0) * FRUSTUM_SIZE_Z_WS + FRUSTUM_BEGIN_Z_WS, -1.0);
+    const float cs_z = cs_h.z / cs_h.w;
+    return vec3(uv_to_cs(fs.xy), cs_z);
+}
+
+vec3 cs_to_fs(daxa_BufferPtr(GpuInput) gpu_input, vec4 cs_h) {
+    const vec3 cs = cs_h.xyz;
+    vec4 vs_h = deref(gpu_input).player.cam.sample_to_view * cs_h;
+    const vec3 vs = -vs_h.xyz / vs_h.w;
+    return clamp(vec3(cs_to_uv(cs.xy), pow((vs.z - FRUSTUM_BEGIN_Z_WS) / FRUSTUM_SIZE_Z_WS, 1.0 / 2.0)), vec3(0), vec3(1));
 }

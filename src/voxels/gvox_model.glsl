@@ -8,7 +8,7 @@ uint sample_gvox_palette_voxel(daxa_BufferPtr(GpuGvoxModel) model_ptr, ivec3 vox
     packed_voxel_data = 0;
     uvec3 model_size = uvec3(MODEL.extent_x, MODEL.extent_y, MODEL.extent_z);
     uvec3 region_n = (model_size + PALETTE_REGION_SIZE - 1) / PALETTE_REGION_SIZE;
-    // const vec3 model_off = vec3(MODEL.offset_x, MODEL.offset_y, MODEL.offset_z) / VOXEL_SCL;
+    // const vec3 model_off = vec3(MODEL.offset_x, MODEL.offset_y, MODEL.offset_z) * VOXEL_SIZE;
     // sample_p = sample_p + model_off;
     // ivec3 voxel_i = ivec3(sample_p * VOXEL_SCL) - ivec3(MODEL.offset_x, MODEL.offset_y, MODEL.offset_z);
     // voxel_i -= ivec3(sample_p.x < 0, sample_p.y < 0, sample_p.z < 0);

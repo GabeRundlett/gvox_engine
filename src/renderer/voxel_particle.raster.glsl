@@ -1,6 +1,6 @@
 #include <voxels/voxel_particles.inl>
 
-#define VOXEL_SCL 8
+#include <utilities/gpu/defs.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(VoxelParticleRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -67,7 +67,7 @@ void main() {
     SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
 
     vec3 particle_worldspace_origin = get_particle_worldspace_origin(globals, particle.pos);
-    vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) / VOXEL_SCL;
+    vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) * VOXEL_SIZE;
     vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 
     vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(vert_pos, 1);

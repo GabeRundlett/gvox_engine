@@ -446,60 +446,198 @@ void main() {
 
 #endif
 
-#if SkyAerialPerspectiveComputeShader
+#if SkyAeComputeShader
 
-void main() {
-    // Terms:
-    // _ws is "world" space, which is more like the render-space, as world-space is meant to be global
-    // _ks I'm calling sky space, which is an offset version of world-space
-    // _fs is froxel space
+DAXA_DECL_PUSH_CONSTANT(SkyAeComputePush, push)
+daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex multiscattering_lut = push.uses.multiscattering_lut;
+daxa_ImageViewIndex aerial_perspective_lut = push.uses.aerial_perspective_lut;
 
-    vec3 camera_ws = deref(gpu_input).player.pos;
-    vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+// Terms:
+// _ws is "world" space, which is more like the render-space, as world-space is meant to be global
+// _ks I'm calling sky space, which is an offset version of world-space
+// _fs is froxel space, which is a non-linear z-scaled clip-space
 
-    const vec3 ae_dim = deref(gpu_input).sky_settings.AEPerspectiveTexDimensions;
+// returns the center of the froxel in xy, and the nearest z
+vec3 sky_froxel_get_uvw(uvec3 px) {
+    return (vec3(px) + 0.5) / vec3(SKY_AE_RES);
+}
 
-    vec4 froxel_ws_h = deref(gpu_input).player.cam.view_to_world *
-                       deref(gpu_input).player.cam.sample_to_view *
-                       vec4(uv_to_cs(get_uv(gl_GlobalInvocationID.xy, vec4(0, 0, 1.0 / ae_dim.xy))), 0.0, 1.0);
-    vec3 froxel_ws = froxel_ws_h.xyz / froxel_ws_h.w;
+/* ============================= PHASE FUNCTIONS ============================ */
+float cornette_shanks_mie_phase_function(float g, float cos_theta) {
+    float k = 3.0 / (8.0 * M_PI) * (1.0 - g * g) / (2.0 + g * g);
+    return k * (1.0 + cos_theta * cos_theta) / pow(1.0 + g * g - 2.0 * g * -cos_theta, 1.5);
+}
 
-    // We can use the ws direction because sky space and ws are just translations and uniform scales of each other.
-    vec3 camera_to_froxel_ks_dir = normalize(froxel_ws - camera_ws);
-    vec3 camera_ks = sky_space_camera_position(gpu_input);
+float kleinNishinaPhase(float cosTheta, float e) {
+    return e / (2.0 * M_PI * (e * (1.0 - cosTheta) + 1.0) * log(2.0 * e + 1.0));
+}
 
-    float camera_height = length(camera_ks);
+float rayleigh_phase(float cos_theta) {
+    float factor = 3.0 / (16.0 * M_PI);
+    return factor * (1.0 + cos_theta * cos_theta);
+}
+/* ========================================================================== */
 
-    if (camera_height >= deref(gpu_input).sky_settings.atmosphere_top) {
-        vec3 original_camera_ks = camera_ks;
-        if (!move_to_top_atmosphere(camera_ks, camera_to_froxel_ks_dir, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top)) {
-            imageStore(aerial_perspective_lut, ivec3(gl_GlobalInvocationID.xyz), vec4(0.0, 0.0, 0.0, 1.0));
-            return;
-        }
-        // float dist_to_atmosphere = length(original_camera_ks - camera_ks);
-        // if (tMax < dist_to_atmosphere) {
-        //     imageStore(aerial_perspective_lut, ivec3(gl_GlobalInvocationID.xyz), vec4(0.0, 0.0, 0.0, 1.0));
-        //     return;
-        // }
-        // tMax = max(0.0, tMax - dist_to_atmosphere);
+vec3 get_multiple_scattering(vec3 world_position, float view_zenith_cos_angle) {
+    vec2 uv = clamp(vec2(
+                        view_zenith_cos_angle * 0.5 + 0.5,
+                        (length(world_position) - deref(gpu_input).sky_settings.atmosphere_bottom) /
+                            (deref(gpu_input).sky_settings.atmosphere_top - deref(gpu_input).sky_settings.atmosphere_bottom)),
+                    0.0, 1.0);
+    uv = vec2(from_unit_to_subuv(uv.x, SKY_MULTISCATTERING_RES.x),
+              from_unit_to_subuv(uv.y, SKY_MULTISCATTERING_RES.y));
+
+    return texture(daxa_sampler2D(multiscattering_lut, g_sampler_llc), uv).rgb;
+}
+
+struct RaymarchResult {
+    vec3 luminance;
+    vec3 transmittance;
+};
+
+RaymarchResult integrate_scattered_luminance(
+    vec3 world_position, vec3 world_direction,
+    vec3 sun_direction, int sample_count, float max_dist) {
+    RaymarchResult result = RaymarchResult(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0));
+
+    vec3 planet_zero = vec3(0.0, 0.0, 0.0);
+    float planet_intersection_distance = ray_sphere_intersect_nearest(
+        world_position, world_direction, planet_zero, deref(gpu_input).sky_settings.atmosphere_bottom);
+    float atmosphere_intersection_distance = ray_sphere_intersect_nearest(
+        world_position, world_direction, planet_zero, deref(gpu_input).sky_settings.atmosphere_top);
+
+    float integration_length;
+    /* ============================= CALCULATE INTERSECTIONS ============================ */
+    if ((planet_intersection_distance == -1.0) && (atmosphere_intersection_distance == -1.0)) {
+        /* ray does not intersect planet or atmosphere -> no point in raymarching*/
+        return result;
+    } else if ((planet_intersection_distance == -1.0) && (atmosphere_intersection_distance > 0.0)) {
+        /* ray intersects only atmosphere */
+        integration_length = atmosphere_intersection_distance;
+    } else if ((planet_intersection_distance > 0.0) && (atmosphere_intersection_distance == -1.0)) {
+        /* ray intersects only planet */
+        integration_length = planet_intersection_distance;
+    } else {
+        /* ray intersects both planet and atmosphere -> return the first intersection */
+        integration_length = min(planet_intersection_distance, atmosphere_intersection_distance);
     }
+    integration_length = min(integration_length, max_dist);
 
-    const float FRUSTUM_SIZE_Z = 1.0; // Kilometers
-    float slice_begin_fs = float(gl_GlobalInvocationID.z + 0) / ae_dim.z;
-    float slice_end_fs = float(gl_GlobalInvocationID.z + 1) / ae_dim.z;
-    slice_begin_fs *= slice_begin_fs; // bias froxel size to be smaller when nearer.
-    slice_end_fs *= slice_end_fs;
-    slice_begin_fs *= FRUSTUM_SIZE_Z;
-    slice_end_fs *= FRUSTUM_SIZE_Z;
-    const float froxel_size_z = slice_end_fs - slice_begin_fs;
+    float cos_theta = dot(sun_direction, world_direction);
+    float mie_phase_value = kleinNishinaPhase(cos_theta, 2800.0);
+    float rayleigh_phase_value = rayleigh_phase(cos_theta);
+    float old_ray_shift = 0.0;
+    float integration_step = 0.0;
 
-    const vec3 froxel_begin_ks = camera_ks + camera_to_froxel_ks_dir * slice_begin_fs;
-    const vec3 froxel_end_ks = camera_ks + camera_to_froxel_ks_dir * slice_end_fs;
+    vec3 accum_transmittance = vec3(1.0, 1.0, 1.0);
+    vec3 accum_light = vec3(0.0, 0.0, 0.0);
+    /* ============================= RAYMARCH ============================ */
+    for (int i = 0; i < sample_count; i++) {
+        float new_ray_shift = integration_length * (float(i) + 0.3) / sample_count;
+        integration_step = new_ray_shift - old_ray_shift;
+        vec3 new_position = world_position + new_ray_shift * world_direction;
+        old_ray_shift = new_ray_shift;
 
-    int sample_count = int(max(1.0, float(gl_GlobalInvocationID.z + 1.0) * 2.0));
-    vec3 luminance = integrate_scattered_luminance(froxel_begin_ks, camera_to_froxel_ks_dir, sun_direction, sample_count, froxel_size_z);
+        ScatteringSample medium_scattering = sample_medium_scattering_detailed(gpu_input, new_position);
+        vec3 medium_extinction = sample_medium_extinction(gpu_input, new_position);
 
-    imageStore(aerial_perspective_lut, ivec3(gl_GlobalInvocationID.xyz), atmosphere_pack(luminance));
+        vec3 up_vector = normalize(new_position);
+        TransmittanceParams transmittance_lut_params = TransmittanceParams(length(new_position), dot(sun_direction, up_vector));
+
+        /* uv coordinates later used to sample transmittance texture */
+        vec2 trans_texture_uv = transmittance_lut_to_uv(transmittance_lut_params, deref(gpu_input).sky_settings.atmosphere_bottom, deref(gpu_input).sky_settings.atmosphere_top);
+        vec3 transmittance_to_sun = texture(daxa_sampler2D(transmittance_lut, g_sampler_llc), trans_texture_uv).rgb;
+
+        vec3 phase_times_scattering = medium_scattering.mie * mie_phase_value + medium_scattering.ray * rayleigh_phase_value;
+
+        float earth_intersection_distance = ray_sphere_intersect_nearest(
+            new_position, sun_direction, planet_zero, deref(gpu_input).sky_settings.atmosphere_bottom);
+        float in_earth_shadow = earth_intersection_distance == -1.0 ? 1.0 : 0.0;
+
+        vec3 multiscattered_luminance = get_multiple_scattering(new_position, dot(sun_direction, up_vector));
+
+        /* Light arriving from the sun to this point */
+        vec3 sun_light = in_earth_shadow * transmittance_to_sun * phase_times_scattering +
+                         multiscattered_luminance * (medium_scattering.ray + medium_scattering.mie);
+
+        /* TODO: This probably should be a texture lookup*/
+        vec3 trans_increase_over_integration_step = exp(-(medium_extinction * integration_step));
+
+        vec3 sun_light_integ = (sun_light - sun_light * trans_increase_over_integration_step) / medium_extinction;
+
+        if (medium_extinction.r == 0.0) {
+            sun_light_integ.r = 0.0;
+        }
+        if (medium_extinction.g == 0.0) {
+            sun_light_integ.g = 0.0;
+        }
+        if (medium_extinction.b == 0.0) {
+            sun_light_integ.b = 0.0;
+        }
+
+        accum_light += accum_transmittance * sun_light_integ;
+        accum_transmittance *= trans_increase_over_integration_step;
+    }
+    result.luminance = accum_light;
+    result.transmittance = accum_transmittance;
+
+    return result;
+}
+
+#define GATHER_METHOD 1
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 32) in;
+void main() {
+    float slice_begin_fs = float(gl_SubgroupInvocationID + 0) / float(SKY_AE_RES.z);
+    float slice_end_fs = float(gl_SubgroupInvocationID + 1) / float(SKY_AE_RES.z);
+
+    const vec3 ae_uvw = sky_froxel_get_uvw(gl_GlobalInvocationID.xyz);
+    vec4 froxel_begin_ws_h = deref(gpu_input).player.cam.view_to_world *
+                             deref(gpu_input).player.cam.sample_to_view *
+                             vec4(fs_to_cs(gpu_input, vec3(ae_uvw.xy, slice_begin_fs)), 1.0);
+    vec4 froxel_end_ws_h = deref(gpu_input).player.cam.view_to_world *
+                           deref(gpu_input).player.cam.sample_to_view *
+                           vec4(fs_to_cs(gpu_input, vec3(ae_uvw.xy, slice_end_fs)), 1.0);
+    vec3 froxel_begin_ws = froxel_begin_ws_h.xyz / froxel_begin_ws_h.w;
+    vec3 froxel_end_ws = froxel_end_ws_h.xyz / froxel_end_ws_h.w;
+    vec3 froxel_begin_to_end_ws = froxel_end_ws - froxel_begin_ws;
+    // const float froxel_size_z = length(froxel_begin_to_end_ws);
+    // We can use the ws direction because sky space and ws are just translations and uniform scales of each other.
+    vec3 camera_to_froxel_ks_dir = normalize(froxel_begin_to_end_ws);
+
+#if GATHER_METHOD
+    const vec3 froxel_begin_ks = sky_space_from_ws(gpu_input, froxel_begin_ws);
+#else
+    const vec3 froxel_begin_ks = sky_space_from_ws(gpu_input, deref(gpu_input).player.pos);
+#endif
+    const vec3 froxel_end_ks = sky_space_from_ws(gpu_input, froxel_end_ws);
+
+    vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
+    const int sample_count = 4;
+    RaymarchResult res = integrate_scattered_luminance(froxel_begin_ks, camera_to_froxel_ks_dir, sun_direction, sample_count, length(froxel_end_ks - froxel_begin_ks));
+
+#if GATHER_METHOD
+    // this is identical
+    // res.luminance = subgroupInclusiveAdd(res.luminance);
+    // res.transmittance = subgroupInclusiveMul(res.transmittance);
+
+    // to this
+    for (uint i = 1; i < 32; ++i) {
+        vec3 prev_lum = subgroupBroadcast(res.luminance, i - 1);
+        vec3 prev_trn = subgroupBroadcast(res.transmittance, i - 1);
+        if (gl_SubgroupInvocationID == i) {
+            res.luminance = prev_lum + prev_trn * res.luminance;
+            res.transmittance *= prev_trn;
+        }
+    }
+#endif
+
+    float average_transmittance = (res.transmittance.x + res.transmittance.y + res.transmittance.z) / 3.0;
+
+    imageStore(daxa_image3D(aerial_perspective_lut), ivec3(gl_GlobalInvocationID.xy, gl_SubgroupInvocationID), vec4(res.luminance, average_transmittance));
+    // imageStore(daxa_image3D(aerial_perspective_lut), ivec3(gl_GlobalInvocationID.xy, gl_SubgroupInvocationID), vec4(vec3(res.transmittance), average_transmittance));
 }
 
 #endif

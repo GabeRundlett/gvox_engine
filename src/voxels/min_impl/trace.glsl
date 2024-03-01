@@ -22,7 +22,7 @@ vec2 iBox(in vec3 ro, in vec3 rd, in vec3 rad) {
 }
 
 vec4 map(in vec3 p) {
-    p = p / (pow(3.0, 2.0) / VOXEL_SCL);
+    p = p / (pow(3.0, 2.0) * VOXEL_SIZE);
     float d = sdBox(p, vec3(1.0));
     vec4 res = vec4(d, 1.0, 0.0, 0.0);
 
@@ -74,7 +74,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
         result.dist = MAX_DIST;
     }
 
-    ray_pos += info.ray_dir * 0.001 / VOXEL_SCL;
+    ray_pos += info.ray_dir * 0.001 * VOXEL_SIZE;
 
     vec3 ro = ray_pos;
     vec3 rd = info.ray_dir;

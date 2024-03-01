@@ -51,7 +51,6 @@ DAXA_DECL_BUFFER_PTR(TempVoxelChunk)
 
 struct VoxelChunkUpdateInfo {
     daxa_i32vec3 i;
-    daxa_u32 lod_index;
     daxa_i32vec3 chunk_offset;
     daxa_u32 brush_flags;
     BrushInput brush_input;

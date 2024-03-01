@@ -6,7 +6,6 @@
 #include <voxels/pack_unpack.glsl>
 
 #define INVALID_CHUNK_I ivec3(0x80000000)
-#define CHUNK_WORLDSPACE_SIZE (CHUNK_SIZE / voxel_scl)
 
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                   \
     uint uniformity_lod_index_##N(uvec3 index_within_lod) {            \
@@ -92,10 +91,10 @@ bool VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel
 #define voxel_uniformity_lod_nonuniform(N) VoxelUniformityChunk_lod_nonuniform_##N
 
 // 3D Leaf Chunk index => uint index in buffer
-uint calc_chunk_index(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, uvec3 chunk_i, uvec3 chunk_n, uint lod_index) {
+uint calc_chunk_index(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, uvec3 chunk_i, uvec3 chunk_n) {
 #if ENABLE_CHUNK_WRAPPING
     // Modulate the chunk index to be wrapped around relative to the chunk offset provided.
-    chunk_i = uvec3((ivec3(chunk_i) + (deref(voxel_globals).offset >> ivec3(3 + lod_index))) % ivec3(chunk_n));
+    chunk_i = uvec3((ivec3(chunk_i) + (deref(voxel_globals).offset >> ivec3(-LOG2_VOXEL_SIZE))) % ivec3(chunk_n));
 #endif
     uint chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
@@ -160,12 +159,11 @@ PackedVoxel sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocato
     return sample_palette(allocator, palette_header, palette_voxel_index);
 }
 
-PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, uvec3 chunk_n, vec3 voxel_p, uint lod_index, vec3 bias) {
-    float voxel_scl = float(VOXEL_SCL) / float(1 << lod_index);
-    vec3 offset = vec3((deref(ptrs.globals).offset) & ((1 << (lod_index + 3)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
-    uvec3 voxel_i = uvec3(floor((voxel_p + offset) * voxel_scl + bias));
+PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, uvec3 chunk_n, vec3 voxel_p, vec3 bias) {
+    vec3 offset = vec3((deref(ptrs.globals).offset) & ((1 << (-LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+    uvec3 voxel_i = uvec3(floor((voxel_p + offset) * VOXEL_SCL + bias));
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
-    uint chunk_index = calc_chunk_index(ptrs.globals, chunk_i, chunk_n, lod_index);
+    uint chunk_index = calc_chunk_index(ptrs.globals, chunk_i, chunk_n);
     return sample_voxel_chunk(ptrs.allocator, advance(ptrs.voxel_chunks_ptr, chunk_index), voxel_i - chunk_i * CHUNK_SIZE);
 }
 
@@ -175,11 +173,10 @@ PackedVoxel sample_temp_voxel_chunk(
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr,
     daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks,
     uvec3 chunk_n, uvec3 voxel_i) {
-    uint lod_index = 0;
 
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
     uvec3 inchunk_voxel_i = voxel_i - chunk_i * CHUNK_SIZE;
-    uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n, lod_index);
+    uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n);
     daxa_BufferPtr(VoxelLeafChunk) voxel_chunk_ptr = advance(voxel_chunks_ptr, chunk_index);
     uint update_index = deref(voxel_chunk_ptr).update_index;
     if (update_index == 0) {
@@ -242,10 +239,9 @@ uint sample_lod(daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferP
     return 7;
 }
 
-uint sample_lod(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, uvec3 chunk_n, vec3 voxel_p, uint lod_index, out PackedVoxel voxel_data) {
-    float voxel_scl = float(VOXEL_SCL) / float(1 << lod_index);
-    uvec3 voxel_i = uvec3(voxel_p * voxel_scl);
+uint sample_lod(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, daxa_BufferPtr(VoxelMallocPageAllocator) allocator, daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr, uvec3 chunk_n, vec3 voxel_p, out PackedVoxel voxel_data) {
+    uvec3 voxel_i = uvec3(voxel_p * VOXEL_SCL);
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
-    uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n, lod_index);
+    uint chunk_index = calc_chunk_index(voxel_globals, chunk_i, chunk_n);
     return sample_lod(allocator, advance(voxel_chunks_ptr, chunk_index), chunk_i, voxel_i - chunk_i * CHUNK_SIZE, voxel_data);
 }

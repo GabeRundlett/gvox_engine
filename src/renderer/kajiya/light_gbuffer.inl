@@ -12,8 +12,8 @@
 #define SHADING_MODE_RTX_OFF 4
 #define SHADING_MODE_IRCACHE 5
 
-DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 10)
-// DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 10 + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11)
+// DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11 + IRCACHE_BUFFER_USE_N)
 // IRCACHE_USE_BUFFERS()
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
@@ -25,6 +25,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, ae_lut)
 DAXA_DECL_TASK_HEAD_END
 struct LightGbufferComputePush {
     daxa_f32vec4 output_tex_size;
@@ -43,7 +44,8 @@ inline auto light_gbuffer(
     daxa::TaskImageView rtdgi,
     IrcacheRenderState &ircache,
     daxa::TaskImageView sky_lut,
-    daxa::TaskImageView transmittance_lut) -> daxa::TaskImageView {
+    daxa::TaskImageView transmittance_lut,
+    daxa::TaskImageView ae_lut) -> daxa::TaskImageView {
 
     auto output_image = record_ctx.task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -65,6 +67,7 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::output_tex, output_image}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::sky_lut, sky_lut}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::transmittance_lut, transmittance_lut}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::ae_lut, ae_lut}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, NoTaskInfo const &) {
             auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::gbuffer_tex).ids[0]).value();

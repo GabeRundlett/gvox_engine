@@ -12,7 +12,7 @@
 
 vec3 get_particle_worldspace_origin(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
     // return pos - deref(gpu_input).player.player_unit_offset;
-    return floor(pos * VOXEL_SCL) / VOXEL_SCL - deref(gpu_input).player.player_unit_offset;
+    return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset;
 }
 
 vec3 get_particle_worldspace_pos(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
@@ -91,7 +91,7 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
             self.pos += self.vel * dt;
         }
 
-        if (min(dist, curr_dist_in_dt) < 0.01 / VOXEL_SCL) {
+        if (min(dist, curr_dist_in_dt) < 0.01 * VOXEL_SIZE) {
             self.flags += 1 << PARTICLE_SLEEP_TIMER_OFFSET;
             if (((self.flags & PARTICLE_SLEEP_TIMER_MASK) >> PARTICLE_SLEEP_TIMER_OFFSET) >= 15) {
                 should_place = true;
@@ -106,6 +106,11 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
         }
     } else {
         self.vel = vec3(0);
+        // vec3 col = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
+        // Voxel particle_voxel = Voxel(1, 0.99, vec3(0, 0, 1), col);
+        // self.packed_voxel = pack_voxel(particle_voxel);
+        // rand_seed(gl_GlobalInvocationID.x);
+        // self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + vec3(rand(), rand(), 0) * 5 + vec3(0, 0, -1); // deref(gpu_input).player.forward * 1 + vec3(0, 0, -2.5) + deref(gpu_input).player.lateral * 1.5;
     }
 }
 

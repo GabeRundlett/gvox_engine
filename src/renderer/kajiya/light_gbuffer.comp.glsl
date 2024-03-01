@@ -12,6 +12,7 @@ daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
 daxa_ImageViewIndex output_tex = push.uses.output_tex;
 daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
+daxa_ImageViewIndex ae_lut = push.uses.ae_lut;
 // IRCACHE_USE_BUFFERS_PUSH_USES()
 
 #include "inc/rt.glsl"
@@ -67,8 +68,11 @@ void main() {
     //     }
     // }
 
+    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), ivec2(px), 0));
+    const float depth = uintBitsToFloat(gbuffer_packed.data0.z);
+
     RayDesc outgoing_ray;
-    ViewRayContext view_ray_context = vrc_from_uv(gpu_input, uv);
+    ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     {
         outgoing_ray = new_ray(
             ray_origin_ws(view_ray_context),
@@ -76,9 +80,6 @@ void main() {
             0.0,
             FLT_MAX);
     }
-
-    GbufferDataPacked gbuffer_packed = GbufferDataPacked(texelFetch(daxa_utexture2D(gbuffer_tex), ivec2(px), 0));
-    const float depth = uintBitsToFloat(gbuffer_packed.data0.z);
 
     if (depth == 0.0) {
         // Render the sun disk
@@ -179,6 +180,10 @@ void main() {
     //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(gpu_input), pt_ws.xyz, gbuffer.normal);
     //     output_ = lookup(ircache_params, rng);
     // }
+    vec3 fs_uvw = cs_to_fs(gpu_input, view_ray_context.ray_hit_cs);
+    vec4 ae_val = texture(daxa_sampler3D(ae_lut, g_sampler_llc), fs_uvw);
+    const float weight = 1.0 * ae_val.w; // fs_uvw.z;
+    output_ += vec3(ae_val) * weight;
 
     output_ *= deref(gpu_input).pre_exposure;
 
