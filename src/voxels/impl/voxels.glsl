@@ -94,7 +94,7 @@ bool VoxelUniformityChunk_lod_nonuniform_64(daxa_BufferPtr(VoxelLeafChunk) voxel
 uint calc_chunk_index(daxa_BufferPtr(VoxelWorldGlobals) voxel_globals, uvec3 chunk_i, uvec3 chunk_n) {
 #if ENABLE_CHUNK_WRAPPING
     // Modulate the chunk index to be wrapped around relative to the chunk offset provided.
-    chunk_i = uvec3((ivec3(chunk_i) + (deref(voxel_globals).offset >> ivec3(-LOG2_VOXEL_SIZE))) % ivec3(chunk_n));
+    chunk_i = uvec3((ivec3(chunk_i) + (deref(voxel_globals).offset >> ivec3(6 + LOG2_VOXEL_SIZE))) % ivec3(chunk_n));
 #endif
     uint chunk_index = chunk_i.x + chunk_i.y * chunk_n.x + chunk_i.z * chunk_n.x * chunk_n.y;
     return chunk_index;
@@ -160,7 +160,7 @@ PackedVoxel sample_voxel_chunk(daxa_BufferPtr(VoxelMallocPageAllocator) allocato
 }
 
 PackedVoxel sample_voxel_chunk(VoxelBufferPtrs ptrs, uvec3 chunk_n, vec3 voxel_p, vec3 bias) {
-    vec3 offset = vec3((deref(ptrs.globals).offset) & ((1 << (-LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+    vec3 offset = vec3((deref(ptrs.globals).offset) & ((1 << (6 + LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
     uvec3 voxel_i = uvec3(floor((voxel_p + offset) * VOXEL_SCL + bias));
     uvec3 chunk_i = voxel_i / CHUNK_SIZE;
     uint chunk_index = calc_chunk_index(ptrs.globals, chunk_i, chunk_n);

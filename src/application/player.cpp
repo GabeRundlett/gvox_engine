@@ -122,7 +122,10 @@ void player_startup(Player &PLAYER) {
     AppSettings::add<settings::InputFloat>({"Player", "Sprint Multiplier", {.value = 25.0f}});
     AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = true}});
 
-    PLAYER.pos = vec3(0.01f, 0.02f, 0.03f);
+    // float ground_level = AppSettings::get<settings::InputFloat>("Atmosphere", "atmosphere_bottom").value * 1000.0f + 2000.0f;
+    float ground_level = 0.0f;
+
+    PLAYER.pos = vec3(0.01f, 0.02f, 0.03f + ground_level);
     PLAYER.vel = vec3(0.0);
     PLAYER.player_unit_offset = ivec3(0, 0, 0);
     // PLAYER.pos = vec3(150.01, 150.02, 80.03);
@@ -157,7 +160,7 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         PLAYER.pitch -= INPUT.mouse.pos_delta.y * mouse_sens * INPUT.sensitivity * 0.001f;
     }
 
-    const float MAX_ROT_EPS = 0.01f;
+    const float MAX_ROT_EPS = 0.0001f;
     PLAYER.pitch = clamp(PLAYER.pitch, MAX_ROT_EPS, float(M_PI) - MAX_ROT_EPS);
     // float sin_rot_x = sinf(PLAYER.pitch), cos_rot_x = cosf(PLAYER.pitch);
     float sin_rot_z = sinf(PLAYER.yaw), cos_rot_z = cosf(PLAYER.yaw);

@@ -10,8 +10,12 @@ const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
 vec3 sky_space_from_ws(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
     // Because the atmosphere is using km as it's default units and we want one unit in world
     // space to be one meter we need to scale the position by a factor to get from meters -> kilometers
+
+    // vec3 sky_space_pos = (pos + deref(gpu_input).player.player_unit_offset) * 0.001;
+
     vec3 sky_space_pos = (pos + deref(gpu_input).player.player_unit_offset) * 0.001 + vec3(0.0, 0.0, 2.0);
     sky_space_pos.z += deref(gpu_input).sky_settings.atmosphere_bottom;
+
     return sky_space_pos;
 }
 
@@ -244,7 +248,7 @@ vec3 atmosphere_unpack(vec4 x) {
 }
 
 const float FRUSTUM_SIZE_Z_WS = 50000.0; // meters
-const float FRUSTUM_BEGIN_Z_WS = 1.0;   // meters
+const float FRUSTUM_BEGIN_Z_WS = 1.0;    // meters
 
 vec3 fs_to_cs(daxa_BufferPtr(GpuInput) gpu_input, vec3 fs) {
     vec4 cs_h = deref(gpu_input).player.cam.view_to_clip * vec4(0.0, 0.0, pow(fs.z, 2.0) * FRUSTUM_SIZE_Z_WS + FRUSTUM_BEGIN_Z_WS, -1.0);

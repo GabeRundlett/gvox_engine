@@ -38,7 +38,9 @@ vec4 terrain_noise(vec3 p) {
         /* .lacunarity  = */ 4.5,
         /* .octaves     = */ 6);
     vec4 val = fractal_noise(value_noise_texture, g_sampler_llr, p, noise_conf);
-    val.x += p.z * 0.003 - 1.0;
+    // const float ground_level = 6362000.0;
+    const float ground_level = 0.0;
+    val.x += (p.z - ground_level + 280.0) * 0.003 - 1.0;
     val.yzw = normalize(val.yzw + vec3(0, 0, 0.003));
     // val.x += -0.24;
     return val;
@@ -81,7 +83,6 @@ TreeSDF sd_spruce_tree(in vec3 p, in vec3 seed) {
 vec3 get_closest_surface(vec3 center_cell_world, float current_noise, float rep, inout float scale) {
     vec3 offset = hash33(center_cell_world);
     scale = offset.z * .3 + .7;
-    scale *= 2.0;
     center_cell_world.xy += (offset.xy * 2 - 1) * max(0, rep / scale - 5);
 
     float step_size = rep / 2 / TREE_MARCH_STEPS;
@@ -114,11 +115,9 @@ vec3 forest_biome_palette(float t) {
     return pow(vec3(85, 114, 78) / 255.0, vec3(2.2)); // palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
 }
 
-#define ENABLE_TREE_GENERATION 0
+#define ENABLE_TREE_GENERATION 1
 
 void brushgen_world_terrain(in out Voxel voxel) {
-    voxel_pos += vec3(0, 0, 280);
-
     vec4 val4 = terrain_noise(voxel_pos);
     float val = val4.x;
     vec3 nrm = normalize(val4.yzw); // terrain_nrm(voxel_pos);
@@ -174,7 +173,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
         }
     } else if (ENABLE_TREE_GENERATION != 0) {
         // Meters per cell
-        float rep = 12;
+        float rep = 6;
 
         // Global cell ID
         vec3 qid = floor(voxel_pos / rep);
@@ -238,6 +237,14 @@ void brushgen_world_terrain(in out Voxel voxel) {
     }
 }
 
+void brushgen_planet(in out Voxel voxel) {
+    if (length(voxel_pos) <= deref(gpu_input).sky_settings.atmosphere_bottom * 1000.0) {
+        voxel.color = vec3(0.8);
+        voxel.material_type = 1;
+        voxel.roughness = 0.8;
+    }
+}
+
 #define GEN_MODEL 0
 
 void brushgen_world(in out Voxel voxel) {
@@ -254,11 +261,11 @@ void brushgen_world(in out Voxel voxel) {
         voxel.roughness = 0.5;
     } else if (false) { // test
         float map_scale = 2.0;
-        vec2 map_uv = voxel_pos.xy / (4097.0 / VOXEL_SCL) / map_scale;
+        vec2 map_uv = voxel_pos.xy / (4097.0 * VOXEL_SIZE) / map_scale;
 
         const float offset = 1.0 / 512.0;
         vec4 heights = textureGather(daxa_sampler2D(test_texture, g_sampler_llc), map_uv);
-        heights = heights * 4097.0 / VOXEL_SCL - 128.0;
+        heights = heights * 4097.0 * VOXEL_SIZE - 128.0;
         heights = heights * map_scale * 0.6;
         vec2 w = fract(map_uv * 4097.0 - 0.5 + offset);
         float map_height = mix(mix(heights.w, heights.z, w.x), mix(heights.x, heights.y, w.x), w.y);
@@ -271,9 +278,9 @@ void brushgen_world(in out Voxel voxel) {
 
             vec3 pos_origin = floor(voxel_pos);
             pos_origin.z = heights.w;
-            vec3 pos_down = pos_origin + vec3(0, map_scale / VOXEL_SCL, 0);
+            vec3 pos_down = pos_origin + vec3(0, map_scale * VOXEL_SIZE, 0);
             pos_down.z = heights.x;
-            vec3 pos_right = pos_origin + vec3(map_scale / VOXEL_SCL, 0, 0);
+            vec3 pos_right = pos_origin + vec3(map_scale * VOXEL_SIZE, 0, 0);
             pos_right.z = heights.z;
             vec3 vertical_dir = normalize(pos_origin - pos_down);
             vec3 horizontal_dir = normalize(pos_origin - pos_right);
@@ -295,7 +302,7 @@ void brushgen_world(in out Voxel voxel) {
         // if (voxel.material_type != 0) {
         //     voxel.material_type = 2;
         // }
-        if (voxel_pos.z == -1.0 / VOXEL_SCL) {
+        if (voxel_pos.z == -1.0 * VOXEL_SIZE) {
             voxel.color = vec3(0.1);
             voxel.material_type = 1;
         }
@@ -304,6 +311,8 @@ void brushgen_world(in out Voxel voxel) {
         //     voxel.color = vec3(0.95, 0.05, 0.05);
         //     voxel.roughness = 0.001;
         // }
+    } else if (false) { // Planet world
+        brushgen_planet(voxel);
     } else if (true) { // Terrain world
         brushgen_world_terrain(voxel);
     } else if (true) { // Ball world (each ball is centered on a chunk center)
@@ -331,12 +340,12 @@ void brushgen_a(in out Voxel voxel) {
     voxel.normal = prev_voxel.normal;
     voxel.roughness = prev_voxel.roughness;
 
-    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
     if (sd < 0) {
         voxel.color = vec3(0, 0, 0);
         voxel.material_type = 0;
     }
-    if (sd < 2.5 / VOXEL_SCL) {
+    if (sd < 2.5 * VOXEL_SIZE) {
         voxel.normal = vec3(0, 0, 1);
     }
 }
@@ -351,7 +360,7 @@ void brushgen_b(in out Voxel voxel) {
     voxel.roughness = prev_voxel.roughness;
 
     // float sd = sd_box(voxel_pos - (brush_input.pos + brush_input.pos_offset), vec3(8));
-    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 / VOXEL_SCL);
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
     // if (sd < 0 && voxel.material_type != 0) {
     if (sd < 0) {
         // FractalNoiseConfig noise_conf = FractalNoiseConfig(
@@ -366,7 +375,7 @@ void brushgen_b(in out Voxel voxel) {
         voxel.roughness = 0.01;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }
-    if (sd < 2.5 / VOXEL_SCL) {
+    if (sd < 2.5 * VOXEL_SIZE) {
         voxel.normal = vec3(0, 0, 1);
     }
 }

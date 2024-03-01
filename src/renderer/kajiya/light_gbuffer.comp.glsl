@@ -180,10 +180,11 @@ void main() {
     //     IrcacheLookupParams ircache_params = IrcacheLookupParams_create(get_eye_position(gpu_input), pt_ws.xyz, gbuffer.normal);
     //     output_ = lookup(ircache_params, rng);
     // }
-    vec3 fs_uvw = cs_to_fs(gpu_input, view_ray_context.ray_hit_cs);
-    vec4 ae_val = texture(daxa_sampler3D(ae_lut, g_sampler_llc), fs_uvw);
-    const float weight = 1.0 * ae_val.w; // fs_uvw.z;
-    output_ += vec3(ae_val) * weight;
+
+    // vec3 fs_uvw = cs_to_fs(gpu_input, view_ray_context.ray_hit_cs);
+    // vec4 ae_val = texture(daxa_sampler3D(ae_lut, g_sampler_llc), fs_uvw);
+    // const float weight = 1.0 * ae_val.w; // fs_uvw.z;
+    // output_ += vec3(ae_val) * weight;
 
     output_ *= deref(gpu_input).pre_exposure;
 

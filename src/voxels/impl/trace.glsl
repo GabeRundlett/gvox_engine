@@ -14,7 +14,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
 
     {
         daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr = info.ptrs.voxel_chunks_ptr;
-        vec3 offset = vec3((deref(info.ptrs.globals).offset) & ((1 << (-LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
+        vec3 offset = vec3((deref(info.ptrs.globals).offset) & ((1 << (6 + LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
         ray_pos += offset;
         BoundingBox b;
         b.bound_min = vec3(0.0);

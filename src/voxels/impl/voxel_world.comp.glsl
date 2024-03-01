@@ -40,13 +40,8 @@ void main() {
     VoxelChunkUpdateInfo terrain_work_item;
     terrain_work_item.i = ivec3(gl_GlobalInvocationID.xyz) & (chunk_n - 1);
 
-#if LOG2_VOXEL_SIZE < 0
-    ivec3 offset = (VOXEL_WORLD.offset >> ivec3(-LOG2_VOXEL_SIZE));
-    ivec3 prev_offset = (VOXEL_WORLD.prev_offset >> ivec3(-LOG2_VOXEL_SIZE));
-#else
-    ivec3 offset = (VOXEL_WORLD.offset << ivec3(LOG2_VOXEL_SIZE));
-    ivec3 prev_offset = (VOXEL_WORLD.prev_offset << ivec3(LOG2_VOXEL_SIZE));
-#endif
+    ivec3 offset = (VOXEL_WORLD.offset >> ivec3(6 + LOG2_VOXEL_SIZE));
+    ivec3 prev_offset = (VOXEL_WORLD.prev_offset >> ivec3(6 + LOG2_VOXEL_SIZE));
 
     terrain_work_item.chunk_offset = offset;
     terrain_work_item.brush_flags = BRUSH_FLAGS_WORLD_BRUSH;
@@ -90,7 +85,7 @@ void main() {
 
         terrain_work_item.brush_input = deref(globals).brush_input;
 
-        ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> (-LOG2_VOXEL_SIZE);
+        ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> (6 + LOG2_VOXEL_SIZE);
         bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
 
         if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
@@ -245,11 +240,7 @@ BrushInput brush_input;
 Voxel get_temp_voxel(ivec3 offset_i) {
     // TODO: Simplify this, and improve precision
     vec3 i = vec3(world_voxel + offset_i) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset;
-#if LOG2_VOXEL_SIZE < 0
-    vec3 offset = vec3((deref(voxel_globals).offset) & ((1 << (-LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
-#else
-    vec3 offset = vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
-#endif
+    vec3 offset = vec3((deref(voxel_globals).offset) & ((1 << (6 + LOG2_VOXEL_SIZE)) - 1)) + vec3(chunk_n) * CHUNK_WORLDSPACE_SIZE * 0.5;
     uvec3 voxel_i = uvec3(floor((i + offset) * VOXEL_SCL));
     Voxel default_value = Voxel(0, 0, vec3(0), vec3(0));
     if (any(greaterThanEqual(voxel_i, uvec3(CHUNK_SIZE * chunk_n)))) {
