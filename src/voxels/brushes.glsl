@@ -40,8 +40,8 @@ vec4 terrain_noise(vec3 p) {
     vec4 val = fractal_noise(value_noise_texture, g_sampler_llr, p, noise_conf);
     // const float ground_level = 6362000.0;
     const float ground_level = 0.0;
-    val.x += (p.z - ground_level + 280.0) * 0.003 - 1.0;
-    val.yzw = normalize(val.yzw + vec3(0, 0, 0.003));
+    val.x += (p.z - ground_level + 100.0) * 0.009 - 1.0;
+    val.yzw = normalize(val.yzw + vec3(0, 0, 0.009));
     // val.x += -0.24;
     return val;
 }
@@ -135,11 +135,11 @@ void brushgen_world_terrain(in out Voxel voxel) {
         voxel.roughness = 1.0;
         if (SHOULD_COLOR_WORLD) {
             float r = good_rand(-val);
-            if (val > -0.002 && upwards > 0.65) {
+            if (val > -0.005 && upwards > 0.65) {
+                float r2 = good_rand(voxel_pos.xy);
                 voxel.color = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
-                if (r < 0.5) {
-                    voxel.color *= 0.7;
-                    voxel.roughness = 0.7;
+                if (r2 < 0.5) {
+                    voxel.material_type = 0;
                 }
                 // Mix with biome color
                 voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
