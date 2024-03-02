@@ -281,7 +281,7 @@ struct TracedRtr {
 
 inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
     auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
-        .size = static_cast<uint32_t>(size),
+        .size = size,
         .name = name,
     });
 

@@ -27,7 +27,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
 
     auto hist_size = static_cast<uint32_t>(sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT);
     auto tmp_histogram = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<uint32_t>(sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT),
+        .size = sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT,
         .name = "tmp_histogram",
     });
 

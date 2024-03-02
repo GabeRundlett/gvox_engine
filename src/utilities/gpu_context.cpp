@@ -145,7 +145,7 @@ GpuContext::GpuContext() {
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
-                    .size = static_cast<daxa_u32>(128 * 128 * 4 * 64 * 1),
+                    .size = 128 * 128 * 4 * 64 * 1,
                     .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_buffer",
                 });
@@ -434,7 +434,7 @@ void GpuContext::update_seeded_value_noise(daxa::Device &device, uint64_t seed) 
         },
         .task = [this, seed](daxa::TaskInterface const &ti) {
             auto staging_buffer = ti.device.create_buffer({
-                .size = static_cast<daxa_u32>(256 * 256 * 256 * 1),
+                .size = 256 * 256 * 256 * 1,
                 .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .name = "staging_buffer",
             });

@@ -16,7 +16,7 @@ void VoxelModelLoader::create(GpuContext &gpu_context) {
     this->gpu_context = &gpu_context;
     gvox_ctx = gvox_create_context();
     gvox_model_buffer = this->gpu_context->device.create_buffer({
-        .size = static_cast<uint32_t>(offsetof(GpuGvoxModel, data)),
+        .size = offsetof(GpuGvoxModel, data),
         .name = "gvox_model_buffer",
     });
     task_gvox_model_buffer.set_buffers({.buffers = std::array{gvox_model_buffer}});
@@ -56,11 +56,11 @@ auto VoxelModelLoader::open_mesh_model() -> GvoxModelData {
         .name = "mesh_gpu_input_buffer",
     });
     daxa::BufferId voxel_buffer = gpu_context->device.create_buffer(daxa::BufferInfo{
-        .size = static_cast<uint32_t>(sizeof(uint32_t) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z),
+        .size = sizeof(uint32_t) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z,
         .name = "voxel_buffer",
     });
     daxa::BufferId staging_voxel_buffer = gpu_context->device.create_buffer({
-        .size = static_cast<uint32_t>(sizeof(uint32_t) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z),
+        .size = sizeof(uint32_t) * mesh_gpu_input.size.x * mesh_gpu_input.size.y * mesh_gpu_input.size.z,
         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
         .name = "staging_voxel_buffer",
     });
@@ -140,7 +140,7 @@ auto VoxelModelLoader::open_mesh_model() -> GvoxModelData {
                     vert_n += mesh.verts.size();
                 }
                 auto staging_vertex_buffer = ti.device.create_buffer({
-                    .size = static_cast<uint32_t>(sizeof(MeshVertex) * vert_n),
+                    .size = sizeof(MeshVertex) * vert_n,
                     .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_vertex_buffer",
                 });
@@ -361,7 +361,7 @@ void VoxelModelLoader::update(AppUi &ui) {
                 gvox_model_data = gvox_model_data_future.get();
                 prev_gvox_model_buffer = gvox_model_buffer;
                 gvox_model_buffer = gpu_context->device.create_buffer({
-                    .size = static_cast<uint32_t>(gvox_model_data.size),
+                    .size = gvox_model_data.size,
                     .name = "gvox_model_buffer",
                 });
                 task_gvox_model_buffer.set_buffers({.buffers = std::array{gvox_model_buffer}});
@@ -377,7 +377,7 @@ void VoxelModelLoader::update(AppUi &ui) {
                     model_is_ready = true;
                     prev_gvox_model_buffer = gvox_model_buffer;
                     gvox_model_buffer = gpu_context->device.create_buffer({
-                        .size = static_cast<uint32_t>(gvox_model_data.size),
+                        .size = gvox_model_data.size,
                         .name = "gvox_model_buffer",
                     });
                     task_gvox_model_buffer.set_buffers({.buffers = std::array{gvox_model_buffer}});
@@ -409,7 +409,7 @@ void VoxelModelLoader::upload_model() {
                 .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
             });
             auto staging_gvox_model_buffer = ti.device.create_buffer({
-                .size = static_cast<uint32_t>(gvox_model_data.size),
+                .size = gvox_model_data.size,
                 .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .name = "staging_gvox_model_buffer",
             });
@@ -422,7 +422,7 @@ void VoxelModelLoader::upload_model() {
             ti.recorder.copy_buffer_to_buffer({
                 .src_buffer = staging_gvox_model_buffer,
                 .dst_buffer = gvox_model_buffer,
-                .size = static_cast<uint32_t>(gvox_model_data.size),
+                .size = gvox_model_data.size,
             });
             should_upload_gvox_model = false;
             has_model = true;

@@ -3,7 +3,7 @@
 
 auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
     auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<daxa_u32>(sizeof(uint32_t) * 4) * 4,
+        .size = sizeof(uint32_t) * 4 * 4,
         .name = "ircache.trace_indirect_args_buf",
     });
 
@@ -155,7 +155,7 @@ void IrcacheRenderState::sum_up_irradiance_for_sampling(RecordContext &record_ct
 
 inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
     auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
-        .size = static_cast<uint32_t>(size),
+        .size = size,
         .name = name,
     });
 
@@ -211,7 +211,7 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
     auto [ircache_grid_meta_buf_, ircache_grid_meta_buf2_] = ping_pong_ircache_grid_meta_buf.get(
         *record_ctx.gpu_context,
         daxa::BufferInfo{
-            .size = static_cast<uint32_t>(sizeof(IrcacheCell) * MAX_GRID_CELLS),
+            .size = sizeof(IrcacheCell) * MAX_GRID_CELLS,
             .name = "ircache.grid_meta_buf",
         });
     record_ctx.task_graph.use_persistent_buffer(ircache_grid_meta_buf_);
@@ -316,7 +316,7 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
     std::swap(state.ircache_grid_meta_buf, state.ircache_grid_meta_buf2);
 
     auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<daxa_u32>(sizeof(uint32_t) * 4) * 2,
+        .size = sizeof(uint32_t) * 4 * 2,
         .name = "ircache.age_indirect_args_buf",
     });
 
@@ -334,7 +334,7 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
     });
 
     auto entry_occupancy_buf = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<daxa_u32>(sizeof(uint32_t) * MAX_ENTRIES),
+        .size = sizeof(uint32_t) * MAX_ENTRIES,
         .name = "ircache.entry_occupancy_buf",
     });
     record_ctx.add(ComputeTask<AgeIrcacheEntriesCompute, AgeIrcacheEntriesComputePush, NoTaskInfo>{
@@ -384,7 +384,7 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
     });
 
     state.ircache_buffers = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<daxa_u32>(sizeof(IrcacheBuffers)),
+        .size = sizeof(IrcacheBuffers),
         .name = "ircache.buffers",
     });
     record_ctx.task_graph.add_task({

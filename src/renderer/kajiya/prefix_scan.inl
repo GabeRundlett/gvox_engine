@@ -31,7 +31,7 @@ struct PrefixScanMergeComputePush {
 inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBufferView input_buf) {
     const auto SEGMENT_SIZE = uint32_t{1024};
     auto segment_sum_buf = record_ctx.task_graph.create_transient_buffer({
-        .size = static_cast<daxa_u32>(sizeof(uint32_t)) * SEGMENT_SIZE,
+        .size = sizeof(uint32_t) * SEGMENT_SIZE,
         .name = "segment_sum_buf",
     });
 

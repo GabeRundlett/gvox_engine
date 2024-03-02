@@ -77,15 +77,15 @@ struct AllocatorBufferState {
             .name = AllocatorConstants<T>::allocator_buffer_name,
         });
         element_buffer = device.create_buffer({
-            .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::ElementType)) * static_cast<daxa_u32>(AllocatorConstants<T>::ELEMENT_MULTIPLIER) * current_element_count,
+            .size = sizeof(typename AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
             .name = AllocatorConstants<T>::element_buffer_name,
         });
         available_element_stack_buffer = device.create_buffer({
-            .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::IndexType)) * current_element_count,
+            .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
             .name = AllocatorConstants<T>::available_element_stack_buffer_name,
         });
         released_element_stack_buffer = device.create_buffer({
-            .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::IndexType)) * current_element_count,
+            .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
             .name = AllocatorConstants<T>::released_element_stack_buffer_name,
         });
         task_allocator_buffer.set_buffers({.buffers = std::array{allocator_buffer}});
@@ -142,7 +142,7 @@ struct AllocatorBufferState {
         recorder.clear_buffer({
             .buffer = task_element_buffer.get_state().buffers[0],
             .offset = 0,
-            .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::ElementType)) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
+            .size = sizeof(typename AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
             .clear_value = 0,
         });
         recorder.clear_buffer({
@@ -164,7 +164,7 @@ struct AllocatorBufferState {
             .dst_buffer = task_element_buffer.get_state().buffers[0],
             .src_offset = 0,
             .dst_offset = 0,
-            .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::ElementType)) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * prev_element_count,
+            .size = sizeof(typename AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * prev_element_count,
         });
         recorder.copy_buffer_to_buffer({
             .src_buffer = task_old_element_buffer.get_state().buffers[1],
@@ -227,11 +227,11 @@ struct AllocatorBufferState {
                 .name = AllocatorConstants<T>::element_buffer_name,
             });
             auto new_available_element_stack_buffer = device.create_buffer({
-                .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::IndexType)) * current_element_count,
+                .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
                 .name = AllocatorConstants<T>::available_element_stack_buffer_name,
             });
             auto new_released_element_stack_buffer = device.create_buffer({
-                .size = static_cast<daxa_u32>(sizeof(typename AllocatorConstants<T>::IndexType)) * current_element_count,
+                .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
                 .name = AllocatorConstants<T>::released_element_stack_buffer_name,
             });
             task_old_element_buffer.swap_buffers(task_element_buffer);

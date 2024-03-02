@@ -126,14 +126,14 @@ void VoxelWorld::begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_o
 
 void VoxelWorld::use_buffers(RecordContext &record_ctx) {
     buffers.voxel_globals = record_ctx.gpu_context->find_or_add_temporal_buffer({
-        .size = static_cast<daxa_u32>(sizeof(VoxelWorldGlobals)),
+        .size = sizeof(VoxelWorldGlobals),
         .name = "voxel_globals",
     });
 
     auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
     buffers.voxel_chunks = record_ctx.gpu_context->find_or_add_temporal_buffer({
-        .size = static_cast<daxa_u32>(sizeof(VoxelLeafChunk)) * chunk_n,
+        .size = sizeof(VoxelLeafChunk) * chunk_n,
         .name = "voxel_chunks",
     });
 

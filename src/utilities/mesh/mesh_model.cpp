@@ -65,11 +65,11 @@ namespace {
             aiMaterial *material = scene->mMaterials[aimesh->mMaterialIndex];
             load_textures(o_mesh, model.textures, material, rootdir);
             o_mesh.vertex_buffer = device.create_buffer(daxa::BufferInfo{
-                .size = static_cast<uint32_t>(sizeof(MeshVertex) * o_mesh.verts.size()),
+                .size = sizeof(MeshVertex) * o_mesh.verts.size(),
                 .name = "vertex_buffer",
             });
             o_mesh.normal_buffer = device.create_buffer(daxa::BufferInfo{
-                .size = static_cast<uint32_t>(sizeof(MeshVertex) * o_mesh.verts.size() / 3),
+                .size = sizeof(MeshVertex) * o_mesh.verts.size() / 3,
                 .name = "normal_buffer",
             });
         }
@@ -154,7 +154,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         auto &image_id = texture->image_id;
         size_t image_size = sx * sy * sizeof(uint8_t) * dst_channel_n;
         auto texture_staging_buffer = device.create_buffer({
-            .size = static_cast<uint32_t>(image_size),
+            .size = image_size,
             .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
             .name = "texture_staging_buffer",
         });
