@@ -331,23 +331,9 @@ void VoxelApp::run_startup(daxa::TaskGraph & /*unused*/) {
     };
 
     record_ctx.task_graph.use_persistent_buffer(gpu_context.task_input_buffer);
-    record_ctx.task_graph.use_persistent_buffer(gpu_context.task_globals_buffer);
 
     voxel_world.record_startup(record_ctx);
-    record_ctx.task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_context.task_globals_buffer),
-        },
-        .task = [this](daxa::TaskInterface const &ti) {
-            ti.recorder.clear_buffer({
-                .buffer = gpu_context.task_globals_buffer.get_state().buffers[0],
-                .offset = 0,
-                .size = sizeof(GpuGlobals),
-                .clear_value = 0,
-            });
-        },
-        .name = "StartupTask (Globals Clear)",
-    });
+    particles.record_startup(record_ctx);
 
     temp_task_graph.submit({});
     temp_task_graph.complete({});
@@ -569,7 +555,6 @@ void VoxelApp::calc_vram_usage(daxa::TaskGraph &task_graph) {
     };
 
     buffer_size(gpu_context.input_buffer);
-    buffer_size(gpu_context.globals_buffer);
 
     for (auto &[name, temporal_buffer] : gpu_context.temporal_buffers) {
         buffer_size(temporal_buffer.resource_id);

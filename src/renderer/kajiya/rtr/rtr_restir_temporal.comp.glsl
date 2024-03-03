@@ -46,7 +46,6 @@ const bool USE_REPROJECTION_SEARCH = true;
 
 DAXA_DECL_PUSH_CONSTANT(RtrRestirTemporalComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;

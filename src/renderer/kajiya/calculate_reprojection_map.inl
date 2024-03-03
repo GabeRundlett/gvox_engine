@@ -2,12 +2,10 @@
 
 #include <core.inl>
 #include <application/input.inl>
-#include <application/globals.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(CalculateReprojectionMapCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, prev_depth_image_id)
@@ -30,7 +28,6 @@ inline auto calculate_reprojection_map(RecordContext &record_ctx, GbufferDepth c
         .source = daxa::ShaderFile{"kajiya/calculate_reprojection_map.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::vs_normal_image_id, gbuffer_depth.geometric_normal}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::depth_image_id, gbuffer_depth.depth.current()}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::prev_depth_image_id, gbuffer_depth.depth.history()}},

@@ -2,7 +2,6 @@
 
 #include <core.inl>
 #include <application/input.inl>
-#include <application/globals.inl>
 #include <voxels/voxels.inl>
 #include <renderer/kajiya/prefix_scan.inl>
 
@@ -168,8 +167,7 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheResetComputePush {
     DAXA_TH_BLOB(IrcacheResetCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(IrcacheTraceAccessCompute, 8 + VOXEL_BUFFER_USE_N)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_DECL_TASK_HEAD_BEGIN(IrcacheTraceAccessCompute, 7 + VOXEL_BUFFER_USE_N)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), ircache_life_buf)
@@ -182,9 +180,8 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheTraceAccessComputePush {
     DAXA_TH_BLOB(IrcacheTraceAccessCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(IrcacheValidateCompute, 15 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(IrcacheValidateCompute, 14 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)
@@ -203,9 +200,8 @@ DAXA_DECL_TASK_HEAD_END
 struct IrcacheValidateComputePush {
     DAXA_TH_BLOB(IrcacheValidateCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(TraceIrradianceCompute, 15 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceIrradianceCompute, 14 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VertexPacked), ircache_spatial_buf)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, sky_cube_tex)

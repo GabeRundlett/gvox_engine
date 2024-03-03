@@ -12,7 +12,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtrSpatialFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(ivec2) spatial_resolve_offsets = push.uses.spatial_resolve_offsets;
 daxa_ImageViewIndex input_tex = push.uses.input_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;

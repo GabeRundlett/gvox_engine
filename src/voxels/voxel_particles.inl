@@ -2,12 +2,38 @@
 
 #include <core.inl>
 #include <application/input.inl>
-#include <application/globals.inl>
+
+#include <voxels/brushes.inl>
+
+struct IndirectDrawParams {
+    daxa_u32 vertex_count;
+    daxa_u32 instance_count;
+    daxa_u32 first_vertex;
+    daxa_u32 first_instance;
+};
+
+struct VoxelParticlesState {
+    daxa_u32vec3 simulation_dispatch;
+    daxa_u32 place_count;
+    daxa_u32vec3 place_bounds_min;
+    daxa_u32vec3 place_bounds_max;
+    IndirectDrawParams draw_params;
+};
+DAXA_DECL_BUFFER_PTR(VoxelParticlesState)
+
+struct SimulatedVoxelParticle {
+    daxa_f32vec3 pos;
+    daxa_f32 duration_alive;
+    daxa_f32vec3 vel;
+    PackedVoxel packed_voxel;
+    daxa_u32 flags;
+};
+DAXA_DECL_BUFFER_PTR(SimulatedVoxelParticle)
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute, 4 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_HEAD_END
@@ -17,7 +43,7 @@ struct VoxelParticlePerframeComputePush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleSimCompute, 5 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), rendered_voxel_particles)
@@ -29,7 +55,7 @@ struct VoxelParticleSimComputePush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleRaster, 6)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(daxa_u32), rendered_voxel_particles)
 DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
@@ -42,11 +68,35 @@ struct VoxelParticleRasterPush {
 #if defined(__cplusplus)
 
 struct VoxelParticles {
+    TemporalBuffer global_state;
     TemporalBuffer simulated_voxel_particles;
     TemporalBuffer rendered_voxel_particles;
     TemporalBuffer placed_voxel_particles;
 
+    void record_startup(RecordContext &record_ctx) {
+        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
+
+        record_ctx.task_graph.add_task({
+            .attachments = {
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, global_state.task_resource),
+            },
+            .task = [this](daxa::TaskInterface const &ti) {
+                ti.recorder.clear_buffer({
+                    .buffer = global_state.task_resource.get_state().buffers[0],
+                    .offset = 0,
+                    .size = sizeof(VoxelParticlesState),
+                    .clear_value = 0,
+                });
+            },
+            .name = "Clear",
+        });
+    }
+
     void simulate(RecordContext &record_ctx, VoxelWorldBuffers &voxel_world_buffers) {
+        global_state = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(VoxelParticlesState),
+            .name = "globals_buffer",
+        });
         simulated_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
             .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "simulated_voxel_particles",
@@ -60,6 +110,7 @@ struct VoxelParticles {
             .name = "placed_voxel_particles",
         });
 
+        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
         record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
         record_ctx.task_graph.use_persistent_buffer(rendered_voxel_particles.task_resource);
         record_ctx.task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
@@ -73,7 +124,7 @@ struct VoxelParticles {
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, voxel_world_buffers),
             },
@@ -87,7 +138,7 @@ struct VoxelParticles {
             .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::particles_state, global_state.task_resource}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticleSimCompute, voxel_world_buffers),
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::rendered_voxel_particles, rendered_voxel_particles.task_resource}},
@@ -97,8 +148,8 @@ struct VoxelParticles {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
-                    .indirect_buffer = ti.get(VoxelParticleSimCompute::globals).ids[0],
-                    .offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, simulation_dispatch),
+                    .indirect_buffer = ti.get(VoxelParticleSimCompute::particles_state).ids[0],
+                    .offset = offsetof(VoxelParticlesState, simulation_dispatch),
                 });
             },
         });
@@ -133,7 +184,7 @@ struct VoxelParticles {
             },
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::globals, record_ctx.gpu_context->task_globals_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::rendered_voxel_particles, rendered_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::render_image, raster_color_image}},
@@ -149,8 +200,8 @@ struct VoxelParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(VoxelParticleRaster::globals).ids[0],
-                    .indirect_buffer_offset = offsetof(GpuGlobals, voxel_particles_state) + offsetof(VoxelParticlesState, draw_params),
+                    .draw_command_buffer = ti.get(VoxelParticleRaster::particles_state).ids[0],
+                    .indirect_buffer_offset = offsetof(VoxelParticlesState, draw_params),
                     .is_indexed = false,
                 });
                 ti.recorder = std::move(renderpass_recorder).end_renderpass();

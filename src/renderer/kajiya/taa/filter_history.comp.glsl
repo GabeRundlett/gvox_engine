@@ -9,7 +9,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TaaFilterHistoryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex reprojected_history_img = push.uses.reprojected_history_img;
 daxa_ImageViewIndex filtered_history_img = push.uses.filtered_history_img;
 

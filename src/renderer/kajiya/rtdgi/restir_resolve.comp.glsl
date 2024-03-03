@@ -23,7 +23,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirResolveComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
 daxa_ImageViewIndex radiance_tex = push.uses.radiance_tex;
 daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;

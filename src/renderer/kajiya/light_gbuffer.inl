@@ -12,11 +12,10 @@
 #define SHADING_MODE_RTX_OFF 4
 #define SHADING_MODE_IRCACHE 5
 
-DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11)
-// DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 11 + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 10)
+// DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute, 10 + IRCACHE_BUFFER_USE_N)
 // IRCACHE_USE_BUFFERS()
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
@@ -58,7 +57,6 @@ inline auto light_gbuffer(
         .views = std::array{
             // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},

@@ -10,12 +10,12 @@
 #define PARTICLE_SLEEP_TIMER_OFFSET (8)
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
-vec3 get_particle_worldspace_origin(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
+vec3 get_particle_worldspace_origin(vec3 pos) {
     // return pos - deref(gpu_input).player.player_unit_offset;
     return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset;
 }
 
-vec3 get_particle_worldspace_pos(daxa_RWBufferPtr(GpuGlobals) globals, vec3 pos) {
+vec3 get_particle_worldspace_pos(vec3 pos) {
     return pos - deref(gpu_input).player.player_unit_offset;
 }
 
@@ -43,7 +43,7 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
 
     // if (PER_VOXEL_NORMALS != 0) {
     //     Voxel particle_voxel = unpack_voxel(self.packed_voxel);
-    //     particle_voxel.normal = normalize(deref(gpu_input).player.pos - get_particle_worldspace_pos(globals, self.pos));
+    //     particle_voxel.normal = normalize(deref(gpu_input).player.pos - get_particle_worldspace_pos(self.pos));
     //     self.packed_voxel = pack_voxel(particle_voxel);
     // }
 
@@ -66,7 +66,7 @@ void particle_update(in out SimulatedVoxelParticle self, VoxelBufferPtrs voxels_
 
         float curr_speed = length(self.vel);
         float curr_dist_in_dt = curr_speed * dt;
-        vec3 ray_pos = get_particle_worldspace_pos(globals, self.pos);
+        vec3 ray_pos = get_particle_worldspace_pos(self.pos);
 
         VoxelTraceResult trace_result = voxel_trace(VoxelTraceInfo(voxels_buffer_ptrs, self.vel / curr_speed, MAX_STEPS, curr_dist_in_dt, 0.0, true), ray_pos);
         float dist = trace_result.dist;

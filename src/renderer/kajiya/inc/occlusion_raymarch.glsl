@@ -65,7 +65,6 @@ OcclusionScreenRayMarch OcclusionScreenRayMarch_create(
 
 void march(
     daxa_BufferPtr(GpuInput) gpu_input,
-    daxa_RWBufferPtr(GpuGlobals) globals,
     OcclusionScreenRayMarch self,
     inout float visibility,
     inout vec3 sample_radiance) {

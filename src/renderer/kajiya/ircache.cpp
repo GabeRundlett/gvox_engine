@@ -44,7 +44,6 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
     record_ctx.add(ComputeTask<IrcacheTraceAccessCompute, IrcacheTraceAccessComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/trace_accessibility.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(IrcacheTraceAccessCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheTraceAccessCompute::ircache_life_buf, this->ircache_life_buf}},
@@ -68,7 +67,6 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         .source = daxa::ShaderFile{"kajiya/ircache/ircache_validate.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(IrcacheValidateCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::sky_cube_tex, sky_cube}},
@@ -98,7 +96,6 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         .source = daxa::ShaderFile{"kajiya/ircache/trace_irradiance.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(TraceIrradianceCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
             daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::sky_cube_tex, sky_cube}},

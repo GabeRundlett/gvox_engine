@@ -110,7 +110,6 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         };
 
         sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_input_buffer);
-        sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_globals_buffer);
 
         auto [sky_lut, transmittance_lut, ae_lut] = generate_procedural_sky(sky_record_ctx);
         self.sky.render(sky_record_ctx, sky_lut, transmittance_lut, ae_lut);
@@ -135,7 +134,7 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
     auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
-    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles.simulated_voxel_particles.task_resource, particles_color_image, particles_depth_image);
+    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles, particles_color_image, particles_depth_image);
 
     auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_buffers);
 

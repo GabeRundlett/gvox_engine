@@ -5,9 +5,8 @@
 #include <renderer/kajiya/ircache.inl>
 #include <renderer/kajiya/rtdgi.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrTraceCompute, 14 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrTraceCompute, 13 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32), ranking_tile_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32), scambling_tile_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32), sobol_buf)
@@ -28,9 +27,8 @@ struct RtrTraceComputePush {
     DAXA_TH_BLOB(RtrTraceCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrValidateCompute, 13 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrValidateCompute, 12 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 IRCACHE_USE_BUFFERS()
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
@@ -50,9 +48,8 @@ struct RtrValidateComputePush {
     DAXA_TH_BLOB(RtrValidateCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirTemporalCompute, 21)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirTemporalCompute, 20)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -78,9 +75,8 @@ struct RtrRestirTemporalComputePush {
     DAXA_TH_BLOB(RtrRestirTemporalCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirResolveCompute, 21)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirResolveCompute, 20)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, hit0_tex)
@@ -106,9 +102,8 @@ struct RtrRestirResolveComputePush {
     DAXA_TH_BLOB(RtrRestirResolveCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrTemporalFilterCompute, 10)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrTemporalFilterCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -123,9 +118,8 @@ struct RtrTemporalFilterComputePush {
     DAXA_TH_BLOB(RtrTemporalFilterCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrSpatialFilterCompute, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrSpatialFilterCompute, 6)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32vec2), spatial_resolve_offsets)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -226,7 +220,6 @@ struct TracedRtr {
             .source = daxa::ShaderFile{"kajiya/rtr/temporal_filter.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::input_tex, this->resolved_tex}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::history_tex, this->history_tex}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -257,7 +250,6 @@ struct TracedRtr {
             .source = daxa::ShaderFile{"kajiya/rtr/spatial_cleanup.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::spatial_resolve_offsets, spatial_resolve_offsets}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::input_tex, this->temporal_output_tex}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -434,7 +426,6 @@ struct RtrRenderer {
             .source = daxa::ShaderFile{"kajiya/rtr/trace_reflection.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RtrTraceCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::ranking_tile_buf, ranking_tile_buf}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::scambling_tile_buf, scambling_tile_buf}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::sobol_buf, sobol_buf}},
@@ -545,7 +536,6 @@ struct RtrRenderer {
                 .source = daxa::ShaderFile{"kajiya/rtr/reflection_validate.comp.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtrValidateCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     VOXELS_BUFFER_USES_ASSIGN(RtrValidateCompute, voxel_buffers),
                     IRCACHE_BUFFER_USES_ASSIGN(RtrValidateCompute, ircache),
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
@@ -576,7 +566,6 @@ struct RtrRenderer {
                 .source = daxa::ShaderFile{"kajiya/rtr/rtr_restir_temporal.comp.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::half_view_normal_tex, half_view_normal_tex}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -657,7 +646,6 @@ struct RtrRenderer {
             .source = daxa::ShaderFile{"kajiya/rtr/resolve.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::hit0_tex, refl0_tex}},

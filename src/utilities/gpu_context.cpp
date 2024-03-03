@@ -1,7 +1,6 @@
 #include "gpu_context.hpp"
 
 #include <application/input.inl>
-#include <application/globals.inl>
 #include <application/settings.inl>
 
 #include <minizip/unzip.h>
@@ -87,10 +86,6 @@ GpuContext::GpuContext() {
         .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
         .name = "staging_output_buffer",
     });
-    globals_buffer = device.create_buffer({
-        .size = sizeof(GpuGlobals),
-        .name = "globals_buffer",
-    });
     sampler_nnc = device.create_sampler({
         .magnification_filter = daxa::Filter::NEAREST,
         .minification_filter = daxa::Filter::NEAREST,
@@ -128,7 +123,6 @@ GpuContext::GpuContext() {
     task_input_buffer.set_buffers({.buffers = std::array{input_buffer}});
     task_output_buffer.set_buffers({.buffers = std::array{output_buffer}});
     task_staging_output_buffer.set_buffers({.buffers = std::array{staging_output_buffer}});
-    task_globals_buffer.set_buffers({.buffers = std::array{globals_buffer}});
 
     task_value_noise_image.set_images({.images = std::array{value_noise_image}});
     task_blue_noise_vec2_image.set_images({.images = std::array{blue_noise_vec2_image}});
@@ -393,7 +387,6 @@ GpuContext::~GpuContext() {
     device.destroy_buffer(input_buffer);
     device.destroy_buffer(output_buffer);
     device.destroy_buffer(staging_output_buffer);
-    device.destroy_buffer(globals_buffer);
     device.destroy_sampler(sampler_nnc);
     device.destroy_sampler(sampler_lnc);
     device.destroy_sampler(sampler_llc);
@@ -417,7 +410,6 @@ void GpuContext::use_resources(RecordContext &record_ctx) {
     record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_output_buffer);
     record_ctx.task_graph.use_persistent_buffer(task_staging_output_buffer);
-    record_ctx.task_graph.use_persistent_buffer(task_globals_buffer);
 
     record_ctx.gpu_context = this;
 }

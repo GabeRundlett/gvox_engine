@@ -62,7 +62,6 @@ void VoxelWorld::record_startup(RecordContext &record_ctx) {
         .source = daxa::ShaderFile{"voxels/impl/startup.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(VoxelWorldStartupCompute, buffers),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldStartupComputePush &push, NoTaskInfo const &) {
@@ -154,7 +153,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .views = std::array{
             daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
-            daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(VoxelWorldPerframeCompute, buffers),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldPerframeComputePush &push, NoTaskInfo const &) {
@@ -169,7 +167,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PerChunkCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::gvox_model, task_gvox_model_buffer}},
-            daxa::TaskViewVariant{std::pair{PerChunkCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
@@ -191,7 +188,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkEditCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::gvox_model, task_gvox_model_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -207,8 +203,8 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch_indirect({
-                .indirect_buffer = ti.get(ChunkEditCompute::globals).ids[0],
-                .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+                .indirect_buffer = ti.get(ChunkEditCompute::voxel_globals).ids[0],
+                .offset = offsetof(VoxelWorldGlobals, indirect_dispatch) + offsetof(VoxelWorldGpuIndirectDispatch, chunk_edit_dispatch),
             });
         },
     });
@@ -217,7 +213,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gvox_model, task_gvox_model_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -231,8 +226,8 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch_indirect({
-                .indirect_buffer = ti.get(ChunkEditPostProcessCompute::globals).ids[0],
-                .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+                .indirect_buffer = ti.get(ChunkEditPostProcessCompute::voxel_globals).ids[0],
+                .offset = offsetof(VoxelWorldGlobals, indirect_dispatch) + offsetof(VoxelWorldGpuIndirectDispatch, chunk_edit_dispatch),
             });
         },
     });
@@ -242,7 +237,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .extra_defines = {{"CHUNK_OPT_STAGE", "0"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -251,8 +245,8 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch_indirect({
-                .indirect_buffer = ti.get(ChunkOptCompute::globals).ids[0],
-                .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x2x4_dispatch),
+                .indirect_buffer = ti.get(ChunkOptCompute::voxel_globals).ids[0],
+                .offset = offsetof(VoxelWorldGlobals, indirect_dispatch) + offsetof(VoxelWorldGpuIndirectDispatch, subchunk_x2x4_dispatch),
             });
         },
     });
@@ -262,7 +256,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .extra_defines = {{"CHUNK_OPT_STAGE", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -271,8 +264,8 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch_indirect({
-                .indirect_buffer = ti.get(ChunkOptCompute::globals).ids[0],
-                .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, subchunk_x8up_dispatch),
+                .indirect_buffer = ti.get(ChunkOptCompute::voxel_globals).ids[0],
+                .offset = offsetof(VoxelWorldGlobals, indirect_dispatch) + offsetof(VoxelWorldGpuIndirectDispatch, subchunk_x8up_dispatch),
             });
         },
     });
@@ -281,7 +274,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkAllocCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -291,9 +283,9 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch_indirect({
-                .indirect_buffer = ti.get(ChunkAllocCompute::globals).ids[0],
+                .indirect_buffer = ti.get(ChunkAllocCompute::voxel_globals).ids[0],
                 // NOTE: This should always have the same value as the chunk edit dispatch, so we're re-using it here
-                .offset = offsetof(GpuGlobals, indirect_dispatch) + offsetof(GpuIndirectDispatch, chunk_edit_dispatch),
+                .offset = offsetof(VoxelWorldGlobals, indirect_dispatch) + offsetof(VoxelWorldGpuIndirectDispatch, chunk_edit_dispatch),
             });
         },
     });

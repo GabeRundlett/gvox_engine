@@ -5,7 +5,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(DownscaleComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex src_image_id = push.uses.src_image_id;
 daxa_ImageViewIndex dst_image_id = push.uses.dst_image_id;
 

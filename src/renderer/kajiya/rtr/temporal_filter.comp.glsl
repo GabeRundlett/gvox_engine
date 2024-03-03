@@ -27,7 +27,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtrTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex input_tex = push.uses.input_tex;
 daxa_ImageViewIndex history_tex = push.uses.history_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;

@@ -2,7 +2,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(VoxelWorldStartupComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <voxels/voxels.glsl>

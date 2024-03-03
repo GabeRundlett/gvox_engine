@@ -20,7 +20,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiRestirSpatialComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex reservoir_input_tex = push.uses.reservoir_input_tex;
 daxa_ImageViewIndex bounced_radiance_input_tex = push.uses.bounced_radiance_input_tex;
 daxa_ImageViewIndex half_view_normal_tex = push.uses.half_view_normal_tex;
@@ -258,7 +257,7 @@ void main() {
                 with_color_bounce(raymarch, reprojected_gi_tex);
             }
 
-            march(gpu_input, globals, raymarch, visibility, sample_radiance);
+            march(gpu_input, raymarch, visibility, sample_radiance);
         }
 
         const vec3 sample_hit_normal_ws = spx_packed.hit_normal_ws;

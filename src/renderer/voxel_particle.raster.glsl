@@ -4,7 +4,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(VoxelParticleRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_BufferPtr(uint) rendered_voxel_particles = push.uses.rendered_voxel_particles;
 daxa_ImageViewIndex render_image = push.uses.render_image;
@@ -66,7 +65,7 @@ void main() {
     uint simulated_particle_index = deref(advance(rendered_voxel_particles, particle_index));
     SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
 
-    vec3 particle_worldspace_origin = get_particle_worldspace_origin(globals, particle.pos);
+    vec3 particle_worldspace_origin = get_particle_worldspace_origin(particle.pos);
     vec3 cube_voxel_vertex = (positions[gl_VertexIndex - particle_index * 36] * (1023.0 / 1024.0) + (1.0 / 2048.0)) * VOXEL_SIZE;
     vec3 vert_pos = cube_voxel_vertex + particle_worldspace_origin;
 

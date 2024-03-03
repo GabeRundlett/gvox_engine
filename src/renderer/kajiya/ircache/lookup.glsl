@@ -19,7 +19,7 @@ IrcacheLookup ircache_lookup(vec3 pt_ws, vec3 normal_ws, vec3 jitter) {
     IrcacheLookup result;
     result.count = 0;
 
-    const IrcacheCoord rcoord = ws_pos_to_ircache_coord(globals, gpu_input, pt_ws, normal_ws, jitter);
+    const IrcacheCoord rcoord = ws_pos_to_ircache_coord(gpu_input, pt_ws, normal_ws, jitter);
     const uint cell_idx = cell_idx(rcoord);
 
     const IrcacheCell cell = deref(advance(ircache_grid_meta_buf, cell_idx));
@@ -82,7 +82,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
     if (!IRCACHE_FREEZE) {
         const vec3 eye_pos = get_eye_position(gpu_input) + deref(gpu_input).player.player_unit_offset;
 
-        const IrcacheCoord rcoord = ws_pos_to_ircache_coord(globals, gpu_input, self.pt_ws, self.normal_ws, jitter);
+        const IrcacheCoord rcoord = ws_pos_to_ircache_coord(gpu_input, self.pt_ws, self.normal_ws, jitter);
 
         const ivec3 scroll_offset = deref(gpu_input).ircache_cascades[rcoord.cascade].voxels_scrolled_this_frame.xyz;
         const bvec3 was_just_scrolled_in =
@@ -139,7 +139,7 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
 
     IrcacheLookup lookup = ircache_lookup(self.pt_ws, self.normal_ws, jitter);
 
-    const uint cascade = ws_pos_to_ircache_coord(globals, gpu_input, self.pt_ws, self.normal_ws, jitter).cascade;
+    const uint cascade = ws_pos_to_ircache_coord(gpu_input, self.pt_ws, self.normal_ws, jitter).cascade;
     const float cell_diameter = ircache_grid_cell_diameter_in_cascade(cascade);
 
     vec3 to_eye = normalize(get_eye_position(gpu_input) + deref(gpu_input).player.player_unit_offset - self.pt_ws.xyz);

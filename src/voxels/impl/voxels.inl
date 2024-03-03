@@ -56,7 +56,23 @@ struct VoxelChunkUpdateInfo {
     BrushInput brush_input;
 };
 
+struct VoxelWorldGpuIndirectDispatch {
+    daxa_u32vec3 chunk_edit_dispatch;
+    daxa_u32vec3 subchunk_x2x4_dispatch;
+    daxa_u32vec3 subchunk_x8up_dispatch;
+};
+
+struct BrushState {
+    daxa_u32 initial_frame;
+    daxa_f32vec3 initial_ray;
+    daxa_u32 is_editing;
+};
+
 struct VoxelWorldGlobals {
+    BrushInput brush_input;
+    BrushState brush_state;
+    VoxelWorldGpuIndirectDispatch indirect_dispatch;
+
     VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
     daxa_u32 chunk_update_n; // Number of chunks to update
     daxa_i32vec3 prev_offset;

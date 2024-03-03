@@ -381,7 +381,7 @@ void brushgen_b(in out Voxel voxel) {
 }
 
 void brushgen_particles(in out Voxel voxel) {
-    // for (uint particle_i = 0; particle_i < deref(globals).voxel_particles_state.place_count; ++particle_i) {
+    // for (uint particle_i = 0; particle_i < deref(particles_state).place_count; ++particle_i) {
     //     uint sim_index = deref(advance(placed_voxel_particles, particle_i));
     //     SimulatedVoxelParticle self = deref(advance(simulated_voxel_particles, sim_index));
     //     if (uvec3(floor(self.pos * VOXEL_SCL)) == voxel_i) {

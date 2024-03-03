@@ -2,7 +2,6 @@
 
 #include <core.inl>
 #include <application/input.inl>
-#include <application/globals.inl>
 #include <renderer/core.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster, 3)

@@ -3,12 +3,11 @@
 DAXA_DECL_PUSH_CONSTANT(VoxelWorldPerframeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
-#include <voxels/voxel_particle.glsl>
+// #include <voxels/voxel_particle.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -24,9 +23,9 @@ void main() {
     deref(ptrs.globals).prev_offset = deref(ptrs.globals).offset;
     deref(ptrs.globals).offset = deref(gpu_input).player.player_unit_offset;
 
-    deref(globals).indirect_dispatch.chunk_edit_dispatch = uvec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
-    deref(globals).indirect_dispatch.subchunk_x2x4_dispatch = uvec3(1, 64, 0);
-    deref(globals).indirect_dispatch.subchunk_x8up_dispatch = uvec3(1, 1, 0);
+    deref(ptrs.globals).indirect_dispatch.chunk_edit_dispatch = uvec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
+    deref(ptrs.globals).indirect_dispatch.subchunk_x2x4_dispatch = uvec3(1, 64, 0);
+    deref(ptrs.globals).indirect_dispatch.subchunk_x8up_dispatch = uvec3(1, 1, 0);
 
     VoxelMallocPageAllocator_perframe(ptrs.allocator);
     // VoxelLeafChunkAllocator_perframe(ptrs.voxel_leaf_chunk_allocator);
@@ -49,23 +48,23 @@ void main() {
     vec3 ray_pos = cam_pos;
     voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    if (deref(globals).brush_state.is_editing == 0) {
-        deref(globals).brush_state.initial_ray = ray_pos - cam_pos;
+    if (deref(ptrs.globals).brush_state.is_editing == 0) {
+        deref(ptrs.globals).brush_state.initial_ray = ray_pos - cam_pos;
     }
 
-    deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-    deref(globals).brush_input.prev_pos_offset = deref(globals).brush_input.pos_offset;
-    deref(globals).brush_input.pos = length(deref(globals).brush_state.initial_ray) * ray_dir + cam_pos;
-    deref(globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
+    deref(ptrs.globals).brush_input.prev_pos = deref(ptrs.globals).brush_input.pos;
+    deref(ptrs.globals).brush_input.prev_pos_offset = deref(ptrs.globals).brush_input.pos_offset;
+    deref(ptrs.globals).brush_input.pos = length(deref(ptrs.globals).brush_state.initial_ray) * ray_dir + cam_pos;
+    deref(ptrs.globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
 
     if (deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
-        deref(globals).brush_state.is_editing = 1;
+        deref(ptrs.globals).brush_state.is_editing = 1;
     } else if (deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
-        if (deref(globals).brush_state.is_editing == 0) {
-            deref(globals).brush_state.initial_frame = deref(gpu_input).frame_index;
+        if (deref(ptrs.globals).brush_state.is_editing == 0) {
+            deref(ptrs.globals).brush_state.initial_frame = deref(gpu_input).frame_index;
         }
-        deref(globals).brush_state.is_editing = 1;
+        deref(ptrs.globals).brush_state.is_editing = 1;
     } else {
-        deref(globals).brush_state.is_editing = 0;
+        deref(ptrs.globals).brush_state.is_editing = 0;
     }
 }

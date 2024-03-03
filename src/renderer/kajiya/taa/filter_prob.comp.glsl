@@ -5,7 +5,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TaaProbFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex input_prob_img = push.uses.input_prob_img;
 daxa_ImageViewIndex prob_filtered1_img = push.uses.prob_filtered1_img;
 

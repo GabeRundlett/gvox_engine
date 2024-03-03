@@ -8,7 +8,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TaaReprojectComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex history_tex = push.uses.history_tex;
 daxa_ImageViewIndex reprojection_map = push.uses.reprojection_map;
 daxa_ImageViewIndex depth_image = push.uses.depth_image;

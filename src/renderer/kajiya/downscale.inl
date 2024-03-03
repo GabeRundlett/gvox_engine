@@ -2,11 +2,9 @@
 
 #include <core.inl>
 #include <application/input.inl>
-#include <application/globals.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
@@ -30,7 +28,6 @@ inline auto extract_downscaled_depth(RecordContext &record_ctx, daxa::TaskImageV
         .extra_defines = {{"DOWNSCALE_DEPTH", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DownscaleCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::src_image_id, depth}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::dst_image_id, output_tex}},
         },
@@ -59,7 +56,6 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(RecordContext &record_c
         .extra_defines = {{"DOWNSCALE_NRM", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DownscaleCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::src_image_id, gbuffer}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::dst_image_id, output_tex}},
         },
@@ -88,7 +84,6 @@ inline auto extract_downscaled_ssao(RecordContext &record_ctx, daxa::TaskImageVi
         .extra_defines = {{"DOWNSCALE_SSAO", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{DownscaleCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DownscaleCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::src_image_id, ssao_tex}},
             daxa::TaskViewVariant{std::pair{DownscaleCompute::dst_image_id, output_tex}},
         },
