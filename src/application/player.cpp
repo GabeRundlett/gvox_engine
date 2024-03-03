@@ -8,7 +8,9 @@
 #include <renderer/kajiya/inc/math_const.glsl>
 #include <utilities/debug.hpp>
 
+using mat4 = daxa_f32mat4x4;
 using vec4 = daxa_f32vec4;
+using vec3 = daxa_f32vec3;
 using vec2 = daxa_f32vec2;
 using ivec3 = daxa_i32vec3;
 

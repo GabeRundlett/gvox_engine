@@ -97,15 +97,15 @@ struct BrushSettings {
 
 #define FRAMES_IN_FLIGHT 1
 
-#define CPU_VOXEL_GEN 0
+#define CPU_VOXEL_GEN 1
 
 #define LOG2_VOXEL_SIZE (-4)
 #if LOG2_VOXEL_SIZE <= 0
 #define VOXEL_SCL (1 << (-LOG2_VOXEL_SIZE))
-#define VOXEL_SIZE (1.0 / VOXEL_SCL)
+#define VOXEL_SIZE (1.0f / VOXEL_SCL)
 #else
 #define VOXEL_SIZE (1 << LOG2_VOXEL_SIZE)
-#define VOXEL_SCL (1.0 / VOXEL_SIZE)
+#define VOXEL_SCL (1.0f / VOXEL_SIZE)
 #endif
 #define CHUNK_WORLDSPACE_SIZE (float(CHUNK_SIZE) * float(VOXEL_SIZE))
 

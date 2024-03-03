@@ -5,8 +5,6 @@
 #include <voxels/gvox_model.glsl>
 #include <voxels/pack_unpack.glsl>
 
-#define INVALID_CHUNK_I ivec3(0x80000000)
-
 #define UNIFORMITY_LOD_INDEX_IMPL(N)                                   \
     uint uniformity_lod_index_##N(uvec3 index_within_lod) {            \
         return index_within_lod.x + index_within_lod.y * uint(64 / N); \

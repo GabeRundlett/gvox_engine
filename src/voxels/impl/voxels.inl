@@ -5,6 +5,7 @@
 #include <voxels/brushes.inl>
 
 #define VOXELS_ORIGINAL_IMPL
+#define INVALID_CHUNK_I ivec3(0x80000000)
 
 // 1364 daxa_u32's
 // 10.65625 bytes per 8x8x8

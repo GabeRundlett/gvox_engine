@@ -12,10 +12,7 @@ struct PlayerInput {
     uint32_t actions[GAME_ACTION_LAST + 1];
 };
 
-using mat4 = daxa_f32mat4x4;
-using vec3 = daxa_f32vec3;
-
-void apply_friction(PlayerInput &INPUT, vec3 &vel, vec3 &friction_vec, float friction_coeff);
+void apply_friction(PlayerInput &INPUT, daxa_f32vec3 &vel, daxa_f32vec3 &friction_vec, float friction_coeff);
 void player_fix_chunk_offset(Player &PLAYER);
 void player_startup(Player &PLAYER);
 void player_perframe(PlayerInput &INPUT, Player &PLAYER);

@@ -88,9 +88,6 @@ struct ChunkAllocComputePush {
 
 #if CPU_VOXEL_GEN
 #include <glm/glm.hpp>
-
-using glm::ivec3;
-using glm::uvec3;
 #endif
 
 struct VoxelWorld {
@@ -103,13 +100,19 @@ struct VoxelWorld {
     std::vector<TempVoxelChunk> temp_voxel_chunks;
     std::vector<VoxelLeafChunk> voxel_chunks;
     VoxelWorldGlobals voxel_globals;
+
+    Voxel get_temp_voxel(glm::ivec3 world_voxel, glm::ivec3 offset_i);
+    bool has_air_neighbor(glm::ivec3 world_voxel);
+    glm::vec3 generate_normal_from_geometry(glm::ivec3 world_voxel);
+
     void startup();
     void per_frame();
-    void per_chunk(uvec3 gl_GlobalInvocationID);
-    void edit();
-    void edit_post_process();
-    void opt();
-    void alloc();
+    void per_chunk(glm::uvec3 gl_GlobalInvocationID);
+    void edit(glm::uvec3 gl_GlobalInvocationID);
+    void edit_post_process(glm::uvec3 gl_GlobalInvocationID);
+    void opt_x2x4(glm::uvec3 gl_GlobalInvocationID);
+    void opt_x8up(glm::uvec3 gl_WorkGroupID, glm::uvec3 gl_GlobalInvocationID);
+    void alloc(glm::uvec3 gl_GlobalInvocationID);
 #endif
 
     void record_startup(RecordContext &record_ctx);
