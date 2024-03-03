@@ -18,7 +18,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtrTraceComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(int) ranking_tile_buf = push.uses.ranking_tile_buf;
 daxa_BufferPtr(int) scambling_tile_buf = push.uses.scambling_tile_buf;
 daxa_BufferPtr(int) sobol_buf = push.uses.sobol_buf;

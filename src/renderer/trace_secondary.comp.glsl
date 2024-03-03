@@ -10,7 +10,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TraceSecondaryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex shadow_mask = push.uses.shadow_mask;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;

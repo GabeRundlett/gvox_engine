@@ -3,9 +3,8 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(TraceSecondaryCompute, 6 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceSecondaryCompute, 5 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, shadow_mask)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
@@ -36,7 +35,6 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
             .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::shadow_mask, shadow_mask}},
                 VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},

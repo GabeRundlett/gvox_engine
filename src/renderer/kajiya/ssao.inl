@@ -3,9 +3,8 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_RWBufferPtr(GpuGlobals), globals)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, ssao_image_id)
@@ -93,7 +92,6 @@ struct SsaoRenderer {
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SsaoCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SsaoCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::vs_normal_image_id, scaled_view_normal_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::ssao_image_id, ssao_image0}},

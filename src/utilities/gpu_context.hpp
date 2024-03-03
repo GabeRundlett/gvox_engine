@@ -32,7 +32,6 @@ struct GpuContext {
     daxa::BufferId input_buffer;
     daxa::BufferId output_buffer;
     daxa::BufferId staging_output_buffer;
-    daxa::BufferId globals_buffer;
 
     daxa::SamplerId sampler_nnc;
     daxa::SamplerId sampler_lnc;
@@ -48,7 +47,6 @@ struct GpuContext {
     daxa::TaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
     daxa::TaskBuffer task_output_buffer{{.name = "task_output_buffer"}};
     daxa::TaskBuffer task_staging_output_buffer{{.name = "task_staging_output_buffer"}};
-    daxa::TaskBuffer task_globals_buffer{{.name = "task_globals_buffer"}};
 
     std::shared_ptr<AsyncPipelineManager> pipeline_manager;
     TemporalBuffers temporal_buffers;

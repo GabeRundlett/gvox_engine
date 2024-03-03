@@ -3,7 +3,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(LightGbufferComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
 daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;

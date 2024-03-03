@@ -10,7 +10,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(SsaoComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
 daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 daxa_ImageViewIndex ssao_image_id = push.uses.ssao_image_id;

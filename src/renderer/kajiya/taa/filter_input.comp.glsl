@@ -9,7 +9,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TaaFilterInputComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex input_image = push.uses.input_image;
 daxa_ImageViewIndex depth_image = push.uses.depth_image;
 daxa_ImageViewIndex filtered_input_img = push.uses.filtered_input_img;

@@ -5,7 +5,6 @@
 DAXA_DECL_PUSH_CONSTANT(PerChunkComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_RWBufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
@@ -111,7 +110,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
@@ -213,7 +211,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkEditPostProcessComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
@@ -432,7 +429,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkOptComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
 daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
@@ -773,7 +769,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkAllocComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
 daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;

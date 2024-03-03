@@ -5,7 +5,6 @@
 #include <renderer/kajiya/ircache.inl>
 
 DAXA_DECL_PUSH_CONSTANT(IrcacheTraceAccessComputePush, push)
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
 daxa_BufferPtr(uint) ircache_life_buf = push.uses.ircache_life_buf;

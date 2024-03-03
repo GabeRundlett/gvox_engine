@@ -21,7 +21,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(RtrRestirResolveComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex gbuffer_tex = push.uses.gbuffer_tex;
 daxa_ImageViewIndex depth_tex = push.uses.depth_tex;
 daxa_ImageViewIndex hit0_tex = push.uses.hit0_tex;

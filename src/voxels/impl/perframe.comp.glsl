@@ -3,12 +3,11 @@
 DAXA_DECL_PUSH_CONSTANT(VoxelWorldPerframeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
-#include <voxels/voxel_particle.glsl>
+// #include <voxels/voxel_particle.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {

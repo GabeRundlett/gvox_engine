@@ -169,7 +169,6 @@ void VoxelWorld::record_startup(RecordContext &record_ctx) {
         .source = daxa::ShaderFile{"voxels/impl/startup.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{VoxelWorldStartupCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(VoxelWorldStartupCompute, buffers),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldStartupComputePush &push, NoTaskInfo const &) {
@@ -268,7 +267,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .views = std::array{
             daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
-            daxa::TaskViewVariant{std::pair{VoxelWorldPerframeCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(VoxelWorldPerframeCompute, buffers),
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelWorldPerframeComputePush &push, NoTaskInfo const &) {
@@ -283,7 +281,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PerChunkCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::gvox_model, task_gvox_model_buffer}},
-            daxa::TaskViewVariant{std::pair{PerChunkCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
             daxa::TaskViewVariant{std::pair{PerChunkCompute::value_noise_texture, task_value_noise_image.view({.layer_count = 256})}},
@@ -305,7 +302,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkEditCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::gvox_model, task_gvox_model_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkEditCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -329,7 +325,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::gvox_model, task_gvox_model_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkEditPostProcessCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -352,7 +347,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .extra_defines = {{"CHUNK_OPT_STAGE", "0"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -372,7 +366,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .extra_defines = {{"CHUNK_OPT_STAGE", "1"}},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkOptCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkOptCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},
@@ -391,7 +384,6 @@ void VoxelWorld::record_frame(RecordContext &record_ctx, daxa::TaskBufferView ta
         .source = daxa::ShaderFile{"voxels/impl/voxel_world.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{ChunkAllocCompute::globals, record_ctx.gpu_context->task_globals_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_globals, buffers.voxel_globals.task_resource}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::temp_voxel_chunks, task_temp_voxel_chunks_buffer}},
             daxa::TaskViewVariant{std::pair{ChunkAllocCompute::voxel_chunks, buffers.voxel_chunks.task_resource}},

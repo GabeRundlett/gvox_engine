@@ -36,7 +36,7 @@ uint ws_local_pos_to_cascade_idx(vec3 local_pos, uint reserved_cells) {
     return uint(clamp(ceil(max(0.0, cascade_float)), 0, IRCACHE_CASCADE_COUNT - 1));
 }
 
-IrcacheCoord ws_pos_to_ircache_coord(daxa_RWBufferPtr(GpuGlobals) globals, daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, vec3 normal, vec3 jitter) {
+IrcacheCoord ws_pos_to_ircache_coord(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, vec3 normal, vec3 jitter) {
     vec3 center = deref(gpu_input).ircache_grid_center.xyz;
     pos += deref(gpu_input).player.player_unit_offset;
 

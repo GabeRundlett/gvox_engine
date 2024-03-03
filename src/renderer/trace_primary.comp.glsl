@@ -7,7 +7,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(TraceDepthPrepassComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 
@@ -43,7 +42,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(TracePrimaryComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_ImageViewIndex blue_noise_vec2 = push.uses.blue_noise_vec2;
 daxa_ImageViewIndex debug_texture = push.uses.debug_texture;
@@ -162,7 +160,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
@@ -196,9 +193,9 @@ void main() {
         uint simulated_particle_index = uint(particle_id) - 1;
         SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
         float dt = min(deref(gpu_input).delta_time, 0.01);
-        vec3 pos = get_particle_worldspace_origin(globals, particle.pos);
+        vec3 pos = get_particle_worldspace_origin(particle.pos);
         vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
-        vec3 prev_pos = get_particle_worldspace_origin(globals, particle.pos - particle.vel * dt + extra_vel);
+        vec3 prev_pos = get_particle_worldspace_origin(particle.pos - particle.vel * dt + extra_vel);
         vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
         vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
         vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);

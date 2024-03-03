@@ -41,7 +41,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ShadowTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
 daxa_ImageViewIndex bitpacked_shadow_mask_tex = push.uses.bitpacked_shadow_mask_tex;
 daxa_ImageViewIndex prev_moments_tex = push.uses.prev_moments_tex;
@@ -231,7 +230,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ShadowSpatialFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGlobals) globals = push.uses.globals;
 daxa_ImageViewIndex input_tex = push.uses.input_tex;
 daxa_ImageViewIndex meta_tex = push.uses.meta_tex;
 daxa_ImageViewIndex geometric_normal_tex = push.uses.geometric_normal_tex;

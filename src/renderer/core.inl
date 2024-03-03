@@ -1,7 +1,6 @@
 #pragma once
 
 #include <application/input.inl>
-#include <application/globals.inl>
 
 #if defined(__cplusplus)
 

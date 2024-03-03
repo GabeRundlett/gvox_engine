@@ -2,7 +2,6 @@
 
 DAXA_DECL_PUSH_CONSTANT(IrcacheValidateComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_RWBufferPtr(GpuGlobals) globals = push.uses.globals;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_BufferPtr(VertexPacked) ircache_spatial_buf = push.uses.ircache_spatial_buf;
 daxa_ImageViewIndex sky_cube_tex = push.uses.sky_cube_tex;
