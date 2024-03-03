@@ -1,6 +1,6 @@
 #pragma once
 
-#include <voxels/impl/voxel_malloc.inl>
+#include "voxel_malloc.inl"
 #include <voxels/gvox_model.inl>
 #include <voxels/brushes.inl>
 
@@ -22,13 +22,6 @@ struct PaletteHeader {
     VoxelMalloc_Pointer blob_ptr;
 };
 
-struct VoxelParentChunk {
-    daxa_u32 is_uniform;
-    daxa_u32 children[512];
-    daxa_u32 is_ptr[16];
-};
-DAXA_DECL_BUFFER_PTR(VoxelParentChunk)
-
 struct VoxelLeafChunk {
     daxa_u32 flags;
     daxa_u32 update_index;
@@ -39,9 +32,6 @@ struct VoxelLeafChunk {
     PaletteHeader palette_headers[PALETTES_PER_CHUNK];
 };
 DAXA_DECL_BUFFER_PTR(VoxelLeafChunk)
-
-// DECL_SIMPLE_ALLOCATOR(VoxelLeafChunkAllocator, VoxelLeafChunk, 1, daxa_u32, (MAX_CHUNK_WORK_ITEMS_L2))
-// DECL_SIMPLE_ALLOCATOR(VoxelParentChunkAllocator, VoxelParentChunk, 1, daxa_u32, (MAX_CHUNK_WORK_ITEMS_L0 + MAX_CHUNK_WORK_ITEMS_L1))
 
 struct TempVoxelChunk {
     PackedVoxel voxels[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
@@ -56,7 +46,23 @@ struct VoxelChunkUpdateInfo {
     BrushInput brush_input;
 };
 
+struct GpuIndirectDispatch {
+    daxa_u32vec3 chunk_edit_dispatch;
+    daxa_u32vec3 subchunk_x2x4_dispatch;
+    daxa_u32vec3 subchunk_x8up_dispatch;
+};
+
+struct BrushState {
+    daxa_u32 initial_frame;
+    daxa_f32vec3 initial_ray;
+    daxa_u32 is_editing;
+};
+
 struct VoxelWorldGlobals {
+    BrushInput brush_input;
+    BrushState brush_state;
+    GpuIndirectDispatch indirect_dispatch;
+
     VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
     daxa_u32 chunk_update_n; // Number of chunks to update
     daxa_i32vec3 prev_offset;
@@ -85,8 +91,6 @@ DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
 
 struct VoxelWorldOutput {
     VoxelMallocPageAllocatorGpuOutput voxel_malloc_output;
-    // VoxelLeafChunkAllocatorGpuOutput voxel_leaf_chunk_output;
-    // VoxelParentChunkAllocatorGpuOutput voxel_parent_chunk_output;
 };
 
 struct VoxelBufferPtrs {
@@ -111,8 +115,6 @@ struct VoxelWorldBuffers {
     TemporalBuffer voxel_globals;
     TemporalBuffer voxel_chunks;
     AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
-    // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
-    // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
 };
 
 #endif

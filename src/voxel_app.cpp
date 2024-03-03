@@ -581,8 +581,10 @@ void VoxelApp::calc_vram_usage(daxa::TaskGraph &task_graph) {
 #if defined(VOXELS_ORIGINAL_IMPL)
     buffer_size(voxel_world.buffers.voxel_malloc.allocator_buffer);
     buffer_size(voxel_world.buffers.voxel_malloc.element_buffer);
+#if !CPU_VOXEL_GEN
     buffer_size(voxel_world.buffers.voxel_malloc.available_element_stack_buffer);
     buffer_size(voxel_world.buffers.voxel_malloc.released_element_stack_buffer);
+#endif
 #endif
 
     {

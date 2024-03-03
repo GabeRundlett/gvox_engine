@@ -24,20 +24,14 @@ void main() {
     deref(ptrs.globals).prev_offset = deref(ptrs.globals).offset;
     deref(ptrs.globals).offset = deref(gpu_input).player.player_unit_offset;
 
-    deref(globals).indirect_dispatch.chunk_edit_dispatch = uvec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
-    deref(globals).indirect_dispatch.subchunk_x2x4_dispatch = uvec3(1, 64, 0);
-    deref(globals).indirect_dispatch.subchunk_x8up_dispatch = uvec3(1, 1, 0);
+    deref(ptrs.globals).indirect_dispatch.chunk_edit_dispatch = uvec3(CHUNK_SIZE / 8, CHUNK_SIZE / 8, 0);
+    deref(ptrs.globals).indirect_dispatch.subchunk_x2x4_dispatch = uvec3(1, 64, 0);
+    deref(ptrs.globals).indirect_dispatch.subchunk_x8up_dispatch = uvec3(1, 1, 0);
 
     VoxelMallocPageAllocator_perframe(ptrs.allocator);
-    // VoxelLeafChunkAllocator_perframe(ptrs.voxel_leaf_chunk_allocator);
-    // VoxelParentChunkAllocator_perframe(ptrs.voxel_parent_chunk_allocator);
 
     deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_malloc_output.current_element_count =
         VoxelMallocPageAllocator_get_consumed_element_count(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(ptrs.allocator)));
-    // deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_leaf_chunk_output.current_element_count =
-    //     VoxelLeafChunkAllocator_get_consumed_element_count(voxel_leaf_chunk_allocator);
-    // deref(advance(gpu_output, deref(gpu_input).fif_index)).voxel_world.voxel_parent_chunk_output.current_element_count =
-    //     VoxelParentChunkAllocator_get_consumed_element_count(voxel_parent_chunk_allocator);
 
     // Brush stuff
     vec2 frame_dim = deref(gpu_input).frame_dim;
@@ -49,23 +43,23 @@ void main() {
     vec3 ray_pos = cam_pos;
     voxel_trace(VoxelTraceInfo(VOXELS_BUFFER_PTRS, ray_dir, MAX_STEPS, MAX_DIST, 0.0, true), ray_pos);
 
-    if (deref(globals).brush_state.is_editing == 0) {
-        deref(globals).brush_state.initial_ray = ray_pos - cam_pos;
+    if (deref(ptrs.globals).brush_state.is_editing == 0) {
+        deref(ptrs.globals).brush_state.initial_ray = ray_pos - cam_pos;
     }
 
-    deref(globals).brush_input.prev_pos = deref(globals).brush_input.pos;
-    deref(globals).brush_input.prev_pos_offset = deref(globals).brush_input.pos_offset;
-    deref(globals).brush_input.pos = length(deref(globals).brush_state.initial_ray) * ray_dir + cam_pos;
-    deref(globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
+    deref(ptrs.globals).brush_input.prev_pos = deref(ptrs.globals).brush_input.pos;
+    deref(ptrs.globals).brush_input.prev_pos_offset = deref(ptrs.globals).brush_input.pos_offset;
+    deref(ptrs.globals).brush_input.pos = length(deref(ptrs.globals).brush_state.initial_ray) * ray_dir + cam_pos;
+    deref(ptrs.globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
 
     if (deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
-        deref(globals).brush_state.is_editing = 1;
+        deref(ptrs.globals).brush_state.is_editing = 1;
     } else if (deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
-        if (deref(globals).brush_state.is_editing == 0) {
-            deref(globals).brush_state.initial_frame = deref(gpu_input).frame_index;
+        if (deref(ptrs.globals).brush_state.is_editing == 0) {
+            deref(ptrs.globals).brush_state.initial_frame = deref(gpu_input).frame_index;
         }
-        deref(globals).brush_state.is_editing = 1;
+        deref(ptrs.globals).brush_state.is_editing = 1;
     } else {
-        deref(globals).brush_state.is_editing = 0;
+        deref(ptrs.globals).brush_state.is_editing = 0;
     }
 }

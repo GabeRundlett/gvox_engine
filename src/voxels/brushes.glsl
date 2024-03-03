@@ -137,7 +137,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
             float r = good_rand(-val);
             if (val > -0.005 && upwards > 0.65) {
                 float r2 = good_rand(voxel_pos.xy);
-                voxel.color = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
+                voxel.color = pow(vec3(85, 136, 62) / 255.0, vec3(2.2));
                 if (r2 < 0.5) {
                     voxel.material_type = 0;
                 }

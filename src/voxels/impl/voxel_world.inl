@@ -94,21 +94,32 @@ struct ChunkAllocComputePush {
 
 #if defined(__cplusplus)
 
+#if CPU_VOXEL_GEN
+#include <glm/glm.hpp>
+
+using glm::ivec3;
+using glm::uvec3;
+#endif
+
 struct VoxelWorld {
     VoxelWorldBuffers buffers;
     daxa_u32 debug_page_count{};
     daxa_u32 debug_gpu_heap_usage{};
     bool gpu_malloc_initialized = false;
 
-    // virtual void add_ui() override {
-    //     if (ImGui::TreeNode("Voxel World")) {
-    //         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-    //         ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
-    //         ImGui::TreePop();
-    //     }
-    // }
+#if CPU_VOXEL_GEN
+    std::vector<TempVoxelChunk> temp_voxel_chunks;
+    std::vector<VoxelLeafChunk> voxel_chunks;
+    VoxelWorldGlobals voxel_globals;
+    void startup();
+    void per_frame();
+    void per_chunk(uvec3 gl_GlobalInvocationID);
+    void edit();
+    void edit_post_process();
+    void opt();
+    void alloc();
+#endif
 
-    void init_gpu_malloc(GpuContext &gpu_context);
     void record_startup(RecordContext &record_ctx);
     void begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_output);
     void record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image);

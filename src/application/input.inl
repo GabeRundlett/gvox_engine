@@ -97,4 +97,4 @@ DAXA_DECL_BUFFER_PTR(GpuInput)
 struct GpuOutput {
     VoxelWorldOutput voxel_world;
 };
-DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)
+DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 4)

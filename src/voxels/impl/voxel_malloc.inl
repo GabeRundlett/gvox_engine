@@ -4,7 +4,7 @@
 #include <utilities/allocator.inl>
 
 #define CHUNK_SIZE 64 // A chunk = 64^3 voxels
-#define LOG2_CHUNKS_PER_LEVEL_PER_AXIS 5
+#define LOG2_CHUNKS_PER_LEVEL_PER_AXIS 3
 #define CHUNK_LOD_LEVELS 1
 #define LOG2_CHUNKS_DISPATCH_SIZE (LOG2_CHUNKS_PER_LEVEL_PER_AXIS - 3)
 #define TOTAL_CHUNKS_PER_LOD (1 << (LOG2_CHUNKS_PER_LEVEL_PER_AXIS * 3))

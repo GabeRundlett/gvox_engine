@@ -16,7 +16,7 @@ daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 #define VOXEL_WORLD deref(voxel_globals)
 #define PLAYER deref(gpu_input).player
 #define CHUNKS(i) deref(advance(voxel_chunks, i))
-#define INDIRECT deref(globals).indirect_dispatch
+#define INDIRECT deref(voxel_globals).indirect_dispatch
 
 void try_elect(in out VoxelChunkUpdateInfo work_item, in out uint update_index) {
     uint prev_update_n = atomicAdd(VOXEL_WORLD.chunk_update_n, 1);
@@ -83,9 +83,9 @@ void main() {
         // Leaf chunk position in world space
         ivec3 world_chunk = terrain_work_item.chunk_offset + wrapped_chunk_i - ivec3(chunk_n / 2);
 
-        terrain_work_item.brush_input = deref(globals).brush_input;
+        terrain_work_item.brush_input = VOXEL_WORLD.brush_input;
 
-        ivec3 brush_chunk = (ivec3(floor(deref(globals).brush_input.pos)) + deref(globals).brush_input.pos_offset) >> (6 + LOG2_VOXEL_SIZE);
+        ivec3 brush_chunk = (ivec3(floor(VOXEL_WORLD.brush_input.pos)) + VOXEL_WORLD.brush_input.pos_offset) >> (6 + LOG2_VOXEL_SIZE);
         bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
 
         if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {

@@ -4,7 +4,17 @@
 
 // The "simple" allocator declared here (as well as implemented both here and further
 // for the GLSL side in allocator.glsl) is just a simple free-list linear allocator.
-
+#if CPU_VOXEL_GEN
+#define DECL_SIMPLE_ALLOCATOR(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_) \
+    struct AllocatorType_ {                                                                                    \
+        daxa_RWBufferPtr(ElementType_) heap;                                                                   \
+    };                                                                                                         \
+    struct AllocatorType_##GpuOutput {                                                                         \
+        daxa_u32 current_element_count;                                                                        \
+    };                                                                                                         \
+    DAXA_DECL_BUFFER_PTR(AllocatorType_)                                                                       \
+    CPU_ONLY(DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_))
+#else
 #define DECL_SIMPLE_ALLOCATOR(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_) \
     struct AllocatorType_ {                                                                                    \
         daxa_RWBufferPtr(ElementType_) heap;                                                                   \
@@ -19,6 +29,7 @@
     };                                                                                                         \
     DAXA_DECL_BUFFER_PTR(AllocatorType_)                                                                       \
     CPU_ONLY(DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_))
+#endif
 
 #define DECL_SIMPLE_ALLOCATOR_CONSTANTS(AllocatorType_, ElementType_, ElementMultiplier_, IndexType_, MaxAllocPerFrame_)            \
     template <>                                                                                                                     \
@@ -38,6 +49,9 @@
     };
 
 #if defined(__cplusplus)
+
+#include <utility>
+
 template <typename T>
 struct AllocatorConstants {
     using AllocatorType = T;
@@ -58,12 +72,23 @@ template <typename T>
 struct AllocatorBufferState {
     daxa::Device device;
     daxa::BufferId allocator_buffer;
+    daxa::TaskBuffer task_allocator_buffer{{.name = AllocatorConstants<T>::task_allocator_buffer_name}};
     daxa::BufferId element_buffer;
+    daxa::TaskBuffer task_element_buffer{{.name = AllocatorConstants<T>::task_element_buffer_name}};
+#if CPU_VOXEL_GEN
+    using ElementType = typename AllocatorConstants<T>::ElementType;
+    using IndexType = typename AllocatorConstants<T>::IndexType;
+    std::vector<ElementType> elements{};
+    std::vector<IndexType> available_element_stack{};
+    std::vector<IndexType> released_element_stack{};
+    daxa_i32 element_count{};
+    daxa_i32 available_element_stack_size{};
+    daxa_i32 released_element_stack_size{};
+#else
+    daxa::TaskBuffer task_old_element_buffer{{.name = AllocatorConstants<T>::task_old_element_buffer_name}};
     daxa::BufferId available_element_stack_buffer;
     daxa::BufferId released_element_stack_buffer;
-    daxa::TaskBuffer task_allocator_buffer{{.name = AllocatorConstants<T>::task_allocator_buffer_name}};
-    daxa::TaskBuffer task_element_buffer{{.name = AllocatorConstants<T>::task_element_buffer_name}};
-    daxa::TaskBuffer task_old_element_buffer{{.name = AllocatorConstants<T>::task_old_element_buffer_name}};
+#endif
     daxa_u32 current_element_count = 0;
     daxa_u32 next_element_count = 0;
     daxa_u32 prev_element_count = 0;
@@ -80,6 +105,13 @@ struct AllocatorBufferState {
             .size = sizeof(typename AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
             .name = AllocatorConstants<T>::element_buffer_name,
         });
+        task_allocator_buffer.set_buffers({.buffers = std::array{allocator_buffer}});
+#if CPU_VOXEL_GEN
+        elements.resize(AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count);
+        available_element_stack.resize(current_element_count);
+        released_element_stack.resize(current_element_count);
+        task_element_buffer.set_buffers({.buffers = std::array{element_buffer}});
+#else
         available_element_stack_buffer = device.create_buffer({
             .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
             .name = AllocatorConstants<T>::available_element_stack_buffer_name,
@@ -88,7 +120,6 @@ struct AllocatorBufferState {
             .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
             .name = AllocatorConstants<T>::released_element_stack_buffer_name,
         });
-        task_allocator_buffer.set_buffers({.buffers = std::array{allocator_buffer}});
         task_element_buffer.set_buffers({
             .buffers = std::array{
                 element_buffer,
@@ -103,17 +134,20 @@ struct AllocatorBufferState {
                 released_element_stack_buffer,
             },
         });
+#endif
     }
     ~AllocatorBufferState() {
         if (!element_buffer.is_empty()) {
             device.destroy_buffer(element_buffer);
         }
+#if !CPU_VOXEL_GEN
         if (!available_element_stack_buffer.is_empty()) {
             device.destroy_buffer(available_element_stack_buffer);
         }
         if (!released_element_stack_buffer.is_empty()) {
             device.destroy_buffer(released_element_stack_buffer);
         }
+#endif
         device.destroy_buffer(allocator_buffer);
     }
     void init(daxa::Device &device, daxa::CommandRecorder &recorder) {
@@ -124,13 +158,15 @@ struct AllocatorBufferState {
         });
         recorder.destroy_buffer_deferred(staging_buffer);
         auto *buffer_ptr = device.get_host_address_as<typename AllocatorConstants<T>::AllocatorType>(staging_buffer).value();
-        *buffer_ptr = typename AllocatorConstants<T>::AllocatorType{
+        *buffer_ptr = typename AllocatorConstants<T>::AllocatorType {
             .heap = device.get_device_address(element_buffer).value(),
+#if !CPU_VOXEL_GEN
             .available_element_stack = device.get_device_address(available_element_stack_buffer).value(),
             .released_element_stack = device.get_device_address(released_element_stack_buffer).value(),
             .element_count = 0,
             .available_element_stack_size = 0,
             .released_element_stack_size = 0,
+#endif
         };
         recorder.copy_buffer_to_buffer({
             .src_buffer = staging_buffer,
@@ -145,6 +181,7 @@ struct AllocatorBufferState {
             .size = sizeof(typename AllocatorConstants<T>::ElementType) * AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count,
             .clear_value = 0,
         });
+#if !CPU_VOXEL_GEN
         recorder.clear_buffer({
             .buffer = task_element_buffer.get_state().buffers[1],
             .offset = 0,
@@ -157,8 +194,10 @@ struct AllocatorBufferState {
             .size = sizeof(typename AllocatorConstants<T>::IndexType) * current_element_count,
             .clear_value = 0,
         });
+#endif
     }
     void realloc(daxa::Device &device, daxa::CommandRecorder &recorder) {
+#if !CPU_VOXEL_GEN
         recorder.copy_buffer_to_buffer({
             .src_buffer = task_old_element_buffer.get_state().buffers[0],
             .dst_buffer = task_element_buffer.get_state().buffers[0],
@@ -201,11 +240,14 @@ struct AllocatorBufferState {
             .dst_buffer = allocator_buffer,
             .size = offsetof(typename AllocatorConstants<T>::AllocatorType, element_count),
         });
+#endif
     }
     void for_each_task_buffer(auto const &functor) {
         functor(task_allocator_buffer);
         functor(task_element_buffer);
+#if !CPU_VOXEL_GEN
         functor(task_old_element_buffer);
+#endif
     }
     void check_for_realloc(daxa::Device &device, size_t current_known_element_count) {
         constexpr auto MAX_ELEMENT_ALLOCATIONS_PER_FRAME = AllocatorConstants<T>::MAX_ELEMENT_ALLOCATIONS_PER_FRAME;
@@ -222,6 +264,18 @@ struct AllocatorBufferState {
             // Calculate new buffer size
             current_element_count = std::max(next_element_count * 3 / 2, max_count_after_cpu_catch_up);
 
+#if CPU_VOXEL_GEN
+            if (!element_buffer.is_empty()) {
+                device.destroy_buffer(element_buffer);
+            }
+            element_buffer = device.create_buffer({
+                .size = ELEM_SIZE_BYTES * current_element_count,
+                .name = AllocatorConstants<T>::element_buffer_name,
+            });
+            elements.resize(AllocatorConstants<T>::ELEMENT_MULTIPLIER * current_element_count);
+            available_element_stack.resize(current_element_count);
+            released_element_stack.resize(current_element_count);
+#else
             auto new_element_buffer = device.create_buffer({
                 .size = ELEM_SIZE_BYTES * current_element_count,
                 .name = AllocatorConstants<T>::element_buffer_name,
@@ -245,10 +299,23 @@ struct AllocatorBufferState {
                     released_element_stack_buffer,
                 },
             });
+#endif
         }
     }
     auto needs_realloc() -> bool {
         return next_element_count != 0;
     }
+#if CPU_VOXEL_GEN
+    void per_frame() {
+        this->available_element_stack_size = std::max(this->available_element_stack_size, 0);
+        // Move all released elements from the released stack to the available element stack.
+        while (this->released_element_stack_size > 0) {
+            --this->released_element_stack_size;
+            this->available_element_stack[this->available_element_stack_size] =
+                this->released_element_stack[this->released_element_stack_size];
+            ++this->available_element_stack_size;
+        }
+    }
+#endif
 };
 #endif

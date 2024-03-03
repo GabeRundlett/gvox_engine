@@ -6,6 +6,7 @@
 #define FUNC_NAME_HELPER(Prefix, Name) FUNC_NAME_HELPER_HELPER(Prefix, Name)
 #define FUNC_NAME(Name) FUNC_NAME_HELPER(UserAllocatorType, Name)
 
+#if !CPU_VOXEL_GEN
 UserIndexType FUNC_NAME(malloc)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
     const int index_in_avail_stack = atomicAdd(deref(allocator).available_element_stack_size, -1) - 1;
     // If we get an index of smaller then zero, the size was 0. This means the stack was empty.
@@ -39,6 +40,7 @@ void FUNC_NAME(perframe)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
 uint FUNC_NAME(get_consumed_element_count)(daxa_BufferPtr(UserAllocatorType) allocator) {
     return deref(allocator).element_count - uint(max(deref(allocator).available_element_stack_size, 0));
 }
+#endif
 
 #undef FUNC_NAME_HELPER_HELPER
 #undef FUNC_NAME_HELPER

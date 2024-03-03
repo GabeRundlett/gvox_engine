@@ -53,6 +53,7 @@ void voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator) al
     result = advance(page, (VoxelMalloc_Pointer_extract_local_page_alloc_offset(address) * VOXEL_MALLOC_U32S_PER_PAGE_BITFIELD_BIT + 1));
 }
 
+#if !CPU_VOXEL_GEN
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
 // Must enter with 512 thread work group with all threads active.
 shared int VoxelMalloc_malloc_elected_fallback_thread;
@@ -263,4 +264,5 @@ void VoxelMalloc_realloc(daxa_RWBufferPtr(VoxelMallocPageAllocator) allocator, d
     barrier();
     prev_address = VoxelMalloc_malloc(allocator, voxel_chunk_ptr, size);
 }
+#endif
 #endif
