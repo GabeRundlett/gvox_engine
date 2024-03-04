@@ -796,22 +796,19 @@ void process_palette_region(uint palette_region_voxel_index, uint my_voxel, in o
     voted_results[palette_region_voxel_index] = 0;
     barrier();
     for (uint algo_i = 0; algo_i < PALETTE_MAX_COMPRESSED_VARIANT_N + 1; ++algo_i) {
-        if (my_palette_index == 0) {
-            daxa_u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, daxa_u64(my_voxel) | (daxa_u64(1) << daxa_u64(32)));
-            if (vote_result == 0) {
-                my_palette_index = algo_i + 1;
-                compression_result[palette_size] = my_voxel;
-                palette_size++;
-            } else if (my_voxel == uint(vote_result)) {
-                my_palette_index = algo_i + 1;
-            }
-        }
-        barrier();
-        memoryBarrierShared();
-        if (voted_results[algo_i] == 0) {
+        daxa_u64 vote_result = atomicCompSwap(voted_results[algo_i], 0, daxa_u64(my_voxel) | (daxa_u64(1) << daxa_u64(32)));
+        if (vote_result == 0) {
+            my_palette_index = algo_i + 1;
+            compression_result[algo_i] = my_voxel;
+            break;
+        } else if (my_voxel == uint(vote_result)) {
+            my_palette_index = algo_i + 1;
             break;
         }
     }
+    atomicMax(palette_size, my_palette_index);
+    // Necessary so that all threads have the same `palette_size` value
+    barrier();
 }
 
 #define VOXEL_WORLD deref(voxel_globals)
