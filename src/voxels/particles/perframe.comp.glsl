@@ -9,7 +9,7 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
-#include <voxels/voxel_particle.glsl>
+#include "particle.glsl"
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {

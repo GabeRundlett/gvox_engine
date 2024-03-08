@@ -3,7 +3,7 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-#include <voxels/voxel_particles.inl>
+#include <voxels/particles/voxel_particles.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 2 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)

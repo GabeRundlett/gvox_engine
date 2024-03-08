@@ -56,8 +56,8 @@ struct SkySettings {
 #define SKY_CUBE_RES 64
 #define IBL_CUBE_RES 16
 
-#define MAX_SIMULATED_VOXEL_PARTICLES 0 // (1 << 8)
-#define MAX_RENDERED_VOXEL_PARTICLES 0  // (1 << 8)
+#define MAX_SIMULATED_VOXEL_PARTICLES (1 << 8)
+#define MAX_RENDERED_VOXEL_PARTICLES  (1 << 8)
 
 #define PREPASS_SCL 2
 #define SHADING_SCL 2

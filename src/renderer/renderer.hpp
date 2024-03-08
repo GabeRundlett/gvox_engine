@@ -3,7 +3,7 @@
 #include <application/input.inl>
 
 #include <voxels/voxels.inl>
-#include <voxels/voxel_particles.inl>
+#include <voxels/particles/voxel_particles.inl>
 
 struct RendererImpl;
 

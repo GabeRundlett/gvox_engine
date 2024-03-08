@@ -168,7 +168,7 @@ daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.sim
 daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
 daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
 
-#include <voxels/voxel_particle.glsl>
+#include <voxels/particles/particle.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {

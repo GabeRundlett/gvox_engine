@@ -1,4 +1,4 @@
-#include <voxels/voxel_particles.inl>
+#include "voxel_particles.inl"
 
 DAXA_DECL_PUSH_CONSTANT(VoxelParticleSimComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -8,7 +8,7 @@ daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.s
 daxa_RWBufferPtr(uint) rendered_voxel_particles = push.uses.rendered_voxel_particles;
 daxa_RWBufferPtr(uint) placed_voxel_particles = push.uses.placed_voxel_particles;
 
-#include <voxels/voxel_particle.glsl>
+#include "particle.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {

@@ -120,7 +120,7 @@ struct VoxelParticles {
         }
 
         record_ctx.add(ComputeTask<VoxelParticlePerframeCompute, VoxelParticlePerframeComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"voxels/voxel_particle_perframe.comp.glsl"},
+            .source = daxa::ShaderFile{"voxels/particles/perframe.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
@@ -135,7 +135,7 @@ struct VoxelParticles {
             },
         });
         record_ctx.add(ComputeTask<VoxelParticleSimCompute, VoxelParticleSimComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"voxels/voxel_particle_sim.comp.glsl"},
+            .source = daxa::ShaderFile{"voxels/particles/sim.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::particles_state, global_state.task_resource}},
@@ -169,8 +169,8 @@ struct VoxelParticles {
         });
 
         record_ctx.add(RasterTask<VoxelParticleRaster, VoxelParticleRasterPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"voxel_particle.raster.glsl"},
-            .frag_source = daxa::ShaderFile{"voxel_particle.raster.glsl"},
+            .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
+            .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .color_attachments = {{
                 .format = format,
             }},
