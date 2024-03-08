@@ -183,8 +183,9 @@ void main() {
 
     // vec3 fs_uvw = cs_to_fs(gpu_input, view_ray_context.ray_hit_cs);
     // vec4 ae_val = texture(daxa_sampler3D(ae_lut, g_sampler_llc), fs_uvw);
-    // const float weight = 1.0 * ae_val.w * fs_uvw.z;
-    // output_ += vec3(ae_val) * weight * 1.0;
+    // float weight = 1.0 * fs_uvw.z;
+    // output_ = output_ * ae_val.w + vec3(ae_val) * weight;
+    // output_ = mix(output_, vec3(ae_val), weight);
 
     output_ *= deref(gpu_input).pre_exposure;
 

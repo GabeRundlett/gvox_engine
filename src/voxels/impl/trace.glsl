@@ -116,7 +116,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
             // HACK to mitigate fp imprecision...
             t_next += 0.0001 * (sign(info.ray_dir) * -0.5 + 0.5);
             // t_curr += (min(min(t_next.x, t_next.y), t_next.z));
-            t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0001 * VOXEL_SIZE);
+            t_curr += (min(min(t_next.x, t_next.y), t_next.z) + 0.0003 * VOXEL_SIZE);
         }
         ray_pos -= offset;
 

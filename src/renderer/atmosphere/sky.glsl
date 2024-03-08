@@ -11,10 +11,10 @@ vec3 sun_radiance_impl(
     daxa_BufferPtr(GpuInput) gpu_input,
     daxa_ImageViewIndex _transmittance,
     vec3 view_direction,
+    vec3 sun_direction,
     float height,
     float zenith_cos_angle,
     float sun_angular_radius_cos) {
-    const vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
     float cos_theta = dot(view_direction, sun_direction);
 
     if (cos_theta >= sun_angular_radius_cos) {
@@ -101,7 +101,7 @@ vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
     float zenith_cos_angle = dot(sun_direction, normalize(world_camera_position));
     float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
 
-    const vec3 direct_sun_illuminance = view_ray_intersects_ground ? vec3(0.0) : sun_radiance_impl(gpu_input, _transmittance, view_direction, height, zenith_cos_angle, sun_angular_radius_cos);
+    const vec3 direct_sun_illuminance = view_ray_intersects_ground ? vec3(0.0) : sun_radiance_impl(gpu_input, _transmittance, view_direction, sun_direction, height, zenith_cos_angle, sun_angular_radius_cos);
 
     TransmittanceParams transmittance_lut_params = TransmittanceParams(height, dot(view_direction, normalize(world_camera_position)));
     vec2 transmittance_texture_uv = transmittance_lut_to_uv(
@@ -144,7 +144,7 @@ vec3 sun_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
     float zenith_cos_angle = dot(sun_direction, normalize(world_camera_position));
     float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
 
-    const vec3 direct_sun_illuminance = intersects_ground ? vec3(0.0) : sun_radiance_impl(gpu_input, transmittance_lut, nrm, height, zenith_cos_angle, sun_angular_radius_cos);
+    const vec3 direct_sun_illuminance = intersects_ground ? vec3(0.0) : sun_radiance_impl(gpu_input, transmittance_lut, nrm, sun_direction, height, zenith_cos_angle, sun_angular_radius_cos);
 
     return direct_sun_illuminance;
 }

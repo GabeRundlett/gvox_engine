@@ -247,7 +247,7 @@ vec3 atmosphere_unpack(vec4 x) {
     return x.rgb * x.a;
 }
 
-const float FRUSTUM_SIZE_Z_WS = 50000.0; // meters
+const float FRUSTUM_SIZE_Z_WS = 120000.0; // meters
 const float FRUSTUM_BEGIN_Z_WS = 1.0;    // meters
 
 vec3 fs_to_cs(daxa_BufferPtr(GpuInput) gpu_input, vec3 fs) {
