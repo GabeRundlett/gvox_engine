@@ -6,9 +6,10 @@
 #include <voxels/brushes.inl>
 
 struct IndirectDrawParams {
-    daxa_u32 vertex_count;
+    daxa_u32 index_count;
     daxa_u32 instance_count;
-    daxa_u32 first_vertex;
+    daxa_u32 first_index;
+    daxa_u32 vertex_offset;
     daxa_u32 first_instance;
 };
 
@@ -53,11 +54,12 @@ struct VoxelParticleSimComputePush {
     DAXA_TH_BLOB(VoxelParticleSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleRaster, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticleRaster, 7)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(daxa_u32), rendered_voxel_particles)
+DAXA_TH_BUFFER(INDEX_READ, indices)
 DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
 DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
@@ -72,6 +74,9 @@ struct VoxelParticles {
     TemporalBuffer simulated_voxel_particles;
     TemporalBuffer rendered_voxel_particles;
     TemporalBuffer placed_voxel_particles;
+    TemporalBuffer vertex_buffer;
+    TemporalBuffer index_buffer;
+    bool initialized = false;
 
     void record_startup(RecordContext &record_ctx) {
         record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
@@ -168,6 +173,53 @@ struct VoxelParticles {
             .name = "raster_depth_image",
         });
 
+        static constexpr auto indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
+        index_buffer = record_ctx.gpu_context->find_or_add_temporal_buffer({
+            .size = sizeof(indices),
+            .name = "particles.index_buffer",
+        });
+        record_ctx.task_graph.use_persistent_buffer(index_buffer.task_resource);
+
+        if (!initialized) {
+            initialized = true;
+
+            auto temp_task_graph = daxa::TaskGraph({
+                .device = record_ctx.gpu_context->device,
+                .name = "temp_task_graph",
+            });
+
+            temp_task_graph.use_persistent_buffer(index_buffer.task_resource);
+
+            temp_task_graph.add_task({
+                .attachments = {
+                    daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, index_buffer.task_resource),
+                },
+                .task = [this](daxa::TaskInterface const &ti) {
+                    auto staging_buffer = ti.device.create_buffer({
+                        .size = sizeof(GpuInput),
+                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .name = "staging_buffer",
+                    });
+                    ti.recorder.destroy_buffer_deferred(staging_buffer);
+                    auto *buffer_ptr = ti.device.get_host_address_as<std::remove_cv_t<decltype(indices)>>(staging_buffer).value();
+                    *buffer_ptr = indices;
+                    ti.recorder.copy_buffer_to_buffer({
+                        .src_buffer = staging_buffer,
+                        .dst_buffer = index_buffer.task_resource.get_state().buffers[0],
+                        .size = sizeof(GpuInput),
+                    });
+                },
+                .name = "Particle Index Upload",
+            });
+
+            temp_task_graph.submit({});
+            temp_task_graph.complete({});
+            temp_task_graph.execute({});
+        }
+
+        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
+        record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
+
         record_ctx.add(RasterTask<VoxelParticleRaster, VoxelParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
@@ -180,13 +232,15 @@ struct VoxelParticles {
                 .depth_test_compare_op = daxa::CompareOp::GREATER,
             },
             .raster = {
-                .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
+                .face_culling = daxa::FaceCullFlagBits::NONE,
+                .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_FAN,
             },
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::rendered_voxel_particles, rendered_voxel_particles.task_resource}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleRaster::indices, index_buffer.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::render_image, raster_color_image}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleRaster::depth_image_id, raster_depth_image}},
             },
@@ -199,10 +253,14 @@ struct VoxelParticles {
                 });
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
+                renderpass_recorder.set_index_buffer({
+                    .id = ti.get(VoxelParticleRaster::indices).ids[0],
+                    .index_type = daxa::IndexType::uint16,
+                });
                 renderpass_recorder.draw_indirect({
                     .draw_command_buffer = ti.get(VoxelParticleRaster::particles_state).ids[0],
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, draw_params),
-                    .is_indexed = false,
+                    .is_indexed = true,
                 });
                 ti.recorder = std::move(renderpass_recorder).end_renderpass();
             },
