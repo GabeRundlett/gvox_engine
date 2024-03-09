@@ -28,7 +28,7 @@ struct GrassStrand {
 };
 DAXA_DECL_BUFFER_PTR(GrassStrand)
 
-DECL_SIMPLE_STATIC_ALLOCATOR(GrassStrandAllocator, GrassStrand, 10000, daxa_u32)
+DECL_SIMPLE_STATIC_ALLOCATOR(GrassStrandAllocator, GrassStrand, MAX_GRASS_BLADES, daxa_u32)
 
 struct VoxelParticlesState {
     daxa_u32vec3 simulation_dispatch;
@@ -121,7 +121,6 @@ struct VoxelParticles {
     TemporalBuffer placed_voxel_particles;
     TemporalBuffer cube_index_buffer;
     TemporalBuffer splat_index_buffer;
-    bool initialized = false;
 
     StaticAllocatorBufferState<GrassStrandAllocator> grass_allocator;
 
@@ -147,11 +146,6 @@ struct VoxelParticles {
             },
             .name = "Clear",
         });
-
-        if (initialized) {
-            return;
-        }
-        initialized = true;
 
         static constexpr auto cube_indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
         cube_index_buffer = gpu_context.find_or_add_temporal_buffer({
@@ -210,7 +204,7 @@ struct VoxelParticles {
         gpu_context.frame_task_graph.use_persistent_buffer(splat_rendered_particle_indices.task_resource);
         gpu_context.frame_task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
         gpu_context.frame_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
-        
+
         grass_allocator.init(gpu_context);
         gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.allocator_buffer.task_resource);
         gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.element_buffer.task_resource);
@@ -271,7 +265,7 @@ struct VoxelParticles {
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, GrassStrandSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
-                ti.recorder.dispatch({StaticAllocatorConstants<GrassStrandAllocator>::MAX_ELEMENTS / 64, 1, 1});
+                ti.recorder.dispatch({MAX_GRASS_BLADES / 64, 1, 1});
             },
         });
     }
