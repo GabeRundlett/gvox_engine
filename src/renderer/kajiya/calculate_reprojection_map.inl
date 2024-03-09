@@ -18,16 +18,16 @@ struct CalculateReprojectionMapComputePush {
 
 #if defined(__cplusplus)
 
-inline auto calculate_reprojection_map(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
-    auto reprojection_map = record_ctx.task_graph.create_transient_image({
+inline auto calculate_reprojection_map(GpuContext &gpu_context, GbufferDepth const &gbuffer_depth, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
+    auto reprojection_map = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
         .name = "reprojection_image",
     });
-    record_ctx.add(ComputeTask<CalculateReprojectionMapCompute, CalculateReprojectionMapComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<CalculateReprojectionMapCompute, CalculateReprojectionMapComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/calculate_reprojection_map.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::vs_normal_image_id, gbuffer_depth.geometric_normal}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::depth_image_id, gbuffer_depth.depth.current()}},
             daxa::TaskViewVariant{std::pair{CalculateReprojectionMapCompute::prev_depth_image_id, gbuffer_depth.depth.history()}},

@@ -49,14 +49,14 @@ void Fsr2Renderer::next_frame() {
     ++jitter_frame_i;
 }
 
-auto Fsr2Renderer::upscale(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView color_image, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
-    auto output_image = record_ctx.task_graph.create_transient_image({
+auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_depth, daxa::TaskImageView color_image, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
+    auto output_image = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
+        .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
         .name = "fsr2_output_image",
     });
     auto depth_image = gbuffer_depth.depth.current().view();
-    record_ctx.task_graph.add_task({
+    gpu_context.frame_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, color_image),
             daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, depth_image),

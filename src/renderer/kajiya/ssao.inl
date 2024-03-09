@@ -55,43 +55,43 @@ struct SsaoRenderer {
         ping_pong_ssao_image.swap();
     }
 
-    auto render(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
-        auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(record_ctx);
-        auto scaled_view_normal_image = gbuffer_depth.get_downscaled_view_normal(record_ctx);
+    auto render(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
+        auto scaled_depth_image = gbuffer_depth.get_downscaled_depth(gpu_context);
+        auto scaled_view_normal_image = gbuffer_depth.get_downscaled_view_normal(gpu_context);
         ping_pong_ssao_image = PingPongImage{};
         auto [ssao_image, prev_ssao_image] = ping_pong_ssao_image.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R16_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "ssao_image",
             });
 
-        clear_task_images(record_ctx.gpu_context->device, std::array{prev_ssao_image});
+        clear_task_images(gpu_context.device, std::array{prev_ssao_image});
 
-        record_ctx.task_graph.use_persistent_image(ssao_image);
-        record_ctx.task_graph.use_persistent_image(prev_ssao_image);
-        auto ssao_image0 = record_ctx.task_graph.create_transient_image({
+        gpu_context.frame_task_graph.use_persistent_image(ssao_image);
+        gpu_context.frame_task_graph.use_persistent_image(prev_ssao_image);
+        auto ssao_image0 = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R16_SFLOAT,
-            .size = {record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL, 1},
+            .size = {gpu_context.render_resolution.x / SHADING_SCL, gpu_context.render_resolution.y / SHADING_SCL, 1},
             .name = "ssao_image0",
         });
-        auto ssao_image1 = record_ctx.task_graph.create_transient_image({
+        auto ssao_image1 = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R16_SFLOAT,
-            .size = {record_ctx.render_resolution.x / SHADING_SCL, record_ctx.render_resolution.y / SHADING_SCL, 1},
+            .size = {gpu_context.render_resolution.x / SHADING_SCL, gpu_context.render_resolution.y / SHADING_SCL, 1},
             .name = "ssao_image1",
         });
-        auto ssao_image2 = record_ctx.task_graph.create_transient_image({
+        auto ssao_image2 = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R16_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "ssao_image2",
         });
 
-        record_ctx.add(ComputeTask<SsaoCompute, SsaoComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SsaoCompute, SsaoComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::vs_normal_image_id, scaled_view_normal_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoCompute::ssao_image_id, ssao_image0}},
@@ -104,10 +104,10 @@ struct SsaoRenderer {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        record_ctx.add(ComputeTask<SsaoSpatialFilterCompute, SsaoSpatialFilterComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SsaoSpatialFilterCompute, SsaoSpatialFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::vs_normal_image_id, scaled_view_normal_image}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::depth_image_id, scaled_depth_image}},
                 daxa::TaskViewVariant{std::pair{SsaoSpatialFilterCompute::src_image_id, ssao_image0}},
@@ -121,10 +121,10 @@ struct SsaoRenderer {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        record_ctx.add(ComputeTask<SsaoUpscaleCompute, SsaoUpscaleComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SsaoUpscaleCompute, SsaoUpscaleComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::depth_image_id, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{SsaoUpscaleCompute::src_image_id, ssao_image1}},
@@ -138,10 +138,10 @@ struct SsaoRenderer {
                 ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
             },
         });
-        record_ctx.add(ComputeTask<SsaoTemporalFilterCompute, SsaoTemporalFilterComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SsaoTemporalFilterCompute, SsaoTemporalFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::reprojection_image_id, reprojection_map}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::history_image_id, prev_ssao_image}},
                 daxa::TaskViewVariant{std::pair{SsaoTemporalFilterCompute::src_image_id, ssao_image2}},

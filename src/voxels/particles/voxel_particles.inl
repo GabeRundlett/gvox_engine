@@ -100,10 +100,15 @@ struct VoxelParticles {
     TemporalBuffer splat_index_buffer;
     bool initialized = false;
 
-    void record_startup(RecordContext &record_ctx) {
-        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
+    void record_startup(GpuContext &gpu_context) {
+        global_state = gpu_context.find_or_add_temporal_buffer({
+            .size = sizeof(VoxelParticlesState),
+            .name = "globals_buffer",
+        });
 
-        record_ctx.task_graph.add_task({
+        gpu_context.startup_task_graph.use_persistent_buffer(global_state.task_resource);
+
+        gpu_context.startup_task_graph.add_task({
             .attachments = {
                 daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, global_state.task_resource),
             },
@@ -119,43 +124,39 @@ struct VoxelParticles {
         });
     }
 
-    void simulate(RecordContext &record_ctx, VoxelWorldBuffers &voxel_world_buffers) {
-        global_state = record_ctx.gpu_context->find_or_add_temporal_buffer({
-            .size = sizeof(VoxelParticlesState),
-            .name = "globals_buffer",
-        });
-        simulated_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
+    void simulate(GpuContext &gpu_context, VoxelWorldBuffers &voxel_world_buffers) {
+        simulated_voxel_particles = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(SimulatedVoxelParticle) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "simulated_voxel_particles",
         });
-        cube_rendered_particle_indices = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        cube_rendered_particle_indices = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
             .name = "cube_rendered_particle_indices",
         });
-        splat_rendered_particle_indices = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        splat_rendered_particle_indices = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_RENDERED_VOXEL_PARTICLES, 1),
             .name = "splat_rendered_particle_indices",
         });
-        placed_voxel_particles = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        placed_voxel_particles = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(daxa_u32) * std::max<daxa_u32>(MAX_SIMULATED_VOXEL_PARTICLES, 1),
             .name = "placed_voxel_particles",
         });
 
-        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
-        record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
-        record_ctx.task_graph.use_persistent_buffer(cube_rendered_particle_indices.task_resource);
-        record_ctx.task_graph.use_persistent_buffer(splat_rendered_particle_indices.task_resource);
-        record_ctx.task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(global_state.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(cube_rendered_particle_indices.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(splat_rendered_particle_indices.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
 
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
         }
 
-        record_ctx.add(ComputeTask<VoxelParticlePerframeCompute, VoxelParticlePerframeComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<VoxelParticlePerframeCompute, VoxelParticlePerframeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/perframe.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_output, record_ctx.gpu_context->task_output_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::gpu_output, gpu_context.task_output_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, voxel_world_buffers),
@@ -166,10 +167,10 @@ struct VoxelParticles {
                 ti.recorder.dispatch({1, 1, 1});
             },
         });
-        record_ctx.add(ComputeTask<VoxelParticleSimCompute, VoxelParticleSimComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<VoxelParticleSimCompute, VoxelParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/sim.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::particles_state, global_state.task_resource}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticleSimCompute, voxel_world_buffers),
                 daxa::TaskViewVariant{std::pair{VoxelParticleSimCompute::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
@@ -188,31 +189,31 @@ struct VoxelParticles {
         });
     }
 
-    auto render(RecordContext &record_ctx) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
+    auto render(GpuContext &gpu_context) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
         auto format = daxa::Format::R32_UINT;
-        auto raster_color_image = record_ctx.task_graph.create_transient_image({
+        auto raster_color_image = gpu_context.frame_task_graph.create_transient_image({
             .format = format,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "raster_color_image",
         });
-        auto raster_depth_image = record_ctx.task_graph.create_transient_image({
+        auto raster_depth_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::D32_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "raster_depth_image",
         });
 
         static constexpr auto cube_indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
-        cube_index_buffer = record_ctx.gpu_context->find_or_add_temporal_buffer({
+        cube_index_buffer = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(cube_indices),
             .name = "particles.cube_index_buffer",
         });
-        record_ctx.task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
 
         if (!initialized) {
             initialized = true;
 
             auto temp_task_graph = daxa::TaskGraph({
-                .device = record_ctx.gpu_context->device,
+                .device = gpu_context.device,
                 .name = "temp_task_graph",
             });
 
@@ -245,10 +246,7 @@ struct VoxelParticles {
             temp_task_graph.execute({});
         }
 
-        record_ctx.task_graph.use_persistent_buffer(global_state.task_resource);
-        record_ctx.task_graph.use_persistent_buffer(simulated_voxel_particles.task_resource);
-
-        record_ctx.add(RasterTask<CubeParticleRaster, CubeParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<CubeParticleRaster, CubeParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .color_attachments = {{
@@ -264,7 +262,7 @@ struct VoxelParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{CubeParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{CubeParticleRaster::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{CubeParticleRaster::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{CubeParticleRaster::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{CubeParticleRaster::cube_rendered_particle_indices, cube_rendered_particle_indices.task_resource}},
@@ -294,7 +292,7 @@ struct VoxelParticles {
             },
         });
 
-        record_ctx.add(RasterTask<SplatParticleRaster, SplatParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<SplatParticleRaster, SplatParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .color_attachments = {{
@@ -310,7 +308,7 @@ struct VoxelParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{SplatParticleRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SplatParticleRaster::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{SplatParticleRaster::particles_state, global_state.task_resource}},
                 daxa::TaskViewVariant{std::pair{SplatParticleRaster::simulated_voxel_particles, simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{SplatParticleRaster::splat_rendered_particle_indices, splat_rendered_particle_indices.task_resource}},

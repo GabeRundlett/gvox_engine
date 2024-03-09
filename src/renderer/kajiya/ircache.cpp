@@ -1,13 +1,13 @@
 #include "ircache.inl"
 #include <fmt/format.h>
 
-auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
-    auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
+auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation {
+    auto indirect_args_buf = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(uint32_t) * 4 * 4,
         .name = "ircache.trace_indirect_args_buf",
     });
 
-    record_ctx.add(ComputeTask<IrcachePrepareTraceDispatchCompute, IrcachePrepareTraceDispatchComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcachePrepareTraceDispatchCompute, IrcachePrepareTraceDispatchComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/prepare_trace_dispatch_args.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{IrcachePrepareTraceDispatchCompute::ircache_meta_buf, this->ircache_meta_buf}},
@@ -20,10 +20,10 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         },
     });
 
-    record_ctx.add(ComputeTask<IrcacheResetCompute, IrcacheResetComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcacheResetCompute, IrcacheResetComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/reset_entry.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{IrcacheResetCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{IrcacheResetCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{IrcacheResetCompute::ircache_life_buf, this->ircache_life_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheResetCompute::ircache_meta_buf, this->ircache_meta_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheResetCompute::ircache_irradiance_buf, this->ircache_irradiance_buf}},
@@ -41,7 +41,7 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         },
     });
 
-    record_ctx.add(ComputeTask<IrcacheTraceAccessCompute, IrcacheTraceAccessComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcacheTraceAccessCompute, IrcacheTraceAccessComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/trace_accessibility.comp.glsl"},
         .views = std::array{
             VOXELS_BUFFER_USES_ASSIGN(IrcacheTraceAccessCompute, voxel_buffers),
@@ -63,10 +63,10 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         },
     });
 
-    record_ctx.add(ComputeTask<IrcacheValidateCompute, IrcacheValidateComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcacheValidateCompute, IrcacheValidateComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/ircache_validate.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::gpu_input, gpu_context.task_input_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(IrcacheValidateCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheValidateCompute::sky_cube_tex, sky_cube}},
@@ -92,10 +92,10 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
         },
     });
 
-    record_ctx.add(ComputeTask<TraceIrradianceCompute, TraceIrradianceComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<TraceIrradianceCompute, TraceIrradianceComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/trace_irradiance.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::gpu_input, gpu_context.task_input_buffer}},
             VOXELS_BUFFER_USES_ASSIGN(TraceIrradianceCompute, voxel_buffers),
             daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::ircache_spatial_buf, this->ircache_spatial_buf}},
             daxa::TaskViewVariant{std::pair{TraceIrradianceCompute::sky_cube_tex, sky_cube}},
@@ -125,11 +125,11 @@ auto IrcacheRenderState::trace_irradiance(RecordContext &record_ctx, VoxelWorldB
     return {indirect_args_buf};
 }
 
-void IrcacheRenderState::sum_up_irradiance_for_sampling(RecordContext &record_ctx, IrcacheIrradiancePendingSummation pending) {
-    record_ctx.add(ComputeTask<SumUpIrradianceCompute, SumUpIrradianceComputePush, NoTaskInfo>{
+void IrcacheRenderState::sum_up_irradiance_for_sampling(GpuContext &gpu_context, IrcacheIrradiancePendingSummation pending) {
+    gpu_context.add(ComputeTask<SumUpIrradianceCompute, SumUpIrradianceComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/sum_up_irradiance.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_life_buf, this->ircache_life_buf}},
             daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_meta_buf, this->ircache_meta_buf}},
             daxa::TaskViewVariant{std::pair{SumUpIrradianceCompute::ircache_irradiance_buf, this->ircache_irradiance_buf}},
@@ -150,13 +150,13 @@ void IrcacheRenderState::sum_up_irradiance_for_sampling(RecordContext &record_ct
     this->pending_irradiance_sum = false;
 }
 
-inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
-    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
+inline auto temporal_storage_buffer(GpuContext &gpu_context, std::string_view name, size_t size) -> daxa::TaskBuffer {
+    auto result = gpu_context.find_or_add_temporal_buffer({
         .size = size,
         .name = name,
     });
 
-    record_ctx.task_graph.use_persistent_buffer(result.task_resource);
+    gpu_context.frame_task_graph.use_persistent_buffer(result.task_resource);
 
     return result.task_resource;
 }
@@ -202,76 +202,73 @@ void IrcacheRenderer::next_frame() {
     this->parity = (this->parity + 1) % 2;
 }
 
-auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
+auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
     constexpr auto INDIRECTION_BUF_ELEM_COUNT = size_t{1024 * 1024};
 
     auto [ircache_grid_meta_buf_, ircache_grid_meta_buf2_] = ping_pong_ircache_grid_meta_buf.get(
-        *record_ctx.gpu_context,
+        gpu_context,
         daxa::BufferInfo{
             .size = sizeof(IrcacheCell) * MAX_GRID_CELLS,
             .name = "ircache.grid_meta_buf",
         });
-    record_ctx.task_graph.use_persistent_buffer(ircache_grid_meta_buf_);
-    record_ctx.task_graph.use_persistent_buffer(ircache_grid_meta_buf2_);
+    gpu_context.frame_task_graph.use_persistent_buffer(ircache_grid_meta_buf_);
+    gpu_context.frame_task_graph.use_persistent_buffer(ircache_grid_meta_buf2_);
 
     auto state = IrcacheRenderState{
         // 0: hash grid cell count
         // 1: entry count
-        .ircache_meta_buf = temporal_storage_buffer(record_ctx, "ircache.meta_buf", sizeof(IrcacheMetadata)),
+        .ircache_meta_buf = temporal_storage_buffer(gpu_context, "ircache.meta_buf", sizeof(IrcacheMetadata)),
         .ircache_grid_meta_buf = ircache_grid_meta_buf_,
         .ircache_grid_meta_buf2 = ircache_grid_meta_buf2_,
         .ircache_entry_cell_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.entry_cell_buf",
             sizeof(daxa_u32) * MAX_ENTRIES),
         .ircache_spatial_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.spatial_buf",
             sizeof(daxa_f32vec4) * MAX_ENTRIES),
         .ircache_irradiance_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.irradiance_buf",
             3 * sizeof(daxa_f32vec4) * MAX_ENTRIES),
         .ircache_aux_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.aux_buf",
             sizeof(IrcacheAux) * MAX_ENTRIES),
         .ircache_life_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.life_buf",
             sizeof(daxa_u32) * MAX_ENTRIES),
         .ircache_pool_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.pool_buf",
             sizeof(daxa_u32) * MAX_ENTRIES),
         .ircache_entry_indirection_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.entry_indirection_buf",
             sizeof(daxa_u32) * INDIRECTION_BUF_ELEM_COUNT),
         .ircache_reposition_proposal_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.reposition_proposal_buf",
             sizeof(daxa_f32vec4) * MAX_ENTRIES),
         .ircache_reposition_proposal_count_buf = temporal_storage_buffer(
-            record_ctx,
+            gpu_context,
             "ircache.reposition_proposal_count_buf",
             sizeof(daxa_u32) * MAX_ENTRIES),
         .pending_irradiance_sum = false,
     };
 
     if (!this->initialized) {
-        auto temp_record_ctx = RecordContext{
-            .task_graph = daxa::TaskGraph({
-                .device = record_ctx.gpu_context->device,
-                .name = "temp_task_graph",
-            }),
-            .gpu_context = record_ctx.gpu_context,
-        };
+        auto temp_task_graph = daxa::TaskGraph({
+            .device = gpu_context.device,
+            .name = "temp_task_graph",
+        });
 
-        temp_record_ctx.task_graph.use_persistent_buffer(state.ircache_pool_buf);
-        temp_record_ctx.task_graph.use_persistent_buffer(state.ircache_life_buf);
+        temp_task_graph.use_persistent_buffer(state.ircache_pool_buf);
+        temp_task_graph.use_persistent_buffer(state.ircache_life_buf);
 
-        temp_record_ctx.add(ComputeTask<ClearIrcachePoolCompute, ClearIrcachePoolComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<ClearIrcachePoolCompute, ClearIrcachePoolComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/ircache/clear_ircache_pool.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{ClearIrcachePoolCompute::ircache_pool_buf, state.ircache_pool_buf}},
@@ -282,19 +279,20 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({(MAX_ENTRIES + 63) / 64});
             },
+            .task_graph_ptr = &temp_task_graph,
         });
 
-        temp_record_ctx.task_graph.submit({});
-        temp_record_ctx.task_graph.complete({});
-        temp_record_ctx.task_graph.execute({});
+        temp_task_graph.submit({});
+        temp_task_graph.complete({});
+        temp_task_graph.execute({});
 
         this->initialized = true;
     }
 
-    record_ctx.add(ComputeTask<IrcacheScrollCascadesCompute, IrcacheScrollCascadesComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcacheScrollCascadesCompute, IrcacheScrollCascadesComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/scroll_cascades.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_grid_meta_buf, state.ircache_grid_meta_buf}},
             daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_grid_meta_buf2, state.ircache_grid_meta_buf2}},
             daxa::TaskViewVariant{std::pair{IrcacheScrollCascadesCompute::ircache_entry_cell_buf, state.ircache_entry_cell_buf}},
@@ -312,12 +310,12 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
 
     std::swap(state.ircache_grid_meta_buf, state.ircache_grid_meta_buf2);
 
-    auto indirect_args_buf = record_ctx.task_graph.create_transient_buffer({
+    auto indirect_args_buf = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(uint32_t) * 4 * 2,
         .name = "ircache.age_indirect_args_buf",
     });
 
-    record_ctx.add(ComputeTask<IrcachePrepareAgeDispatchCompute, IrcachePrepareAgeDispatchComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcachePrepareAgeDispatchCompute, IrcachePrepareAgeDispatchComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/prepare_age_dispatch_args.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{IrcachePrepareAgeDispatchCompute::ircache_meta_buf, state.ircache_meta_buf}},
@@ -330,11 +328,11 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
         },
     });
 
-    auto entry_occupancy_buf = record_ctx.task_graph.create_transient_buffer({
+    auto entry_occupancy_buf = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(uint32_t) * MAX_ENTRIES,
         .name = "ircache.entry_occupancy_buf",
     });
-    record_ctx.add(ComputeTask<AgeIrcacheEntriesCompute, AgeIrcacheEntriesComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<AgeIrcacheEntriesCompute, AgeIrcacheEntriesComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/age_ircache_entries.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{AgeIrcacheEntriesCompute::ircache_meta_buf, state.ircache_meta_buf}},
@@ -359,9 +357,9 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
         },
     });
 
-    inclusive_prefix_scan_u32_1m(record_ctx, entry_occupancy_buf);
+    inclusive_prefix_scan_u32_1m(gpu_context, entry_occupancy_buf);
 
-    record_ctx.add(ComputeTask<IrcacheCompactEntriesCompute, IrcacheCompactEntriesComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<IrcacheCompactEntriesCompute, IrcacheCompactEntriesComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/ircache/ircache_compact_entries.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{IrcacheCompactEntriesCompute::ircache_meta_buf, state.ircache_meta_buf}},
@@ -380,11 +378,11 @@ auto IrcacheRenderer::prepare(RecordContext &record_ctx) -> IrcacheRenderState {
         },
     });
 
-    state.ircache_buffers = record_ctx.task_graph.create_transient_buffer({
+    state.ircache_buffers = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(IrcacheBuffers),
         .name = "ircache.buffers",
     });
-    record_ctx.task_graph.add_task({
+    gpu_context.frame_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, state.ircache_buffers),
             daxa::inl_attachment(daxa::TaskBufferAccess::NONE, state.ircache_meta_buf),

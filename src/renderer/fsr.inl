@@ -46,7 +46,7 @@ struct Fsr2Renderer {
     Fsr2Renderer(daxa::Device a_device, Fsr2Info a_info);
     ~Fsr2Renderer();
     void next_frame();
-    auto upscale(RecordContext &record_ctx, GbufferDepth const &gbuffer_depth, daxa::TaskImageView color_image, daxa::TaskImageView velocity_image) -> daxa::TaskImageView;
+    auto upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_depth, daxa::TaskImageView color_image, daxa::TaskImageView velocity_image) -> daxa::TaskImageView;
 };
 
 #endif

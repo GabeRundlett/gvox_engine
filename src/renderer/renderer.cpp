@@ -15,8 +15,6 @@ struct RendererImpl {
     SkyRenderer sky;
 
     std::array<daxa_f32vec2, 128> halton_offsets{};
-
-    daxa::TaskGraph sky_render_task_graph;
 };
 
 Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
@@ -76,8 +74,8 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
     }
 
     auto update_sky = AppSettings::get<settings::Checkbox>("Graphics", "Update Sky").value;
-    if (update_sky) {
-        self.sky_render_task_graph.execute({});
+    if (update_sky || gpu_input.frame_index == 0) {
+        self.sky.sky_render_task_graph.execute({});
     }
 }
 
@@ -93,53 +91,34 @@ void Renderer::end_frame(daxa::Device &device, float dt) {
     self.kajiya_renderer.next_frame(device, auto_exposure_settings, dt);
 }
 
-auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {
+auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {
     debug_utils::DebugDisplay::begin_passes();
 
     auto &self = *impl;
 
-    {
-        self.sky_render_task_graph = daxa::TaskGraph({
-            .device = record_ctx.gpu_context->device,
-            .name = "sky_render_task_graph",
-        });
+    self.sky.render(gpu_context);
 
-        auto sky_record_ctx = RecordContext{
-            .task_graph = self.sky_render_task_graph,
-            .gpu_context = record_ctx.gpu_context,
-        };
-
-        sky_record_ctx.task_graph.use_persistent_buffer(sky_record_ctx.gpu_context->task_input_buffer);
-
-        auto [sky_lut, transmittance_lut, ae_lut] = generate_procedural_sky(sky_record_ctx);
-        self.sky.render(sky_record_ctx, sky_lut, transmittance_lut, ae_lut);
-
-        sky_record_ctx.task_graph.submit({});
-        sky_record_ctx.task_graph.complete({});
-    }
-
-    self.sky_render_task_graph.execute({});
-    auto transmittance_lut = self.sky.temporal_transmittance_lut.task_resource.view();
-    auto sky_lut = self.sky.temporal_sky_lut.task_resource.view();
-    auto ibl_cube = self.sky.temporal_ibl_cube.task_resource.view();
-    auto ae_lut = self.sky.temporal_aerial_perspective_lut.task_resource.view();
-    record_ctx.task_graph.use_persistent_image(self.sky.temporal_transmittance_lut.task_resource);
-    record_ctx.task_graph.use_persistent_image(self.sky.temporal_sky_lut.task_resource);
-    record_ctx.task_graph.use_persistent_image(self.sky.temporal_ibl_cube.task_resource);
-    record_ctx.task_graph.use_persistent_image(self.sky.temporal_aerial_perspective_lut.task_resource);
+    auto transmittance_lut = self.sky.transmittance_lut.task_resource.view();
+    auto sky_lut = self.sky.sky_lut.task_resource.view();
+    auto ibl_cube = self.sky.ibl_cube.task_resource.view();
+    auto ae_lut = self.sky.aerial_perspective_lut.task_resource.view();
+    gpu_context.frame_task_graph.use_persistent_image(self.sky.transmittance_lut.task_resource);
+    gpu_context.frame_task_graph.use_persistent_image(self.sky.sky_lut.task_resource);
+    gpu_context.frame_task_graph.use_persistent_image(self.sky.ibl_cube.task_resource);
+    gpu_context.frame_task_graph.use_persistent_image(self.sky.aerial_perspective_lut.task_resource);
 
     debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
-    auto [particles_color_image, particles_depth_image] = particles.render(record_ctx);
-    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(record_ctx, voxel_buffers, particles, particles_color_image, particles_depth_image);
+    auto [particles_color_image, particles_depth_image] = particles.render(gpu_context);
+    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers, particles, particles_color_image, particles_depth_image);
 
-    auto shadow_mask = trace_shadows(record_ctx, gbuffer_depth, voxel_buffers);
+    auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers);
 
     auto [debug_out_tex, reprojection_map] = self.kajiya_renderer.render(
-        record_ctx,
+        gpu_context,
         gbuffer_depth,
         velocity_image,
         shadow_mask,
@@ -154,13 +133,13 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
         switch (taa_method) {
         default: [[fallthrough]];
         case 0: {
-            auto output_image = record_ctx.task_graph.create_transient_image({
+            auto output_image = gpu_context.frame_task_graph.create_transient_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
-                .size = {record_ctx.output_resolution.x, record_ctx.output_resolution.y, 1},
+                .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
                 .name = "output_image",
             });
 
-            record_ctx.task_graph.add_task({
+            gpu_context.frame_task_graph.add_task({
                 .attachments = {
                     daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, debug_out_tex),
                     daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, output_image),
@@ -187,23 +166,23 @@ auto Renderer::render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffer
             return output_image;
         }
         case 1:
-            return self.kajiya_renderer.upscale(record_ctx, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
+            return self.kajiya_renderer.upscale(gpu_context, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
         case 2:
-            self.fsr2_renderer = std::make_unique<Fsr2Renderer>(record_ctx.gpu_context->device, Fsr2Info{.render_resolution = record_ctx.render_resolution, .display_resolution = record_ctx.output_resolution});
-            return self.fsr2_renderer->upscale(record_ctx, gbuffer_depth, debug_out_tex, reprojection_map);
+            self.fsr2_renderer = std::make_unique<Fsr2Renderer>(gpu_context.device, Fsr2Info{.render_resolution = gpu_context.render_resolution, .display_resolution = gpu_context.output_resolution});
+            return self.fsr2_renderer->upscale(gpu_context, gbuffer_depth, debug_out_tex, reprojection_map);
         }
     }();
 
-    [[maybe_unused]] auto post_processed_image = self.kajiya_renderer.post_process(record_ctx, antialiased_image, record_ctx.output_resolution);
+    [[maybe_unused]] auto post_processed_image = self.kajiya_renderer.post_process(gpu_context, antialiased_image, gpu_context.output_resolution);
 
     debug_utils::DebugDisplay::add_pass({.name = "[final]"});
 
     auto &dbg_disp = *debug_utils::DebugDisplay::s_instance;
     auto pass_iter = std::find_if(dbg_disp.passes.begin(), dbg_disp.passes.end(), [&](auto &pass) { return pass.name == dbg_disp.selected_pass_name; });
     if (pass_iter == dbg_disp.passes.end() || dbg_disp.selected_pass_name == "[final]") {
-        tonemap_raster(record_ctx, antialiased_image, output_image, output_format);
+        tonemap_raster(gpu_context, antialiased_image, output_image, output_format);
     } else {
-        debug_pass(record_ctx, *pass_iter, output_image, output_format);
+        debug_pass(gpu_context, *pass_iter, output_image, output_format);
     }
 
     return antialiased_image;

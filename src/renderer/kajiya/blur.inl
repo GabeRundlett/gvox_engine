@@ -46,11 +46,11 @@ static constexpr auto ceil_log2(uint32_t x) -> uint32_t {
     return y;
 }
 
-inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
+inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
-    auto output = record_ctx.task_graph.create_transient_image({
+    auto output = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
         .size = {image_size.x, image_size.y, 1},
         .mip_level_count = mip_count,
@@ -67,7 +67,7 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
         set_push_constant(ti, push);
         ti.recorder.dispatch({((image_info.size.x + downscale_factor - 1) / downscale_factor + 63) / 64, (image_info.size.y + downscale_factor - 1) / downscale_factor});
     };
-    record_ctx.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
+    gpu_context.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{BlurCompute::input_tex, input_image}},
@@ -83,7 +83,7 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
     for (uint32_t mip_i = 0; mip_i < mip_count - 1; ++mip_i) {
         auto src = output.view({.base_mip_level = mip_i + 0, .level_count = 1});
         auto dst = output.view({.base_mip_level = mip_i + 1, .level_count = 1});
-        record_ctx.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
+        gpu_context.add(ComputeTask<BlurCompute, BlurComputePush, BlurTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{BlurCompute::input_tex, src}},
@@ -100,11 +100,11 @@ inline auto blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_im
     return output;
 }
 
-inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
+inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
-    auto output = record_ctx.task_graph.create_transient_image({
+    auto output = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
         .size = {image_size.x, image_size.y, 1},
         .mip_level_count = mip_count,
@@ -124,10 +124,10 @@ inline auto rev_blur_pyramid(RecordContext &record_ctx, daxa::TaskImageView inpu
             daxa_u32 downsample_amount;
             daxa_f32 self_weight;
         };
-        record_ctx.add(ComputeTask<RevBlurCompute, RevBlurComputePush, RevBlurTaskInfo>{
+        gpu_context.add(ComputeTask<RevBlurCompute, RevBlurComputePush, RevBlurTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RevBlurCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tail_tex, tail}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::input_tex, src}},
                 daxa::TaskViewVariant{std::pair{RevBlurCompute::output_tex, dst}},

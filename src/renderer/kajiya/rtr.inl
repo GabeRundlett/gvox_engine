@@ -212,14 +212,14 @@ struct TracedRtr {
     daxa::TaskImageView refl_restir_invalidity_tex;
 
     auto filter(
-        RecordContext &record_ctx,
+        GpuContext &gpu_context,
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView reprojection_map,
         daxa::TaskBufferView spatial_resolve_offsets) -> daxa::TaskImageView {
-        record_ctx.add(ComputeTask<RtrTemporalFilterCompute, RtrTemporalFilterComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<RtrTemporalFilterCompute, RtrTemporalFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtr/temporal_filter.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::input_tex, this->resolved_tex}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::history_tex, this->history_tex}},
                 daxa::TaskViewVariant{std::pair{RtrTemporalFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -240,16 +240,16 @@ struct TracedRtr {
         });
         debug_utils::DebugDisplay::add_pass({.name = "rtr temporal filter", .task_image_id = this->temporal_output_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-        auto final_resolved_tex = record_ctx.task_graph.create_transient_image({
+        auto final_resolved_tex = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "final_resolved_tex",
         });
 
-        record_ctx.add(ComputeTask<RtrSpatialFilterCompute, RtrSpatialFilterComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<RtrSpatialFilterCompute, RtrSpatialFilterComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtr/spatial_cleanup.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::spatial_resolve_offsets, spatial_resolve_offsets}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::input_tex, this->temporal_output_tex}},
                 daxa::TaskViewVariant{std::pair{RtrSpatialFilterCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -271,13 +271,13 @@ struct TracedRtr {
     }
 };
 
-inline auto temporal_storage_buffer(RecordContext &record_ctx, std::string_view name, size_t size) -> daxa::TaskBuffer {
-    auto result = record_ctx.gpu_context->find_or_add_temporal_buffer({
+inline auto temporal_storage_buffer(GpuContext &gpu_context, std::string_view name, size_t size) -> daxa::TaskBuffer {
+    auto result = gpu_context.find_or_add_temporal_buffer({
         .size = size,
         .name = name,
     });
 
-    record_ctx.task_graph.use_persistent_buffer(result.task_resource);
+    gpu_context.frame_task_graph.use_persistent_buffer(result.task_resource);
 
     return result.task_resource;
 }
@@ -310,7 +310,7 @@ struct RtrRenderer {
     }
 
     auto trace(
-        RecordContext &record_ctx,
+        GpuContext &gpu_context,
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView reprojection_map,
         daxa::TaskImageView sky_lut,
@@ -324,12 +324,12 @@ struct RtrRenderer {
         if (!buffers_uploaded) {
             buffers_uploaded = true;
 
-            spatial_resolve_offsets_buf = temporal_storage_buffer(record_ctx, "rtr.spatial_resolve_offsets_buf", sizeof(SPATIAL_RESOLVE_OFFSETS));
-            ranking_tile_buf = temporal_storage_buffer(record_ctx, "rtr.ranking_tile_buf", sizeof(RANKING_TILE));
-            scambling_tile_buf = temporal_storage_buffer(record_ctx, "rtr.scambling_tile_buf", sizeof(SCRAMBLING_TILE));
-            sobol_buf = temporal_storage_buffer(record_ctx, "rtr.sobol_buf", sizeof(SOBOL));
+            spatial_resolve_offsets_buf = temporal_storage_buffer(gpu_context, "rtr.spatial_resolve_offsets_buf", sizeof(SPATIAL_RESOLVE_OFFSETS));
+            ranking_tile_buf = temporal_storage_buffer(gpu_context, "rtr.ranking_tile_buf", sizeof(RANKING_TILE));
+            scambling_tile_buf = temporal_storage_buffer(gpu_context, "rtr.scambling_tile_buf", sizeof(SCRAMBLING_TILE));
+            sobol_buf = temporal_storage_buffer(gpu_context, "rtr.sobol_buf", sizeof(SOBOL));
 
-            daxa::TaskGraph temp_task_graph = daxa::TaskGraph({.device = record_ctx.gpu_context->device, .name = "temp_task_graph"});
+            daxa::TaskGraph temp_task_graph = daxa::TaskGraph({.device = gpu_context.device, .name = "temp_task_graph"});
             temp_task_graph.use_persistent_buffer(spatial_resolve_offsets_buf);
             temp_task_graph.use_persistent_buffer(ranking_tile_buf);
             temp_task_graph.use_persistent_buffer(scambling_tile_buf);
@@ -401,31 +401,31 @@ struct RtrRenderer {
             temp_task_graph.complete({});
             temp_task_graph.execute({});
         } else {
-            record_ctx.task_graph.use_persistent_buffer(spatial_resolve_offsets_buf);
-            record_ctx.task_graph.use_persistent_buffer(ranking_tile_buf);
-            record_ctx.task_graph.use_persistent_buffer(scambling_tile_buf);
-            record_ctx.task_graph.use_persistent_buffer(sobol_buf);
+            gpu_context.frame_task_graph.use_persistent_buffer(spatial_resolve_offsets_buf);
+            gpu_context.frame_task_graph.use_persistent_buffer(ranking_tile_buf);
+            gpu_context.frame_task_graph.use_persistent_buffer(scambling_tile_buf);
+            gpu_context.frame_task_graph.use_persistent_buffer(sobol_buf);
         }
 
-        auto gbuffer_half_res = daxa_u32vec2{(record_ctx.render_resolution.x + 1) / 2, (record_ctx.render_resolution.y + 1) / 2};
+        auto gbuffer_half_res = daxa_u32vec2{(gpu_context.render_resolution.x + 1) / 2, (gpu_context.render_resolution.y + 1) / 2};
 
         temporal_rng_tex = PingPongImage{};
         auto [rng_output_tex, rng_history_tex] = temporal_rng_tex.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R32_UINT,
                 .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "temporal_rng_tex",
             });
-        record_ctx.task_graph.use_persistent_image(rng_output_tex);
-        record_ctx.task_graph.use_persistent_image(rng_history_tex);
-        clear_task_images(record_ctx.gpu_context->device, std::array{rng_output_tex, rng_history_tex});
+        gpu_context.frame_task_graph.use_persistent_image(rng_output_tex);
+        gpu_context.frame_task_graph.use_persistent_image(rng_history_tex);
+        clear_task_images(gpu_context.device, std::array{rng_output_tex, rng_history_tex});
 
-        record_ctx.add(ComputeTask<RtrTraceCompute, RtrTraceComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<RtrTraceCompute, RtrTraceComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtr/trace_reflection.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtrTraceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtrTraceCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::ranking_tile_buf, ranking_tile_buf}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::scambling_tile_buf, scambling_tile_buf}},
                 daxa::TaskViewVariant{std::pair{RtrTraceCompute::sobol_buf, sobol_buf}},
@@ -453,23 +453,23 @@ struct RtrRenderer {
 
         debug_utils::DebugDisplay::add_pass({.name = "rtr trace", .task_image_id = refl0_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-        auto half_view_normal_tex = gbuffer_depth.get_downscaled_view_normal(record_ctx);
-        auto half_depth_tex = gbuffer_depth.get_downscaled_depth(record_ctx);
+        auto half_view_normal_tex = gbuffer_depth.get_downscaled_view_normal(gpu_context);
+        auto half_depth_tex = gbuffer_depth.get_downscaled_depth(gpu_context);
 
         temporal_ray_orig_tex = PingPongImage{};
         auto [ray_orig_output_tex, ray_orig_history_tex] = temporal_ray_orig_tex.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R32G32B32A32_SFLOAT,
                 .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "rtr.temporal_ray_orig_tex",
             });
-        record_ctx.task_graph.use_persistent_image(ray_orig_output_tex);
-        record_ctx.task_graph.use_persistent_image(ray_orig_history_tex);
-        clear_task_images(record_ctx.gpu_context->device, std::array{ray_orig_output_tex, ray_orig_history_tex});
+        gpu_context.frame_task_graph.use_persistent_image(ray_orig_output_tex);
+        gpu_context.frame_task_graph.use_persistent_image(ray_orig_history_tex);
+        clear_task_images(gpu_context.device, std::array{ray_orig_output_tex, ray_orig_history_tex});
 
-        auto refl_restir_invalidity_tex = record_ctx.task_graph.create_transient_image({
+        auto refl_restir_invalidity_tex = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R8_UNORM,
             .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
             .name = "refl_restir_invalidity_tex",
@@ -482,60 +482,60 @@ struct RtrRenderer {
         {
             temporal_hit_normal_tex = PingPongImage{};
             auto [hit_normal_output_tex, hit_normal_history_tex] = temporal_hit_normal_tex.get(
-                *record_ctx.gpu_context,
+                gpu_context,
                 {
                     .format = daxa::Format::R8G8B8A8_UNORM,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                     .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                     .name = "rtr.temporal_hit_normal_tex",
                 });
-            record_ctx.task_graph.use_persistent_image(hit_normal_output_tex);
-            record_ctx.task_graph.use_persistent_image(hit_normal_history_tex);
-            clear_task_images(record_ctx.gpu_context->device, std::array{hit_normal_output_tex, hit_normal_history_tex});
+            gpu_context.frame_task_graph.use_persistent_image(hit_normal_output_tex);
+            gpu_context.frame_task_graph.use_persistent_image(hit_normal_history_tex);
+            clear_task_images(gpu_context.device, std::array{hit_normal_output_tex, hit_normal_history_tex});
 
             temporal_irradiance_tex = PingPongImage{};
             auto [irradiance_output_tex, irradiance_history_tex] = temporal_irradiance_tex.get(
-                *record_ctx.gpu_context,
+                gpu_context,
                 {
                     .format = daxa::Format::R16G16B16A16_SFLOAT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                     .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                     .name = "rtr.temporal_irradiance_tex",
                 });
-            record_ctx.task_graph.use_persistent_image(irradiance_output_tex);
-            record_ctx.task_graph.use_persistent_image(irradiance_history_tex);
-            clear_task_images(record_ctx.gpu_context->device, std::array{irradiance_output_tex, irradiance_history_tex});
+            gpu_context.frame_task_graph.use_persistent_image(irradiance_output_tex);
+            gpu_context.frame_task_graph.use_persistent_image(irradiance_history_tex);
+            clear_task_images(gpu_context.device, std::array{irradiance_output_tex, irradiance_history_tex});
 
             pp_temporal_reservoir_tex = PingPongImage{};
             auto [reservoir_output_tex, reservoir_history_tex] = pp_temporal_reservoir_tex.get(
-                *record_ctx.gpu_context,
+                gpu_context,
                 {
                     .format = daxa::Format::R32G32_UINT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                     .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                     .name = "rtr.temporal_reservoir_tex",
                 });
-            record_ctx.task_graph.use_persistent_image(reservoir_output_tex);
-            record_ctx.task_graph.use_persistent_image(reservoir_history_tex);
-            clear_task_images(record_ctx.gpu_context->device, std::array{reservoir_output_tex, reservoir_history_tex});
+            gpu_context.frame_task_graph.use_persistent_image(reservoir_output_tex);
+            gpu_context.frame_task_graph.use_persistent_image(reservoir_history_tex);
+            clear_task_images(gpu_context.device, std::array{reservoir_output_tex, reservoir_history_tex});
 
             temporal_ray_tex = PingPongImage{};
             auto [ray_output_tex, ray_history_tex] = temporal_ray_tex.get(
-                *record_ctx.gpu_context,
+                gpu_context,
                 {
                     .format = daxa::Format::R16G16B16A16_SFLOAT,
                     .size = {gbuffer_half_res.x, gbuffer_half_res.y, 1},
                     .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                     .name = "rtr.temporal_ray_tex",
                 });
-            record_ctx.task_graph.use_persistent_image(ray_output_tex);
-            record_ctx.task_graph.use_persistent_image(ray_history_tex);
-            clear_task_images(record_ctx.gpu_context->device, std::array{ray_output_tex, ray_history_tex});
+            gpu_context.frame_task_graph.use_persistent_image(ray_output_tex);
+            gpu_context.frame_task_graph.use_persistent_image(ray_history_tex);
+            clear_task_images(gpu_context.device, std::array{ray_output_tex, ray_history_tex});
 
-            record_ctx.add(ComputeTask<RtrValidateCompute, RtrValidateComputePush, NoTaskInfo>{
+            gpu_context.add(ComputeTask<RtrValidateCompute, RtrValidateComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtr/reflection_validate.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtrValidateCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtrValidateCompute::gpu_input, gpu_context.task_input_buffer}},
                     VOXELS_BUFFER_USES_ASSIGN(RtrValidateCompute, voxel_buffers),
                     IRCACHE_BUFFER_USES_ASSIGN(RtrValidateCompute, ircache),
                     daxa::TaskViewVariant{std::pair{RtrValidateCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
@@ -562,10 +562,10 @@ struct RtrRenderer {
 
             debug_utils::DebugDisplay::add_pass({.name = "rtr validate", .task_image_id = refl_restir_invalidity_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-            record_ctx.add(ComputeTask<RtrRestirTemporalCompute, RtrRestirTemporalComputePush, NoTaskInfo>{
+            gpu_context.add(ComputeTask<RtrRestirTemporalCompute, RtrRestirTemporalComputePush, NoTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/rtr/rtr_restir_temporal.comp.glsl"},
                 .views = std::array{
-                    daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                    daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::gpu_input, gpu_context.task_input_buffer}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::half_view_normal_tex, half_view_normal_tex}},
                     daxa::TaskViewVariant{std::pair{RtrRestirTemporalCompute::depth_tex, gbuffer_depth.depth.current()}},
@@ -604,48 +604,48 @@ struct RtrRenderer {
             restir_hit_normal_tex = hit_normal_output_tex;
         }
 
-        auto resolved_tex = record_ctx.task_graph.create_transient_image({
+        auto resolved_tex = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "resolved_tex",
         });
 
         temporal_tex = PingPongImage{};
         auto [temporal_output_tex, history_tex] = temporal_tex.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "rtr.temporal_tex",
             });
-        record_ctx.task_graph.use_persistent_image(temporal_output_tex);
-        record_ctx.task_graph.use_persistent_image(history_tex);
-        clear_task_images(record_ctx.gpu_context->device, std::array{temporal_output_tex, history_tex});
+        gpu_context.frame_task_graph.use_persistent_image(temporal_output_tex);
+        gpu_context.frame_task_graph.use_persistent_image(history_tex);
+        clear_task_images(gpu_context.device, std::array{temporal_output_tex, history_tex});
 
         ray_len_tex = PingPongImage{};
         auto [ray_len_output_tex, ray_len_history_tex] = ray_len_tex.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R16G16_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_DST,
                 .name = "rtr.ray_len_tex",
             });
-        record_ctx.task_graph.use_persistent_image(ray_len_output_tex);
-        record_ctx.task_graph.use_persistent_image(ray_len_history_tex);
-        clear_task_images(record_ctx.gpu_context->device, std::array{ray_len_output_tex, ray_len_history_tex});
+        gpu_context.frame_task_graph.use_persistent_image(ray_len_output_tex);
+        gpu_context.frame_task_graph.use_persistent_image(ray_len_history_tex);
+        clear_task_images(gpu_context.device, std::array{ray_len_output_tex, ray_len_history_tex});
 
-        auto rtr_debug_image = record_ctx.task_graph.create_transient_image({
+        auto rtr_debug_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "rtr_debug_image",
         });
 
-        record_ctx.add(ComputeTask<RtrRestirResolveCompute, RtrRestirResolveComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<RtrRestirResolveCompute, RtrRestirResolveComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/rtr/resolve.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::depth_tex, gbuffer_depth.depth.current()}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::hit0_tex, refl0_tex}},
@@ -661,7 +661,7 @@ struct RtrRenderer {
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::restir_reservoir_tex, temporal_reservoir_tex}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::restir_ray_orig_tex, ray_orig_output_tex}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::restir_hit_normal_tex, restir_hit_normal_tex}},
-                daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
+                daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::blue_noise_vec2, gpu_context.task_blue_noise_vec2_image}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::output_tex, resolved_tex}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::ray_len_output_tex, ray_len_output_tex}},
                 daxa::TaskViewVariant{std::pair{RtrRestirResolveCompute::rtr_debug_image, rtr_debug_image}},

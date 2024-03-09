@@ -3,8 +3,6 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-#include <renderer/kajiya/convolve_cube.inl>
-
 DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute, 2)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
@@ -37,6 +35,16 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_3D, aerial_perspe
 DAXA_DECL_TASK_HEAD_END
 struct SkyAeComputePush {
     SkyAeCompute uses;
+};
+
+DAXA_DECL_TASK_HEAD_BEGIN(ConvolveCubeCompute, 4)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D_ARRAY, ibl_cube)
+DAXA_DECL_TASK_HEAD_END
+struct ConvolveCubeComputePush {
+    ConvolveCubeCompute uses;
 };
 
 #if defined(__cplusplus)
@@ -174,27 +182,127 @@ inline auto get_sky_settings(float time) -> SkySettings {
 }
 
 struct SkyRenderer {
-    TemporalImage temporal_transmittance_lut;
-    TemporalImage temporal_sky_lut;
-    TemporalImage temporal_ibl_cube;
-    TemporalImage temporal_aerial_perspective_lut;
+    TemporalImage transmittance_lut;
+    TemporalImage sky_lut;
+    TemporalImage ibl_cube;
+    TemporalImage aerial_perspective_lut;
 
-    void render(RecordContext &record_ctx, daxa::TaskImageView sky_lut, daxa::TaskImageView transmittance_lut, daxa::TaskImageView aerial_perspective_lut) {
+    daxa::TaskGraph sky_render_task_graph;
+
+    void generate_procedural_sky(GpuContext &gpu_context) {
+        auto multiscattering_lut = sky_render_task_graph.create_transient_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .size = {SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y, 1},
+            .name = "multiscattering_lut",
+        });
+        gpu_context.add(ComputeTask<SkyTransmittanceCompute, SkyTransmittanceComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::transmittance_lut, transmittance_lut.task_resource}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({(SKY_TRANSMITTANCE_RES.x + 7) / 8, (SKY_TRANSMITTANCE_RES.y + 3) / 4});
+            },
+            .task_graph_ptr = &sky_render_task_graph,
+        });
+        gpu_context.add(ComputeTask<SkyMultiscatteringCompute, SkyMultiscatteringComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::transmittance_lut, transmittance_lut.task_resource}},
+                daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::multiscattering_lut, multiscattering_lut}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y});
+            },
+            .task_graph_ptr = &sky_render_task_graph,
+        });
+        gpu_context.add(ComputeTask<SkySkyCompute, SkySkyComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{SkySkyCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SkySkyCompute::transmittance_lut, transmittance_lut.task_resource}},
+                daxa::TaskViewVariant{std::pair{SkySkyCompute::multiscattering_lut, multiscattering_lut}},
+                daxa::TaskViewVariant{std::pair{SkySkyCompute::sky_lut, sky_lut.task_resource}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkySkyComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({(SKY_SKY_RES.x + 7) / 8, (SKY_SKY_RES.y + 3) / 4});
+            },
+            .task_graph_ptr = &sky_render_task_graph,
+        });
+        gpu_context.add(ComputeTask<SkyAeCompute, SkyAeComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{SkyAeCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{SkyAeCompute::transmittance_lut, transmittance_lut.task_resource}},
+                daxa::TaskViewVariant{std::pair{SkyAeCompute::multiscattering_lut, multiscattering_lut}},
+                daxa::TaskViewVariant{std::pair{SkyAeCompute::aerial_perspective_lut, aerial_perspective_lut.task_resource}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyAeComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({SKY_AE_RES.x, SKY_AE_RES.y, 1});
+            },
+            .task_graph_ptr = &sky_render_task_graph,
+        });
+
+        // TODO(grundlett): You need to fix this. The views can easily be invalid, as these one are.
+        // These views are transients for a different task graph!!!
+        // debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        // debug_utils::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+        // debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+    }
+
+    void convolve_cube(GpuContext &gpu_context) {
+        auto ibl_cube_view = ibl_cube.task_resource.view().view({.layer_count = 6});
+
+        gpu_context.add(ComputeTask<ConvolveCubeCompute, ConvolveCubeComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"atmosphere/convolve_cube.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::sky_lut, sky_lut.task_resource}},
+                daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::transmittance_lut, transmittance_lut.task_resource}},
+                daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::ibl_cube, ibl_cube_view}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ConvolveCubeComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
+            },
+            .task_graph_ptr = &sky_render_task_graph,
+        });
+    }
+
+    void render(GpuContext &gpu_context) {
         add_sky_settings();
 
-        temporal_transmittance_lut = record_ctx.gpu_context->find_or_add_temporal_image({
+        sky_render_task_graph = daxa::TaskGraph({
+            .device = gpu_context.device,
+            .name = "sky_render_task_graph",
+        });
+
+        sky_render_task_graph.use_persistent_buffer(gpu_context.task_input_buffer);
+
+        transmittance_lut = gpu_context.find_or_add_temporal_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
             .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
             .name = "temporal transmittance_lut",
         });
-        temporal_sky_lut = record_ctx.gpu_context->find_or_add_temporal_image({
+        sky_lut = gpu_context.find_or_add_temporal_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {SKY_SKY_RES.x, SKY_SKY_RES.y, 1},
             .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
             .name = "temporal sky_lut",
         });
-        temporal_ibl_cube = record_ctx.gpu_context->find_or_add_temporal_image({
+        ibl_cube = gpu_context.find_or_add_temporal_image({
             .flags = daxa::ImageCreateFlagBits::COMPATIBLE_CUBE,
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {IBL_CUBE_RES, IBL_CUBE_RES, 1},
@@ -202,7 +310,7 @@ struct SkyRenderer {
             .usage = daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST,
             .name = "temporal ibl_cube",
         });
-        temporal_aerial_perspective_lut = record_ctx.gpu_context->find_or_add_temporal_image({
+        aerial_perspective_lut = gpu_context.find_or_add_temporal_image({
             .dimensions = 3,
             .format = daxa::Format::R32G32B32A32_SFLOAT,
             .size = {SKY_AE_RES.x, SKY_AE_RES.y, SKY_AE_RES.z},
@@ -210,136 +318,18 @@ struct SkyRenderer {
             .name = "temporal ae_lut",
         });
 
-        record_ctx.task_graph.use_persistent_image(temporal_transmittance_lut.task_resource);
-        record_ctx.task_graph.use_persistent_image(temporal_sky_lut.task_resource);
-        record_ctx.task_graph.use_persistent_image(temporal_ibl_cube.task_resource);
-        record_ctx.task_graph.use_persistent_image(temporal_aerial_perspective_lut.task_resource);
+        sky_render_task_graph.use_persistent_image(transmittance_lut.task_resource);
+        sky_render_task_graph.use_persistent_image(sky_lut.task_resource);
+        sky_render_task_graph.use_persistent_image(ibl_cube.task_resource);
+        sky_render_task_graph.use_persistent_image(aerial_perspective_lut.task_resource);
 
-        record_ctx.task_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, transmittance_lut),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, temporal_transmittance_lut.task_resource),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, sky_lut),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, temporal_sky_lut.task_resource),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, aerial_perspective_lut),
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, temporal_aerial_perspective_lut.task_resource),
-            },
-            .task = [](daxa::TaskInterface const &ti) {
-                ti.recorder.copy_image_to_image({
-                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
-                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
-                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0],
-                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
-                    .extent = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
-                });
-                ti.recorder.copy_image_to_image({
-                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{2}).ids[0],
-                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{2}).layout,
-                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{3}).ids[0],
-                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{3}).layout,
-                    .extent = {SKY_SKY_RES.x, SKY_SKY_RES.y, 1},
-                });
-                ti.recorder.copy_image_to_image({
-                    .src_image = ti.get(daxa::TaskImageAttachmentIndex{4}).ids[0],
-                    .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{4}).layout,
-                    .dst_image = ti.get(daxa::TaskImageAttachmentIndex{5}).ids[0],
-                    .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{5}).layout,
-                    .extent = {SKY_AE_RES.x, SKY_AE_RES.y, SKY_AE_RES.z},
-                });
-            },
-            .name = "copy sky images",
-        });
+        generate_procedural_sky(gpu_context);
 
-        auto ibl_cube = temporal_ibl_cube.task_resource.view().view({.layer_count = 6});
+        convolve_cube(gpu_context);
 
-        convolve_cube(record_ctx, sky_lut, transmittance_lut, ibl_cube);
+        sky_render_task_graph.submit({});
+        sky_render_task_graph.complete({});
     }
 };
-
-inline auto generate_procedural_sky(RecordContext &record_ctx) -> std::array<daxa::TaskImageView, 3> {
-    auto transmittance_lut = record_ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {SKY_TRANSMITTANCE_RES.x, SKY_TRANSMITTANCE_RES.y, 1},
-        .name = "transmittance_lut",
-    });
-    auto multiscattering_lut = record_ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y, 1},
-        .name = "multiscattering_lut",
-    });
-    auto sky_lut = record_ctx.task_graph.create_transient_image({
-        .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {SKY_SKY_RES.x, SKY_SKY_RES.y, 1},
-        .name = "sky_lut",
-    });
-    auto aerial_perspective_lut = record_ctx.task_graph.create_transient_image({
-        .dimensions = 3,
-        .format = daxa::Format::R32G32B32A32_SFLOAT,
-        .size = {SKY_AE_RES.x, SKY_AE_RES.y, SKY_AE_RES.z},
-        .name = "aerial_perspective_lut",
-    });
-
-    record_ctx.add(ComputeTask<SkyTransmittanceCompute, SkyTransmittanceComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::transmittance_lut, transmittance_lut}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyTransmittanceComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({(SKY_TRANSMITTANCE_RES.x + 7) / 8, (SKY_TRANSMITTANCE_RES.y + 3) / 4});
-        },
-    });
-    record_ctx.add(ComputeTask<SkyMultiscatteringCompute, SkyMultiscatteringComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::transmittance_lut, transmittance_lut}},
-            daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::multiscattering_lut, multiscattering_lut}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyMultiscatteringComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y});
-        },
-    });
-    record_ctx.add(ComputeTask<SkySkyCompute, SkySkyComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkySkyCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{SkySkyCompute::transmittance_lut, transmittance_lut}},
-            daxa::TaskViewVariant{std::pair{SkySkyCompute::multiscattering_lut, multiscattering_lut}},
-            daxa::TaskViewVariant{std::pair{SkySkyCompute::sky_lut, sky_lut}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkySkyComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({(SKY_SKY_RES.x + 7) / 8, (SKY_SKY_RES.y + 3) / 4});
-        },
-    });
-    record_ctx.add(ComputeTask<SkyAeCompute, SkyAeComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{SkyAeCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{SkyAeCompute::transmittance_lut, transmittance_lut}},
-            daxa::TaskViewVariant{std::pair{SkyAeCompute::multiscattering_lut, multiscattering_lut}},
-            daxa::TaskViewVariant{std::pair{SkyAeCompute::aerial_perspective_lut, aerial_perspective_lut}},
-        },
-        .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SkyAeComputePush &push, NoTaskInfo const &) {
-            ti.recorder.set_pipeline(pipeline);
-            set_push_constant(ti, push);
-            ti.recorder.dispatch({SKY_AE_RES.x, SKY_AE_RES.y, 1});
-        },
-    });
-
-    // TODO(grundlett): You need to fix this. The views can easily be invalid, as these one are.
-    // These views are transients for a different task graph!!!
-    // debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    // debug_utils::DebugDisplay::add_pass({.name = "multiscattering_lut", .task_image_id = multiscattering_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-    // debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-
-    return {sky_lut, transmittance_lut, aerial_perspective_lut};
-}
 
 #endif

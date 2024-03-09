@@ -5,11 +5,11 @@
 #if defined(__cplusplus)
 
 template <typename T>
-concept IsVoxelWorld = requires(T x, RecordContext &r) {
+concept IsVoxelWorld = requires(T x, GpuContext &g) {
     { x.buffers };
-    { x.record_startup(r) };
-    { x.begin_frame(r.gpu_context->device, VoxelWorldOutput{}) };
-    { x.record_frame(r, daxa::TaskBufferView{}, daxa::TaskImageView{}) };
+    { x.record_startup(g) };
+    { x.begin_frame(g.device, VoxelWorldOutput{}) };
+    { x.record_frame(g, daxa::TaskBufferView{}, daxa::TaskImageView{}) };
 };
 
 #endif

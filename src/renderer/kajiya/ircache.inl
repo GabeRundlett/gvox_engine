@@ -265,8 +265,8 @@ struct IrcacheRenderState {
 
     bool pending_irradiance_sum;
 
-    auto trace_irradiance(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation;
-    void sum_up_irradiance_for_sampling(RecordContext &record_ctx, IrcacheIrradiancePendingSummation pending);
+    auto trace_irradiance(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView sky_cube, daxa::TaskImageView transmittance_lut) -> IrcacheIrradiancePendingSummation;
+    void sum_up_irradiance_for_sampling(GpuContext &gpu_context, IrcacheIrradiancePendingSummation pending);
 };
 
 struct IrcacheRenderer {
@@ -281,7 +281,7 @@ struct IrcacheRenderer {
 
     void update_eye_position(GpuInput &gpu_input);
     void next_frame();
-    auto prepare(RecordContext &record_ctx) -> IrcacheRenderState;
+    auto prepare(GpuContext &gpu_context) -> IrcacheRenderState;
 };
 
 #endif

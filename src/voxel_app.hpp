@@ -24,10 +24,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     GpuContext gpu_context;
 
-    daxa::Swapchain swapchain;
-    daxa::ImageId swapchain_image{};
-    daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
-
     AppUi ui;
     AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
@@ -45,7 +41,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
     bool needs_vram_calc = true;
 
     daxa_f32 render_res_scl{1.0f};
-    daxa::TaskGraph main_task_graph;
 
     VoxelApp();
     VoxelApp(VoxelApp const &) = delete;
@@ -64,9 +59,8 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_resize(daxa_u32 sx, daxa_u32 sy);
     void on_drop(std::span<char const *> filepaths);
 
-    void run_startup(daxa::TaskGraph &temp_task_graph);
+    void run_startup();
+    void record_tasks();
 
-    auto record_main_task_graph() -> daxa::TaskGraph;
-
-    void calc_vram_usage(daxa::TaskGraph &task_graph);
+    void calc_vram_usage();
 };

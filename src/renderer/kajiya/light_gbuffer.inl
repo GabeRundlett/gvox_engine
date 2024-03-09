@@ -36,7 +36,7 @@ struct LightGbufferComputePush {
 #if defined(__cplusplus)
 
 inline auto light_gbuffer(
-    RecordContext &record_ctx,
+    GpuContext &gpu_context,
     GbufferDepth &gbuffer_depth,
     daxa::TaskImageView shadow_mask,
     daxa::TaskImageView rtr,
@@ -46,17 +46,17 @@ inline auto light_gbuffer(
     daxa::TaskImageView transmittance_lut,
     daxa::TaskImageView ae_lut) -> daxa::TaskImageView {
 
-    auto output_image = record_ctx.task_graph.create_transient_image({
+    auto output_image = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
-        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
         .name = "composited_image",
     });
 
-    record_ctx.add(ComputeTask<LightGbufferCompute, LightGbufferComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<LightGbufferCompute, LightGbufferComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
         .views = std::array{
             // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{LightGbufferCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::gbuffer_tex, gbuffer_depth.gbuffer}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::depth_tex, gbuffer_depth.depth.current().view()}},
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::shadow_mask_tex, shadow_mask}},

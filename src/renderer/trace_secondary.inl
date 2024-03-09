@@ -19,10 +19,10 @@ struct TraceSecondaryComputePush {
 
 #include <application/settings.hpp>
 
-inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth, VoxelWorldBuffers &voxel_buffers) -> daxa::TaskImageView {
-    auto shadow_mask = record_ctx.task_graph.create_transient_image({
+inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, VoxelWorldBuffers &voxel_buffers) -> daxa::TaskImageView {
+    auto shadow_mask = gpu_context.frame_task_graph.create_transient_image({
         .format = daxa::Format::R8_UNORM,
-        .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+        .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
         .name = "shadow_mask",
     });
 
@@ -31,13 +31,13 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
     auto render_shadows = AppSettings::get<settings::Checkbox>("Graphics", "Render Shadows").value;
 
     if (render_shadows) {
-        record_ctx.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<TraceSecondaryCompute, TraceSecondaryComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_secondary.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::shadow_mask, shadow_mask}},
                 VOXELS_BUFFER_USES_ASSIGN(TraceSecondaryCompute, voxel_buffers),
-                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
+                daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::blue_noise_vec2, gpu_context.task_blue_noise_vec2_image}},
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{TraceSecondaryCompute::depth_image_id, gbuffer_depth.depth.current()}},
             },
@@ -50,7 +50,7 @@ inline auto trace_shadows(RecordContext &record_ctx, GbufferDepth &gbuffer_depth
             },
         });
     } else {
-        clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 1>{shadow_mask}, std::array<daxa::ClearValue, 1>{std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f}});
+        clear_task_images(gpu_context.frame_task_graph, std::array<daxa::TaskImageView, 1>{shadow_mask}, std::array<daxa::ClearValue, 1>{std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f}});
     }
 
     debug_utils::DebugDisplay::add_pass({.name = "trace shadow bitmap", .task_image_id = shadow_mask, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});

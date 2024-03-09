@@ -1,6 +1,6 @@
-#include <renderer/kajiya/convolve_cube.inl>
+#include "sky.inl"
+#include "sky.glsl"
 #include <utilities/gpu/math.glsl>
-#include <renderer/atmosphere/sky.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(ConvolveCubeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

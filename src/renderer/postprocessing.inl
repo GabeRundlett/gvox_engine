@@ -30,15 +30,15 @@ struct DebugImageRasterPush {
 
 #if defined(__cplusplus)
 
-inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
-    record_ctx.add(RasterTask<PostprocessingRaster, PostprocessingRasterPush, NoTaskInfo>{
+inline void tonemap_raster(GpuContext &gpu_context, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
+    gpu_context.add(RasterTask<PostprocessingRaster, PostprocessingRasterPush, NoTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
         .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
         .color_attachments = {{
             .format = output_format,
         }},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{PostprocessingRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{PostprocessingRaster::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::composited_image_id, antialiased_image}},
             daxa::TaskViewVariant{std::pair{PostprocessingRaster::render_image, output_image}},
         },
@@ -57,22 +57,22 @@ inline void tonemap_raster(RecordContext &record_ctx, daxa::TaskImageView antial
     });
 }
 
-inline void debug_pass(RecordContext &record_ctx, debug_utils::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
+inline void debug_pass(GpuContext &gpu_context, debug_utils::Pass const &pass, daxa::TaskImageView output_image, daxa::Format output_format) {
     struct DebugImageRasterTaskInfo {
         debug_utils::Pass const *pass;
     };
 
-    record_ctx.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
+    gpu_context.add(RasterTask<DebugImageRaster, DebugImageRasterPush, DebugImageRasterTaskInfo>{
         .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
         .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
         .color_attachments = {{
             .format = output_format,
         }},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::gpu_input, record_ctx.gpu_context->task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, (pass.type == DEBUG_IMAGE_TYPE_CUBEMAP || pass.type == DEBUG_IMAGE_TYPE_3D) ? record_ctx.gpu_context->task_debug_texture : pass.task_image_id}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : record_ctx.gpu_context->task_debug_texture}},
-            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id_3d, pass.type == DEBUG_IMAGE_TYPE_3D ? pass.task_image_id : record_ctx.gpu_context->task_debug_texture}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::gpu_input, gpu_context.task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id, (pass.type == DEBUG_IMAGE_TYPE_CUBEMAP || pass.type == DEBUG_IMAGE_TYPE_3D) ? gpu_context.task_debug_texture : pass.task_image_id}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::cube_image_id, pass.type == DEBUG_IMAGE_TYPE_CUBEMAP ? pass.task_image_id : gpu_context.task_debug_texture}},
+            daxa::TaskViewVariant{std::pair{DebugImageRaster::image_id_3d, pass.type == DEBUG_IMAGE_TYPE_3D ? pass.task_image_id : gpu_context.task_debug_texture}},
             daxa::TaskViewVariant{std::pair{DebugImageRaster::render_image, output_image}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, DebugImageRasterPush &push, DebugImageRasterTaskInfo const &info) {

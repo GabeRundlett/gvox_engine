@@ -9,8 +9,6 @@
 
 #include <random>
 
-#include "record_context.hpp"
-
 GpuContext::GpuContext() {
     daxa_instance = daxa::create_instance({});
     device = daxa_instance.create_device({
@@ -400,18 +398,27 @@ GpuContext::~GpuContext() {
     }
 }
 
-void GpuContext::use_resources(RecordContext &record_ctx) {
-    record_ctx.task_graph.use_persistent_image(task_value_noise_image);
-    record_ctx.task_graph.use_persistent_image(task_blue_noise_vec2_image);
-    record_ctx.task_graph.use_persistent_image(task_debug_texture);
-    record_ctx.task_graph.use_persistent_image(task_test_texture);
-    record_ctx.task_graph.use_persistent_image(task_test_texture2);
+void GpuContext::create_swapchain(daxa::SwapchainInfo const &info) {
+    swapchain = device.create_swapchain(info);
+}
 
-    record_ctx.task_graph.use_persistent_buffer(task_input_buffer);
-    record_ctx.task_graph.use_persistent_buffer(task_output_buffer);
-    record_ctx.task_graph.use_persistent_buffer(task_staging_output_buffer);
+void GpuContext::use_resources() {
+    frame_task_graph.use_persistent_image(task_swapchain_image);
 
-    record_ctx.gpu_context = this;
+    auto use_shared_resources = [this](daxa::TaskGraph &task_graph) {
+        task_graph.use_persistent_image(task_value_noise_image);
+        task_graph.use_persistent_image(task_blue_noise_vec2_image);
+        task_graph.use_persistent_image(task_debug_texture);
+        task_graph.use_persistent_image(task_test_texture);
+        task_graph.use_persistent_image(task_test_texture2);
+
+        task_graph.use_persistent_buffer(task_input_buffer);
+        task_graph.use_persistent_buffer(task_output_buffer);
+        task_graph.use_persistent_buffer(task_staging_output_buffer);
+    };
+
+    use_shared_resources(frame_task_graph);
+    use_shared_resources(startup_task_graph);
 }
 
 void GpuContext::update_seeded_value_noise(daxa::Device &device, uint64_t seed) {

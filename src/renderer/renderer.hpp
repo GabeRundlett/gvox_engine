@@ -15,5 +15,5 @@ struct Renderer {
 
     void begin_frame(GpuInput &gpu_input);
     void end_frame(daxa::Device &device, float dt);
-    auto render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView;
+    auto render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView;
 };

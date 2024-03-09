@@ -4,7 +4,7 @@
 
 #if defined(__cplusplus)
 
-#include <utilities/record_context.hpp>
+#include <utilities/gpu_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 
 namespace {

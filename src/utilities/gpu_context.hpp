@@ -17,11 +17,13 @@ struct TemporalImage {
 using TemporalBuffers = std::unordered_map<std::string, TemporalBuffer>;
 using TemporalImages = std::unordered_map<std::string, TemporalImage>;
 
-struct RecordContext;
-
 struct GpuContext {
     daxa::Instance daxa_instance;
     daxa::Device device;
+
+    daxa::Swapchain swapchain;
+    daxa::ImageId swapchain_image{};
+    daxa::TaskImage task_swapchain_image{daxa::TaskImageInfo{.swapchain_image = true}};
 
     daxa::ImageId value_noise_image;
     daxa::ImageId blue_noise_vec2_image;
@@ -52,10 +54,17 @@ struct GpuContext {
     TemporalBuffers temporal_buffers;
     TemporalImages temporal_images;
 
+    daxa::TaskGraph startup_task_graph;
+    daxa::TaskGraph frame_task_graph;
+    daxa_u32vec2 render_resolution;
+    daxa_u32vec2 output_resolution;
+
     GpuContext();
     ~GpuContext();
 
-    void use_resources(RecordContext &record_ctx);
+    void create_swapchain(daxa::SwapchainInfo const &info);
+
+    void use_resources();
     void update_seeded_value_noise(daxa::Device &device, uint64_t seed);
 
     auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer;
@@ -114,6 +123,22 @@ struct GpuContext {
                 pipe_iter = emplace_result.first;
             }
             return pipe_iter;
+        }
+    }
+
+    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+    void add(Task<TaskHeadT, PushT, InfoT, PipelineT> &&task) {
+        auto shader_id = std::string{TaskHeadT::name()};
+        for (auto const &define : task.extra_defines) {
+            shader_id.append(define.name);
+            shader_id.append(define.value);
+        }
+        auto pipe_iter = find_or_add_pipeline<TaskHeadT, PushT, InfoT, PipelineT>(task, shader_id);
+        task.pipeline = pipe_iter->second;
+        if (task.task_graph_ptr == nullptr) {
+            frame_task_graph.add_task(std::move(task));
+        } else {
+            task.task_graph_ptr->add_task(std::move(task));
         }
     }
 };

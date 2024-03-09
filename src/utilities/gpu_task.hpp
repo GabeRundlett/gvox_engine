@@ -20,6 +20,7 @@ struct Task : TaskHeadT {
     // Not set by user
     // std::string_view name = TaskHeadT::NAME;
     std::shared_ptr<PipelineT> pipeline;
+    daxa::TaskGraph *task_graph_ptr = nullptr;
     void callback(daxa::TaskInterface const &ti) {
         auto push = PushT{};
         if (!pipeline->is_valid()) {
@@ -42,6 +43,7 @@ struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> : TaskHeadT {
     InfoT info{};
     // Not set by user
     std::shared_ptr<AsyncManagedRasterPipeline> pipeline;
+    daxa::TaskGraph *task_graph_ptr = nullptr;
     void callback(daxa::TaskInterface const &ti) {
         auto push = PushT{};
         // ti.copy_task_head_to(&push.uses);

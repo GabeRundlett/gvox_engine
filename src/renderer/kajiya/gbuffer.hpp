@@ -2,7 +2,7 @@
 
 #include <renderer/kajiya/downscale.inl>
 
-#include <utilities/record_context.hpp>
+#include <utilities/gpu_context.hpp>
 #include <utilities/ping_pong_resource.hpp>
 
 struct GbufferDepth {
@@ -19,15 +19,15 @@ struct GbufferDepth {
         downscaled_view_normal = std::nullopt;
     }
 
-    auto get_downscaled_depth(RecordContext &ctx) -> daxa::TaskImageView {
+    auto get_downscaled_depth(GpuContext &gpu_context) -> daxa::TaskImageView {
         if (!downscaled_depth) {
-            downscaled_depth = extract_downscaled_depth(ctx, depth.current());
+            downscaled_depth = extract_downscaled_depth(gpu_context, depth.current());
         }
         return *downscaled_depth;
     }
-    auto get_downscaled_view_normal(RecordContext &ctx) -> daxa::TaskImageView {
+    auto get_downscaled_view_normal(GpuContext &gpu_context) -> daxa::TaskImageView {
         if (!downscaled_view_normal) {
-            downscaled_view_normal = extract_downscaled_gbuffer_view_normal_rgba8(ctx, gbuffer);
+            downscaled_view_normal = extract_downscaled_gbuffer_view_normal_rgba8(gpu_context, gbuffer);
         }
         return *downscaled_view_normal;
     }

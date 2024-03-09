@@ -19,19 +19,19 @@ struct CalculateHistogramComputePush {
 
 #if defined(__cplusplus)
 
-inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskImageView blur_pyramid, daxa::TaskBufferView dst_histogram, daxa_u32vec2 image_size, uint32_t &histogram_index) {
+inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskImageView blur_pyramid, daxa::TaskBufferView dst_histogram, daxa_u32vec2 image_size, uint32_t &histogram_index) {
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
     auto input_mip_level = std::max(mip_count, 7u) - 7;
 
     auto hist_size = static_cast<uint32_t>(sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT);
-    auto tmp_histogram = record_ctx.task_graph.create_transient_buffer({
+    auto tmp_histogram = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT,
         .name = "tmp_histogram",
     });
 
-    record_ctx.task_graph.add_task({
+    gpu_context.frame_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, tmp_histogram),
         },
@@ -49,10 +49,10 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
     struct CalculateHistogramTaskInfo {
         daxa_u32 input_mip_level;
     };
-    record_ctx.add(ComputeTask<CalculateHistogramCompute, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
+    gpu_context.add(ComputeTask<CalculateHistogramCompute, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/calculate_histogram.comp.glsl"},
         .views = std::array{
-            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::gpu_input, gpu_context.task_input_buffer}},
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::input_tex, blur_pyramid.view({.base_mip_level = input_mip_level, .level_count = 1})}},
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::output_buffer, tmp_histogram}},
         },
@@ -69,7 +69,7 @@ inline auto calculate_luminance_histogram(RecordContext &record_ctx, daxa::TaskI
         },
     });
 
-    record_ctx.task_graph.add_task({
+    gpu_context.frame_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, tmp_histogram),
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, dst_histogram),

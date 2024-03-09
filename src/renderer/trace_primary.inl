@@ -50,16 +50,16 @@ struct GbufferRenderer {
         gbuffer_depth.next_frame();
     }
 
-    auto render(RecordContext &record_ctx, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
+    auto render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView particles_image, daxa::TaskImageView particles_depth_image)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
-        gbuffer_depth.gbuffer = record_ctx.task_graph.create_transient_image({
+        gbuffer_depth.gbuffer = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R32G32B32A32_UINT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "gbuffer",
         });
-        gbuffer_depth.geometric_normal = record_ctx.task_graph.create_transient_image({
+        gbuffer_depth.geometric_normal = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::A2B10G10R10_UNORM_PACK32,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "normal",
         });
 
@@ -68,33 +68,33 @@ struct GbufferRenderer {
 
         gbuffer_depth.depth = PingPongImage{};
         auto [depth_image, prev_depth_image] = gbuffer_depth.depth.get(
-            *record_ctx.gpu_context,
+            gpu_context,
             {
                 .format = daxa::Format::R32_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED | daxa::ImageUsageFlagBits::TRANSFER_SRC,
                 .name = "depth_image",
             });
 
-        record_ctx.task_graph.use_persistent_image(depth_image);
-        record_ctx.task_graph.use_persistent_image(prev_depth_image);
+        gpu_context.frame_task_graph.use_persistent_image(depth_image);
+        gpu_context.frame_task_graph.use_persistent_image(prev_depth_image);
 
-        auto velocity_image = record_ctx.task_graph.create_transient_image({
+        auto velocity_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
-            .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+            .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "velocity_image",
         });
 
-        auto depth_prepass_image = record_ctx.task_graph.create_transient_image({
+        auto depth_prepass_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R32_SFLOAT,
-            .size = {record_ctx.render_resolution.x / PREPASS_SCL, record_ctx.render_resolution.y / PREPASS_SCL, 1},
+            .size = {gpu_context.render_resolution.x / PREPASS_SCL, gpu_context.render_resolution.y / PREPASS_SCL, 1},
             .name = "depth_prepass_image",
         });
 
-        record_ctx.add(ComputeTask<TraceDepthPrepassCompute, TraceDepthPrepassComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<TraceDepthPrepassCompute, TraceDepthPrepassComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::gpu_input, gpu_context.task_input_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(TraceDepthPrepassCompute, voxel_buffers),
                 daxa::TaskViewVariant{std::pair{TraceDepthPrepassCompute::render_depth_prepass_image, depth_prepass_image}},
             },
@@ -107,13 +107,13 @@ struct GbufferRenderer {
             },
         });
 
-        record_ctx.add(ComputeTask<TracePrimaryCompute, TracePrimaryComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<TracePrimaryCompute, TracePrimaryComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::gpu_input, gpu_context.task_input_buffer}},
                 VOXELS_BUFFER_USES_ASSIGN(TracePrimaryCompute, voxel_buffers),
-                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::blue_noise_vec2, record_ctx.gpu_context->task_blue_noise_vec2_image}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::debug_texture, record_ctx.gpu_context->task_debug_texture}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::blue_noise_vec2, gpu_context.task_blue_noise_vec2_image}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryCompute::debug_texture, gpu_context.task_debug_texture}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::render_depth_prepass_image, depth_prepass_image}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryCompute::velocity_image_id, velocity_image}},
@@ -129,10 +129,10 @@ struct GbufferRenderer {
             },
         });
 
-        record_ctx.add(ComputeTask<CompositeParticlesCompute, CompositeParticlesComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<CompositeParticlesCompute, CompositeParticlesComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.comp.glsl"},
             .views = std::array{
-                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::gpu_input, record_ctx.gpu_context->task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::gpu_input, gpu_context.task_input_buffer}},
 
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::velocity_image_id, velocity_image}},

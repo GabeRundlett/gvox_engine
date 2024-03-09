@@ -97,17 +97,17 @@ struct PostProcessor {
         }
     }
 
-    auto process(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
-        histogram_buffer = record_ctx.gpu_context->find_or_add_temporal_buffer({
+    auto process(GpuContext &gpu_context, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
+        histogram_buffer = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT * (FRAMES_IN_FLIGHT + 1),
             .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
             .name = "histogram",
         });
-        record_ctx.task_graph.use_persistent_buffer(histogram_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(histogram_buffer.task_resource);
 
-        auto blur_pyramid = ::blur_pyramid(record_ctx, input_image, image_size);
-        calculate_luminance_histogram(record_ctx, blur_pyramid, histogram_buffer.task_resource, image_size, histogram_buffer_index);
-        // auto rev_blur_pyramid = ::rev_blur_pyramid(record_ctx, blur_pyramid, image_size);
+        auto blur_pyramid = ::blur_pyramid(gpu_context, input_image, image_size);
+        calculate_luminance_histogram(gpu_context, blur_pyramid, histogram_buffer.task_resource, image_size, histogram_buffer_index);
+        // auto rev_blur_pyramid = ::rev_blur_pyramid(gpu_context, blur_pyramid, image_size);
         return blur_pyramid;
     }
 };

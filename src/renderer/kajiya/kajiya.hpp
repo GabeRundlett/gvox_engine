@@ -40,7 +40,7 @@ struct KajiyaRenderer {
     }
 
     auto render(
-        RecordContext &record_ctx,
+        GpuContext &gpu_context,
         GbufferDepth &gbuffer_depth,
         daxa::TaskImageView velocity_image,
         daxa::TaskImageView shadow_mask,
@@ -55,10 +55,10 @@ struct KajiyaRenderer {
         do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
         denoise_shadow_mask = AppSettings::get<settings::Checkbox>("Graphics", "denoise_shadow_mask").value;
 
-        auto reprojection_map = calculate_reprojection_map(record_ctx, gbuffer_depth, velocity_image);
+        auto reprojection_map = calculate_reprojection_map(gpu_context, gbuffer_depth, velocity_image);
         auto denoised_shadow_mask = [&]() {
             if (denoise_shadow_mask) {
-                return shadow_denoiser.denoise_shadow_mask(record_ctx, gbuffer_depth, shadow_mask, reprojection_map);
+                return shadow_denoiser.denoise_shadow_mask(gpu_context, gbuffer_depth, shadow_mask, reprojection_map);
             } else {
                 return shadow_mask;
             }
@@ -71,15 +71,15 @@ struct KajiyaRenderer {
 
         auto ircache_state = IrcacheRenderState{};
         if (do_global_illumination) {
-            ircache_state = ircache_renderer.prepare(record_ctx);
-            auto traced_ircache = ircache_state.trace_irradiance(record_ctx, voxel_buffers, ibl_cube, transmittance_lut);
-            ircache_state.sum_up_irradiance_for_sampling(record_ctx, traced_ircache);
+            ircache_state = ircache_renderer.prepare(gpu_context);
+            auto traced_ircache = ircache_state.trace_irradiance(gpu_context, voxel_buffers, ibl_cube, transmittance_lut);
+            ircache_state.sum_up_irradiance_for_sampling(gpu_context, traced_ircache);
 
-            auto reprojected_rtdgi = rtdgi_renderer.reproject(record_ctx, reprojection_map);
-            auto ssgi_tex = ssao_renderer.render(record_ctx, gbuffer_depth, reprojection_map);
+            auto reprojected_rtdgi = rtdgi_renderer.reproject(gpu_context, reprojection_map);
+            auto ssgi_tex = ssao_renderer.render(gpu_context, gbuffer_depth, reprojection_map);
 
             auto rtdgi_ = rtdgi_renderer.render(
-                record_ctx,
+                gpu_context,
                 reprojected_rtdgi,
                 gbuffer_depth,
                 reprojection_map,
@@ -93,7 +93,7 @@ struct KajiyaRenderer {
             auto &rtdgi_candidates = rtdgi_.candidates;
 
             auto rtr_ = rtr_renderer.trace(
-                record_ctx,
+                gpu_context,
                 gbuffer_depth,
                 reprojection_map,
                 sky_lut,
@@ -103,24 +103,24 @@ struct KajiyaRenderer {
                 rtdgi_candidates,
                 ircache_state);
 
-            rtr = rtr_.filter(record_ctx, gbuffer_depth, reprojection_map, rtr_renderer.spatial_resolve_offsets_buf);
+            rtr = rtr_.filter(gpu_context, gbuffer_depth, reprojection_map, rtr_renderer.spatial_resolve_offsets_buf);
             rtdgi = rtdgi_irradiance;
         } else {
-            rtr = record_ctx.task_graph.create_transient_image({
+            rtr = gpu_context.frame_task_graph.create_transient_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "rtr",
             });
-            rtdgi = record_ctx.task_graph.create_transient_image({
+            rtdgi = gpu_context.frame_task_graph.create_transient_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
-                .size = {record_ctx.render_resolution.x, record_ctx.render_resolution.y, 1},
+                .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "rtdgi",
             });
-            clear_task_images(record_ctx.task_graph, std::array<daxa::TaskImageView, 2>{rtr, rtdgi});
+            clear_task_images(gpu_context.frame_task_graph, std::array<daxa::TaskImageView, 2>{rtr, rtdgi});
         }
 
         auto debug_out_tex = light_gbuffer(
-            record_ctx,
+            gpu_context,
             gbuffer_depth,
             denoised_shadow_mask,
             rtr,
@@ -133,11 +133,11 @@ struct KajiyaRenderer {
         return {debug_out_tex, reprojection_map};
     }
 
-    auto upscale(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa::TaskImageView depth_image, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
-        return taa_renderer.render(record_ctx, input_image, depth_image, reprojection_map);
+    auto upscale(GpuContext &gpu_context, daxa::TaskImageView input_image, daxa::TaskImageView depth_image, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
+        return taa_renderer.render(gpu_context, input_image, depth_image, reprojection_map);
     }
 
-    auto post_process(RecordContext &record_ctx, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
-        return post_processor.process(record_ctx, input_image, image_size);
+    auto post_process(GpuContext &gpu_context, daxa::TaskImageView input_image, daxa_u32vec2 image_size) -> daxa::TaskImageView {
+        return post_processor.process(gpu_context, input_image, image_size);
     }
 };

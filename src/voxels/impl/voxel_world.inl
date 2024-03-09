@@ -101,11 +101,9 @@ struct VoxelWorld {
     // }
 
     void init_gpu_malloc(GpuContext &gpu_context);
-    void record_startup(RecordContext &record_ctx);
+    void record_startup(GpuContext &gpu_context);
     void begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_output);
-    void record_frame(RecordContext &record_ctx, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image);
-
-    void use_buffers(RecordContext &record_ctx);
+    void record_frame(GpuContext &gpu_context, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image);
 };
 
 #endif

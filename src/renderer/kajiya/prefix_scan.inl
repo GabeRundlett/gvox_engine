@@ -28,14 +28,14 @@ struct PrefixScanMergeComputePush {
 
 #if defined(__cplusplus)
 
-inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBufferView input_buf) {
+inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBufferView input_buf) {
     const auto SEGMENT_SIZE = uint32_t{1024};
-    auto segment_sum_buf = record_ctx.task_graph.create_transient_buffer({
+    auto segment_sum_buf = gpu_context.frame_task_graph.create_transient_buffer({
         .size = sizeof(uint32_t) * SEGMENT_SIZE,
         .name = "segment_sum_buf",
     });
 
-    record_ctx.add(ComputeTask<PrefixScan1Compute, PrefixScan1ComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<PrefixScan1Compute, PrefixScan1ComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScan1Compute::inout_buf, input_buf}},
@@ -48,7 +48,7 @@ inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBu
         },
     });
 
-    record_ctx.add(ComputeTask<PrefixScan2Compute, PrefixScan2ComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<PrefixScan2Compute, PrefixScan2ComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScan2Compute::input_buf, input_buf}},
@@ -62,7 +62,7 @@ inline void inclusive_prefix_scan_u32_1m(RecordContext &record_ctx, daxa::TaskBu
         },
     });
 
-    record_ctx.add(ComputeTask<PrefixScanMergeCompute, PrefixScanMergeComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<PrefixScanMergeCompute, PrefixScanMergeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{PrefixScanMergeCompute::inout_buf, input_buf}},
