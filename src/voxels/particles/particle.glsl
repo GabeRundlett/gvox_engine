@@ -10,11 +10,9 @@
 #define PARTICLE_SLEEP_TIMER_OFFSET (8)
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
-#define VERTS_PER_PARTICLE_RASTER 8
-
 vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
-    // return pos - deref(gpu_input).player.player_unit_offset;
-    return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset;
+    // return pos - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
+    return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_pos(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
@@ -84,7 +82,7 @@ void particle_update(in out SimulatedVoxelParticle self, uint self_index, VoxelB
             nrm = normalize(nrm);
 
             const float bounciness = 0.5;
-            const float dampening = 0.01;
+            const float dampening = 0.001;
             // self.vel = normalize(reflect(self.vel, nrm) * (0.5 + 0.5 * bounciness) + self.vel * (0.5 - 0.5 * bounciness)) * curr_speed * dampening;
             self.vel = reflect(self.vel, nrm) * bounciness;
             // if (good_rand(self_index) < 0.1) {
@@ -97,7 +95,7 @@ void particle_update(in out SimulatedVoxelParticle self, uint self_index, VoxelB
 
         if (min(dist, curr_dist_in_dt) < 0.01 * VOXEL_SIZE) {
             self.flags += 1 << PARTICLE_SLEEP_TIMER_OFFSET;
-            if (((self.flags & PARTICLE_SLEEP_TIMER_MASK) >> PARTICLE_SLEEP_TIMER_OFFSET) >= 15) {
+            if (((self.flags & PARTICLE_SLEEP_TIMER_MASK) >> PARTICLE_SLEEP_TIMER_OFFSET) >= 200) {
                 should_place = true;
                 self.flags &= ~PARTICLE_ALIVE_FLAG & ~PARTICLE_SLEEP_TIMER_MASK;
             }
@@ -143,10 +141,46 @@ void particle_voxelize(daxa_RWBufferPtr(uint) placed_voxel_particles, daxa_RWBuf
     }
 }
 
-void particle_render(daxa_RWBufferPtr(uint) rendered_voxel_particles, daxa_RWBufferPtr(VoxelParticlesState) particles_state, in SimulatedVoxelParticle self, uint self_index) {
+void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4 objectToScreenMatrix, in vec2 halfScreenSize, inout float pointSize) {
+    const vec4 quadricMat = vec4(1.0, 1.0, 1.0, -1.0);
+    float sphereRadius = voxelSize * 1.732051;
+    vec4 sphereCenter = vec4(osPosition.xyz, 1.0);
+    mat4 modelViewProj = transpose(objectToScreenMatrix);
+    mat3x4 matT = mat3x4(mat3(modelViewProj[0].xyz, modelViewProj[1].xyz, modelViewProj[3].xyz) * sphereRadius);
+    matT[0].w = dot(sphereCenter, modelViewProj[0]);
+    matT[1].w = dot(sphereCenter, modelViewProj[1]);
+    matT[2].w = dot(sphereCenter, modelViewProj[3]);
+    mat3x4 matD = mat3x4(matT[0] * quadricMat, matT[1] * quadricMat, matT[2] * quadricMat);
+    vec4 eqCoefs =
+        vec4(dot(matD[0], matT[2]), dot(matD[1], matT[2]), dot(matD[0], matT[0]), dot(matD[1], matT[1])) / dot(matD[2], matT[2]);
+    vec4 outPosition = vec4(eqCoefs.x, eqCoefs.y, 0.0, 1.0);
+    vec2 AABB = sqrt(eqCoefs.xy * eqCoefs.xy - eqCoefs.zw);
+    AABB *= halfScreenSize * 2.0f;
+    pointSize = max(AABB.x, AABB.y);
+}
+
+void particle_render(daxa_RWBufferPtr(uint) cube_rendered_particle_indices, daxa_RWBufferPtr(uint) splat_rendered_particle_indices,
+                     daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, in SimulatedVoxelParticle self, uint self_index) {
     if (self.flags == 0) {
         return;
     }
-    uint my_render_index = atomicAdd(deref(particles_state).draw_params.instance_count, 1);
-    deref(advance(rendered_voxel_particles, my_render_index)) = self_index;
+
+    float voxel_radius = (1023.0 / 1024.0 * VOXEL_SIZE) * 0.5;
+    vec3 center_ws = get_particle_worldspace_origin(gpu_input, self.pos);
+    mat4 world_to_sample = deref(gpu_input).player.cam.world_to_view * deref(gpu_input).player.cam.view_to_sample;
+    vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
+    float ps_size = 0.0;
+    particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, ps_size);
+
+    const float splat_size_threshold = 5.0;
+    const bool should_splat = ps_size < splat_size_threshold;
+
+    if (should_splat) {
+        // TODO: Stochastic pruning?
+        uint my_render_index = atomicAdd(deref(particles_state).splat_draw_params.vertex_count, 1);
+        deref(advance(splat_rendered_particle_indices, my_render_index)) = self_index;
+    } else {
+        uint my_render_index = atomicAdd(deref(particles_state).cube_draw_params.instance_count, 1);
+        deref(advance(cube_rendered_particle_indices, my_render_index)) = self_index;
+    }
 }

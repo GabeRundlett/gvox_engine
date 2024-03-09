@@ -14,11 +14,18 @@ VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     deref(particles_state).simulation_dispatch = uvec3(MAX_SIMULATED_VOXEL_PARTICLES / 64, 1, 1);
-    deref(particles_state).draw_params.index_count = 8;
-    deref(particles_state).draw_params.instance_count = 0;
-    deref(particles_state).draw_params.first_index = 0;
-    deref(particles_state).draw_params.vertex_offset = 0;
-    deref(particles_state).draw_params.first_instance = 0;
+
+    deref(particles_state).cube_draw_params.index_count = 8;
+    deref(particles_state).cube_draw_params.instance_count = 0;
+    deref(particles_state).cube_draw_params.first_index = 0;
+    deref(particles_state).cube_draw_params.vertex_offset = 0;
+    deref(particles_state).cube_draw_params.first_instance = 0;
+
+    deref(particles_state).splat_draw_params.vertex_count = 0;
+    deref(particles_state).splat_draw_params.instance_count = 1;
+    deref(particles_state).splat_draw_params.first_vertex = 0;
+    deref(particles_state).splat_draw_params.first_instance = 0;
+
     deref(particles_state).place_count = 0;
     deref(particles_state).place_bounds_min = uvec3(1000000);
     deref(particles_state).place_bounds_max = uvec3(0);
