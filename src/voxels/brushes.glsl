@@ -107,6 +107,73 @@ vec3 get_closest_surface(vec3 center_cell_world, float current_noise, float rep,
     return vec3(0);
 }
 
+void try_spawn_tree(in out Voxel voxel, vec3 forest_biome_color, vec3 nrm) {
+    float upwards = dot(nrm, vec3(0, 0, 1));
+
+    // Meters per cell
+    float rep = 6;
+
+    // Global cell ID
+    vec3 qid = floor(voxel_pos / rep);
+    // Local coordinates in current cell (centered at 0 [-rep/2, rep/2])
+    vec3 q = mod(voxel_pos, rep) - rep / 2;
+    // Current cell's center voxel (world space)
+    vec3 cell_center_world = qid * rep + rep / 2.;
+
+    // Query terrain noise at current cell's center
+    vec4 center_noise = terrain_noise(cell_center_world);
+
+    // Optimization: only run for chunks near enough the terrain surface
+    bool can_spawn = center_noise.x >= -0.01 * rep / 4 && center_noise.x < 0.03 * rep / 4;
+
+    // Forest density
+    float forest_noise = fbm2(qid.xy / 10.);
+    float forest_density = .45;
+
+    if (forest_noise > forest_density)
+        can_spawn = false;
+
+    if (can_spawn) {
+        // Tree scale
+        float scale;
+        // Try to get the nearest point on the surface below (in the starting cell)
+        vec3 hitPoint = get_closest_surface(cell_center_world, center_noise.x, rep, scale);
+
+        if (hitPoint == vec3(0) && center_noise.x > 0) {
+            // If no terrain was found, try again for the bottom cell (upper tree case)
+            scale = forest_noise;
+            vec3 down_neighbor_cell_center_world = cell_center_world - vec3(0, 0, rep);
+            hitPoint = get_closest_surface(down_neighbor_cell_center_world, terrain_noise(down_neighbor_cell_center_world).x, rep, scale);
+        }
+
+        // Debug space repetition boundaries
+        // float tresh = 1. / 8.;
+        // if (abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh ||
+        //     abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.z)-rep/2.) <= tresh ||
+        //     abs(abs(q.z)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh) {
+        //     voxel.material_type = 1;
+        //     voxel.color = vec3(0,0,0);
+        // }
+
+        // Distance to tree
+        TreeSDF tree = sd_spruce_tree((voxel_pos - hitPoint) / scale, qid);
+
+        vec3 h_cell = vec3(0);  // hash33(qid);
+        vec3 h_voxel = vec3(0); // hash33(voxel_pos);
+
+        // Colorize tree
+        if (tree.wood < 0) {
+            voxel.material_type = 1;
+            voxel.color = vec3(.68, .4, .15) * 0.16;
+            voxel.roughness = 0.99;
+        } else if (tree.leaves < 0) {
+            voxel.material_type = 1;
+            voxel.color = forest_biome_color * 0.5;
+            voxel.roughness = 0.95;
+        }
+    }
+}
+
 // Color palettes
 vec3 palette(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
     return a + b * cos(6.28318 * (c * t + d));
@@ -116,6 +183,22 @@ vec3 forest_biome_palette(float t) {
 }
 
 #define ENABLE_TREE_GENERATION 1
+
+void try_spawn_grass(in out Voxel voxel, vec3 forest_biome_color, vec3 nrm) {
+    // randomly spawn grass
+    float r2 = good_rand(voxel_pos.xy);
+    float upwards = dot(nrm, vec3(0, 0, 1));
+    if (upwards > 0.65 && r2 < 0.2) {
+        voxel.color = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
+        voxel.material_type = 1;
+        voxel.roughness = 0.6;
+        // Mix with biome color
+        voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
+        voxel.normal = nrm;
+
+        // spawn particles!!
+    }
+}
 
 void brushgen_world_terrain(in out Voxel voxel) {
     vec4 val4 = terrain_noise(voxel_pos);
@@ -135,15 +218,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
         voxel.roughness = 1.0;
         if (SHOULD_COLOR_WORLD) {
             float r = good_rand(-val);
-            if (val > -0.005 && upwards > 0.65) {
-                float r2 = good_rand(voxel_pos.xy);
-                voxel.color = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
-                if (r2 < 0.5) {
-                    voxel.material_type = 0;
-                }
-                // Mix with biome color
-                voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
-            } else if (val > -0.05 && upwards > 0.5) {
+            if (val > -0.05 && upwards > 0.5) {
                 voxel.color = vec3(0.13, 0.09, 0.05);
                 if (r < 0.5) {
                     voxel.color.r *= 0.5;
@@ -163,7 +238,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
                     voxel.color.g *= 0.75;
                     voxel.color.b *= 0.75;
                 }
-                voxel.roughness = 0.6;
+                voxel.roughness = 0.85;
             } else {
                 voxel.color = vec3(0.11, 0.10, 0.07);
                 voxel.roughness = 0.9;
@@ -171,68 +246,13 @@ void brushgen_world_terrain(in out Voxel voxel) {
         } else {
             voxel.color = vec3(0.25);
         }
-    } else if (ENABLE_TREE_GENERATION != 0) {
-        // Meters per cell
-        float rep = 6;
-
-        // Global cell ID
-        vec3 qid = floor(voxel_pos / rep);
-        // Local coordinates in current cell (centered at 0 [-rep/2, rep/2])
-        vec3 q = mod(voxel_pos, rep) - rep / 2;
-        // Current cell's center voxel (world space)
-        vec3 cell_center_world = qid * rep + rep / 2.;
-
-        // Query terrain noise at current cell's center
-        vec4 center_noise = terrain_noise(cell_center_world);
-
-        // Optimization: only run for chunks near enough the terrain surface
-        bool can_spawn = center_noise.x >= -0.01 * rep / 4 && center_noise.x < 0.03 * rep / 4;
-
-        // Forest density
-        float forest_noise = fbm2(qid.xy / 10.);
-        float forest_density = .45;
-
-        if (forest_noise > forest_density)
-            can_spawn = false;
-
-        if (can_spawn) {
-            // Tree scale
-            float scale;
-            // Try to get the nearest point on the surface below (in the starting cell)
-            vec3 hitPoint = get_closest_surface(cell_center_world, center_noise.x, rep, scale);
-
-            if (hitPoint == vec3(0) && center_noise.x > 0) {
-                // If no terrain was found, try again for the bottom cell (upper tree case)
-                scale = forest_noise;
-                vec3 down_neighbor_cell_center_world = cell_center_world - vec3(0, 0, rep);
-                hitPoint = get_closest_surface(down_neighbor_cell_center_world, terrain_noise(down_neighbor_cell_center_world).x, rep, scale);
-            }
-
-            // Debug space repetition boundaries
-            // float tresh = 1. / 8.;
-            // if (abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh ||
-            //     abs(abs(q.x)-rep/2.) <= tresh && abs(abs(q.z)-rep/2.) <= tresh ||
-            //     abs(abs(q.z)-rep/2.) <= tresh && abs(abs(q.y)-rep/2.) <= tresh) {
-            //     voxel.material_type = 1;
-            //     voxel.color = vec3(0,0,0);
-            // }
-
-            // Distance to tree
-            TreeSDF tree = sd_spruce_tree((voxel_pos - hitPoint) / scale, qid);
-
-            vec3 h_cell = vec3(0);  // hash33(qid);
-            vec3 h_voxel = vec3(0); // hash33(voxel_pos);
-
-            // Colorize tree
-            if (tree.wood < 0) {
-                voxel.material_type = 1;
-                voxel.color = vec3(.68, .4, .15) * 0.16;
-                voxel.roughness = 0.99;
-            } else if (tree.leaves < 0) {
-                voxel.material_type = 1;
-                voxel.color = forest_biome_color * 0.5;
-                voxel.roughness = 0.95;
-            }
+    } else if (true) {
+        vec4 grass_val4 = terrain_noise(voxel_pos - vec3(0, 0, VOXEL_SIZE));
+        float grass_val = grass_val4.x;
+        if (grass_val < 0.0) {
+            try_spawn_grass(voxel, forest_biome_color, nrm);
+        } else if (ENABLE_TREE_GENERATION != 0) {
+            try_spawn_tree(voxel, forest_biome_color, nrm);
         }
     }
 }
@@ -370,9 +390,9 @@ void brushgen_b(in out Voxel voxel) {
         //     /* .lacunarity  = */ 2.0,
         //     /* .octaves     = */ 3);
         // float val = fractal_noise(value_noise_texture, g_sampler_llr, voxel_pos, noise_conf).r;
-        voxel.material_type = 3;
-        voxel.color = vec3(0.95, 0.05, 0.05);
-        voxel.roughness = 0.01;
+        voxel.material_type = 1;
+        voxel.color = vec3(0.95, 0.95, 0.95);
+        voxel.roughness = 0.9;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     }
     if (sd < 2.5 * VOXEL_SIZE) {

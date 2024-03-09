@@ -4,6 +4,7 @@
 #include <application/input.inl>
 
 #include <voxels/brushes.inl>
+#include <utilities/allocator.inl>
 
 struct IndirectDrawParams {
     daxa_u32 vertex_count;
@@ -19,6 +20,15 @@ struct IndirectDrawIndexedParams {
     daxa_u32 vertex_offset;
     daxa_u32 first_instance;
 };
+
+struct GrassStrand {
+    daxa_f32vec3 origin;
+    daxa_f32vec3 end_pt;
+    PackedVoxel packed_voxel;
+};
+DAXA_DECL_BUFFER_PTR(GrassStrand)
+
+DECL_SIMPLE_STATIC_ALLOCATOR(GrassStrandAllocator, GrassStrand, 10000, daxa_u32)
 
 struct VoxelParticlesState {
     daxa_u32vec3 simulation_dispatch;
@@ -42,7 +52,7 @@ DAXA_DECL_BUFFER_PTR(SimulatedVoxelParticle)
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute, 4 + VOXEL_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE_CONCURRENT, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_HEAD_END
@@ -61,6 +71,19 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), placed
 DAXA_DECL_TASK_HEAD_END
 struct VoxelParticleSimComputePush {
     DAXA_TH_BLOB(VoxelParticleSimCompute, uses)
+};
+
+DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSimCompute, 5 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, GrassStrandAllocator)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), cube_rendered_particle_indices)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), splat_rendered_particle_indices)
+DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), placed_voxel_particles)
+DAXA_DECL_TASK_HEAD_END
+struct GrassStrandSimComputePush {
+    DAXA_TH_BLOB(GrassStrandSimCompute, uses)
 };
 
 DAXA_DECL_TASK_HEAD_BEGIN(CubeParticleRaster, 7)
@@ -100,6 +123,8 @@ struct VoxelParticles {
     TemporalBuffer splat_index_buffer;
     bool initialized = false;
 
+    StaticAllocatorBufferState<GrassStrandAllocator> grass_allocator;
+
     void record_startup(GpuContext &gpu_context) {
         global_state = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(VoxelParticlesState),
@@ -122,6 +147,43 @@ struct VoxelParticles {
             },
             .name = "Clear",
         });
+
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+
+        static constexpr auto cube_indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
+        cube_index_buffer = gpu_context.find_or_add_temporal_buffer({
+            .size = sizeof(cube_indices),
+            .name = "particles.cube_index_buffer",
+        });
+
+        gpu_context.startup_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
+
+        gpu_context.startup_task_graph.add_task({
+            .attachments = {
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, cube_index_buffer.task_resource),
+            },
+            .task = [this](daxa::TaskInterface const &ti) {
+                auto staging_buffer = ti.device.create_buffer({
+                    .size = sizeof(cube_indices),
+                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "cube_staging_buffer",
+                });
+                ti.recorder.destroy_buffer_deferred(staging_buffer);
+                auto *buffer_ptr = ti.device.get_host_address_as<std::remove_cv_t<decltype(cube_indices)>>(staging_buffer).value();
+                *buffer_ptr = cube_indices;
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = cube_index_buffer.task_resource.get_state().buffers[0],
+                    .size = sizeof(cube_indices),
+                });
+            },
+            .name = "Particle Index Upload",
+        });
+
+        grass_allocator.init(gpu_context);
     }
 
     void simulate(GpuContext &gpu_context, VoxelWorldBuffers &voxel_world_buffers) {
@@ -147,6 +209,13 @@ struct VoxelParticles {
         gpu_context.frame_task_graph.use_persistent_buffer(cube_rendered_particle_indices.task_resource);
         gpu_context.frame_task_graph.use_persistent_buffer(splat_rendered_particle_indices.task_resource);
         gpu_context.frame_task_graph.use_persistent_buffer(placed_voxel_particles.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
+        
+        grass_allocator.init(gpu_context);
+        gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.allocator_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.element_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.available_element_stack_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(grass_allocator.released_element_stack_buffer.task_resource);
 
         if constexpr (MAX_RENDERED_VOXEL_PARTICLES == 0) {
             return;
@@ -187,6 +256,24 @@ struct VoxelParticles {
                 });
             },
         });
+
+        gpu_context.add(ComputeTask<GrassStrandSimCompute, GrassStrandSimComputePush, NoTaskInfo>{
+            .source = daxa::ShaderFile{"voxels/particles/grass_sim.comp.glsl"},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{GrassStrandSimCompute::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{GrassStrandSimCompute::particles_state, global_state.task_resource}},
+                VOXELS_BUFFER_USES_ASSIGN(GrassStrandSimCompute, voxel_world_buffers),
+                SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(GrassStrandSimCompute, GrassStrandAllocator, grass_allocator),
+                daxa::TaskViewVariant{std::pair{GrassStrandSimCompute::cube_rendered_particle_indices, cube_rendered_particle_indices.task_resource}},
+                daxa::TaskViewVariant{std::pair{GrassStrandSimCompute::splat_rendered_particle_indices, splat_rendered_particle_indices.task_resource}},
+                daxa::TaskViewVariant{std::pair{GrassStrandSimCompute::placed_voxel_particles, placed_voxel_particles.task_resource}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, GrassStrandSimComputePush &push, NoTaskInfo const &) {
+                ti.recorder.set_pipeline(pipeline);
+                set_push_constant(ti, push);
+                ti.recorder.dispatch({StaticAllocatorConstants<GrassStrandAllocator>::MAX_ELEMENTS / 64, 1, 1});
+            },
+        });
     }
 
     auto render(GpuContext &gpu_context) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
@@ -201,50 +288,6 @@ struct VoxelParticles {
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "raster_depth_image",
         });
-
-        static constexpr auto cube_indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
-        cube_index_buffer = gpu_context.find_or_add_temporal_buffer({
-            .size = sizeof(cube_indices),
-            .name = "particles.cube_index_buffer",
-        });
-        gpu_context.frame_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
-
-        if (!initialized) {
-            initialized = true;
-
-            auto temp_task_graph = daxa::TaskGraph({
-                .device = gpu_context.device,
-                .name = "temp_task_graph",
-            });
-
-            temp_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
-
-            temp_task_graph.add_task({
-                .attachments = {
-                    daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, cube_index_buffer.task_resource),
-                },
-                .task = [this](daxa::TaskInterface const &ti) {
-                    auto staging_buffer = ti.device.create_buffer({
-                        .size = sizeof(cube_indices),
-                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                        .name = "cube_staging_buffer",
-                    });
-                    ti.recorder.destroy_buffer_deferred(staging_buffer);
-                    auto *buffer_ptr = ti.device.get_host_address_as<std::remove_cv_t<decltype(cube_indices)>>(staging_buffer).value();
-                    *buffer_ptr = cube_indices;
-                    ti.recorder.copy_buffer_to_buffer({
-                        .src_buffer = staging_buffer,
-                        .dst_buffer = cube_index_buffer.task_resource.get_state().buffers[0],
-                        .size = sizeof(cube_indices),
-                    });
-                },
-                .name = "Particle Index Upload",
-            });
-
-            temp_task_graph.submit({});
-            temp_task_graph.complete({});
-            temp_task_graph.execute({});
-        }
 
         gpu_context.add(RasterTask<CubeParticleRaster, CubeParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
