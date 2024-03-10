@@ -7,7 +7,6 @@
 
 #include <renderer/renderer.hpp>
 #include <voxels/voxel_world.inl>
-#include <voxels/particles/voxel_particles.inl>
 #include <voxels/model.hpp>
 #include <daxa/utils/imgui.hpp>
 

@@ -6,10 +6,15 @@ daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
 daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_state;
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
+SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(GrassStrandAllocator, grass_allocator)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
 #include "particle.glsl"
+
+#define UserAllocatorType GrassStrandAllocator
+#define UserIndexType uint
+#include <utilities/allocator.glsl>
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
@@ -29,4 +34,6 @@ void main() {
     deref(particles_state).place_count = 0;
     deref(particles_state).place_bounds_min = uvec3(1000000);
     deref(particles_state).place_bounds_max = uvec3(0);
+
+    GrassStrandAllocator_perframe(grass_allocator);
 }

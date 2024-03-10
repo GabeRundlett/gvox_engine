@@ -334,7 +334,7 @@ void VoxelApp::record_tasks() {
         .name = "GpuInputUploadTransferTask",
     });
 
-    voxel_world.record_frame(gpu_context, voxel_model_loader.task_gvox_model_buffer, gpu_context.task_value_noise_image);
+    voxel_world.record_frame(gpu_context, voxel_model_loader.task_gvox_model_buffer, gpu_context.task_value_noise_image, particles);
     particles.simulate(gpu_context, voxel_world.buffers);
 
     renderer.render(gpu_context, voxel_world.buffers, particles, gpu_context.task_swapchain_image, gpu_context.swapchain.get_format());

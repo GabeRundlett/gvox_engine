@@ -1,6 +1,7 @@
 #pragma once
 
 #include <application/input.inl>
+#include <voxels/particles/voxel_particles.inl>
 #include "voxels.inl"
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldStartupCompute, 1 + VOXEL_BUFFER_USE_N)
@@ -31,13 +32,14 @@ struct PerChunkComputePush {
     DAXA_TH_BLOB(PerChunkCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute, 9 + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelLeafChunk), voxel_chunks)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelMallocPageAllocator), voxel_malloc_page_allocator)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(TempVoxelChunk), temp_voxel_chunks)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, GrassStrandAllocator)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, test_texture)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, test_texture2)
@@ -103,7 +105,7 @@ struct VoxelWorld {
     void init_gpu_malloc(GpuContext &gpu_context);
     void record_startup(GpuContext &gpu_context);
     void begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_output);
-    void record_frame(GpuContext &gpu_context, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image);
+    void record_frame(GpuContext &gpu_context, daxa::TaskBufferView task_gvox_model_buffer, daxa::TaskImageView task_value_noise_image, VoxelParticles &particles);
 };
 
 #endif

@@ -69,8 +69,8 @@
     DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE_CONCURRENT, AllocatorType_##_available_elements)                                     \
     DAXA_TH_BUFFER(COMPUTE_SHADER_READ_WRITE_CONCURRENT, AllocatorType_##_released_elements)
 
-#define SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(AllocatorType_) \
-    daxa_BufferPtr(AllocatorType_) AllocatorType_##_allocator_buffer = push.uses.AllocatorType_##_allocator_buffer;
+#define SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(AllocatorType_, var_name) \
+    daxa_RWBufferPtr(AllocatorType_) var_name = push.uses.AllocatorType_##_allocator_buffer;
 
 #define SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(TaskHeadName, AllocatorType_, allocator)                                                          \
     daxa::TaskViewVariant{std::pair{TaskHeadName::AllocatorType_##_allocator_buffer, allocator.allocator_buffer.task_resource}},                     \
@@ -316,11 +316,6 @@ struct StaticAllocatorBufferState {
     bool initialized = false;
 
     void init(GpuContext &gpu_context) {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
-
         allocator_buffer = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(typename StaticAllocatorConstants<T>::AllocatorType),
             .name = StaticAllocatorConstants<T>::allocator_buffer_name,
@@ -338,11 +333,18 @@ struct StaticAllocatorBufferState {
             .name = StaticAllocatorConstants<T>::released_element_stack_buffer_name,
         });
 
+        gpu_context.frame_task_graph.use_persistent_buffer(allocator_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(element_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(available_element_stack_buffer.task_resource);
+        gpu_context.frame_task_graph.use_persistent_buffer(released_element_stack_buffer.task_resource);
+
         gpu_context.startup_task_graph.use_persistent_buffer(allocator_buffer.task_resource);
+        gpu_context.startup_task_graph.use_persistent_buffer(element_buffer.task_resource);
 
         gpu_context.startup_task_graph.add_task({
             .attachments = {
                 daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, allocator_buffer.task_resource),
+                daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, element_buffer.task_resource),
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
@@ -365,8 +367,12 @@ struct StaticAllocatorBufferState {
                     .dst_buffer = allocator_buffer.resource_id,
                     .size = sizeof(typename StaticAllocatorConstants<T>::AllocatorType),
                 });
+                ti.recorder.clear_buffer({
+                    .buffer = element_buffer.resource_id,
+                    .size = sizeof(typename StaticAllocatorConstants<T>::ElementType) * StaticAllocatorConstants<T>::MAX_ELEMENTS,
+                });
             },
-            .name = "Allocator State Upload",
+            .name = "Allocator State Init",
         });
     }
 };

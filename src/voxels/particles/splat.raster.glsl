@@ -5,8 +5,7 @@
 
 DAXA_DECL_PUSH_CONSTANT(SplatParticleRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_BufferPtr(uint) splat_rendered_particle_indices = push.uses.splat_rendered_particle_indices;
+daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_ImageViewIndex render_image = push.uses.render_image;
 daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 
@@ -20,8 +19,7 @@ layout(location = 1) out uint id;
 void main() {
     uint particle_index = gl_VertexIndex;
 
-    uint simulated_particle_index = deref(advance(splat_rendered_particle_indices, particle_index));
-    SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
+    ParticleVertex particle = deref(advance(splat_rendered_particle_verts, particle_index));
 
     float voxel_radius = 1023.0 / 1024.0 * VOXEL_SIZE * 0.5;
     center_ws = get_particle_worldspace_origin(gpu_input, particle.pos);
@@ -37,7 +35,7 @@ void main() {
     gl_Position = cs_pos;
     gl_PointSize = ps_size;
 
-    id = simulated_particle_index;
+    id = particle.id;
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT

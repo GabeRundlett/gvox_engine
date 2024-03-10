@@ -27,12 +27,13 @@ struct TracePrimaryComputePush {
     DAXA_TH_BLOB(TracePrimaryCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute, 8)
+DAXA_DECL_TASK_HEAD_BEGIN(CompositeParticlesCompute, 9)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_READ_WRITE, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, vs_normal_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, depth_image_id)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GrassStrand), grass_strands)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(SimulatedVoxelParticle), simulated_voxel_particles)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, particles_depth_image_id)
@@ -139,6 +140,7 @@ struct GbufferRenderer {
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::vs_normal_image_id, gbuffer_depth.geometric_normal}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::depth_image_id, depth_image}},
 
+                daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::grass_strands, particles.grass_allocator.element_buffer.task_resource}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::simulated_voxel_particles, particles.simulated_voxel_particles.task_resource}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_image_id, particles_image}},
                 daxa::TaskViewVariant{std::pair{CompositeParticlesCompute::particles_depth_image_id, particles_depth_image}},

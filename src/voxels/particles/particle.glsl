@@ -159,28 +159,84 @@ void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4
     pointSize = max(AABB.x, AABB.y);
 }
 
-void particle_render(daxa_RWBufferPtr(uint) cube_rendered_particle_indices, daxa_RWBufferPtr(uint) splat_rendered_particle_indices,
-                     daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, in SimulatedVoxelParticle self, uint self_index) {
-    if (self.flags == 0) {
-        return;
-    }
-
+void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts, daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts,
+                     daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, uint self_index) {
     float voxel_radius = (1023.0 / 1024.0 * VOXEL_SIZE) * 0.5;
-    vec3 center_ws = get_particle_worldspace_origin(gpu_input, self.pos);
+    vec3 center_ws = get_particle_worldspace_origin(gpu_input, pos);
     mat4 world_to_sample = deref(gpu_input).player.cam.world_to_view * deref(gpu_input).player.cam.view_to_sample;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
     float ps_size = 0.0;
     particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, ps_size);
 
     const float splat_size_threshold = 5.0;
-    const bool should_splat = ps_size < splat_size_threshold;
+    const bool should_splat = false; // ps_size < splat_size_threshold;
+
+    if (ps_size <= 0.0) {
+        return;
+    }
 
     if (should_splat) {
         // TODO: Stochastic pruning?
         uint my_render_index = atomicAdd(deref(particles_state).splat_draw_params.vertex_count, 1);
-        deref(advance(splat_rendered_particle_indices, my_render_index)) = self_index;
+        deref(advance(splat_rendered_particle_verts, my_render_index)) = ParticleVertex(pos, self_index);
     } else {
         uint my_render_index = atomicAdd(deref(particles_state).cube_draw_params.instance_count, 1);
-        deref(advance(cube_rendered_particle_indices, my_render_index)) = self_index;
+        deref(advance(cube_rendered_particle_verts, my_render_index)) = ParticleVertex(pos, self_index);
     }
+}
+
+void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles,
+                    daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
+    nrm = vec3(0, 0, 1);
+    vs_velocity = vec3(0);
+
+    uint particle_index = particle_vertex.id;
+
+    vec3 pos = vec3(0);
+    vec3 prev_pos = vec3(0);
+
+    if (particle_index < MAX_SIMULATED_VOXEL_PARTICLES) {
+        float dt = min(deref(gpu_input).delta_time, 0.01);
+        SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, particle_index));
+        pos = get_particle_worldspace_origin(gpu_input, particle.pos);
+        prev_pos = get_particle_worldspace_origin(gpu_input, particle.pos - particle.vel * dt);
+        packed_voxel_data = particle.packed_voxel.data;
+    } else {
+        particle_index -= MAX_SIMULATED_VOXEL_PARTICLES;
+        pos = get_particle_worldspace_origin(gpu_input, particle_vertex.pos);
+        prev_pos = pos;
+        GrassStrand strand = deref(advance(grass_strands, particle_index));
+        Voxel grass_voxel = unpack_voxel(strand.packed_voxel);
+        // grass_voxel.color *= vec3(length(pos - strand.origin));
+        nrm = grass_voxel.normal;
+        packed_voxel_data = pack_voxel(grass_voxel).data;
+    }
+
+    vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
+    prev_pos += extra_vel;
+    vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
+    vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
+    vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+
+    // TODO: Fix the face-normals for particles. The ray_hit_ws function returns the voxel center.
+
+    // ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
+    // vec3 ppos = ray_hit_ws(vrc_particle);
+    // nrm = ppos - (pos + 0.5 * VOXEL_SIZE);
+    // ppos = abs(nrm);
+    // if (ppos.x > ppos.y) {
+    //     if (ppos.x > ppos.z) {
+    //         nrm = vec3(sign(nrm.x), 0, 0);
+    //     } else {
+    //         nrm = vec3(0, 0, sign(nrm.z));
+    //     }
+    // } else {
+    //     if (ppos.y > ppos.z) {
+    //         nrm = vec3(0, sign(nrm.y), 0);
+    //     } else {
+    //         nrm = vec3(0, 0, sign(nrm.z));
+    //     }
+    // }
+
+    // nrm = normalize(deref(gpu_input).player.pos - pos);
 }

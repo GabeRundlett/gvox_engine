@@ -164,6 +164,7 @@ daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
 daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
+daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
 daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
@@ -183,53 +184,26 @@ void main() {
     vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
 
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
-    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r;
+    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r - 1;
     float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r;
+    bool is_particle = false;
     if (particles_depth > depth) {
         depth = particles_depth;
-        nrm = vec3(0, 0, 1);
-        vs_velocity = vec3(0);
+        is_particle = true;
+    }
 
-        uint simulated_particle_index = uint(particle_id) - 1;
-        SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, simulated_particle_index));
-        float dt = min(deref(gpu_input).delta_time, 0.01);
-        vec3 pos = get_particle_worldspace_origin(gpu_input, particle.pos);
-        vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
-        vec3 prev_pos = get_particle_worldspace_origin(gpu_input, particle.pos - particle.vel * dt + extra_vel);
-        vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
-        vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
-        vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+    ViewRayContext vrc = vrc_from_uv_and_biased_depth(gpu_input, uv, depth);
 
-        // TODO: Fix the face-normals for particles. The ray_hit_ws function returns the voxel center.
-
-        // ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
-        // vec3 ppos = ray_hit_ws(vrc_particle);
-        // nrm = ppos - (pos + 0.5 * VOXEL_SIZE);
-        // ppos = abs(nrm);
-        // if (ppos.x > ppos.y) {
-        //     if (ppos.x > ppos.z) {
-        //         nrm = vec3(sign(nrm.x), 0, 0);
-        //     } else {
-        //         nrm = vec3(0, 0, sign(nrm.z));
-        //     }
-        // } else {
-        //     if (ppos.y > ppos.z) {
-        //         nrm = vec3(0, sign(nrm.y), 0);
-        //     } else {
-        //         nrm = vec3(0, 0, sign(nrm.z));
-        //     }
-        // }
-
-        // nrm = normalize(deref(gpu_input).player.pos - pos);
-
-        g_buffer_value.x = particle.packed_voxel.data;
+    if (is_particle) {
+        vec3 hit_ws = ray_hit_ws(vrc);
+        ParticleVertex particle_vert = ParticleVertex(hit_ws, particle_id);
+        particle_shade(grass_strands, simulated_voxel_particles, gpu_input, particle_vert, g_buffer_value.x, nrm, vs_velocity);
         g_buffer_value.y = nrm_to_u16(nrm);
     }
 #endif
     g_buffer_value.z = floatBitsToUint(depth);
     vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
 
-    ViewRayContext vrc = vrc_from_uv_and_depth(gpu_input, uv, depth);
     vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
 
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {

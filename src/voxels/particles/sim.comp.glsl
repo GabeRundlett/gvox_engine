@@ -6,8 +6,8 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_state;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-daxa_RWBufferPtr(uint) cube_rendered_particle_indices = push.uses.cube_rendered_particle_indices;
-daxa_RWBufferPtr(uint) splat_rendered_particle_indices = push.uses.splat_rendered_particle_indices;
+daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_RWBufferPtr(uint) placed_voxel_particles = push.uses.placed_voxel_particles;
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -24,5 +24,7 @@ void main() {
         particle_voxelize(placed_voxel_particles, particles_state, self, particle_index);
     }
 
-    particle_render(cube_rendered_particle_indices, splat_rendered_particle_indices, particles_state, gpu_input, self, particle_index);
+    if (self.flags != 0) {
+        particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.pos, particle_index);
+    }
 }
