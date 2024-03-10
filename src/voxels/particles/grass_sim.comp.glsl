@@ -38,17 +38,19 @@ void main() {
 
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
-        /* .persistance = */ 0.5,
+        /* .persistance = */ 0.4,
         /* .scale       = */ 0.025,
         /* .lacunarity  = */ 4.5,
-        /* .octaves     = */ 3);
+        /* .octaves     = */ 4);
     vec4 noise_val = fractal_noise(value_noise_texture, g_sampler_llr, self.origin + vec3(deref(gpu_input).time * 1.1, sin(deref(gpu_input).time), 0), noise_conf);
     float rot = noise_val.x * 100.0;
     vec2 rot_offset = vec2(sin(rot), cos(rot));
 
     grass_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
 
-    if (grass_voxel.color != ground_voxel.color) {
+    if (grass_voxel.color != ground_voxel.color ||
+        grass_voxel.material_type != ground_voxel.material_type ||
+        grass_voxel.roughness != ground_voxel.roughness) {
         // free voxel, its spawner died.
         self.flags = 0;
         deref(advance(grass_strands, particle_index)) = self;
