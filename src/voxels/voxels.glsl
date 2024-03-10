@@ -1,6 +1,7 @@
 #pragma once
 
 #include <voxels/voxels.inl>
+#include <voxels/brushes.inl>
 
 struct VoxelTraceInfo {
     VoxelBufferPtrs ptrs;

@@ -122,7 +122,7 @@ void VoxelApp::on_update() {
     }
 
     if (ui.should_upload_seed_data) {
-        gpu_context.update_seeded_value_noise(gpu_context.device, std::hash<std::string>{}(ui.settings.world_seed_str));
+        gpu_context.update_seeded_value_noise(std::hash<std::string>{}(ui.settings.world_seed_str));
         ui.should_upload_seed_data = false;
     }
 

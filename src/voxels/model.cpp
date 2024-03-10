@@ -29,7 +29,7 @@ void VoxelModelLoader::destroy() {
     }
 }
 
-auto VoxelModelLoader::open_mesh_model() -> GvoxModelData {
+auto VoxelModelLoader::voxelize_mesh_model() -> GvoxModelData {
     MeshModel mesh_model;
     ::open_mesh_model(gpu_context->device, mesh_model, gvox_model_path, "test");
     if (mesh_model.meshes.size() == 0) {
@@ -532,10 +532,10 @@ auto VoxelModelLoader::load_gvox_data() -> GvoxModelData {
         } else if (ext == ".gvox") {
             gvox_model_type = "gvox_palette";
         } else {
-            return open_mesh_model();
+            return voxelize_mesh_model();
         }
     } else {
-        return open_mesh_model();
+        return voxelize_mesh_model();
     }
     GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "byte_buffer"), &i_config);
     GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, gvox_model_type), i_config_ptr);

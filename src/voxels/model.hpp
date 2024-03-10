@@ -33,5 +33,5 @@ struct VoxelModelLoader {
     void upload_model();
     auto load_gvox_data_from_parser(GvoxAdapterContext *i_ctx, GvoxAdapterContext *p_ctx, GvoxRegionRange const *region_range) -> GvoxModelData;
     auto load_gvox_data() -> GvoxModelData;
-    auto open_mesh_model() -> GvoxModelData;
+    auto voxelize_mesh_model() -> GvoxModelData;
 };

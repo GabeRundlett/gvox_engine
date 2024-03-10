@@ -20,6 +20,7 @@ daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
+#if defined(VOXELS_ORIGINAL_IMPL)
     uint particle_index = gl_GlobalInvocationID.x;
     GrassStrand self = deref(advance(grass_strands, particle_index));
 
@@ -73,4 +74,5 @@ void main() {
             particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index + MAX_SIMULATED_VOXEL_PARTICLES);
         }
     }
+#endif
 }

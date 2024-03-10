@@ -421,7 +421,7 @@ void GpuContext::use_resources() {
     use_shared_resources(startup_task_graph);
 }
 
-void GpuContext::update_seeded_value_noise(daxa::Device &device, uint64_t seed) {
+void GpuContext::update_seeded_value_noise(uint64_t seed) {
     daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
         .device = device,
         .name = "temp_task_graph",

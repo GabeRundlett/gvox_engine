@@ -164,7 +164,7 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
                      daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, uint self_index) {
     float voxel_radius = (1023.0 / 1024.0 * VOXEL_SIZE) * 0.5;
     vec3 center_ws = get_particle_worldspace_origin(gpu_input, pos);
-    mat4 world_to_sample = deref(gpu_input).player.cam2.view_to_sample * deref(gpu_input).player.cam2.world_to_view;
+    mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
     float ps_size = 0.0;
     vec2 px_pos = vec2(0, 0);

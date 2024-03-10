@@ -65,7 +65,7 @@ struct GpuContext {
     void create_swapchain(daxa::SwapchainInfo const &info);
 
     void use_resources();
-    void update_seeded_value_noise(daxa::Device &device, uint64_t seed);
+    void update_seeded_value_noise(uint64_t seed);
 
     auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer;
     auto find_or_add_temporal_image(daxa::ImageInfo const &info) -> TemporalImage;
