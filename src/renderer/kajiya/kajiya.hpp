@@ -67,8 +67,6 @@ struct KajiyaRenderer {
         auto rtr = daxa::TaskImageView{};
         auto rtdgi = daxa::TaskImageView{};
 
-        AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
-
         auto ircache_state = IrcacheRenderState{};
         if (do_global_illumination) {
             ircache_state = ircache_renderer.prepare(gpu_context);
@@ -126,6 +124,7 @@ struct KajiyaRenderer {
             rtr,
             rtdgi,
             ircache_state,
+            ibl_cube,
             sky_lut,
             transmittance_lut,
             ae_lut);

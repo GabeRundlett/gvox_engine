@@ -9,6 +9,7 @@ daxa_ImageViewIndex shadow_mask_tex = push.uses.shadow_mask_tex;
 daxa_ImageViewIndex rtr_tex = push.uses.rtr_tex;
 daxa_ImageViewIndex rtdgi_tex = push.uses.rtdgi_tex;
 daxa_ImageViewIndex output_tex = push.uses.output_tex;
+daxa_ImageViewIndex ibl_cube = push.uses.ibl_cube;
 daxa_ImageViewIndex sky_lut = push.uses.sky_lut;
 daxa_ImageViewIndex transmittance_lut = push.uses.transmittance_lut;
 daxa_ImageViewIndex ae_lut = push.uses.ae_lut;
@@ -32,6 +33,10 @@ daxa_ImageViewIndex ae_lut = push.uses.ae_lut;
 #define USE_DIFFUSE_GI_FOR_ROUGH_SPEC_MIN_ROUGHNESS 0.7
 
 #define FORCE_IRCACHE_DEBUG false
+
+vec3 sample_environment_light(vec3 dir) {
+    return texture(daxa_samplerCube(ibl_cube, g_sampler_llr), dir).rgb;
+}
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
@@ -105,9 +110,9 @@ void main() {
 
     float shadow_mask = texelFetch(daxa_texture2D(shadow_mask_tex), ivec2(px), 0).x;
 
-    if (push.debug_shading_mode == SHADING_MODE_RTX_OFF) {
-        shadow_mask = 1;
-    }
+    // if (push.debug_shading_mode == SHADING_MODE_RTX_OFF) {
+    //     shadow_mask = 1;
+    // }
 
     GbufferData gbuffer = unpack(gbuffer_packed);
 
@@ -140,9 +145,9 @@ void main() {
         if (USE_RTDGI) {
             gi_irradiance = texelFetch(daxa_texture2D(rtdgi_tex), ivec2(px), 0).rgb;
         }
+    } else {
+        gi_irradiance += sample_environment_light(vec3(0, 0, 1));
     }
-
-    // gi_irradiance += vec3(0.02);
 
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY != 0) {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo;
