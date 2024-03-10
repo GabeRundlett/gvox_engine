@@ -141,7 +141,7 @@ void particle_voxelize(daxa_RWBufferPtr(uint) placed_voxel_particles, daxa_RWBuf
     }
 }
 
-void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4 objectToScreenMatrix, in vec2 halfScreenSize, inout vec4 position, inout float pointSize) {
+void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4 objectToScreenMatrix, in vec2 halfScreenSize, out vec2 px_pos, inout float pointSize) {
     const vec4 quadricMat = vec4(1.0, 1.0, 1.0, -1.0);
     float sphereRadius = voxelSize * 1.732051;
     vec4 sphereCenter = vec4(osPosition.xyz, 1.0);
@@ -156,7 +156,7 @@ void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4
     vec4 outPosition = vec4(eqCoefs.x, eqCoefs.y, 0.0, 1.0);
     vec2 AABB = sqrt(eqCoefs.xy * eqCoefs.xy - eqCoefs.zw);
     AABB *= halfScreenSize * 2.0f;
-    position.xy = outPosition.xy * position.w * halfScreenSize + halfScreenSize;
+    px_pos = outPosition.xy * halfScreenSize + halfScreenSize;
     pointSize = max(AABB.x, AABB.y);
 }
 
@@ -164,20 +164,22 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
                      daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, uint self_index) {
     float voxel_radius = (1023.0 / 1024.0 * VOXEL_SIZE) * 0.5;
     vec3 center_ws = get_particle_worldspace_origin(gpu_input, pos);
-    mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
+    mat4 world_to_sample = deref(gpu_input).player.cam2.view_to_sample * deref(gpu_input).player.cam2.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
     float ps_size = 0.0;
-    vec4 cs_pos = vec4(0, 0, 0, 1);
-    particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, cs_pos, ps_size);
-    if (any(lessThan(cs_pos.xy + ps_size * 0.5, vec2(0))) ||
-        any(greaterThan(cs_pos.xy - ps_size * 0.5, vec2(half_screen_size * 2.0)))) {
+    vec2 px_pos = vec2(0, 0);
+    vec4 cs_pos = world_to_sample * vec4(center_ws, 1);
+    particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
+    if (any(lessThan(px_pos.xy + ps_size * 0.5, vec2(0))) ||
+        any(greaterThan(px_pos.xy - ps_size * 0.5, vec2(half_screen_size * 2.0))) || 
+        cs_pos.z / cs_pos.w < 0.0) {
         return;
     }
 
     const float splat_size_threshold = 5.0;
     const bool should_splat = ps_size < splat_size_threshold;
 
-    if (ps_size <= 0.0) {
+    if (ps_size <= 0.25) {
         return;
     }
 

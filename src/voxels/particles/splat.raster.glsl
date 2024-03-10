@@ -26,8 +26,8 @@ void main() {
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
     float ps_size = 0.0;
-    vec4 temp_cs_pos = vec4(0, 0, 0, 1);
-    particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, temp_cs_pos, ps_size);
+    vec2 px_pos = vec2(0, 0);
+    particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
 
     vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(center_ws, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos;
