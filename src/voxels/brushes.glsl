@@ -411,7 +411,12 @@ void brushgen_b(in out Voxel voxel) {
     } else {
         float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
         if (grass_val < 0.0) {
-            try_spawn_grass(voxel, voxel.color, nrm);
+            // Smooth noise depending on 2d position only
+            float voxel_noise_xy = fbm2(voxel_pos.xy / 8 / 40);
+            // Smooth biome color
+            vec3 forest_biome_color = forest_biome_palette(voxel_noise_xy * 2 - 1);
+
+            try_spawn_grass(voxel, forest_biome_color, nrm);
         }
     }
     if (sd < 2.5 * VOXEL_SIZE) {

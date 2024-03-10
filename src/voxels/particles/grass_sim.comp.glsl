@@ -33,8 +33,11 @@ void main() {
     Voxel grass_voxel = unpack_voxel(self.packed_voxel);
     uvec3 chunk_n = uvec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
     vec3 origin_ws = get_particle_worldspace_origin(gpu_input, self.origin);
-    PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws, vec3(0));
-    Voxel ground_voxel = unpack_voxel(voxel_data);
+    PackedVoxel ground_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws, vec3(0));
+    Voxel ground_voxel = unpack_voxel(ground_voxel_data);
+
+    PackedVoxel air_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws + vec3(0, 0, VOXEL_SIZE), vec3(0));
+    Voxel air_voxel = unpack_voxel(air_voxel_data);
 
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
@@ -48,7 +51,8 @@ void main() {
 
     grass_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
 
-    if (grass_voxel.color != ground_voxel.color ||
+    if (air_voxel.material_type != 0 ||
+        grass_voxel.color != ground_voxel.color ||
         grass_voxel.material_type != ground_voxel.material_type ||
         grass_voxel.roughness != ground_voxel.roughness) {
         // free voxel, its spawner died.
@@ -65,7 +69,7 @@ void main() {
         for (uint i = 1; i <= 3; ++i) {
             float pct = float(i) / 3.0;
             vec3 offset = vec3(0, 0, float(i * VOXEL_SIZE));
-            offset.xy = rot_offset * VOXEL_SIZE * pct * 1.5;
+            offset.xy = rot_offset * VOXEL_SIZE * pct * 2.0;
             particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index + MAX_SIMULATED_VOXEL_PARTICLES);
         }
     }
