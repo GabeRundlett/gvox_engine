@@ -359,7 +359,7 @@ struct VoxelParticles {
                 .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_FAN,
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
-            .extra_defines = {daxa::ShaderDefine{.name = "SHADOW_MAP", "1"}},
+            .extra_defines = {daxa::ShaderDefine{.name = "SHADOW_MAP", .value = "1"}},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::gpu_input, gpu_context.task_input_buffer}},
                 daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::particles_state, global_state.task_resource}},
