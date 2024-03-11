@@ -35,12 +35,28 @@ void main() {
     uint rng = hash2(px.xy);
 
     vec3 result = vec3(0);
-    for (uint i = 0; i < sample_count; ++i) {
-        vec2 urand = hammersley(i, sample_count);
-        vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
-        // TODO: Now that we sample the atmosphere directly, computing this IBL is really slow.
-        // We should cache the IBL cubemap, and only re-render it when necessary.
-        result += sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
+    // TODO: Now that we sample the atmosphere directly, computing this IBL is really slow.
+    // We should cache the IBL cubemap, and only re-render it when necessary.
+
+    // NOTE(grundlett): IF using GI, we should just slightly blur the sky into the IBL cube.
+    //   This is because we use it for direct radiance lookup.
+    // Otherwise, we want to fully convolve and cosine weight the IBL, for use as look-up in
+    //   our simple lighting model.
+    if ((push.flags & 1) == 1) {
+        for (uint i = 0; i < sample_count; ++i) {
+            vec2 urand = hammersley(i, sample_count);
+            vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
+            vec3 radiance_sample = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
+            result += radiance_sample;
+        }
+    } else {
+        for (uint i = 0; i < sample_count; ++i) {
+            vec2 urand = hammersley(i, sample_count);
+            vec3 input_dir = basis * uniform_sample_cone(urand, 0.00);
+            vec3 radiance_sample = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
+            radiance_sample *= dot(output_dir, input_dir);
+            result += radiance_sample;
+        }
     }
 
     imageStore(daxa_image2DArray(ibl_cube), ivec3(px), vec4(result / sample_count, 1.0));

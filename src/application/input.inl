@@ -85,6 +85,8 @@ struct GpuInput {
     daxa_f32vec3 ircache_grid_center;
     IrcacheCascadeConstants ircache_cascades[IRCACHE_CASCADE_COUNT];
     SkySettings sky_settings;
+    daxa_f32mat4x4 ws_to_shadow;
+    daxa_f32mat4x4 shadow_to_ws;
     BrushSettings world_brush_settings;
     BrushSettings brush_a_settings;
     BrushSettings brush_b_settings;

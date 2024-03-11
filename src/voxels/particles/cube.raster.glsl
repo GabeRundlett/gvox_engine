@@ -13,7 +13,9 @@ daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 #include "particle.glsl"
 #include <renderer/kajiya/inc/camera.glsl>
 
+#if !defined(SHADOW_MAP)
 layout(location = 1) out uint id;
+#endif
 
 void main() {
     uint particle_index = gl_InstanceIndex;
@@ -30,22 +32,31 @@ void main() {
     vec3 vert_pos = sign_ * diff + center_ws;
     // ---------------------
 
+#if defined(SHADOW_MAP)
+    vec4 cs_pos = deref(gpu_input).ws_to_shadow * vec4(vert_pos, 1);
+#else
     vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(vert_pos, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos;
+    id = particle_index; // particle.id;
+#endif
+
     // TODO: Figure out why raster is projected upside down
     cs_pos.y *= -1;
-
     gl_Position = cs_pos;
-    id = particle.id;
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
 
+#if defined(SHADOW_MAP)
+void main() {
+}
+#else
 layout(location = 1) flat in uint id;
 layout(location = 0) out uvec4 color;
 
 void main() {
     color = uvec4(id + 1, 0, 0, 0);
 }
+#endif
 
 #endif

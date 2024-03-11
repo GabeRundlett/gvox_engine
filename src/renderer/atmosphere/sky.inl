@@ -8,7 +8,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyTransmittanceComputePush {
-    SkyTransmittanceCompute uses;
+    DAXA_TH_BLOB(SkyTransmittanceCompute, uses)
 };
 DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute, 3)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
@@ -16,7 +16,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, multiscattering_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyMultiscatteringComputePush {
-    SkyMultiscatteringCompute uses;
+    DAXA_TH_BLOB(SkyMultiscatteringCompute, uses)
 };
 DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
@@ -25,7 +25,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, sky_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkySkyComputePush {
-    SkySkyCompute uses;
+    DAXA_TH_BLOB(SkySkyCompute, uses)
 };
 DAXA_DECL_TASK_HEAD_BEGIN(SkyAeCompute, 4)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
@@ -34,7 +34,7 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_3D, aerial_perspective_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyAeComputePush {
-    SkyAeCompute uses;
+    DAXA_TH_BLOB(SkyAeCompute, uses)
 };
 
 DAXA_DECL_TASK_HEAD_BEGIN(ConvolveCubeCompute, 4)
@@ -44,7 +44,8 @@ DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D_ARRAY, ibl_cube)
 DAXA_DECL_TASK_HEAD_END
 struct ConvolveCubeComputePush {
-    ConvolveCubeCompute uses;
+    daxa_u32 flags;
+    DAXA_TH_BLOB(ConvolveCubeCompute, uses)
 };
 
 #if defined(__cplusplus)
@@ -273,6 +274,8 @@ struct SkyRenderer {
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ConvolveCubeComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
+                auto do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+                push.flags |= do_global_illumination ? 1 : 0;
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({(IBL_CUBE_RES + 7) / 8, (IBL_CUBE_RES + 7) / 8, 6});
             },

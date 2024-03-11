@@ -146,7 +146,7 @@ void main() {
             gi_irradiance = texelFetch(daxa_texture2D(rtdgi_tex), ivec2(px), 0).rgb;
         }
     } else {
-        gi_irradiance += sample_environment_light(vec3(0, 0, 1));
+        gi_irradiance += sample_environment_light(gbuffer.normal);
     }
 
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY != 0) {

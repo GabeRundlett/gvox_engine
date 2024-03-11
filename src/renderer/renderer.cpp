@@ -7,6 +7,8 @@
 #include <renderer/fsr.inl>
 
 #include <renderer/kajiya/kajiya.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 struct RendererImpl {
     GbufferRenderer gbuffer_renderer;
@@ -55,6 +57,14 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
     gpu_input.pre_exposure = self.kajiya_renderer.post_processor.exposure_state.pre_mult;
     gpu_input.pre_exposure_prev = self.kajiya_renderer.post_processor.exposure_state.pre_mult_prev;
     gpu_input.pre_exposure_delta = self.kajiya_renderer.post_processor.exposure_state.pre_mult_delta;
+
+    {
+        auto center = glm::floor(std::bit_cast<glm::vec3>(gpu_input.player.pos) + std::bit_cast<glm::vec3>(gpu_input.player.forward) * 25.0f);
+        auto eye = center - std::bit_cast<glm::vec3>(gpu_input.sky_settings.sun_direction) * 60.0f;
+        auto projection = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 120.0f) * glm::lookAt(eye, center, glm::vec3(0, 0, 1));
+        gpu_input.ws_to_shadow = std::bit_cast<daxa_f32mat4x4>(projection);
+        gpu_input.shadow_to_ws = std::bit_cast<daxa_f32mat4x4>(glm::inverse(projection));
+    }
 
     self.kajiya_renderer.ircache_renderer.update_eye_position(gpu_input);
 
@@ -112,10 +122,10 @@ auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers,
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
-    auto [particles_color_image, particles_depth_image] = particles.render(gpu_context);
+    auto [particles_color_image, particles_depth_image, particles_shadow_depth_image] = particles.render(gpu_context);
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers, particles, particles_color_image, particles_depth_image);
 
-    auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers);
+    auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers, particles_shadow_depth_image);
 
     auto [debug_out_tex, reprojection_map] = self.kajiya_renderer.render(
         gpu_context,

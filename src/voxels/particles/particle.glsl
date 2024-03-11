@@ -3,6 +3,7 @@
 #include <voxels/particles/voxel_particles.inl>
 #include <utilities/gpu/math.glsl>
 #include <voxels/voxels.glsl>
+#include <renderer/kajiya/inc/camera.glsl>
 
 #define PARTICLE_ALIVE_FLAG (1 << 0)
 #define PARTICLE_SMOKE_FLAG (1 << 1)
@@ -13,6 +14,10 @@
 vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
     // return pos - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
     return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
+}
+
+vec3 get_voxel_center_ws(vec3 pos) {
+    return floor(pos * VOXEL_SCL) * VOXEL_SIZE + 0.5 * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_pos(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
@@ -28,7 +33,7 @@ void particle_spawn(in out SimulatedVoxelParticle self, uint index, daxa_BufferP
     // self.pos = vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
     // self.vel = deref(gpu_input).player.forward * 0 + vec3(0, 0, -10);
     self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + deref(gpu_input).player.forward * 1 + vec3(0, 0, -2.5) + deref(gpu_input).player.lateral * 1.5;
-    self.vel = deref(gpu_input).player.forward * 8 + rand_dir() * 2; // + deref(gpu_input).player.vel;
+    self.vel = deref(gpu_input).player.forward * 18 + rand_dir() * 2; // + deref(gpu_input).player.vel;
 
     vec3 col = vec3(0.3, 0.4, 0.9) * (rand() * 0.5 + 0.5); // vec3(0.5);
     vec3 nrm = vec3(0, 0, 1);
@@ -171,13 +176,13 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
     vec4 cs_pos = world_to_sample * vec4(center_ws, 1);
     particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
     if (any(lessThan(px_pos.xy + ps_size * 0.5, vec2(0))) ||
-        any(greaterThan(px_pos.xy - ps_size * 0.5, vec2(half_screen_size * 2.0))) || 
+        any(greaterThan(px_pos.xy - ps_size * 0.5, vec2(half_screen_size * 2.0))) ||
         cs_pos.z / cs_pos.w < 0.0) {
         return;
     }
 
     const float splat_size_threshold = 5.0;
-    const bool should_splat = ps_size < splat_size_threshold;
+    const bool should_splat = false; // ps_size < splat_size_threshold;
 
     if (ps_size <= 0.25) {
         return;
@@ -193,7 +198,35 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
     }
 }
 
-void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles,
+struct Box {
+    vec3 center;
+    vec3 radius;
+    vec3 invRadius;
+};
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+float max(vec3 v) { return max(max(v.x, v.y), v.z); }
+bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
+                     const bool canStartInBox, in vec3 _invRayDir) {
+    ray.origin = ray.origin - box.center;
+    float winding = canStartInBox && (max(abs(ray.origin) * box.invRadius) < 1.0) ? -1 : 1;
+    vec3 sgn = -sign(ray.direction);
+    // Distance to plane
+    vec3 d = box.radius * winding * sgn - ray.origin;
+    d *= _invRayDir;
+#define TEST(U, VW) (d.U >= 0.0) && all(lessThan(abs(ray.origin.VW + ray.direction.VW * d.U), box.radius.VW))
+    bvec3 test = bvec3(TEST(x, yz), TEST(y, zx), TEST(z, xy));
+    sgn = test.x ? vec3(sgn.x, 0, 0) : (test.y ? vec3(0, sgn.y, 0) : vec3(0, 0, test.z ? sgn.z : 0));
+#undef TEST
+    distance = (sgn.x != 0) ? d.x : ((sgn.y != 0) ? d.y : d.z);
+    normal = sgn;
+    return (sgn.x != 0) || (sgn.y != 0) || (sgn.z != 0);
+}
+
+void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles, in out ViewRayContext vrc,
                     daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
     vs_velocity = vec3(0);
@@ -215,10 +248,25 @@ void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(Si
         prev_pos = pos;
         GrassStrand strand = deref(advance(grass_strands, particle_index));
         Voxel grass_voxel = unpack_voxel(strand.packed_voxel);
-        // grass_voxel.color *= vec3(length(pos - strand.origin));
+        grass_voxel.color *= vec3(length(pos - get_particle_worldspace_origin(gpu_input, strand.origin))) * 10.0 + 1.0;
         nrm = grass_voxel.normal;
+        // grass_voxel.color = (pos - get_particle_worldspace_origin(gpu_input, strand.origin)) * vec3(0, 0, 1);
         packed_voxel_data = pack_voxel(grass_voxel).data;
     }
+
+#if !PER_VOXEL_NORMALS
+    Ray ray;
+    ray.origin = ray_origin_ws(vrc);
+    ray.direction = ray_dir_ws(vrc);
+
+    Box box;
+    box.radius = vec3(1023.0 / 1024.0 * VOXEL_SIZE * 0.5);
+    box.invRadius = 1.0 / box.radius;
+    box.center = pos;
+
+    float temp_dist;
+    ourIntersectBox(box, ray, temp_dist, nrm, false, 1.0 / ray.direction);
+#endif
 
     vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
     prev_pos += extra_vel;

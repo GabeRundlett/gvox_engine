@@ -106,6 +106,17 @@ struct CubeParticleRasterPush {
     DAXA_TH_BLOB(CubeParticleRaster, uses)
 };
 
+DAXA_DECL_TASK_HEAD_BEGIN(CubeParticleRasterShadow, 5)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(ParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER(INDEX_READ, indices)
+DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
+DAXA_DECL_TASK_HEAD_END
+struct CubeParticleRasterShadowPush {
+    DAXA_TH_BLOB(CubeParticleRasterShadow, uses)
+};
+
 DAXA_DECL_TASK_HEAD_BEGIN(SplatParticleRaster, 5)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
@@ -272,7 +283,7 @@ struct VoxelParticles {
         });
     }
 
-    auto render(GpuContext &gpu_context) -> std::pair<daxa::TaskImageView, daxa::TaskImageView> {
+    auto render(GpuContext &gpu_context) -> std::array<daxa::TaskImageView, 3> {
         auto format = daxa::Format::R32_UINT;
         auto raster_color_image = gpu_context.frame_task_graph.create_transient_image({
             .format = format,
@@ -330,6 +341,54 @@ struct VoxelParticles {
             },
         });
 
+        auto raster_shadow_depth_image = gpu_context.frame_task_graph.create_transient_image({
+            .format = daxa::Format::D32_SFLOAT,
+            .size = {2048, 2048, 1},
+            .name = "raster_shadow_depth_image",
+        });
+
+        gpu_context.add(RasterTask<CubeParticleRasterShadow, CubeParticleRasterShadowPush, NoTaskInfo>{
+            .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
+            .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
+            .depth_test = daxa::DepthTestInfo{
+                .depth_attachment_format = daxa::Format::D32_SFLOAT,
+                .enable_depth_write = true,
+                .depth_test_compare_op = daxa::CompareOp::GREATER,
+            },
+            .raster = {
+                .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_FAN,
+                .face_culling = daxa::FaceCullFlagBits::NONE,
+            },
+            .extra_defines = {daxa::ShaderDefine{.name = "SHADOW_MAP", "1"}},
+            .views = std::array{
+                daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::gpu_input, gpu_context.task_input_buffer}},
+                daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::particles_state, global_state.task_resource}},
+                daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::cube_rendered_particle_verts, cube_rendered_particle_verts.task_resource}},
+                daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::indices, cube_index_buffer.task_resource}},
+                daxa::TaskViewVariant{std::pair{CubeParticleRasterShadow::depth_image_id, raster_shadow_depth_image}},
+            },
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, CubeParticleRasterShadowPush &push, NoTaskInfo const &) {
+                auto const image_info = ti.device.info_image(ti.get(CubeParticleRasterShadow::depth_image_id).ids[0]).value();
+                auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
+                    .depth_attachment = {{.image_view = ti.get(CubeParticleRasterShadow::depth_image_id).ids[0].default_view(), .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
+                    .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
+                });
+                renderpass_recorder.set_pipeline(pipeline);
+                set_push_constant(ti, renderpass_recorder, push);
+                renderpass_recorder.set_index_buffer({
+                    .id = ti.get(CubeParticleRasterShadow::indices).ids[0],
+                    .index_type = daxa::IndexType::uint16,
+                });
+                renderpass_recorder.draw_indirect({
+                    .draw_command_buffer = ti.get(CubeParticleRasterShadow::particles_state).ids[0],
+                    .indirect_buffer_offset = offsetof(VoxelParticlesState, cube_draw_params),
+                    .is_indexed = true,
+                });
+                ti.recorder = std::move(renderpass_recorder).end_renderpass();
+            },
+        });
+        debug_utils::DebugDisplay::add_pass({.name = "voxel particle shadow depth", .task_image_id = raster_shadow_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
+
         gpu_context.add(RasterTask<SplatParticleRaster, SplatParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
@@ -372,7 +431,7 @@ struct VoxelParticles {
 
         debug_utils::DebugDisplay::add_pass({.name = "voxel particles", .task_image_id = raster_color_image, .type = DEBUG_IMAGE_TYPE_DEFAULT_UINT});
         debug_utils::DebugDisplay::add_pass({.name = "voxel particles depth", .task_image_id = raster_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});
-        return {raster_color_image, raster_depth_image};
+        return {raster_color_image, raster_depth_image, raster_shadow_depth_image};
     }
 };
 

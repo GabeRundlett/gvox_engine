@@ -190,24 +190,26 @@ void try_spawn_grass(in out Voxel voxel, vec3 forest_biome_color, vec3 nrm) {
     // randomly spawn grass
     float r2 = good_rand(voxel_pos.xy);
     float upwards = dot(nrm, vec3(0, 0, 1));
-    if (upwards > 0.65 && r2 < 0.2) {
-        voxel.color = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));
+    if (upwards > 0.65 && r2 < 0.75) {
+        voxel.color = pow(vec3(105, 166, 78) / 255.0 * 0.1, vec3(2.2));
         voxel.material_type = 1;
-        voxel.roughness = 0.6;
+        voxel.roughness = 1.0;
         // Mix with biome color
         voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
         voxel.normal = nrm;
 
         // spawn strand!!
 
-        GrassStrand grass_strand;
-        grass_strand.origin = voxel_pos;
-        grass_strand.packed_voxel = pack_voxel(voxel);
-        grass_strand.flags = 1;
+        if (r2 < 0.3) {
+            GrassStrand grass_strand;
+            grass_strand.origin = voxel_pos;
+            grass_strand.packed_voxel = pack_voxel(voxel);
+            grass_strand.flags = 1;
 
-        uint index = GrassStrandAllocator_malloc(grass_allocator);
-        daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
-        deref(advance(grass_strands, index)) = grass_strand;
+            uint index = GrassStrandAllocator_malloc(grass_allocator);
+            daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
+            deref(advance(grass_strands, index)) = grass_strand;
+        }
     }
 }
 

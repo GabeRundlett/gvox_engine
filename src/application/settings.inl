@@ -57,7 +57,7 @@ struct SkySettings {
 #define IBL_CUBE_RES 16
 
 // clang-format off
-#define MAX_GRASS_BLADES               (1 << 20)
+#define MAX_GRASS_BLADES               (1 << 22)
 #define MAX_SIMULATED_VOXEL_PARTICLES  0 // (1 << 8)
 #define MAX_RENDERED_VOXEL_PARTICLES   (MAX_GRASS_BLADES * 3 + MAX_SIMULATED_VOXEL_PARTICLES)
 // clang-format on
@@ -99,3 +99,5 @@ struct BrushSettings {
 };
 
 #define FRAMES_IN_FLIGHT 1
+
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE 1

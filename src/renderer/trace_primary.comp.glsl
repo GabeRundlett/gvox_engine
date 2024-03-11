@@ -160,12 +160,14 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
+daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+daxa_BufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
 daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
 daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
-daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
 daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
 
@@ -184,7 +186,13 @@ void main() {
     vec2 uv = get_uv(gl_GlobalInvocationID.xy, output_tex_size);
 
 #if MAX_RENDERED_VOXEL_PARTICLES > 0
-    uint particle_id = texelFetch(daxa_utexture2D(particles_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r - 1;
+    uint particle_render_id = texelFetch(daxa_utexture2D(particles_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r - 1;
+    ParticleVertex particle_vert;
+    if (particle_render_id < MAX_RENDERED_VOXEL_PARTICLES) {
+        particle_vert = deref(advance(cube_rendered_particle_verts, particle_render_id));
+    } else {
+        particle_vert = deref(advance(splat_rendered_particle_verts, particle_render_id - MAX_RENDERED_VOXEL_PARTICLES));
+    }
     float particles_depth = texelFetch(daxa_texture2D(particles_depth_image_id), ivec2(gl_GlobalInvocationID.xy), 0).r;
     bool is_particle = false;
     if (particles_depth > depth) {
@@ -196,8 +204,7 @@ void main() {
 
     if (is_particle) {
         vec3 hit_ws = ray_hit_ws(vrc);
-        ParticleVertex particle_vert = ParticleVertex(hit_ws, particle_id);
-        particle_shade(grass_strands, simulated_voxel_particles, gpu_input, particle_vert, g_buffer_value.x, nrm, vs_velocity);
+        particle_shade(grass_strands, simulated_voxel_particles, vrc, gpu_input, particle_vert, g_buffer_value.x, nrm, vs_velocity);
         g_buffer_value.y = nrm_to_u16(nrm);
     }
 #endif
