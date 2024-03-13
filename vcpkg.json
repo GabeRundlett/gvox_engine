@@ -50,7 +50,7 @@
   ],
   "vcpkg-configuration": {
     "overlay-ports": [
-      "./deps/gvox/cmake/vcpkg-port",
+      "./deps/gvox",
       "./deps/Daxa",
       "./deps/Daxa/cmake/vcpkg-overlay-ports/dxc",
       "./deps/Daxa/cmake/vcpkg-overlay-ports/glfw3",
