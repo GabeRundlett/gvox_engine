@@ -179,23 +179,21 @@ vec3 palette(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
     return a + b * cos(6.28318 * (c * t + d));
 }
 vec3 forest_biome_palette(float t) {
-    return pow(vec3(85, 114, 78) / 255.0, vec3(2.2)); // palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
+    return pow(vec3(85, 154, 78) / 255.0, vec3(2.2)); // palette(t + .5, vec3(0.07, 0.22, 0.03), vec3(0.03, 0.05, 0.01), vec3(-1.212, -2.052, 0.058), vec3(1.598, 6.178, 0.380));
 }
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint
 #include <utilities/allocator.glsl>
 
-void try_spawn_grass(in out Voxel voxel, vec3 forest_biome_color, vec3 nrm) {
+void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
     // randomly spawn grass
     float r2 = good_rand(voxel_pos.xy);
     float upwards = dot(nrm, vec3(0, 0, 1));
     if (upwards > 0.65 && r2 < 0.75) {
-        voxel.color = pow(vec3(105, 166, 78) / 255.0 * 0.1, vec3(2.2));
+        voxel.color = pow(vec3(85, 166, 78) / 255.0 * 0.5, vec3(2.2));
         voxel.material_type = 1;
         voxel.roughness = 1.0;
-        // Mix with biome color
-        voxel.color = mix(voxel.color, forest_biome_color * .75, .3);
         voxel.normal = nrm;
 
         // spawn strand!!
@@ -213,7 +211,7 @@ void try_spawn_grass(in out Voxel voxel, vec3 forest_biome_color, vec3 nrm) {
     }
 }
 
-#define ENABLE_TREE_GENERATION 1
+#define ENABLE_TREE_GENERATION 0
 
 void brushgen_world_terrain(in out Voxel voxel) {
     vec4 val4 = terrain_noise(voxel_pos);
@@ -265,7 +263,7 @@ void brushgen_world_terrain(in out Voxel voxel) {
         vec4 grass_val4 = terrain_noise(voxel_pos - vec3(0, 0, VOXEL_SIZE));
         float grass_val = grass_val4.x;
         if (grass_val < 0.0) {
-            try_spawn_grass(voxel, forest_biome_color, nrm);
+            try_spawn_grass(voxel, nrm);
         } else if (ENABLE_TREE_GENERATION != 0) {
             try_spawn_tree(voxel, forest_biome_color, nrm);
         }
@@ -406,40 +404,17 @@ void brushgen_b(in out Voxel voxel) {
         //     /* .lacunarity  = */ 2.0,
         //     /* .octaves     = */ 3);
         // float val = fractal_noise(value_noise_texture, g_sampler_llr, voxel_pos, noise_conf).r;
-        voxel.material_type = 1;
-        voxel.color = vec3(0.95, 0.95, 0.95);
-        voxel.roughness = 0.9;
+        voxel.material_type = 3;
+        voxel.color = vec3(0.95, 0.065, 0.05);
+        voxel.roughness = 0.01;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     } else {
-        float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
-        if (grass_val < 0.0) {
-            // Smooth noise depending on 2d position only
-            float voxel_noise_xy = fbm2(voxel_pos.xy / 8 / 40);
-            // Smooth biome color
-            vec3 forest_biome_color = forest_biome_palette(voxel_noise_xy * 2 - 1);
-
-            try_spawn_grass(voxel, forest_biome_color, nrm);
-        }
+        // float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+        // if (grass_val < 0.0) {
+        //     try_spawn_grass(voxel, nrm);
+        // }
     }
     if (sd < 2.5 * VOXEL_SIZE) {
         voxel.normal = vec3(0, 0, 1);
     }
-}
-
-void brushgen_particles(in out Voxel voxel) {
-    // for (uint particle_i = 0; particle_i < deref(particles_state).place_count; ++particle_i) {
-    //     uint sim_index = deref(advance(placed_voxel_particles, particle_i));
-    //     SimulatedVoxelParticle self = deref(advance(simulated_voxel_particles, sim_index));
-    //     if (uvec3(floor(self.pos * VOXEL_SCL)) == voxel_i) {
-    //         voxel.color = vec3(0.8, 0.8, 0.8);
-    //         voxel.material_type = 1;
-    //         return;
-    //     }
-    // }
-
-    PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
-    Voxel prev_voxel = unpack_voxel(voxel_data);
-
-    voxel.color = prev_voxel.color;
-    voxel.material_type = prev_voxel.material_type;
 }

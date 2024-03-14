@@ -22,7 +22,7 @@
 #define CHUNK_WORLDSPACE_SIZE (float(CHUNK_SIZE) * float(VOXEL_SIZE))
 
 #define PER_VOXEL_NORMALS 1
-#define DITHER_NORMALS 0
+#define DITHER_NORMALS 1
 
 #if LOG2_VOXEL_SIZE < -6
 #error "this is not currently supported"

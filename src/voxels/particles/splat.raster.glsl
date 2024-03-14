@@ -6,8 +6,6 @@
 DAXA_DECL_PUSH_CONSTANT(SplatParticleRasterPush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
-daxa_ImageViewIndex render_image = push.uses.render_image;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 
 #include "particle.glsl"
 
@@ -21,7 +19,7 @@ void main() {
 
     ParticleVertex particle = deref(advance(splat_rendered_particle_verts, particle_index));
 
-    float voxel_radius = 1023.0 / 1024.0 * VOXEL_SIZE * 0.5;
+    float voxel_radius = VOXEL_SIZE * 0.5;
     center_ws = get_particle_worldspace_origin(gpu_input, particle.pos);
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
@@ -36,25 +34,30 @@ void main() {
     gl_Position = cs_pos;
     gl_PointSize = ps_size;
 
-    id = particle_index; // particle.id;
+    id = particle.id;
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
 
+daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+
 layout(location = 0) flat in vec3 center_ws;
 layout(location = 1) flat in uint id;
-layout(location = 0) out uvec4 color;
+
+layout(location = 0) out uvec4 o_gbuffer;
+layout(location = 1) out vec4 o_vs_velocity;
+layout(location = 2) out vec4 o_vs_nrm;
 
 void main() {
     Box box;
-    box.radius = vec3(1023.0 / 1024.0 * VOXEL_SIZE * 0.5);
+    box.radius = vec3(VOXEL_SIZE * 0.5);
     box.invRadius = 1.0 / box.radius;
     box.center = center_ws;
 
     vec4 output_tex_size = vec4(deref(gpu_input).frame_dim, 0, 0);
     output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
     vec2 uv = get_uv(gl_FragCoord.xy, output_tex_size);
-
     ViewRayContext vrc = vrc_from_uv(gpu_input, uv);
 
     Ray ray;
@@ -62,9 +65,9 @@ void main() {
     ray.direction = ray_dir_ws(vrc);
 
     float dist;
-    vec3 nrm;
+    vec3 temp_nrm;
 
-    if (!ourIntersectBox(box, ray, dist, nrm, false, 1.0 / ray.direction)) {
+    if (!ourIntersectBox(box, ray, dist, temp_nrm, false, 1.0 / ray.direction)) {
         discard;
     }
 
@@ -74,7 +77,25 @@ void main() {
     float ndc_depth = cs_pos.z / cs_pos.w;
 
     gl_FragDepth = ndc_depth;
-    color = uvec4(id + 1 + MAX_RENDERED_VOXEL_PARTICLES, 0, 0, 0);
+
+    vec3 nrm;
+    vec3 vs_velocity;
+    ParticleVertex particle_vert = ParticleVertex(center_ws, id);
+    uint gbuffer_x;
+    particle_shade(grass_strands, simulated_voxel_particles, vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
+
+#if !PER_VOXEL_NORMALS
+    // TODO: Fix the face-normals for splatted particles. At a distance, this ourIntersectBox function appears to return mush.
+    nrm = temp_nrm;
+#endif
+
+    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+    o_gbuffer.x = gbuffer_x;
+    o_gbuffer.y = nrm_to_u16(nrm);
+    o_gbuffer.z = floatBitsToUint(gl_FragDepth);
+    vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
+    o_vs_velocity = vec4(vs_velocity, 0);
+    o_vs_nrm = vec4(vs_nrm * 0.5 + 0.5, 0);
 }
 
 #endif

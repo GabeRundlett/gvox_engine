@@ -55,6 +55,18 @@ GpuContext::GpuContext() {
         )glsl",
     });
 
+    pipeline_manager->add_virtual_file({
+        .name = "R32_D32_BLIT",
+        .contents = R"glsl(
+            #include <renderer/trace_primary.inl>
+            DAXA_DECL_PUSH_CONSTANT(R32D32BlitPush, push)
+            daxa_ImageViewIndex input_tex = push.uses.input_tex;
+            void main() {
+                gl_FragDepth = texelFetch(daxa_texture2D(input_tex), ivec2(gl_FragCoord.xy), 0).r;
+            }
+        )glsl",
+    });
+
     value_noise_image = device.create_image({
         .dimensions = 2,
         .format = daxa::Format::R8_UNORM,

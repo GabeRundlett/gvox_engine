@@ -11,13 +11,13 @@
 #define PARTICLE_SLEEP_TIMER_OFFSET (8)
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
-vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
-    // return pos - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
-    return floor(pos * VOXEL_SCL) * VOXEL_SIZE - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
+vec3 get_particle_pos(vec3 pos) {
+    return pos;
+    // return floor(pos * VOXEL_SCL) * VOXEL_SIZE;
 }
 
-vec3 get_voxel_center_ws(vec3 pos) {
-    return floor(pos * VOXEL_SCL) * VOXEL_SIZE + 0.5 * VOXEL_SIZE;
+vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
+    return get_particle_pos(pos) - deref(gpu_input).player.player_unit_offset + 0.5 * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_pos(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
@@ -182,7 +182,7 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
     }
 
     const float splat_size_threshold = 5.0;
-    const bool should_splat = false; // ps_size < splat_size_threshold;
+    const bool should_splat = ps_size < splat_size_threshold;
 
     if (ps_size <= 0.25) {
         return;
@@ -226,6 +226,8 @@ bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
     return (sgn.x != 0) || (sgn.y != 0) || (sgn.z != 0);
 }
 
+#include "grass.glsl"
+
 void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles, in out ViewRayContext vrc,
                     daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
@@ -239,60 +241,31 @@ void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(Si
     if (particle_index < MAX_SIMULATED_VOXEL_PARTICLES) {
         float dt = min(deref(gpu_input).delta_time, 0.01);
         SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, particle_index));
-        pos = get_particle_worldspace_origin(gpu_input, particle.pos);
-        prev_pos = get_particle_worldspace_origin(gpu_input, particle.pos - particle.vel * dt);
+        pos = particle.pos;
+        prev_pos = particle.pos - particle.vel * dt;
         packed_voxel_data = particle.packed_voxel.data;
     } else {
         particle_index -= MAX_SIMULATED_VOXEL_PARTICLES;
-        pos = get_particle_worldspace_origin(gpu_input, particle_vertex.pos);
-        prev_pos = pos;
         GrassStrand strand = deref(advance(grass_strands, particle_index));
+        pos = particle_vertex.pos;
+        vec3 origin_ws = get_particle_worldspace_origin(gpu_input, strand.origin);
+        vec3 del = pos - origin_ws;
         Voxel grass_voxel = unpack_voxel(strand.packed_voxel);
-        grass_voxel.color *= vec3(length(pos - get_particle_worldspace_origin(gpu_input, strand.origin))) * 10.0 + 1.0;
+        vec2 rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time);
+        pos = origin_ws + get_grass_offset(rot_offset, del.z);
+        vec2 prev_rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time - deref(gpu_input).delta_time);
+        prev_pos = origin_ws + get_grass_offset(prev_rot_offset, del.z);
+        grass_voxel.color *= del.z * 10.0 + 1.0;
         nrm = grass_voxel.normal;
-        // grass_voxel.color = (pos - get_particle_worldspace_origin(gpu_input, strand.origin)) * vec3(0, 0, 1);
         packed_voxel_data = pack_voxel(grass_voxel).data;
     }
 
-#if !PER_VOXEL_NORMALS
-    Ray ray;
-    ray.origin = ray_origin_ws(vrc);
-    ray.direction = ray_dir_ws(vrc);
-
-    Box box;
-    box.radius = vec3(1023.0 / 1024.0 * VOXEL_SIZE * 0.5);
-    box.invRadius = 1.0 / box.radius;
-    box.center = pos;
-
-    float temp_dist;
-    ourIntersectBox(box, ray, temp_dist, nrm, false, 1.0 / ray.direction);
-#endif
+    pos = get_particle_pos(pos);
+    prev_pos = get_particle_pos(prev_pos);
 
     vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
     prev_pos += extra_vel;
     vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
     vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
     vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
-
-    // TODO: Fix the face-normals for particles. The ray_hit_ws function returns the voxel center.
-
-    // ViewRayContext vrc_particle = vrc_from_uv_and_depth(gpu_input, uv, particles_depth);
-    // vec3 ppos = ray_hit_ws(vrc_particle);
-    // nrm = ppos - (pos + 0.5 * VOXEL_SIZE);
-    // ppos = abs(nrm);
-    // if (ppos.x > ppos.y) {
-    //     if (ppos.x > ppos.z) {
-    //         nrm = vec3(sign(nrm.x), 0, 0);
-    //     } else {
-    //         nrm = vec3(0, 0, sign(nrm.z));
-    //     }
-    // } else {
-    //     if (ppos.y > ppos.z) {
-    //         nrm = vec3(0, sign(nrm.y), 0);
-    //     } else {
-    //         nrm = vec3(0, 0, sign(nrm.z));
-    //     }
-    // }
-
-    // nrm = normalize(deref(gpu_input).player.pos - pos);
 }

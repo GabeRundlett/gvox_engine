@@ -1,8 +1,7 @@
 #include "voxel_particles.inl"
 #include "particle.glsl"
 
-#include <utilities/gpu/noise.glsl>
-#include <g_samplers>
+#include "grass.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(GrassStrandSimComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -40,20 +39,10 @@ void main() {
     PackedVoxel air_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws + vec3(0, 0, VOXEL_SIZE), vec3(0));
     Voxel air_voxel = unpack_voxel(air_voxel_data);
 
-    FractalNoiseConfig noise_conf = FractalNoiseConfig(
-        /* .amplitude   = */ 1.0,
-        /* .persistance = */ 0.4,
-        /* .scale       = */ 0.025,
-        /* .lacunarity  = */ 4.5,
-        /* .octaves     = */ 4);
-    vec4 noise_val = fractal_noise(value_noise_texture, g_sampler_llr, self.origin + vec3(deref(gpu_input).time * 1.1, sin(deref(gpu_input).time), 0), noise_conf);
-    float rot = noise_val.x * 100.0;
-    vec2 rot_offset = vec2(sin(rot), cos(rot));
-
-    grass_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
+    vec2 rot_offset = grass_get_rot_offset(self, deref(gpu_input).time);
+    // grass_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
 
     if (air_voxel.material_type != 0 ||
-        grass_voxel.color != ground_voxel.color ||
         grass_voxel.material_type != ground_voxel.material_type ||
         grass_voxel.roughness != ground_voxel.roughness) {
         // free voxel, its spawner died.
@@ -68,9 +57,7 @@ void main() {
 
     if (self.flags != 0) {
         for (uint i = 1; i <= 3; ++i) {
-            float pct = float(i) / 3.0;
-            vec3 offset = vec3(0, 0, float(i * VOXEL_SIZE));
-            offset.xy = rot_offset * VOXEL_SIZE * pct * 2.0;
+            vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);
             particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index + MAX_SIMULATED_VOXEL_PARTICLES);
         }
     }

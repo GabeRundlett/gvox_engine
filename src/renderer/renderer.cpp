@@ -122,8 +122,8 @@ auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers,
     debug_utils::DebugDisplay::add_pass({.name = "ibl_cube", .task_image_id = ibl_cube, .type = DEBUG_IMAGE_TYPE_CUBEMAP});
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
-    auto [particles_color_image, particles_depth_image, particles_shadow_depth_image] = particles.render(gpu_context);
-    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers, particles, particles_color_image, particles_depth_image);
+    auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers);
+    auto particles_shadow_depth_image = particles.render(gpu_context, gbuffer_depth, velocity_image);
 
     auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers, particles_shadow_depth_image);
 

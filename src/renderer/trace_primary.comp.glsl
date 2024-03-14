@@ -48,6 +48,8 @@ daxa_ImageViewIndex debug_texture = push.uses.debug_texture;
 daxa_ImageViewIndex render_depth_prepass_image = push.uses.render_depth_prepass_image;
 daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
+daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
+daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 
 #include <renderer/atmosphere/sky.glsl>
 
@@ -149,8 +151,13 @@ void main() {
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
         return;
     }
+
+    vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
+
     imageStore(daxa_uimage2D(g_buffer_image_id), ivec2(gl_GlobalInvocationID.xy), output_value);
     imageStore(daxa_image2D(velocity_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(vs_velocity, 0));
+    imageStore(daxa_image2D(vs_normal_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(vs_nrm * 0.5 + 0.5, 0));
+    imageStore(daxa_image2D(depth_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(depth, 0, 0, 0));
 }
 #undef INPUT
 
@@ -160,14 +167,10 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(CompositeParticlesComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_BufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
 daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_ImageViewIndex g_buffer_image_id = push.uses.g_buffer_image_id;
 daxa_ImageViewIndex velocity_image_id = push.uses.velocity_image_id;
-daxa_ImageViewIndex vs_normal_image_id = push.uses.vs_normal_image_id;
-daxa_ImageViewIndex depth_image_id = push.uses.depth_image_id;
 daxa_ImageViewIndex particles_image_id = push.uses.particles_image_id;
 daxa_ImageViewIndex particles_depth_image_id = push.uses.particles_depth_image_id;
 
@@ -216,11 +219,6 @@ void main() {
     if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(output_tex_size.xy)))) {
         return;
     }
-
-    imageStore(daxa_uimage2D(g_buffer_image_id), ivec2(gl_GlobalInvocationID.xy), g_buffer_value);
-    imageStore(daxa_image2D(vs_normal_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(vs_nrm * 0.5 + 0.5, 0));
-    imageStore(daxa_image2D(velocity_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(vs_velocity, 0));
-    imageStore(daxa_image2D(depth_image_id), ivec2(gl_GlobalInvocationID.xy), vec4(depth, 0, 0, 0));
 }
 
 #endif
