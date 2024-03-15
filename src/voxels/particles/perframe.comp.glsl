@@ -9,7 +9,6 @@ SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(GrassStrandAllocator, grass_allocator)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
-#include "particle.glsl"
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint

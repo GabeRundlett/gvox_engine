@@ -2,7 +2,6 @@
 
 #include <core.inl>
 
-#include <voxels/brushes.inl>
 #include <utilities/allocator.inl>
 
 #include <renderer/core.inl>

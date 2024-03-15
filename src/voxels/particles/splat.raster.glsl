@@ -11,10 +11,10 @@ DAXA_DECL_PUSH_CONSTANT(SimParticleSplatParticleRasterPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 #endif
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
+daxa_BufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 
-#define SHADING
-#include "particle.glsl"
+#include "grass/grass.glsl"
+#include "sim_particle/sim_particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
@@ -26,32 +26,32 @@ layout(location = 3) out vec3 center_ws;
 void main() {
     uint particle_index = gl_VertexIndex;
 
-    ParticleVertex particle = deref(advance(splat_rendered_particle_verts, particle_index));
+    PackedParticleVertex packed_vertex = deref(advance(splat_rendered_particle_verts, particle_index));
+
+#if defined(GRASS)
+    ParticleVertex vert = get_grass_vertex(gpu_input, grass_strands, packed_vertex);
+#elif defined(SIM_PARTICLE)
+    ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
+#endif
 
     float voxel_radius = VOXEL_SIZE * 0.5;
-    center_ws = get_particle_worldspace_origin(gpu_input, particle.pos);
+    center_ws = vert.pos;
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
     float ps_size = 0.0;
     vec2 px_pos = vec2(0, 0);
     particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
 
-    vec4 output_tex_size = vec4(deref(gpu_input).frame_dim, 0, 0);
-    output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
-    vec3 nrm;
-    vec3 vs_velocity;
-    ParticleVertex particle_vert = ParticleVertex(center_ws, particle.id);
-    uint gbuffer_x;
-    particle_shade(gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
-    i_gbuffer_xy = uvec2(gbuffer_x, nrm_to_u16(nrm));
-    i_vs_velocity = vs_velocity;
-#if !PER_VOXEL_NORMALS
-    nrm = face_nrm;
-#endif
+    vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(vert.pos, 1));
+    vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(vert.prev_pos, 1));
+    i_vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+    Voxel voxel = unpack_voxel(vert.packed_voxel);
+    vec3 nrm = voxel.normal;
+    i_gbuffer_xy = uvec2(vert.packed_voxel.data, nrm_to_u16(nrm));
     i_vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
 
-    vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(center_ws, 1);
-    vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos;
+    vec4 vs_pos2 = deref(gpu_input).player.cam.world_to_view * vec4(center_ws, 1);
+    vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos2;
     cs_pos.y *= -1;
 
     gl_Position = cs_pos;
@@ -69,6 +69,34 @@ layout(location = 0) out uvec4 o_gbuffer;
 layout(location = 1) out vec4 o_vs_velocity;
 layout(location = 2) out vec4 o_vs_nrm;
 
+struct Box {
+    vec3 center;
+    vec3 radius;
+    vec3 invRadius;
+};
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+float max(vec3 v) { return max(max(v.x, v.y), v.z); }
+bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
+                     const bool canStartInBox, in vec3 _invRayDir) {
+    ray.origin = ray.origin - box.center;
+    float winding = canStartInBox && (max(abs(ray.origin) * box.invRadius) < 1.0) ? -1 : 1;
+    vec3 sgn = -sign(ray.direction);
+    // Distance to plane
+    vec3 d = box.radius * winding * sgn - ray.origin;
+    d *= _invRayDir;
+#define TEST(U, VW) (d.U >= 0.0) && all(lessThan(abs(ray.origin.VW + ray.direction.VW * d.U), box.radius.VW))
+    bvec3 test = bvec3(TEST(x, yz), TEST(y, zx), TEST(z, xy));
+    sgn = test.x ? vec3(sgn.x, 0, 0) : (test.y ? vec3(0, sgn.y, 0) : vec3(0, 0, test.z ? sgn.z : 0));
+#undef TEST
+    distance = (sgn.x != 0) ? d.x : ((sgn.y != 0) ? d.y : d.z);
+    normal = sgn;
+    return (sgn.x != 0) || (sgn.y != 0) || (sgn.z != 0);
+}
+
 void main() {
     Box box;
     box.radius = vec3(VOXEL_SIZE * 0.5);
@@ -85,9 +113,9 @@ void main() {
     ray.direction = ray_dir_ws(vrc);
 
     float dist;
-    vec3 temp_nrm;
+    vec3 face_nrm;
 
-    if (!ourIntersectBox(box, ray, dist, temp_nrm, false, 1.0 / ray.direction)) {
+    if (!ourIntersectBox(box, ray, dist, face_nrm, false, 1.0 / ray.direction)) {
         discard;
     }
 
@@ -100,7 +128,7 @@ void main() {
 
 #if !PER_VOXEL_NORMALS
     // TODO: Fix the face-normals for splatted particles. At a distance, this ourIntersectBox function appears to return mush.
-    nrm = temp_nrm;
+    nrm = face_nrm;
     vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
 #else
     vec3 vs_nrm = i_vs_nrm;
@@ -108,9 +136,7 @@ void main() {
 
     vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
 
-    o_gbuffer.x = i_gbuffer_xy.x;
-    o_gbuffer.y = i_gbuffer_xy.y;
-    o_gbuffer.z = floatBitsToUint(gl_FragDepth);
+    o_gbuffer = uvec4(i_gbuffer_xy, floatBitsToUint(ndc_depth), 0);
     o_vs_velocity = vec4(i_vs_velocity, 0);
     o_vs_nrm = vec4(i_vs_nrm * 0.5 + 0.5, 0);
 }

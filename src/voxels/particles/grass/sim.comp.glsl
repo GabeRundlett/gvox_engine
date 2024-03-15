@@ -1,5 +1,5 @@
 #include "grass.inl"
-#include "../particle.glsl"
+#include "grass.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(GrassStrandSimComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -7,9 +7,9 @@ daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_stat
 SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(GrassStrandAllocator, grass_allocator)
 daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
-daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
-daxa_RWBufferPtr(ParticleVertex) shadow_cube_rendered_particle_verts = push.uses.shadow_cube_rendered_particle_verts;
-daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
+daxa_RWBufferPtr(PackedParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+daxa_RWBufferPtr(PackedParticleVertex) shadow_cube_rendered_particle_verts = push.uses.shadow_cube_rendered_particle_verts;
+daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 #define UserAllocatorType GrassStrandAllocator
@@ -38,7 +38,6 @@ void main() {
     PackedVoxel air_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws + vec3(0, 0, VOXEL_SIZE), vec3(0));
     Voxel air_voxel = unpack_voxel(air_voxel_data);
 
-    vec2 rot_offset = grass_get_rot_offset(self, deref(gpu_input).time);
     // grass_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
 
     if (air_voxel.material_type != 0 ||
@@ -55,8 +54,9 @@ void main() {
     deref(advance(grass_strands, particle_index)) = self;
 
     for (uint i = 1; i <= 3; ++i) {
-        vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);
-        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index);
+        PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
+        ParticleVertex grass_vertex = get_grass_vertex(gpu_input, daxa_BufferPtr(GrassStrand)(grass_strands), packed_vertex);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, grass_vertex, packed_vertex);
     }
 #endif
 }
