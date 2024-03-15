@@ -245,7 +245,7 @@ bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
 
 #if defined(SHADING)
 #if defined(GRASS)
-void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
+void particle_shade(daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
     vs_velocity = vec3(0);
 
@@ -277,7 +277,7 @@ void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_inpu
     vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 }
 #elif defined(SIM_PARTICLE)
-void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
+void particle_shade(daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
     vs_velocity = vec3(0);
 

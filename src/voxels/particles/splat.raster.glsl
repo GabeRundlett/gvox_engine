@@ -18,8 +18,10 @@ daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_r
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
-layout(location = 0) out vec3 center_ws;
-layout(location = 1) out uint id;
+layout(location = 0) out uvec2 i_gbuffer_xy;
+layout(location = 1) out vec3 i_vs_nrm;
+layout(location = 2) out vec3 i_vs_velocity;
+layout(location = 3) out vec3 center_ws;
 
 void main() {
     uint particle_index = gl_VertexIndex;
@@ -34,20 +36,34 @@ void main() {
     vec2 px_pos = vec2(0, 0);
     particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
 
+    vec4 output_tex_size = vec4(deref(gpu_input).frame_dim, 0, 0);
+    output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
+    vec3 nrm;
+    vec3 vs_velocity;
+    ParticleVertex particle_vert = ParticleVertex(center_ws, particle.id);
+    uint gbuffer_x;
+    particle_shade(gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
+    i_gbuffer_xy = uvec2(gbuffer_x, nrm_to_u16(nrm));
+    i_vs_velocity = vs_velocity;
+#if !PER_VOXEL_NORMALS
+    nrm = face_nrm;
+#endif
+    i_vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+
     vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(center_ws, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos;
     cs_pos.y *= -1;
 
     gl_Position = cs_pos;
     gl_PointSize = ps_size;
-
-    id = particle.id;
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
 
-layout(location = 0) flat in vec3 center_ws;
-layout(location = 1) flat in uint id;
+layout(location = 0) flat in uvec2 i_gbuffer_xy;
+layout(location = 1) flat in vec3 i_vs_nrm;
+layout(location = 2) flat in vec3 i_vs_velocity;
+layout(location = 3) flat in vec3 center_ws;
 
 layout(location = 0) out uvec4 o_gbuffer;
 layout(location = 1) out vec4 o_vs_velocity;
@@ -82,24 +98,21 @@ void main() {
 
     gl_FragDepth = ndc_depth;
 
-    vec3 nrm;
-    vec3 vs_velocity;
-    ParticleVertex particle_vert = ParticleVertex(center_ws, id);
-    uint gbuffer_x;
-    particle_shade(vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
-
 #if !PER_VOXEL_NORMALS
     // TODO: Fix the face-normals for splatted particles. At a distance, this ourIntersectBox function appears to return mush.
     nrm = temp_nrm;
+    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+#else
+    vec3 vs_nrm = i_vs_nrm;
 #endif
 
-    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
-    o_gbuffer.x = gbuffer_x;
-    o_gbuffer.y = nrm_to_u16(nrm);
-    o_gbuffer.z = floatBitsToUint(gl_FragDepth);
     vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
-    o_vs_velocity = vec4(vs_velocity, 0);
-    o_vs_nrm = vec4(vs_nrm * 0.5 + 0.5, 0);
+
+    o_gbuffer.x = i_gbuffer_xy.x;
+    o_gbuffer.y = i_gbuffer_xy.y;
+    o_gbuffer.z = floatBitsToUint(gl_FragDepth);
+    o_vs_velocity = vec4(i_vs_velocity, 0);
+    o_vs_nrm = vec4(i_vs_nrm * 0.5 + 0.5, 0);
 }
 
 #endif

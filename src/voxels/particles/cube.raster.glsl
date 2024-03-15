@@ -27,9 +27,9 @@ daxa_BufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_ren
 #include <renderer/kajiya/inc/camera.glsl>
 
 #if !defined(SHADOW_MAP)
-layout(location = 0) out vec3 center_ws;
-layout(location = 1) out uint id;
-layout(location = 2) out vec3 i_nrm;
+layout(location = 0) out vec2 i_gbuffer_xy;
+layout(location = 1) out vec3 i_vs_nrm;
+layout(location = 2) out vec3 i_vs_velocity;
 #endif
 
 void main() {
@@ -38,11 +38,7 @@ void main() {
     ParticleVertex particle = deref(advance(cube_rendered_particle_verts, particle_index));
 
     const vec3 diff = vec3(VOXEL_SIZE);
-#if !defined(SHADOW_MAP)
-    center_ws = get_particle_worldspace_origin(gpu_input, particle.pos);
-#else
     vec3 center_ws = get_particle_worldspace_origin(gpu_input, particle.pos);
-#endif
     const vec3 camera_position = deref(gpu_input).player.pos;
 
     // extracting the vertex offset relative to the center.
@@ -50,15 +46,27 @@ void main() {
     vec3 sign_ = vec3(ivec3(greaterThan(camera_position, center_ws)) ^ ((ivec3(0x1C, 0x46, 0x70) >> gl_VertexIndex) & ivec3(1))) - 0.5;
     vec3 vert_pos = sign_ * diff + center_ws;
     // ---------------------
-    vec3 nrm = vec3((ivec3(greaterThan(camera_position, center_ws)) * 2 - 1) * ((ivec3(0x60, 0x18, 0x06) >> gl_VertexIndex) & 1));
+    vec3 face_nrm = vec3((ivec3(greaterThan(camera_position, center_ws)) * 2 - 1) * ((ivec3(0x60, 0x18, 0x06) >> gl_VertexIndex) & 1));
 
 #if defined(SHADOW_MAP)
     vec4 cs_pos = deref(gpu_input).ws_to_shadow * vec4(vert_pos, 1);
 #else
+    vec4 output_tex_size = vec4(deref(gpu_input).frame_dim, 0, 0);
+    output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
+    vec3 nrm;
+    vec3 vs_velocity;
+    ParticleVertex particle_vert = ParticleVertex(center_ws, particle.id);
+    uint gbuffer_x = 0;
+    particle_shade(gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
+    i_gbuffer_xy = uintBitsToFloat(uvec2(gbuffer_x, nrm_to_u16(nrm)));
+    i_vs_velocity = vs_velocity;
+#if !PER_VOXEL_NORMALS
+    nrm = face_nrm;
+#endif
+    i_vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+
     vec4 vs_pos = deref(gpu_input).player.cam.world_to_view * vec4(vert_pos, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos;
-    id = particle.id;
-    i_nrm = nrm;
 #endif
 
     // TODO: Figure out why raster is projected upside down
@@ -74,35 +82,19 @@ void main() {
 #else
 #include <renderer/kajiya/inc/camera.glsl>
 
-layout(location = 0) flat in vec3 center_ws;
-layout(location = 1) flat in uint id;
-layout(location = 2) flat in vec3 i_nrm;
+layout(location = 0) flat in vec2 i_gbuffer_xy;
+layout(location = 1) flat in vec3 i_vs_nrm;
+layout(location = 2) flat in vec3 i_vs_velocity;
 
 layout(location = 0) out uvec4 o_gbuffer;
 layout(location = 1) out vec4 o_vs_velocity;
 layout(location = 2) out vec4 o_vs_nrm;
 
 void main() {
-    vec4 output_tex_size = vec4(deref(gpu_input).frame_dim, 0, 0);
-    output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
-    vec2 uv = get_uv(gl_FragCoord.xy, output_tex_size);
-    ViewRayContext vrc = vrc_from_uv(gpu_input, uv);
-
-    vec3 nrm;
-    vec3 vs_velocity;
-    ParticleVertex particle_vert = ParticleVertex(center_ws, id);
-    uint gbuffer_x;
-    particle_shade(vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
-#if !PER_VOXEL_NORMALS
-    nrm = i_nrm;
-#endif
-    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
-    o_gbuffer.x = gbuffer_x;
-    o_gbuffer.y = nrm_to_u16(nrm);
-    o_gbuffer.z = floatBitsToUint(gl_FragDepth);
+    o_gbuffer = uvec4(floatBitsToUint(i_gbuffer_xy), floatBitsToUint(gl_FragCoord.z), 0);
     // vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
-    o_vs_velocity = vec4(vs_velocity, 0);
-    o_vs_nrm = vec4(vs_nrm * 0.5 + 0.5, 0);
+    o_vs_velocity = vec4(i_vs_velocity, 0);
+    o_vs_nrm = vec4(i_vs_nrm * 0.5 + 0.5, 0);
 }
 #endif
 
