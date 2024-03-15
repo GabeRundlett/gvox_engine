@@ -3,10 +3,17 @@
 #include <utilities/gpu/defs.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 
-DAXA_DECL_PUSH_CONSTANT(SplatParticleRasterPush, push)
+#if defined(GRASS)
+DAXA_DECL_PUSH_CONSTANT(GrassStrandSplatParticleRasterPush, push)
+daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
+#else
+DAXA_DECL_PUSH_CONSTANT(SimParticleSplatParticleRasterPush, push)
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+#endif
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 
+#define SHADING
 #include "particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
@@ -38,9 +45,6 @@ void main() {
 }
 
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_FRAGMENT
-
-daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 
 layout(location = 0) flat in vec3 center_ws;
 layout(location = 1) flat in uint id;
@@ -82,7 +86,7 @@ void main() {
     vec3 vs_velocity;
     ParticleVertex particle_vert = ParticleVertex(center_ws, id);
     uint gbuffer_x;
-    particle_shade(grass_strands, simulated_voxel_particles, vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
+    particle_shade(vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
 
 #if !PER_VOXEL_NORMALS
     // TODO: Fix the face-normals for splatted particles. At a distance, this ourIntersectBox function appears to return mush.

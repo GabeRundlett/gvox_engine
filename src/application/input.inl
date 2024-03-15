@@ -100,3 +100,18 @@ struct GpuOutput {
     VoxelWorldOutput voxel_world;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuOutput, 8)
+
+struct IndirectDrawParams {
+    daxa_u32 vertex_count;
+    daxa_u32 instance_count;
+    daxa_u32 first_vertex;
+    daxa_u32 first_instance;
+};
+
+struct IndirectDrawIndexedParams {
+    daxa_u32 index_count;
+    daxa_u32 instance_count;
+    daxa_u32 first_index;
+    daxa_u32 vertex_offset;
+    daxa_u32 first_instance;
+};

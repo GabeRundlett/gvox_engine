@@ -188,12 +188,17 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
         return;
     }
 
+#if defined(GRASS)
+#define PARTICLE_RENDER_PARAMS deref(particles_state).grass
+#else
+#define PARTICLE_RENDER_PARAMS deref(particles_state).sim_particle
+#endif
     if (should_splat) {
         // TODO: Stochastic pruning?
-        uint my_render_index = atomicAdd(deref(particles_state).splat_draw_params.vertex_count, 1);
+        uint my_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.splat_draw_params.vertex_count, 1);
         deref(advance(splat_rendered_particle_verts, my_render_index)) = ParticleVertex(pos, self_index);
     } else {
-        uint my_render_index = atomicAdd(deref(particles_state).cube_draw_params.instance_count, 1);
+        uint my_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.cube_draw_params.instance_count, 1);
         deref(advance(cube_rendered_particle_verts, my_render_index)) = ParticleVertex(pos, self_index);
     }
 }
@@ -226,10 +231,11 @@ bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
     return (sgn.x != 0) || (sgn.y != 0) || (sgn.z != 0);
 }
 
-#include "grass.glsl"
+#include "grass/grass.glsl"
 
-void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles, in out ViewRayContext vrc,
-                    daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
+#if defined(SHADING)
+#if defined(GRASS)
+void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
     vs_velocity = vec3(0);
 
@@ -238,27 +244,18 @@ void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(Si
     vec3 pos = vec3(0);
     vec3 prev_pos = vec3(0);
 
-    if (particle_index < MAX_SIMULATED_VOXEL_PARTICLES) {
-        float dt = min(deref(gpu_input).delta_time, 0.01);
-        SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, particle_index));
-        pos = particle.pos;
-        prev_pos = particle.pos - particle.vel * dt;
-        packed_voxel_data = particle.packed_voxel.data;
-    } else {
-        particle_index -= MAX_SIMULATED_VOXEL_PARTICLES;
-        GrassStrand strand = deref(advance(grass_strands, particle_index));
-        pos = particle_vertex.pos;
-        vec3 origin_ws = get_particle_worldspace_origin(gpu_input, strand.origin);
-        vec3 del = pos - origin_ws;
-        Voxel grass_voxel = unpack_voxel(strand.packed_voxel);
-        vec2 rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time);
-        pos = origin_ws + get_grass_offset(rot_offset, del.z);
-        vec2 prev_rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time - deref(gpu_input).delta_time);
-        prev_pos = origin_ws + get_grass_offset(prev_rot_offset, del.z);
-        grass_voxel.color *= del.z * 10.0 + 1.0;
-        nrm = grass_voxel.normal;
-        packed_voxel_data = pack_voxel(grass_voxel).data;
-    }
+    GrassStrand strand = deref(advance(grass_strands, particle_index));
+    pos = particle_vertex.pos;
+    vec3 origin_ws = get_particle_worldspace_origin(gpu_input, strand.origin);
+    vec3 del = pos - origin_ws;
+    Voxel grass_voxel = unpack_voxel(strand.packed_voxel);
+    vec2 rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time);
+    pos = origin_ws + get_grass_offset(rot_offset, del.z);
+    vec2 prev_rot_offset = grass_get_rot_offset(strand, deref(gpu_input).time - deref(gpu_input).delta_time);
+    prev_pos = origin_ws + get_grass_offset(prev_rot_offset, del.z);
+    grass_voxel.color *= del.z * 10.0 + 1.0;
+    nrm = grass_voxel.normal;
+    packed_voxel_data = pack_voxel(grass_voxel).data;
 
     pos = get_particle_pos(pos);
     prev_pos = get_particle_pos(prev_pos);
@@ -269,3 +266,30 @@ void particle_shade(daxa_BufferPtr(GrassStrand) grass_strands, daxa_BufferPtr(Si
     vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
     vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 }
+#else
+void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
+    nrm = vec3(0, 0, 1);
+    vs_velocity = vec3(0);
+
+    uint particle_index = particle_vertex.id;
+
+    vec3 pos = vec3(0);
+    vec3 prev_pos = vec3(0);
+
+    float dt = min(deref(gpu_input).delta_time, 0.01);
+    SimulatedVoxelParticle particle = deref(advance(simulated_voxel_particles, particle_index));
+    pos = particle.pos;
+    prev_pos = particle.pos - particle.vel * dt;
+    packed_voxel_data = particle.packed_voxel.data;
+
+    pos = get_particle_pos(pos);
+    prev_pos = get_particle_pos(prev_pos);
+
+    vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
+    prev_pos += extra_vel;
+    vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(pos, 1));
+    vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
+    vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
+}
+#endif
+#endif

@@ -1,7 +1,7 @@
-#include "voxel_particles.inl"
-#include "particle.glsl"
+#include "sim_particle.inl"
+#include "../particle.glsl"
 
-DAXA_DECL_PUSH_CONSTANT(VoxelParticleSimComputePush, push)
+DAXA_DECL_PUSH_CONSTANT(SimParticleSimComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_state;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)

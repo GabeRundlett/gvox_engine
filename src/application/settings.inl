@@ -58,8 +58,7 @@ struct SkySettings {
 
 // clang-format off
 #define MAX_GRASS_BLADES               (1 << 22)
-#define MAX_SIMULATED_VOXEL_PARTICLES  0 // (1 << 8)
-#define MAX_RENDERED_VOXEL_PARTICLES   (MAX_GRASS_BLADES * 3 + MAX_SIMULATED_VOXEL_PARTICLES)
+#define MAX_SIMULATED_VOXEL_PARTICLES  (1 << 16)
 // clang-format on
 
 #define PREPASS_SCL 2

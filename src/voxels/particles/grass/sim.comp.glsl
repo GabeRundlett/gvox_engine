@@ -1,7 +1,5 @@
-#include "voxel_particles.inl"
-#include "particle.glsl"
-
-#include "grass.glsl"
+#include "grass.inl"
+#include "../particle.glsl"
 
 DAXA_DECL_PUSH_CONSTANT(GrassStrandSimComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
@@ -55,11 +53,9 @@ void main() {
     self.packed_voxel = pack_voxel(grass_voxel);
     deref(advance(grass_strands, particle_index)) = self;
 
-    if (self.flags != 0) {
-        for (uint i = 1; i <= 3; ++i) {
-            vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);
-            particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index + MAX_SIMULATED_VOXEL_PARTICLES);
-        }
+    for (uint i = 1; i <= 3; ++i) {
+        vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);
+        particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index);
     }
 #endif
 }

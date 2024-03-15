@@ -1,15 +1,26 @@
 #include "voxel_particles.inl"
 
 #include <utilities/gpu/defs.glsl>
-#include "particle.glsl"
 
 #if defined(SHADOW_MAP)
-DAXA_DECL_PUSH_CONSTANT(CubeParticleRasterShadowPush, push)
+DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterShadowPush, push)
 #else
-DAXA_DECL_PUSH_CONSTANT(CubeParticleRasterPush, push)
+
+#if defined(GRASS)
+DAXA_DECL_PUSH_CONSTANT(GrassStrandCubeParticleRasterPush, push)
+daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
+#else
+DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterPush, push)
+daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 #endif
+#define SHADING
+
+#endif
+
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+
+#include "particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
@@ -63,9 +74,6 @@ void main() {
 #else
 #include <renderer/kajiya/inc/camera.glsl>
 
-daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-
 layout(location = 0) flat in vec3 center_ws;
 layout(location = 1) flat in uint id;
 layout(location = 2) flat in vec3 i_nrm;
@@ -84,7 +92,7 @@ void main() {
     vec3 vs_velocity;
     ParticleVertex particle_vert = ParticleVertex(center_ws, id);
     uint gbuffer_x;
-    particle_shade(grass_strands, simulated_voxel_particles, vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
+    particle_shade(vrc, gpu_input, particle_vert, gbuffer_x, nrm, vs_velocity);
 #if !PER_VOXEL_NORMALS
     nrm = i_nrm;
 #endif
