@@ -7,6 +7,7 @@ daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_stat
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_RWBufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+daxa_RWBufferPtr(ParticleVertex) shadow_cube_rendered_particle_verts = push.uses.shadow_cube_rendered_particle_verts;
 daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -24,6 +25,6 @@ void main() {
     // }
 
     if (self.flags != 0) {
-        particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.pos, particle_index);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.pos, particle_index);
     }
 }

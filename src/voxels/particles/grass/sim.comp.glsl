@@ -8,6 +8,7 @@ SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(GrassStrandAllocator, grass_allocator)
 daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_BufferPtr)
 daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
+daxa_RWBufferPtr(ParticleVertex) shadow_cube_rendered_particle_verts = push.uses.shadow_cube_rendered_particle_verts;
 daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
@@ -55,7 +56,7 @@ void main() {
 
     for (uint i = 1; i <= 3; ++i) {
         vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);
-        particle_render(cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, self.origin + offset, particle_index);
     }
 #endif
 }

@@ -11,6 +11,7 @@ DAXA_DECL_BUFFER_PTR(ParticleVertex)
 
 struct ParticleDrawParams {
     IndirectDrawIndexedParams cube_draw_params;
+    IndirectDrawIndexedParams shadow_cube_draw_params;
     IndirectDrawParams splat_draw_params;
 };
 

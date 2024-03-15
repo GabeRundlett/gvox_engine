@@ -6,7 +6,7 @@
 #if defined(GRASS)
 DAXA_DECL_PUSH_CONSTANT(GrassStrandSplatParticleRasterPush, push)
 daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-#else
+#elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleSplatParticleRasterPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
 #endif

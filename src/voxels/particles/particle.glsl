@@ -165,9 +165,13 @@ void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4
     pointSize = max(AABB.x, AABB.y);
 }
 
-void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts, daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts,
-                     daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, uint self_index) {
-    float voxel_radius = (1023.0 / 1024.0 * VOXEL_SIZE) * 0.5;
+void particle_render(
+    daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_verts,
+    daxa_RWBufferPtr(ParticleVertex) shadow_cube_rendered_particle_verts,
+    daxa_RWBufferPtr(ParticleVertex) splat_rendered_particle_verts,
+    daxa_RWBufferPtr(VoxelParticlesState) particles_state,
+    daxa_BufferPtr(GpuInput) gpu_input, vec3 pos, uint self_index) {
+    const float voxel_radius = VOXEL_SIZE * 0.5;
     vec3 center_ws = get_particle_worldspace_origin(gpu_input, pos);
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
     vec2 half_screen_size = vec2(deref(gpu_input).frame_dim) * 0.5;
@@ -190,7 +194,10 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
 
 #if defined(GRASS)
 #define PARTICLE_RENDER_PARAMS deref(particles_state).grass
+#elif defined(SIM_PARTICLE)
+#define PARTICLE_RENDER_PARAMS deref(particles_state).sim_particle
 #else
+    // compat
 #define PARTICLE_RENDER_PARAMS deref(particles_state).sim_particle
 #endif
     if (should_splat) {
@@ -201,6 +208,9 @@ void particle_render(daxa_RWBufferPtr(ParticleVertex) cube_rendered_particle_ver
         uint my_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.cube_draw_params.instance_count, 1);
         deref(advance(cube_rendered_particle_verts, my_render_index)) = ParticleVertex(pos, self_index);
     }
+
+    uint my_shadow_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.shadow_cube_draw_params.instance_count, 1);
+    deref(advance(shadow_cube_rendered_particle_verts, my_shadow_render_index)) = ParticleVertex(pos, self_index);
 }
 
 struct Box {
@@ -266,7 +276,7 @@ void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_inpu
     vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(prev_pos, 1));
     vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 }
-#else
+#elif defined(SIM_PARTICLE)
 void particle_shade(in out ViewRayContext vrc, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex particle_vertex, out uint packed_voxel_data, out vec3 nrm, out vec3 vs_velocity) {
     nrm = vec3(0, 0, 1);
     vs_velocity = vec3(0);

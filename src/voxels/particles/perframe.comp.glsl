@@ -40,10 +40,12 @@ void main() {
 
     // sim particle
     reset_draw_params(deref(particles_state).sim_particle.cube_draw_params);
+    reset_draw_params(deref(particles_state).sim_particle.shadow_cube_draw_params);
     reset_draw_params(deref(particles_state).sim_particle.splat_draw_params);
 
     // grass
     reset_draw_params(deref(particles_state).grass.cube_draw_params);
+    reset_draw_params(deref(particles_state).grass.shadow_cube_draw_params);
     reset_draw_params(deref(particles_state).grass.splat_draw_params);
     GrassStrandAllocator_perframe(grass_allocator);
 }

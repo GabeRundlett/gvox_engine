@@ -116,17 +116,17 @@ struct VoxelParticles {
     }
 
     auto render(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
-        sim_particles.render_cubes(gpu_context, gbuffer_depth, velocity_image, global_state.task_resource, cube_index_buffer.task_resource);
-        grass.render_cubes(gpu_context, gbuffer_depth, velocity_image, global_state.task_resource, cube_index_buffer.task_resource);
-
         auto raster_shadow_depth_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::D32_SFLOAT,
             .size = {2048, 2048, 1},
             .name = "raster_shadow_depth_image",
         });
 
-        sim_particles.render_splats(gpu_context, gbuffer_depth, velocity_image, global_state.task_resource);
-        grass.render_splats(gpu_context, gbuffer_depth, velocity_image, global_state.task_resource);
+        sim_particles.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
+        grass.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
+
+        sim_particles.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
+        grass.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
 
         return raster_shadow_depth_image;
     }
