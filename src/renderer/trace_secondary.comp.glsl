@@ -51,7 +51,8 @@ void main() {
     {
         vec4 hit_shadow_h = deref(gpu_input).ws_to_shadow * vec4(ray_origin, 1);
         vec3 hit_shadow = hit_shadow_h.xyz / hit_shadow_h.w;
-        float shadow_depth = texture(daxa_sampler2D(particles_shadow_depth_tex, g_sampler_nnc), cs_to_uv(hit_shadow.xy)).r;
+        vec2 offset = vec2(0); // blue_noise.xy * (0.25 / 2048.0);
+        float shadow_depth = texture(daxa_sampler2D(particles_shadow_depth_tex, g_sampler_nnc), cs_to_uv(hit_shadow.xy) + offset).r;
 
         const float bias = 0.001;
         const bool inside_shadow_map = all(greaterThanEqual(hit_shadow.xyz, vec3(-1, -1, 0))) && all(lessThanEqual(hit_shadow.xyz, vec3(+1, +1, +1)));

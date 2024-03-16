@@ -59,6 +59,7 @@ struct SkySettings {
 // clang-format off
 #define MAX_GRASS_BLADES               (1 << 22)
 #define MAX_SIMULATED_VOXEL_PARTICLES  (1 << 16)
+#define MAX_DANDELIONS                 (1 << 16)
 // clang-format on
 
 #define PREPASS_SCL 2

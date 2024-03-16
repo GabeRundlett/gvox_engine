@@ -184,6 +184,12 @@ vec3 forest_biome_palette(float t) {
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint
+#define UserMaxElementCount MAX_GRASS_BLADES
+#include <utilities/allocator.glsl>
+
+#define UserAllocatorType DandelionAllocator
+#define UserIndexType uint
+#define UserMaxElementCount MAX_DANDELIONS
 #include <utilities/allocator.glsl>
 
 void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
@@ -198,15 +204,31 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
 
         // spawn strand!!
 
-        if (r2 < 0.3) {
-            GrassStrand grass_strand;
-            grass_strand.origin = voxel_pos;
-            grass_strand.packed_voxel = pack_voxel(voxel);
-            grass_strand.flags = 1;
+        if (r2 < 0.2) {
+            if (r2 < 0.99 * 0.2) {
+                GrassStrand grass_strand;
+                grass_strand.origin = voxel_pos;
+                grass_strand.packed_voxel = pack_voxel(voxel);
+                grass_strand.flags = 1;
 
-            uint index = GrassStrandAllocator_malloc(grass_allocator);
-            daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
-            deref(advance(grass_strands, index)) = grass_strand;
+                uint index = GrassStrandAllocator_malloc(grass_allocator);
+                daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
+                if (index < MAX_GRASS_BLADES) {
+                    deref(advance(grass_strands, index)) = grass_strand;
+                }
+            } else {
+                Dandelion dandelion;
+                dandelion.origin = voxel_pos;
+                // voxel.color = vec3(1, 0, 1) * 0.1;
+                dandelion.packed_voxel = pack_voxel(voxel);
+                dandelion.flags = 1;
+
+                uint index = DandelionAllocator_malloc(dandelion_allocator);
+                daxa_RWBufferPtr(Dandelion) dandelions = deref(dandelion_allocator).heap;
+                if (index < MAX_DANDELIONS) {
+                    deref(advance(dandelions, index)) = dandelion;
+                }
+            }
         }
     }
 }

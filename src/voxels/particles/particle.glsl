@@ -76,6 +76,8 @@ void particle_render(
 
 #if defined(GRASS)
 #define PARTICLE_RENDER_PARAMS deref(particles_state).grass
+#elif defined(DANDELION)
+#define PARTICLE_RENDER_PARAMS deref(particles_state).dandelion
 #elif defined(SIM_PARTICLE)
 #define PARTICLE_RENDER_PARAMS deref(particles_state).sim_particle
 #endif

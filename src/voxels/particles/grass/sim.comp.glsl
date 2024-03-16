@@ -14,6 +14,7 @@ daxa_ImageViewIndex value_noise_texture = push.uses.value_noise_texture;
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint
+#define UserMaxElementCount MAX_GRASS_BLADES
 #include <utilities/allocator.glsl>
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;

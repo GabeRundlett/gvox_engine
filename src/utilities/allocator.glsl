@@ -10,12 +10,19 @@ UserIndexType FUNC_NAME(malloc)(daxa_RWBufferPtr(UserAllocatorType) allocator) {
     const int index_in_avail_stack = atomicAdd(deref(allocator).available_element_stack_size, -1) - 1;
     // If we get an index of smaller then zero, the size was 0. This means the stack was empty.
     // In that case we need to create new pages as the available stack is empty.
+    UserIndexType result;
     if (index_in_avail_stack < 0) {
         // Create new page.
-        return UserIndexType(atomicAdd(deref(allocator).element_count, 1));
+        result = UserIndexType(atomicAdd(deref(allocator).element_count, 1));
+#if defined(UserMaxElementCount)
+        if (result >= UserMaxElementCount) {
+            UserIndexType(atomicAdd(deref(allocator).element_count, -1));
+        }
+#endif
     } else {
-        return UserIndexType(deref(advance(deref(allocator).available_element_stack, index_in_avail_stack)));
+        result = UserIndexType(deref(advance(deref(allocator).available_element_stack, index_in_avail_stack)));
     }
+    return result;
 }
 
 void FUNC_NAME(free)(daxa_RWBufferPtr(UserAllocatorType) allocator, UserIndexType element_ptr) {
@@ -46,3 +53,4 @@ uint FUNC_NAME(get_consumed_element_count)(daxa_BufferPtr(UserAllocatorType) all
 
 #undef UserAllocatorType
 #undef UserIndexType
+#undef UserMaxElementCount
