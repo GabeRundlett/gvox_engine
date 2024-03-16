@@ -55,7 +55,8 @@ void main() {
     vec3 center_ws = vert.pos;
     const vec3 camera_position = deref(gpu_input).player.pos;
     const vec3 camera_to_center = center_ws - camera_position;
-    const vec3 ray_dir = normalize(camera_to_center);
+    const vec3 ray_dir_ws = normalize(camera_to_center);
+    const vec3 ray_dir_vs = (deref(gpu_input).player.cam.world_to_view * vec4(ray_dir_ws, 0)).xyz;
 
     // extracting the vertex offset relative to the center.
     // Thanks to @cantaslaus on Discord.
@@ -66,20 +67,18 @@ void main() {
 #if defined(SHADOW_MAP)
     vec4 cs_pos = deref(gpu_input).ws_to_shadow * vec4(vert_pos, 1);
 #else
-    vec3 extra_vel = vec3(deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset);
-    vert.prev_pos += extra_vel;
     vec4 vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(vert.pos, 1));
     vec4 prev_vs_pos = (deref(gpu_input).player.cam.world_to_view * vec4(vert.prev_pos, 1));
     i_vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
     Voxel voxel = unpack_voxel(vert.packed_voxel);
     vec3 nrm = voxel.normal;
-    i_gbuffer_xy = uvec2(vert.packed_voxel.data, nrm_to_u16(nrm));
 #if !PER_VOXEL_NORMALS
     vec3 face_nrm = vec3((ivec3(greaterThan(camera_position, center_ws)) * 2 - 1) * ((ivec3(0x60, 0x18, 0x06) >> gl_VertexIndex) & 1));
     nrm = face_nrm;
 #endif
+    i_gbuffer_xy = uvec2(vert.packed_voxel.data, nrm_to_u16(nrm));
     vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
-    i_vs_nrm = vs_nrm * -sign(dot(ray_dir, vs_nrm));
+    i_vs_nrm = vs_nrm * -sign(dot(ray_dir_vs, vs_nrm));
     vec4 vs_pos2 = deref(gpu_input).player.cam.world_to_view * vec4(vert_pos, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos2;
 #endif

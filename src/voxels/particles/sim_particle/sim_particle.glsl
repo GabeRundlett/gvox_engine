@@ -10,8 +10,11 @@ void particle_spawn(in out SimulatedVoxelParticle self, uint index, daxa_BufferP
 
     // self.pos = vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
     // self.vel = deref(gpu_input).player.forward * 0 + vec3(0, 0, -10);
-    self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + deref(gpu_input).player.forward * 1 + vec3(0, 0, -2.5) + deref(gpu_input).player.lateral * 1.5;
-    self.vel = deref(gpu_input).player.forward * 18 + rand_dir() * 2; // + deref(gpu_input).player.vel;
+    vec4 look_dir_h = deref(gpu_input).player.cam.view_to_world * vec4(0, 0, -1, 0);
+    vec3 look_dir = normalize(look_dir_h.xyz);
+
+    self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + look_dir * 1 + deref(gpu_input).player.lateral * 0.25;
+    self.vel = look_dir * 18 + rand_dir() * 2; // + deref(gpu_input).player.vel;
 
     vec3 col = vec3(0.3, 0.4, 0.9) * (rand() * 0.5 + 0.5); // vec3(0.5);
     vec3 nrm = vec3(0, 0, 1);
@@ -22,7 +25,11 @@ void particle_spawn(in out SimulatedVoxelParticle self, uint index, daxa_BufferP
 void particle_update(in out SimulatedVoxelParticle self, uint self_index, VoxelBufferPtrs voxels_buffer_ptrs, daxa_BufferPtr(GpuInput) gpu_input, in out bool should_place) {
     rand_seed(self_index + uint((deref(gpu_input).time) * 13741));
 
-    if (deref(gpu_input).frame_index == 0) {
+    // if (deref(gpu_input).frame_index == 0) {
+    //     particle_spawn(self, self_index, gpu_input);
+    // }
+
+    if (deref(gpu_input).actions[GAME_ACTION_INTERACT0] != 0 && (rand() < 0.01)) {
         particle_spawn(self, self_index, gpu_input);
     }
 
@@ -36,7 +43,7 @@ void particle_update(in out SimulatedVoxelParticle self, uint self_index, VoxelB
 
     if (!PARTICLES_PAUSED) {
         if ((self.flags & PARTICLE_ALIVE_FLAG) == 0) {
-            particle_spawn(self, self_index, gpu_input);
+            // particle_spawn(self, self_index, gpu_input);
             return;
         }
 
@@ -86,9 +93,9 @@ void particle_update(in out SimulatedVoxelParticle self, uint self_index, VoxelB
             self.flags &= ~PARTICLE_SLEEP_TIMER_MASK;
         }
 
-        if (self.duration_alive > 5.0) {
-            particle_spawn(self, self_index, gpu_input);
-        }
+        // if (self.duration_alive > 5.0) {
+        //     particle_spawn(self, self_index, gpu_input);
+        // }
     } else {
         self.vel = vec3(0);
         // vec3 col = pow(vec3(105, 126, 78) / 255.0, vec3(2.2));

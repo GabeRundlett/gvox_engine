@@ -125,20 +125,20 @@ void main() {
     float ndc_depth = cs_pos.z / cs_pos.w;
 
     gl_FragDepth = ndc_depth;
+    o_gbuffer = uvec4(i_gbuffer_xy, floatBitsToUint(ndc_depth), 0);
 
 #if !PER_VOXEL_NORMALS
     // TODO: Fix the face-normals for splatted particles. At a distance, this ourIntersectBox function appears to return mush.
-    nrm = face_nrm;
-    vec3 vs_nrm = (deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz;
+    vec3 nrm = face_nrm;
+    vec3 vs_nrm = normalize((deref(gpu_input).player.cam.world_to_view * vec4(nrm, 0)).xyz);
+    o_gbuffer.y = nrm_to_u16(nrm);
 #else
     vec3 vs_nrm = i_vs_nrm;
+    vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
 #endif
 
-    vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
-
-    o_gbuffer = uvec4(i_gbuffer_xy, floatBitsToUint(ndc_depth), 0);
     o_vs_velocity = vec4(i_vs_velocity, 0);
-    o_vs_nrm = vec4(i_vs_nrm * 0.5 + 0.5, 0);
+    o_vs_nrm = vec4(vs_nrm * 0.5 + 0.5, 0);
 }
 
 #endif

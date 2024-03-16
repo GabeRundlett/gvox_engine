@@ -21,7 +21,7 @@ vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos
 }
 
 vec3 get_particle_prev_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
-    return get_particle_pos(pos) - deref(gpu_input).player.player_unit_offset + (deref(gpu_input).player.player_unit_offset - deref(gpu_input).player.prev_unit_offset) + 0.5 * VOXEL_SIZE;
+    return get_particle_pos(pos) - deref(gpu_input).player.prev_unit_offset + 0.5 * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_pos(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
