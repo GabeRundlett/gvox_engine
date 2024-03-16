@@ -45,7 +45,7 @@ vec3 get_flower_offset(vec2 rot_offset, float time, uint i, uint strand_index) {
 void colorize_flower(in out Voxel voxel, uint i) {
     if (i <= 6) {
         // stem
-        voxel.color *= i;
+        voxel.color *= i + 1;
     } else if (i <= 6 + 27) {
         // pedals
         int xi = int(((i - 6) / 1) % 3) - 1;

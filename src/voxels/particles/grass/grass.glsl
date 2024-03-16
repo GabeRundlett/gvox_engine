@@ -36,7 +36,7 @@ ParticleVertex get_grass_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferP
     vec3 prev_offset = get_grass_offset(prev_rot_offset, i * VOXEL_SIZE);
 
     Voxel voxel = unpack_voxel(self.packed_voxel);
-    voxel.color *= i;
+    voxel.color *= i + 1;
 
     ParticleVertex result;
     result.pos = self.origin + offset;
