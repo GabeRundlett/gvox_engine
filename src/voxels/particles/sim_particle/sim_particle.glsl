@@ -8,10 +8,7 @@ void particle_spawn(in out SimulatedVoxelParticle self, uint index, daxa_BufferP
     self.duration_alive = 0.0 + rand() * 1.0;
     self.flags = PARTICLE_ALIVE_FLAG;
 
-    // self.pos = vec3(good_rand(deref(gpu_input).time + 137.41) * 10 + 20, good_rand(deref(gpu_input).time + 41.137) * 10 + 20, 70.0);
-    // self.vel = deref(gpu_input).player.forward * 0 + vec3(0, 0, -10);
-    vec4 look_dir_h = deref(gpu_input).player.cam.view_to_world * vec4(0, 0, -1, 0);
-    vec3 look_dir = normalize(look_dir_h.xyz);
+    vec3 look_dir = deref(gpu_input).player.forward;
 
     self.pos = deref(gpu_input).player.pos + deref(gpu_input).player.player_unit_offset + look_dir * 1 + deref(gpu_input).player.lateral * 0.25;
     self.vel = look_dir * 18 + rand_dir() * 2; // + deref(gpu_input).player.vel;

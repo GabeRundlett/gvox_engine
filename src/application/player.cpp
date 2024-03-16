@@ -166,8 +166,17 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     float sin_rot_z = sinf(PLAYER.yaw), cos_rot_z = cosf(PLAYER.yaw);
 
     vec3 move_vec = vec3(0, 0, 0);
-    PLAYER.forward = vec3(+sin_rot_z, +cos_rot_z, 0);
-    PLAYER.lateral = vec3(+cos_rot_z, -sin_rot_z, 0);
+    auto move_forward = vec3(+sin_rot_z, +cos_rot_z, 0);
+    auto move_lateral = vec3(+cos_rot_z, -sin_rot_z, 0);
+
+    auto view_to_world = std::bit_cast<glm::mat4>(PLAYER.cam.view_to_world);
+    auto forward_h = view_to_world * glm::vec4(0, 0, -1, 0);
+    auto forward = glm::normalize(glm::vec3(forward_h.x, forward_h.y, forward_h.z));
+    auto lateral_h = view_to_world * glm::vec4(+1, 0, 0, 0);
+    auto lateral = glm::normalize(glm::vec3(lateral_h.x, lateral_h.y, lateral_h.z));
+
+    PLAYER.forward = std::bit_cast<vec3>(forward);
+    PLAYER.lateral = std::bit_cast<vec3>(lateral);
 
     const bool is_flying = true;
 
@@ -175,13 +184,13 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     const float sprint_speed = AppSettings::get<settings::InputFloat>("Player", "Sprint Multiplier").value;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
-        move_vec = move_vec + PLAYER.forward;
+        move_vec = move_vec + move_forward;
     if (INPUT.actions[GAME_ACTION_MOVE_BACKWARD] != 0)
-        move_vec = move_vec - PLAYER.forward;
+        move_vec = move_vec - move_forward;
     if (INPUT.actions[GAME_ACTION_MOVE_LEFT] != 0)
-        move_vec = move_vec - PLAYER.lateral;
+        move_vec = move_vec - move_lateral;
     if (INPUT.actions[GAME_ACTION_MOVE_RIGHT] != 0)
-        move_vec = move_vec + PLAYER.lateral;
+        move_vec = move_vec + move_lateral;
 
     float applied_speed = speed;
     if ((INPUT.actions[GAME_ACTION_SPRINT] != 0) == is_flying)

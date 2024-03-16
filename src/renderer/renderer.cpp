@@ -59,9 +59,9 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
     gpu_input.pre_exposure_delta = self.kajiya_renderer.post_processor.exposure_state.pre_mult_delta;
 
     {
-        auto center = glm::floor(std::bit_cast<glm::vec3>(gpu_input.player.pos) + std::bit_cast<glm::vec3>(gpu_input.player.forward) * 25.0f);
+        auto center = glm::floor(std::bit_cast<glm::vec3>(gpu_input.player.pos) + std::bit_cast<glm::vec3>(gpu_input.player.forward) * 10.0f);
         auto eye = center - std::bit_cast<glm::vec3>(gpu_input.sky_settings.sun_direction) * 60.0f;
-        auto projection = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 120.0f) * glm::lookAt(eye, center, glm::vec3(0, 0, 1));
+        auto projection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 120.0f) * glm::lookAt(eye, center, glm::vec3(0, 0, 1));
         gpu_input.ws_to_shadow = std::bit_cast<daxa_f32mat4x4>(projection);
         gpu_input.shadow_to_ws = std::bit_cast<daxa_f32mat4x4>(glm::inverse(projection));
     }

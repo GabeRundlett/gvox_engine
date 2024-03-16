@@ -52,7 +52,7 @@ void particle_render(
     daxa_RWBufferPtr(PackedParticleVertex) shadow_cube_rendered_particle_verts,
     daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts,
     daxa_RWBufferPtr(VoxelParticlesState) particles_state,
-    daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex vert, PackedParticleVertex packed_vertex) {
+    daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex vert, PackedParticleVertex packed_vertex, bool should_shadow) {
     const float voxel_radius = VOXEL_SIZE * 0.5;
     vec3 center_ws = vert.pos;
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;
@@ -90,6 +90,8 @@ void particle_render(
         deref(advance(cube_rendered_particle_verts, my_render_index)) = packed_vertex;
     }
 
-    uint my_shadow_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.shadow_cube_draw_params.instance_count, 1);
-    deref(advance(shadow_cube_rendered_particle_verts, my_shadow_render_index)) = packed_vertex;
+    if (should_shadow) {
+        uint my_shadow_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.shadow_cube_draw_params.instance_count, 1);
+        deref(advance(shadow_cube_rendered_particle_verts, my_shadow_render_index)) = packed_vertex;
+    }
 }

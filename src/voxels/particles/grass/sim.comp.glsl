@@ -58,7 +58,7 @@ void main() {
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
         ParticleVertex grass_vertex = get_grass_vertex(gpu_input, daxa_BufferPtr(GrassStrand)(grass_strands), packed_vertex);
-        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, grass_vertex, packed_vertex);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, grass_vertex, packed_vertex, false);
     }
 #endif
 }

@@ -58,7 +58,7 @@ void main() {
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
         ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
-        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
     for (int zi = -1; zi <= 1; ++zi) {
@@ -70,7 +70,7 @@ void main() {
                 uint i = uint(xi + 1) + uint(yi + 1) * 3 + uint(zi + 1) * 9 + 6;
                 PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
                 ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
-                particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex);
+                particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
             }
         }
     }
@@ -78,7 +78,7 @@ void main() {
     for (uint i = 27 + 6 + 1; i <= 27 + 6 + 3; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
         ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
-        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
 #endif

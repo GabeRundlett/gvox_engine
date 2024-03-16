@@ -27,6 +27,6 @@ void main() {
     if (self.flags != 0) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(particle_index);
         ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
-        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, vert, packed_vertex);
+        particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, vert, packed_vertex, true);
     }
 }
