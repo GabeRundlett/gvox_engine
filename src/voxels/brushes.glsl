@@ -187,9 +187,9 @@ vec3 forest_biome_palette(float t) {
 #define UserMaxElementCount MAX_GRASS_BLADES
 #include <utilities/allocator.glsl>
 
-#define UserAllocatorType DandelionAllocator
+#define UserAllocatorType FlowerAllocator
 #define UserIndexType uint
-#define UserMaxElementCount MAX_DANDELIONS
+#define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
 void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
@@ -217,16 +217,16 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
                     deref(advance(grass_strands, index)) = grass_strand;
                 }
             } else {
-                Dandelion dandelion;
-                dandelion.origin = voxel_pos;
+                Flower flower;
+                flower.origin = voxel_pos;
                 // voxel.color = vec3(1, 0, 1) * 0.1;
-                dandelion.packed_voxel = pack_voxel(voxel);
-                dandelion.flags = 1;
+                flower.packed_voxel = pack_voxel(voxel);
+                flower.flags = 1;
 
-                uint index = DandelionAllocator_malloc(dandelion_allocator);
-                daxa_RWBufferPtr(Dandelion) dandelions = deref(dandelion_allocator).heap;
-                if (index < MAX_DANDELIONS) {
-                    deref(advance(dandelions, index)) = dandelion;
+                uint index = FlowerAllocator_malloc(flower_allocator);
+                daxa_RWBufferPtr(Flower) flowers = deref(flower_allocator).heap;
+                if (index < MAX_FLOWERS) {
+                    deref(advance(flowers, index)) = flower;
                 }
             }
         }

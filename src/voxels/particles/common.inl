@@ -30,6 +30,6 @@ struct VoxelParticlesState {
     daxa_u32vec3 place_bounds_max;
     ParticleDrawParams sim_particle;
     ParticleDrawParams grass;
-    ParticleDrawParams dandelion;
+    ParticleDrawParams flower;
 };
 DAXA_DECL_BUFFER_PTR(VoxelParticlesState)

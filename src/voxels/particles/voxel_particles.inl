@@ -8,7 +8,7 @@
 
 #include "common.inl"
 #include "grass/grass.inl"
-#include "dandelion/dandelion.inl"
+#include "flower/flower.inl"
 #include "sim_particle/sim_particle.inl"
 
 DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute, 3 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N * 2)
@@ -17,7 +17,7 @@ DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_o
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, GrassStrandAllocator)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, DandelionAllocator)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, FlowerAllocator)
 DAXA_DECL_TASK_HEAD_END
 struct VoxelParticlePerframeComputePush {
     DAXA_TH_BLOB(VoxelParticlePerframeCompute, uses)
@@ -30,7 +30,7 @@ struct VoxelParticles {
     TemporalBuffer cube_index_buffer;
     SimParticles sim_particles;
     GrassStrands grass;
-    Dandelions dandelions;
+    Flowers flowers;
 
     void record_startup(GpuContext &gpu_context) {
         global_state = gpu_context.find_or_add_temporal_buffer({
@@ -86,7 +86,7 @@ struct VoxelParticles {
         });
 
         grass.init(gpu_context);
-        dandelions.init(gpu_context);
+        flowers.init(gpu_context);
     }
 
     void simulate(GpuContext &gpu_context, VoxelWorldBuffers &voxel_world_buffers) {
@@ -101,7 +101,7 @@ struct VoxelParticles {
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::particles_state, global_state.task_resource}},
                 VOXELS_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, voxel_world_buffers),
                 SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, GrassStrandAllocator, grass.grass_allocator),
-                SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, DandelionAllocator, dandelions.dandelion_allocator),
+                SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(VoxelParticlePerframeCompute, FlowerAllocator, flowers.flower_allocator),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, VoxelParticlePerframeComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
@@ -118,8 +118,8 @@ struct VoxelParticles {
             grass.simulate(gpu_context, voxel_world_buffers, global_state.task_resource);
         }
 
-        if constexpr (MAX_DANDELIONS != 0) {
-            dandelions.simulate(gpu_context, voxel_world_buffers, global_state.task_resource);
+        if constexpr (MAX_FLOWERS != 0) {
+            flowers.simulate(gpu_context, voxel_world_buffers, global_state.task_resource);
         }
     }
 
@@ -132,11 +132,11 @@ struct VoxelParticles {
 
         sim_particles.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
         grass.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
-        dandelions.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
+        flowers.render_cubes(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource, cube_index_buffer.task_resource);
 
         sim_particles.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
         grass.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
-        dandelions.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
+        flowers.render_splats(gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image, global_state.task_resource);
 
         return raster_shadow_depth_image;
     }

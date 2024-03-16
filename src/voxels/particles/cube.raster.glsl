@@ -7,9 +7,9 @@
 #if defined(GRASS)
 DAXA_DECL_PUSH_CONSTANT(GrassStrandCubeParticleRasterShadowPush, push)
 daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-#elif defined(DANDELION)
-DAXA_DECL_PUSH_CONSTANT(DandelionCubeParticleRasterShadowPush, push)
-daxa_BufferPtr(Dandelion) dandelions = push.uses.dandelions;
+#elif defined(FLOWER)
+DAXA_DECL_PUSH_CONSTANT(FlowerCubeParticleRasterShadowPush, push)
+daxa_BufferPtr(Flower) flowers = push.uses.flowers;
 #elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterShadowPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
@@ -20,9 +20,9 @@ daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.sim
 #if defined(GRASS)
 DAXA_DECL_PUSH_CONSTANT(GrassStrandCubeParticleRasterPush, push)
 daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
-#elif defined(DANDELION)
-DAXA_DECL_PUSH_CONSTANT(DandelionCubeParticleRasterPush, push)
-daxa_BufferPtr(Dandelion) dandelions = push.uses.dandelions;
+#elif defined(FLOWER)
+DAXA_DECL_PUSH_CONSTANT(FlowerCubeParticleRasterPush, push)
+daxa_BufferPtr(Flower) flowers = push.uses.flowers;
 #elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
@@ -34,7 +34,7 @@ daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(PackedParticleVertex) cube_rendered_particle_verts = push.uses.cube_rendered_particle_verts;
 
 #include "grass/grass.glsl"
-#include "dandelion/dandelion.glsl"
+#include "flower/flower.glsl"
 #include "sim_particle/sim_particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
@@ -54,8 +54,8 @@ void main() {
 
 #if defined(GRASS)
     ParticleVertex vert = get_grass_vertex(gpu_input, grass_strands, packed_vertex);
-#elif defined(DANDELION)
-    ParticleVertex vert = get_dandelion_vertex(gpu_input, dandelions, packed_vertex);
+#elif defined(FLOWER)
+    ParticleVertex vert = get_flower_vertex(gpu_input, flowers, packed_vertex);
 #elif defined(SIM_PARTICLE)
     ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
 #endif

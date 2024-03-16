@@ -6,7 +6,7 @@ daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
 daxa_RWBufferPtr(VoxelParticlesState) particles_state = push.uses.particles_state;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(GrassStrandAllocator, grass_allocator)
-SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(DandelionAllocator, dandelion_allocator)
+SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(FlowerAllocator, flower_allocator)
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <voxels/voxels.glsl>
@@ -16,9 +16,9 @@ SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(DandelionAllocator, dandelion_allocato
 #define UserMaxElementCount MAX_GRASS_BLADES
 #include <utilities/allocator.glsl>
 
-#define UserAllocatorType DandelionAllocator
+#define UserAllocatorType FlowerAllocator
 #define UserIndexType uint
-#define UserMaxElementCount MAX_DANDELIONS
+#define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
 void reset_draw_params(in out IndirectDrawIndexedParams params) {
@@ -55,9 +55,9 @@ void main() {
     reset_draw_params(deref(particles_state).grass.splat_draw_params);
     GrassStrandAllocator_perframe(grass_allocator);
 
-    // dandelion
-    reset_draw_params(deref(particles_state).dandelion.cube_draw_params);
-    reset_draw_params(deref(particles_state).dandelion.shadow_cube_draw_params);
-    reset_draw_params(deref(particles_state).dandelion.splat_draw_params);
-    DandelionAllocator_perframe(dandelion_allocator);
+    // flower
+    reset_draw_params(deref(particles_state).flower.cube_draw_params);
+    reset_draw_params(deref(particles_state).flower.shadow_cube_draw_params);
+    reset_draw_params(deref(particles_state).flower.splat_draw_params);
+    FlowerAllocator_perframe(flower_allocator);
 }
