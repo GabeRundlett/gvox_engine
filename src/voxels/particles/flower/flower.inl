@@ -2,10 +2,16 @@
 
 #include "../common.inl"
 
+#define FLOWER_TYPE_NONE 0
+#define FLOWER_TYPE_DANDELION 1
+#define FLOWER_TYPE_DANDELION_WHITE 2
+#define FLOWER_TYPE_TULIP 3
+#define FLOWER_TYPE_LAVENDER 4
+
 struct Flower {
     daxa_f32vec3 origin;
     PackedVoxel packed_voxel;
-    daxa_u32 flags;
+    daxa_u32 type;
 };
 DAXA_DECL_BUFFER_PTR(Flower)
 

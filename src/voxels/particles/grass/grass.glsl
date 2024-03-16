@@ -14,7 +14,8 @@ vec2 grass_get_rot_offset(in out GrassStrand self, float time) {
     //     /* .octaves     = */ 4);
     // vec4 noise_val = fractal_noise(value_noise_texture, g_sampler_llr, self.origin + vec3(time * 0.5, sin(time), 0), noise_conf);
     // float rot = noise_val.x * 100.0;
-    float rot = time * 5.0 + self.origin.x * (sin(time * 0.57 + self.origin.z * 1.12) * 0.125 + 0.75) + self.origin.y * (cos(time * 0.23 + self.origin.z * 0.98) * 0.125 + 0.75);
+    float rot = time * 1.5 + self.origin.x * (sin(time * 0.157 + self.origin.z * 1.12) * 0.125 + 0.75) + self.origin.y * (cos(time * 0.063 + self.origin.z * 0.98) * 0.125 + 0.75);
+    // float rot = time * 5.0 + self.origin.x * (sin(time * 0.57 + self.origin.z * 1.12) * 0.125 + 0.75) + self.origin.y * (cos(time * 0.23 + self.origin.z * 0.98) * 0.125 + 0.75);
     return vec2(sin(rot), cos(rot));
 }
 

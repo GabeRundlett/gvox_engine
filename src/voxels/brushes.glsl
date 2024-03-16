@@ -217,11 +217,29 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
                     deref(advance(grass_strands, index)) = grass_strand;
                 }
             } else {
+                FractalNoiseConfig noise_conf = FractalNoiseConfig(
+                    /* .amplitude   = */ 1.0,
+                    /* .persistance = */ 0.5,
+                    /* .scale       = */ 0.1,
+                    /* .lacunarity  = */ 2,
+                    /* .octaves     = */ 3);
+                vec4 flower_noise_val = fractal_noise(value_noise_texture, g_sampler_llr, vec3(voxel_pos.xy, 0), noise_conf);
+                float v = flower_noise_val.x * (1.0 / 0.875);
+
                 Flower flower;
                 flower.origin = voxel_pos;
                 // voxel.color = vec3(1, 0, 1) * 0.1;
                 flower.packed_voxel = pack_voxel(voxel);
-                flower.flags = 1;
+
+                if (v < 0.4) {
+                    flower.type = FLOWER_TYPE_DANDELION;
+                } else if (v < 0.5) {
+                    flower.type = FLOWER_TYPE_DANDELION_WHITE;
+                } else if (v < 0.65) {
+                    flower.type = FLOWER_TYPE_TULIP;
+                } else {
+                    flower.type = FLOWER_TYPE_LAVENDER;
+                }
 
                 uint index = FlowerAllocator_malloc(flower_allocator);
                 daxa_RWBufferPtr(Flower) flowers = deref(flower_allocator).heap;
@@ -426,15 +444,15 @@ void brushgen_b(in out Voxel voxel) {
         //     /* .lacunarity  = */ 2.0,
         //     /* .octaves     = */ 3);
         // float val = fractal_noise(value_noise_texture, g_sampler_llr, voxel_pos, noise_conf).r;
-        voxel.material_type = 3;
-        voxel.color = vec3(0.95, 0.065, 0.05);
-        voxel.roughness = 0.01;
+        voxel.material_type = 1;
+        voxel.color = vec3(0.95, 0.95, 0.95);
+        voxel.roughness = 0.9;
         // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     } else {
-        // float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
-        // if (grass_val < 0.0) {
-        //     try_spawn_grass(voxel, nrm);
-        // }
+        float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+        if (grass_val < 0.0) {
+            try_spawn_grass(voxel, nrm);
+        }
     }
     if (sd < 2.5 * VOXEL_SIZE) {
         voxel.normal = vec3(0, 0, 1);
