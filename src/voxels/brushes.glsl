@@ -51,7 +51,14 @@ struct TreeSDF {
     float leaves;
 };
 
-void sd_branch(in out TreeSDF val, in vec3 p, in vec3 origin, in vec3 dir, in float scl) {
+struct TreeSDFNrm {
+    float wood;
+    float leaves;
+    vec3 wood_nrm;
+    vec3 leaves_nrm;
+};
+
+void sd_spruce_branch(in out TreeSDF val, in vec3 p, in vec3 origin, in vec3 dir, in float scl) {
     vec3 bp0 = origin;
     vec3 bp1 = bp0 + dir;
     val.wood = min(val.wood, sd_capsule(p, bp0, bp1, 0.10));
@@ -71,7 +78,7 @@ TreeSDF sd_spruce_tree(in vec3 p, in vec3 seed) {
         uint branch_n = 8 - i;
         for (uint branch_i = 0; branch_i < branch_n; ++branch_i) {
             float angle = (1.0 / branch_n * branch_i) * 2.0 * M_PI + good_rand(seed + i + 1.0 * branch_i) * 0.5;
-            sd_branch(val, p, vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
+            sd_spruce_branch(val, p, vec3(0, 0, 1.0 + i * 0.8) * 1.0, normalize(vec3(cos(angle), sin(angle), +0.0)) * scl, scl2 * 1.5);
         }
     }
     return val;
@@ -192,6 +199,31 @@ vec3 forest_biome_palette(float t) {
 #define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
+void spawn_grass(in out Voxel voxel) {
+    GrassStrand grass_strand;
+    grass_strand.origin = voxel_pos;
+    grass_strand.packed_voxel = pack_voxel(voxel);
+    grass_strand.flags = 1;
+
+    uint index = GrassStrandAllocator_malloc(grass_allocator);
+    daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
+    if (index < MAX_GRASS_BLADES) {
+        deref(advance(grass_strands, index)) = grass_strand;
+    }
+}
+void spawn_flower(in out Voxel voxel, uint flower_type) {
+    Flower flower;
+    flower.origin = voxel_pos;
+    flower.packed_voxel = pack_voxel(voxel);
+    flower.type = flower_type;
+
+    uint index = FlowerAllocator_malloc(flower_allocator);
+    daxa_RWBufferPtr(Flower) flowers = deref(flower_allocator).heap;
+    if (index < MAX_FLOWERS) {
+        deref(advance(flowers, index)) = flower;
+    }
+}
+
 void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
     // randomly spawn grass
     float r2 = good_rand(voxel_pos.xy);
@@ -206,16 +238,7 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
 
         if (r2 < 0.2) {
             if (r2 < 0.99 * 0.2) {
-                GrassStrand grass_strand;
-                grass_strand.origin = voxel_pos;
-                grass_strand.packed_voxel = pack_voxel(voxel);
-                grass_strand.flags = 1;
-
-                uint index = GrassStrandAllocator_malloc(grass_allocator);
-                daxa_RWBufferPtr(GrassStrand) grass_strands = deref(grass_allocator).heap;
-                if (index < MAX_GRASS_BLADES) {
-                    deref(advance(grass_strands, index)) = grass_strand;
-                }
+                spawn_grass(voxel);
             } else {
                 FractalNoiseConfig noise_conf = FractalNoiseConfig(
                     /* .amplitude   = */ 1.0,
@@ -226,26 +249,17 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
                 vec4 flower_noise_val = fractal_noise(value_noise_texture, g_sampler_llr, vec3(voxel_pos.xy, 0), noise_conf);
                 float v = flower_noise_val.x * (1.0 / 0.875);
 
-                Flower flower;
-                flower.origin = voxel_pos;
-                // voxel.color = vec3(1, 0, 1) * 0.1;
-                flower.packed_voxel = pack_voxel(voxel);
-
+                uint flower_type = 0;
                 if (v < 0.4) {
-                    flower.type = FLOWER_TYPE_DANDELION;
+                    flower_type = FLOWER_TYPE_DANDELION;
                 } else if (v < 0.5) {
-                    flower.type = FLOWER_TYPE_DANDELION_WHITE;
+                    flower_type = FLOWER_TYPE_DANDELION_WHITE;
                 } else if (v < 0.65) {
-                    flower.type = FLOWER_TYPE_TULIP;
+                    flower_type = FLOWER_TYPE_TULIP;
                 } else {
-                    flower.type = FLOWER_TYPE_LAVENDER;
+                    flower_type = FLOWER_TYPE_LAVENDER;
                 }
-
-                uint index = FlowerAllocator_malloc(flower_allocator);
-                daxa_RWBufferPtr(Flower) flowers = deref(flower_allocator).heap;
-                if (index < MAX_FLOWERS) {
-                    deref(advance(flowers, index)) = flower;
-                }
+                spawn_flower(voxel, flower_type);
             }
         }
     }
@@ -404,6 +418,30 @@ void brushgen_world(in out Voxel voxel) {
     }
 }
 
+void brush_remove_grass(in out Voxel voxel) {
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+    float diff = length(voxel.color - pow(vec3(85, 166, 78) / 255.0 * 0.5, vec3(2.2)));
+
+    if (sd < 0 && voxel.material_type == 1 && diff < 0.025) {
+        voxel.color = vec3(0, 0, 0);
+        voxel.material_type = 0;
+    }
+    if (sd < 2.5 * VOXEL_SIZE) {
+        voxel.normal = vec3(0, 0, 1);
+    }
+}
+
+void brush_remove_ball(in out Voxel voxel) {
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+    if (sd < 0) {
+        voxel.color = vec3(0, 0, 0);
+        voxel.material_type = 0;
+    }
+    if (sd < 2.5 * VOXEL_SIZE) {
+        voxel.normal = vec3(0, 0, 1);
+    }
+}
+
 void brushgen_a(in out Voxel voxel) {
     PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     Voxel prev_voxel = unpack_voxel(voxel_data);
@@ -413,13 +451,127 @@ void brushgen_a(in out Voxel voxel) {
     voxel.normal = prev_voxel.normal;
     voxel.roughness = prev_voxel.roughness;
 
+    // brush_remove_grass(voxel);
+    brush_remove_ball(voxel);
+}
+
+void brush_grass_ball(in out Voxel voxel) {
     float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+    vec3 nrm = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
     if (sd < 0) {
-        voxel.color = vec3(0, 0, 0);
-        voxel.material_type = 0;
+        voxel.material_type = 1;
+        voxel.color = vec3(0.95, 0.95, 0.95);
+        voxel.roughness = 0.9;
+    } else {
+        float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+        if (grass_val < 0.0) {
+            try_spawn_grass(voxel, nrm);
+        }
     }
     if (sd < 2.5 * VOXEL_SIZE) {
         voxel.normal = vec3(0, 0, 1);
+    }
+}
+void brush_flowers(in out Voxel voxel) {
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+    PackedVoxel temp_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, voxel_pos + vec3(0, 0, VOXEL_SIZE), vec3(0));
+    Voxel above_voxel = unpack_voxel(temp_voxel_data);
+    if (sd < 0 && voxel.material_type != 0 && above_voxel.material_type == 0) {
+        float r2 = good_rand(voxel_pos.xy);
+        if (r2 < 0.01) {
+            voxel.color = pow(vec3(85, 166, 78) / 255.0 * 0.5, vec3(2.2));
+            voxel.material_type = 1;
+            voxel.roughness = 1.0;
+            voxel.normal = vec3(0, 0, 1);
+            spawn_flower(voxel, FLOWER_TYPE_DANDELION);
+        }
+        if (sd < 2.5 * VOXEL_SIZE) {
+            voxel.normal = vec3(0, 0, 1);
+        }
+    }
+}
+void brush_light_ball(in out Voxel voxel) {
+    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
+    vec3 nrm = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
+    if (sd < 0) {
+        voxel.material_type = 3;
+        voxel.color = vec3(0.95, 0.15, 0.05);
+        voxel.roughness = 0.9;
+    }
+    if (sd < 2.5 * VOXEL_SIZE) {
+        voxel.normal = vec3(0, 0, 1);
+    }
+}
+
+void sd_maple_branch(in out TreeSDFNrm val, in vec3 p, in vec3 origin, in vec3 dir, in float scl) {
+    float upwards_curl_factor = 0.2;
+    vec3 bp0 = origin;
+    for (uint segment_i = 0; segment_i < 4; ++segment_i) {
+        vec3 bp1 = bp0 + dir * scl + vec3(0, 0, upwards_curl_factor);
+        upwards_curl_factor += 0.2;
+        val.wood = sd_union(val.wood, sd_capsule(p, bp0, bp1, 0.10));
+        bp0 = bp1;
+        if (segment_i < 2)
+            continue;
+        float leaves_dist = sd_sphere(p - bp1, scl * 0.4 + 0.6);
+        if (leaves_dist < val.leaves) {
+            val.leaves = leaves_dist;
+            val.leaves_nrm = normalize(p - bp1);
+        }
+    }
+}
+
+TreeSDFNrm sd_maple_tree(in vec3 p, in vec3 seed) {
+    TreeSDFNrm val = TreeSDFNrm(1e5, 1e5, vec3(0, 0, 1), vec3(0, 0, 1));
+
+    float sd_trunk_base = sd_round_cone(
+        p,
+        vec3(0, 0, 0),
+        vec3(0, 0, 5),
+        0.5, 0.4);
+    float sd_trunk_mid = sd_round_cone(
+        p,
+        vec3(0, 0, 5),
+        vec3(0, 0, 8),
+        0.4, 0.41);
+    float sd_trunk_top = sd_round_cone(
+        p,
+        vec3(0, 0, 5),
+        vec3(0, 0, 16),
+        0.41, 0.2);
+
+    val.wood = sd_union(sd_trunk_base, sd_union(sd_trunk_mid, sd_trunk_top));
+
+    for (uint i = 0; i < 7; ++i) {
+        // float scl = 1.0 / (1.0 + i * 0.1);
+        float scl = (1 - 0.05 * pow(i, 2)) * 0.02 * pow(i, 2) + 1.6 - i * 0.13;
+        uint branch_n = 8 - i / 2;
+        for (uint branch_i = 0; branch_i < branch_n; ++branch_i) {
+            float angle = (1.0 / branch_n * branch_i) * 2.0 * M_PI + good_rand(seed + i + 1.0 * branch_i) * 0.5 + branch_i * 10;
+            float branch_base = 4.0 + i * 1.8 + branch_i * 0.1;
+            vec3 dir = normalize(vec3(cos(angle), sin(angle), +0.0));
+            sd_maple_branch(val, p, vec3(0, 0, branch_base), dir, scl);
+        }
+    }
+    return val;
+}
+
+void brush_maple_tree(in out Voxel voxel) {
+    float tree_size = good_rand(brush_input.pos);
+    TreeSDFNrm tree = sd_maple_tree((voxel_pos - brush_input.pos) * (1.5 - tree_size * 0.5), brush_input.pos);
+
+    float leaf_rand = good_rand(voxel_pos);
+
+    if (tree.wood < 0) {
+        voxel.material_type = 1;
+        voxel.color = vec3(.68, .4, .15) * 0.16;
+        voxel.roughness = 0.99;
+        voxel.normal = vec3(0, 0, 1);
+    } else if (tree.leaves < 0 && leaf_rand < 0.01) {
+        voxel.material_type = 1;
+        voxel.color = vec3(.28, .8, .15) * 0.5;
+        voxel.roughness = 0.95;
+        voxel.normal = tree.leaves_nrm;
     }
 }
 
@@ -432,29 +584,8 @@ void brushgen_b(in out Voxel voxel) {
     voxel.normal = prev_voxel.normal;
     voxel.roughness = prev_voxel.roughness;
 
-    // float sd = sd_box(voxel_pos - (brush_input.pos + brush_input.pos_offset), vec3(8));
-    float sd = sd_capsule(voxel_pos, brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
-    vec3 nrm = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
-    // if (sd < 0 && voxel.material_type != 0) {
-    if (sd < 0) {
-        // FractalNoiseConfig noise_conf = FractalNoiseConfig(
-        //     /* .amplitude   = */ 1.0,
-        //     /* .persistance = */ 0.5,
-        //     /* .scale       = */ 1.0,
-        //     /* .lacunarity  = */ 2.0,
-        //     /* .octaves     = */ 3);
-        // float val = fractal_noise(value_noise_texture, g_sampler_llr, voxel_pos, noise_conf).r;
-        voxel.material_type = 1;
-        voxel.color = vec3(0.95, 0.95, 0.95);
-        voxel.roughness = 0.9;
-        // voxel.normal = normalize(voxel_pos - (brush_input.pos + brush_input.pos_offset));
-    } else {
-        float grass_val = sd_capsule(voxel_pos - vec3(0, 0, VOXEL_SIZE), brush_input.pos + brush_input.pos_offset, brush_input.prev_pos + brush_input.prev_pos_offset, 32.0 * VOXEL_SIZE);
-        if (grass_val < 0.0) {
-            try_spawn_grass(voxel, nrm);
-        }
-    }
-    if (sd < 2.5 * VOXEL_SIZE) {
-        voxel.normal = vec3(0, 0, 1);
-    }
+    // brush_grass_ball(voxel);
+    // brush_flowers(voxel);
+    // brush_light_ball(voxel);
+    brush_maple_tree(voxel);
 }

@@ -65,6 +65,7 @@ struct Player {
     daxa_i32vec3 player_unit_offset;
     daxa_i32vec3 prev_unit_offset;
     daxa_f32 max_speed;
+    daxa_u32 flags;
 };
 
 struct GpuInput {

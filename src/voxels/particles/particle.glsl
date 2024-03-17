@@ -12,8 +12,8 @@
 #define PARTICLE_SLEEP_TIMER_MASK (0xff << PARTICLE_SLEEP_TIMER_OFFSET)
 
 vec3 get_particle_pos(vec3 pos) {
-    return pos;
-    // return floor(pos * VOXEL_SCL) * VOXEL_SIZE;
+    // return pos;
+    return floor(pos * VOXEL_SCL) * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {

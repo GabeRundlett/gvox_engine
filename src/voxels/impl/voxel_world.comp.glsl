@@ -81,11 +81,14 @@ void main() {
         ivec3 wrapped_chunk_i = imod3(terrain_work_item.i - imod3(terrain_work_item.chunk_offset - ivec3(chunk_n), ivec3(chunk_n)), ivec3(chunk_n));
         // Leaf chunk position in world space
         ivec3 world_chunk = terrain_work_item.chunk_offset + wrapped_chunk_i - ivec3(chunk_n / 2);
+        vec3 world_chunk_center = vec3(world_chunk << (6 + LOG2_VOXEL_SIZE)) + (32 * VOXEL_SIZE);
 
         terrain_work_item.brush_input = VOXEL_WORLD.brush_input;
 
-        ivec3 brush_chunk = (ivec3(floor(VOXEL_WORLD.brush_input.pos)) + VOXEL_WORLD.brush_input.pos_offset) >> (6 + LOG2_VOXEL_SIZE);
-        bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
+        vec3 world_brush_pos = VOXEL_WORLD.brush_input.pos + VOXEL_WORLD.brush_input.pos_offset;
+
+        bool is_near_brush = length(world_brush_pos.xy - world_chunk_center.xy) < 4 && abs(world_brush_pos.z + 6 - world_chunk_center.z) < 10;
+        is_near_brush = is_near_brush || (length(world_brush_pos + vec3(0, 0, 9) - world_chunk_center) < 10);
 
         if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
             terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;

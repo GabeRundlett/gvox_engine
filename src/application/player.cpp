@@ -118,6 +118,11 @@ void player_fix_chunk_offset(Player &PLAYER) {
 }
 
 void player_startup(Player &PLAYER) {
+    if (PLAYER.flags == 1) {
+        return;
+    }
+    PLAYER.flags = 1;
+
     AppSettings::add<settings::InputFloat>({"Player", "Movement Speed", {.value = 2.5f}});
     AppSettings::add<settings::InputFloat>({"Player", "Sprint Multiplier", {.value = 25.0f}});
     AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = true}});
