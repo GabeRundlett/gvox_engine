@@ -601,6 +601,22 @@ void brush_maple_tree(in out Voxel voxel) {
     }
 }
 
+void brush_spruce_tree(in out Voxel voxel) {
+    TreeSDF tree = sd_spruce_tree(voxel_pos - brush_input.pos, brush_input.pos);
+
+    if (tree.wood < 0) {
+        voxel.material_type = 1;
+        voxel.color = vec3(.68, .4, .15) * 0.16;
+        voxel.roughness = 0.99;
+        voxel.normal = vec3(0, 0, 1);
+    } else if (tree.leaves < 0) {
+        voxel.material_type = 1;
+        voxel.color = vec3(.28, .8, .15) * 0.5;
+        voxel.roughness = 0.95;
+        voxel.normal = vec3(0, 0, 1);
+    }
+}
+
 void brushgen_b(in out Voxel voxel) {
     PackedVoxel voxel_data = sample_voxel_chunk(voxel_malloc_page_allocator, voxel_chunk_ptr, inchunk_voxel_i);
     Voxel prev_voxel = unpack_voxel(voxel_data);
@@ -614,4 +630,5 @@ void brushgen_b(in out Voxel voxel) {
     // brush_flowers(voxel);
     // brush_light_ball(voxel);
     brush_maple_tree(voxel);
+    // brush_spruce_tree(voxel);
 }

@@ -15,7 +15,7 @@ vec3 get_tree_particle_offset(in out TreeParticle self, uint index, uint i, floa
     vec3 range_extent = vec3(1);
 
     return vec3(0, 0, -fract(time * 0.1 + self.origin.x)) +
-           fract(vec3(vec2(time * 0.05, 0.0), 0.5) + range_center) * range_extent - range_extent * 0.5;
+           fract(vec3(vec2(time * 0.1, 0.0), 0.5) + range_center) * range_extent - range_extent * 0.5;
 }
 
 ParticleVertex get_tree_particle_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferPtr(TreeParticle) tree_particles, PackedParticleVertex packed_vertex) {

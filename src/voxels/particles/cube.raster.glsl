@@ -78,6 +78,13 @@ void main() {
 
     // extracting the vertex offset relative to the center.
     // Thanks to @cantaslaus on Discord.
+    //   NOTE(grundlett) Description updated to show I tried using TRIANGLE_STRIP and degenerate triangles to
+    // emulate primitive restart instead of instancing. Throughput numbers for both appear to be the same,
+    // however, the STRIP mode has more and duplicate work to do. I assume this is why it did not improve perf
+    // and instead was about a sizeable regression (0.92ms vs 1.32ms)
+    //  axis |          x     |          y     |          z     |
+    //  bits |     '0001'1100 |     '0100'0110 |     '0111'0000 | (instancing) ivec3(0x01C, 0x046, 0x070)
+    //       | 1110'0000'1011 | 0000'0101'1000 | 0010'1100'0000 | (degenerate) ivec3(0xE0B, 0x058, 0x2C0)
     vec3 sign_ = vec3(ivec3(greaterThan(camera_position, center_ws)) ^ ((ivec3(0x1C, 0x46, 0x70) >> gl_VertexIndex) & ivec3(1))) - 0.5;
     vec3 vert_pos = sign_ * diff + center_ws;
     // ---------------------
