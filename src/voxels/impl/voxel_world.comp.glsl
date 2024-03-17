@@ -85,15 +85,18 @@ void main() {
 
         terrain_work_item.brush_input = VOXEL_WORLD.brush_input;
 
+        ivec3 brush_chunk = (ivec3(floor(VOXEL_WORLD.brush_input.pos)) + VOXEL_WORLD.brush_input.pos_offset) >> (6 + LOG2_VOXEL_SIZE);
+        bool is_near_brush = all(greaterThanEqual(world_chunk, brush_chunk - 1)) && all(lessThanEqual(world_chunk, brush_chunk + 1));
+
         vec3 world_brush_pos = VOXEL_WORLD.brush_input.pos + VOXEL_WORLD.brush_input.pos_offset;
+        bool is_near_brush_a = is_near_brush;
+        bool is_near_brush_b = length(world_brush_pos.xy - world_chunk_center.xy) < 4 && abs(world_brush_pos.z + 6 - world_chunk_center.z) < 10;
+        is_near_brush_b = is_near_brush_b || (length(world_brush_pos + vec3(0, 0, 9) - world_chunk_center) < 10);
 
-        bool is_near_brush = length(world_brush_pos.xy - world_chunk_center.xy) < 4 && abs(world_brush_pos.z + 6 - world_chunk_center.z) < 10;
-        is_near_brush = is_near_brush || (length(world_brush_pos + vec3(0, 0, 9) - world_chunk_center) < 10);
-
-        if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
+        if (is_near_brush_a && deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
             terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_A;
             try_elect(terrain_work_item, update_index);
-        } else if (is_near_brush && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0) {
+        } else if (is_near_brush_b && deref(gpu_input).actions[GAME_ACTION_BRUSH_B] != 0 && deref(voxel_globals).brush_state.initial_frame == deref(gpu_input).frame_index) {
             terrain_work_item.brush_flags = BRUSH_FLAGS_USER_BRUSH_B;
             try_elect(terrain_work_item, update_index);
         }

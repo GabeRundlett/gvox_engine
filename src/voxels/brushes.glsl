@@ -502,9 +502,6 @@ void brush_flowers(in out Voxel voxel) {
             voxel.normal = vec3(0, 0, 1);
             spawn_flower(voxel, FLOWER_TYPE_DANDELION);
         }
-        if (sd < 2.5 * VOXEL_SIZE) {
-            voxel.normal = vec3(0, 0, 1);
-        }
     }
 }
 void brush_light_ball(in out Voxel voxel) {

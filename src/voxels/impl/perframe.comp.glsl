@@ -55,6 +55,7 @@ void main() {
     deref(ptrs.globals).brush_input.prev_pos = deref(ptrs.globals).brush_input.pos;
     deref(ptrs.globals).brush_input.prev_pos_offset = deref(ptrs.globals).brush_input.pos_offset;
     deref(ptrs.globals).brush_input.pos = length(deref(ptrs.globals).brush_state.initial_ray) * ray_dir + cam_pos;
+    // deref(ptrs.globals).brush_input.pos = ray_pos;
     deref(ptrs.globals).brush_input.pos_offset = deref(gpu_input).player.player_unit_offset;
 
     if (deref(gpu_input).actions[GAME_ACTION_BRUSH_A] != 0) {
