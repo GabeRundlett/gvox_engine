@@ -12,6 +12,9 @@ daxa_BufferPtr(Flower) flowers = push.uses.flowers;
 #elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleSplatParticleRasterPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+#elif defined(TREE_PARTICLE)
+DAXA_DECL_PUSH_CONSTANT(TreeParticleSplatParticleRasterPush, push)
+daxa_BufferPtr(TreeParticle) tree_particles = push.uses.tree_particles;
 #endif
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
@@ -19,6 +22,7 @@ daxa_BufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses.s
 #include "grass/grass.glsl"
 #include "flower/flower.glsl"
 #include "sim_particle/sim_particle.glsl"
+#include "tree_particle/tree_particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
@@ -38,6 +42,8 @@ void main() {
     ParticleVertex vert = get_flower_vertex(gpu_input, flowers, packed_vertex);
 #elif defined(SIM_PARTICLE)
     ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
+#elif defined(TREE_PARTICLE)
+    ParticleVertex vert = get_tree_particle_vertex(gpu_input, tree_particles, packed_vertex);
 #endif
 
     float voxel_radius = VOXEL_SIZE * 0.5;

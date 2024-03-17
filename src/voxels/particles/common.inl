@@ -31,5 +31,6 @@ struct VoxelParticlesState {
     ParticleDrawParams sim_particle;
     ParticleDrawParams grass;
     ParticleDrawParams flower;
+    ParticleDrawParams tree_particle;
 };
 DAXA_DECL_BUFFER_PTR(VoxelParticlesState)

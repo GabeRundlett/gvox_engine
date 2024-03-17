@@ -8,6 +8,8 @@
 #define FLOWER_TYPE_TULIP 3
 #define FLOWER_TYPE_LAVENDER 4
 
+#define MAX_FLOWERS                    (1 << 16)
+
 struct Flower {
     daxa_f32vec3 origin;
     PackedVoxel packed_voxel;

@@ -199,6 +199,11 @@ vec3 forest_biome_palette(float t) {
 #define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
+#define UserAllocatorType TreeParticleAllocator
+#define UserIndexType uint
+#define UserMaxElementCount MAX_TREE_PARTICLES
+#include <utilities/allocator.glsl>
+
 void spawn_grass(in out Voxel voxel) {
     GrassStrand grass_strand;
     grass_strand.origin = voxel_pos;
@@ -221,6 +226,18 @@ void spawn_flower(in out Voxel voxel, uint flower_type) {
     daxa_RWBufferPtr(Flower) flowers = deref(flower_allocator).heap;
     if (index < MAX_FLOWERS) {
         deref(advance(flowers, index)) = flower;
+    }
+}
+void spawn_tree_particle(in out Voxel voxel) {
+    TreeParticle tree_particle;
+    tree_particle.origin = voxel_pos;
+    tree_particle.packed_voxel = pack_voxel(voxel);
+    tree_particle.flags = 1;
+
+    uint index = TreeParticleAllocator_malloc(tree_particle_allocator);
+    daxa_RWBufferPtr(TreeParticle) tree_particles = deref(tree_particle_allocator).heap;
+    if (index < MAX_TREE_PARTICLES) {
+        deref(advance(tree_particles, index)) = tree_particle;
     }
 }
 
@@ -518,6 +535,7 @@ void sd_maple_branch(in out TreeSDFNrm val, in vec3 p, in vec3 origin, in vec3 d
             val.leaves = leaves_dist;
             val.leaves_nrm = normalize(p - bp1);
         }
+        // val.leaves = sd_smooth_union(val.leaves, leaves_dist, 1.0);
     }
 }
 
@@ -543,7 +561,6 @@ TreeSDFNrm sd_maple_tree(in vec3 p, in vec3 seed) {
     val.wood = sd_union(sd_trunk_base, sd_union(sd_trunk_mid, sd_trunk_top));
 
     for (uint i = 0; i < 7; ++i) {
-        // float scl = 1.0 / (1.0 + i * 0.1);
         float scl = (1 - 0.05 * pow(i, 2)) * 0.02 * pow(i, 2) + 1.6 - i * 0.13;
         uint branch_n = 8 - i / 2;
         for (uint branch_i = 0; branch_i < branch_n; ++branch_i) {
@@ -558,20 +575,32 @@ TreeSDFNrm sd_maple_tree(in vec3 p, in vec3 seed) {
 
 void brush_maple_tree(in out Voxel voxel) {
     float tree_size = good_rand(brush_input.pos);
-    TreeSDFNrm tree = sd_maple_tree((voxel_pos - brush_input.pos) * (1.5 - tree_size * 0.5), brush_input.pos);
+    float space_scl = 1.5 - tree_size * 0.5;
+    TreeSDFNrm tree = sd_maple_tree((voxel_pos - brush_input.pos) * space_scl, brush_input.pos);
+    tree.wood /= space_scl;
+    tree.leaves /= space_scl;
 
     float leaf_rand = good_rand(voxel_pos);
+
+    uint prev_mat_type = voxel.material_type;
 
     if (tree.wood < 0) {
         voxel.material_type = 1;
         voxel.color = vec3(.68, .4, .15) * 0.16;
         voxel.roughness = 0.99;
         voxel.normal = vec3(0, 0, 1);
-    } else if (tree.leaves < 0 && leaf_rand < 0.01) {
+    } else if (tree.leaves * 5.0 + leaf_rand * 15.0 < 0) {
         voxel.material_type = 1;
         voxel.color = vec3(.28, .8, .15) * 0.5;
         voxel.roughness = 0.95;
         voxel.normal = tree.leaves_nrm;
+        if (tree.leaves - leaf_rand > -VOXEL_SIZE) {
+            // should be a particle spawner
+            // voxel.color = vec3(.9, .1, .9);
+            if (prev_mat_type == 0) {
+                spawn_tree_particle(voxel);
+            }
+        }
     }
 }
 

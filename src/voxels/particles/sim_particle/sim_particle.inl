@@ -2,6 +2,8 @@
 
 #include "../common.inl"
 
+#define MAX_SIMULATED_VOXEL_PARTICLES (1 << 16)
+
 struct SimulatedVoxelParticle {
     daxa_f32vec3 pos;
     daxa_f32 duration_alive;

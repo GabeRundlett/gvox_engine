@@ -2,6 +2,8 @@
 
 #include "../common.inl"
 
+#define MAX_GRASS_BLADES (1 << 22)
+
 struct GrassStrand {
     daxa_f32vec3 origin;
     PackedVoxel packed_voxel;

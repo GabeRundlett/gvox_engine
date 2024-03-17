@@ -13,6 +13,9 @@ daxa_BufferPtr(Flower) flowers = push.uses.flowers;
 #elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterShadowPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+#elif defined(TREE_PARTICLE)
+DAXA_DECL_PUSH_CONSTANT(TreeParticleCubeParticleRasterShadowPush, push)
+daxa_BufferPtr(TreeParticle) tree_particles = push.uses.tree_particles;
 #endif
 
 #else
@@ -26,6 +29,9 @@ daxa_BufferPtr(Flower) flowers = push.uses.flowers;
 #elif defined(SIM_PARTICLE)
 DAXA_DECL_PUSH_CONSTANT(SimParticleCubeParticleRasterPush, push)
 daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
+#elif defined(TREE_PARTICLE)
+DAXA_DECL_PUSH_CONSTANT(TreeParticleCubeParticleRasterPush, push)
+daxa_BufferPtr(TreeParticle) tree_particles = push.uses.tree_particles;
 #endif
 
 #endif
@@ -36,6 +42,7 @@ daxa_BufferPtr(PackedParticleVertex) cube_rendered_particle_verts = push.uses.cu
 #include "grass/grass.glsl"
 #include "flower/flower.glsl"
 #include "sim_particle/sim_particle.glsl"
+#include "tree_particle/tree_particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
@@ -58,6 +65,8 @@ void main() {
     ParticleVertex vert = get_flower_vertex(gpu_input, flowers, packed_vertex);
 #elif defined(SIM_PARTICLE)
     ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
+#elif defined(TREE_PARTICLE)
+    ParticleVertex vert = get_tree_particle_vertex(gpu_input, tree_particles, packed_vertex);
 #endif
 
     const vec3 diff = vec3(VOXEL_SIZE);
