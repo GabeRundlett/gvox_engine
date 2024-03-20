@@ -71,5 +71,5 @@ void main() {
     reset_draw_params(deref(particles_state).tree_particle.cube_draw_params);
     reset_draw_params(deref(particles_state).tree_particle.shadow_cube_draw_params);
     reset_draw_params(deref(particles_state).tree_particle.splat_draw_params);
-    FlowerAllocator_perframe(tree_particle_allocator);
+    TreeParticleAllocator_perframe(tree_particle_allocator);
 }

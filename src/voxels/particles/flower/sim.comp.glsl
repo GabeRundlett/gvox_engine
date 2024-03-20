@@ -22,7 +22,7 @@ void render_dandelion(uint particle_index) {
 
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
@@ -33,7 +33,7 @@ void render_dandelion(uint particle_index) {
             }
             uint i = uint(xi + 1) + uint(yi + 1) * 3 + height + 1;
             PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-            ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+            ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
             particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
         }
     }
@@ -44,7 +44,7 @@ void render_dandelion_white(uint particle_index) {
 
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
@@ -56,7 +56,7 @@ void render_dandelion_white(uint particle_index) {
                 }
                 uint i = uint(xi + 1) + uint(yi + 1) * 3 + uint(zi + 1) * 9 + height + 1;
                 PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
                 particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
             }
         }
@@ -64,7 +64,7 @@ void render_dandelion_white(uint particle_index) {
 
     for (uint i = 27 + height + 1; i <= 27 + height + 3; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 }
@@ -74,7 +74,7 @@ void render_tulip(uint particle_index) {
 
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
@@ -86,7 +86,7 @@ void render_tulip(uint particle_index) {
                 }
                 uint i = uint(xi + 1) + uint(yi + 1) * 3 + uint(zi + 1) * 9 + height + 1;
                 PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
                 particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
             }
         }
@@ -98,7 +98,7 @@ void render_lavender(uint particle_index) {
 
     for (uint i = 1; i <= height; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+        ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, false);
     }
 
@@ -110,7 +110,7 @@ void render_lavender(uint particle_index) {
                 }
                 uint i = uint(xi + 1) + uint(yi + 1) * 3 + uint(zi + 1) * 9 + height + 1;
                 PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+                ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
                 particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
             }
         }
@@ -118,7 +118,7 @@ void render_lavender(uint particle_index) {
 
     uint i = height + 1 + 5 * 3 * 3 + 4;
     PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-    ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(flowers), packed_vertex);
+    ParticleVertex flower_vertex = get_flower_vertex(gpu_input, daxa_BufferPtr(Flower)(as_address(flowers)), packed_vertex);
     particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
 }
 

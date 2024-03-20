@@ -55,7 +55,7 @@ void main() {
 
     for (uint i = 0; i < 2; ++i) {
         PackedParticleVertex packed_vertex = PackedParticleVertex(((particle_index & 0xffffff) << 0) | ((i & 0xff) << 24));
-        ParticleVertex tree_particle_vertex = get_tree_particle_vertex(gpu_input, daxa_BufferPtr(TreeParticle)(tree_particles), packed_vertex);
+        ParticleVertex tree_particle_vertex = get_tree_particle_vertex(gpu_input, daxa_BufferPtr(TreeParticle)(as_address(tree_particles)), packed_vertex);
         particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, tree_particle_vertex, packed_vertex, false);
     }
 #endif

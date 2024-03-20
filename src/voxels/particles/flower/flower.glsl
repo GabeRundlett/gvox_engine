@@ -232,7 +232,7 @@ ParticleVertex get_flower_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_Buffer
     uint strand_index = (packed_vertex.data >> 0) & 0xffffff;
     uint i = (packed_vertex.data >> 24) & 0xff;
 
-    Flower self = deref(flowers[strand_index]);
+    Flower self = deref(advance(flowers, strand_index));
 
     ParticleVertex result;
 

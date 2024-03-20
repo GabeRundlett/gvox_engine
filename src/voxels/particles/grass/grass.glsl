@@ -28,7 +28,7 @@ ParticleVertex get_grass_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferP
     uint strand_index = (packed_vertex.data >> 0) & 0xffffff;
     uint i = (packed_vertex.data >> 24) & 0xff;
 
-    GrassStrand self = deref(grass_strands[strand_index]);
+    GrassStrand self = deref(advance(grass_strands, strand_index));
 
     vec2 rot_offset = grass_get_rot_offset(self, deref(gpu_input).time);
     vec3 offset = get_grass_offset(rot_offset, i * VOXEL_SIZE);

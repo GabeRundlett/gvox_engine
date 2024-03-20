@@ -23,7 +23,7 @@ ParticleVertex get_tree_particle_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa
     uint index = (packed_vertex.data >> 0) & 0xffffff;
     uint i = (packed_vertex.data >> 24) & 0xff;
 
-    TreeParticle self = deref(tree_particles[index]);
+    TreeParticle self = deref(advance(tree_particles, index));
 
     vec3 offset = get_tree_particle_offset(self, index, i, deref(gpu_input).time);
     vec3 prev_offset = get_tree_particle_offset(self, index, i, deref(gpu_input).time - deref(gpu_input).delta_time);

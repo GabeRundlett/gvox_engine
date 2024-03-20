@@ -131,7 +131,7 @@ void particle_voxelize(daxa_RWBufferPtr(uint) placed_voxel_particles, daxa_RWBuf
 ParticleVertex get_sim_particle_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles, PackedParticleVertex packed_vertex) {
     uint index = packed_vertex.data;
 
-    SimulatedVoxelParticle self = deref(simulated_voxel_particles[index]);
+    SimulatedVoxelParticle self = deref(advance(simulated_voxel_particles, index));
 
     ParticleVertex result;
     result.pos = self.pos;
