@@ -10,7 +10,7 @@ VoxelTraceResult voxel_trace(in VoxelTraceInfo info, in out vec3 ray_pos) {
 
     result.vel = vec3(deref(info.ptrs.globals).offset - deref(info.ptrs.globals).prev_offset);
 
-    uvec3 chunk_n = uvec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    uvec3 chunk_n = uvec3(CHUNKS_PER_AXIS);
 
     {
         daxa_BufferPtr(VoxelLeafChunk) voxel_chunks_ptr = info.ptrs.voxel_chunks_ptr;

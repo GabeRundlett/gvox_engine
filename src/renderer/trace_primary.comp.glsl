@@ -106,7 +106,7 @@ void main() {
 #if !PER_VOXEL_NORMALS && defined(VOXELS_ORIGINAL_IMPL)
     bool is_valid = true;
     if (trace_result.dist != MAX_DIST) {
-        uvec3 chunk_n = uvec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+        uvec3 chunk_n = uvec3(CHUNKS_PER_AXIS);
         PackedVoxel voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, ray_pos, trace_result.nrm * 0.5);
         Voxel voxel = unpack_voxel(voxel_data);
         is_valid = voxel.material_type == 0;

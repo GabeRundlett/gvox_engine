@@ -80,6 +80,7 @@ layout(location = 3) flat in vec3 center_ws;
 layout(location = 0) out uvec4 o_gbuffer;
 layout(location = 1) out vec4 o_vs_velocity;
 layout(location = 2) out vec4 o_vs_nrm;
+// layout(depth_less) out float gl_FragDepth;
 
 struct Box {
     vec3 center;

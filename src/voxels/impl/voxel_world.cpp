@@ -1,4 +1,5 @@
 #include "voxel_world.inl"
+#include <fmt/format.h>
 
 void VoxelWorld::init_gpu_malloc(GpuContext &gpu_context) {
     if (!gpu_malloc_initialized) {
@@ -15,7 +16,7 @@ void VoxelWorld::record_startup(GpuContext &gpu_context) {
         .name = "voxel_globals",
     });
 
-    auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    auto chunk_n = (CHUNKS_PER_AXIS);
     chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
     buffers.voxel_chunks = gpu_context.find_or_add_temporal_buffer({
         .size = sizeof(VoxelLeafChunk) * chunk_n,
@@ -51,7 +52,7 @@ void VoxelWorld::record_startup(GpuContext &gpu_context) {
                 .clear_value = 0,
             });
 
-            auto chunk_n = (1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+            auto chunk_n = (CHUNKS_PER_AXIS);
             chunk_n = chunk_n * chunk_n * chunk_n * CHUNK_LOD_LEVELS;
             ti.recorder.clear_buffer({
                 .buffer = buffers.voxel_chunks.task_resource.get_state().buffers[0],
@@ -106,8 +107,8 @@ void VoxelWorld::begin_frame(daxa::Device &device, VoxelWorldOutput const &gpu_o
     // needs_realloc = needs_realloc || buffers.voxel_leaf_chunk_malloc.needs_realloc();
     // needs_realloc = needs_realloc || buffers.voxel_parent_chunk_malloc.needs_realloc();
 
-    debug_gpu_heap_usage = gpu_output.voxel_malloc_output.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES;
-    debug_page_count = buffers.voxel_malloc.current_element_count;
+    debug_utils::DebugDisplay::set_debug_string("GPU Heap", fmt::format("{} pages ({:.2f} MB)", buffers.voxel_malloc.current_element_count, static_cast<double>(buffers.voxel_malloc.current_element_count * VOXEL_MALLOC_PAGE_SIZE_BYTES) / 1'000'000.0));
+    debug_utils::DebugDisplay::set_debug_string("GPU Heap Usage", fmt::format("{:.2f} MB", static_cast<double>(gpu_output.voxel_malloc_output.current_element_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000));
 
     if (needs_realloc) {
         auto temp_task_graph = daxa::TaskGraph({
@@ -174,7 +175,7 @@ void VoxelWorld::record_frame(GpuContext &gpu_context, daxa::TaskBufferView task
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PerChunkComputePush &push, NoTaskInfo const &) {
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
-            auto const dispatch_size = 1 << LOG2_CHUNKS_DISPATCH_SIZE;
+            auto const dispatch_size = CHUNKS_DISPATCH_SIZE;
             ti.recorder.dispatch({dispatch_size, dispatch_size, dispatch_size * CHUNK_LOD_LEVELS});
         },
     });

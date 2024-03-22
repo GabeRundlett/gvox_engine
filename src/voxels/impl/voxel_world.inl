@@ -88,17 +88,7 @@ struct ChunkAllocComputePush {
 
 struct VoxelWorld {
     VoxelWorldBuffers buffers;
-    daxa_u32 debug_page_count{};
-    daxa_u32 debug_gpu_heap_usage{};
     bool gpu_malloc_initialized = false;
-
-    // virtual void add_ui() override {
-    //     if (ImGui::TreeNode("Voxel World")) {
-    //         ImGui::Text("Page count: %u pages (%.2f MB)", debug_page_count, static_cast<double>(debug_page_count) * VOXEL_MALLOC_PAGE_SIZE_BYTES / 1'000'000.0);
-    //         ImGui::Text("GPU heap usage: %.2f MB", static_cast<double>(debug_gpu_heap_usage) / 1'000'000);
-    //         ImGui::TreePop();
-    //     }
-    // }
 
     void init_gpu_malloc(GpuContext &gpu_context);
     void record_startup(GpuContext &gpu_context);

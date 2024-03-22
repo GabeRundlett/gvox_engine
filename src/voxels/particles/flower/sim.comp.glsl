@@ -135,7 +135,7 @@ void main() {
     rand_seed(particle_index);
 
     Voxel flower_voxel = unpack_voxel(self.packed_voxel);
-    uvec3 chunk_n = uvec3(1u << LOG2_CHUNKS_PER_LEVEL_PER_AXIS);
+    uvec3 chunk_n = uvec3(CHUNKS_PER_AXIS);
     vec3 origin_ws = get_particle_worldspace_origin(gpu_input, self.origin);
     PackedVoxel ground_voxel_data = sample_voxel_chunk(VOXELS_BUFFER_PTRS, chunk_n, origin_ws, vec3(0));
     Voxel ground_voxel = unpack_voxel(ground_voxel_data);

@@ -110,7 +110,7 @@ auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers,
 
     auto transmittance_lut = self.sky.transmittance_lut.task_resource.view();
     auto sky_lut = self.sky.sky_lut.task_resource.view();
-    auto ibl_cube = self.sky.ibl_cube.task_resource.view();
+    auto ibl_cube = self.sky.ibl_cube.task_resource.view().view({.base_array_layer = 0, .layer_count = 6});
     auto ae_lut = self.sky.aerial_perspective_lut.task_resource.view();
     gpu_context.frame_task_graph.use_persistent_image(self.sky.transmittance_lut.task_resource);
     gpu_context.frame_task_graph.use_persistent_image(self.sky.sky_lut.task_resource);
