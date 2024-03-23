@@ -571,9 +571,11 @@ TreeSDFNrm sd_maple_tree(in vec3 p, in vec3 seed) {
 }
 
 void brush_maple_tree(in out Voxel voxel) {
-    float tree_size = good_rand(brush_input.pos);
+    vec3 tree_pos = brush_input.pos + brush_input.pos_offset;
+
+    float tree_size = good_rand(tree_pos);
     float space_scl = 1.5 - tree_size * 0.5;
-    TreeSDFNrm tree = sd_maple_tree((voxel_pos - brush_input.pos) * space_scl, brush_input.pos);
+    TreeSDFNrm tree = sd_maple_tree((voxel_pos - tree_pos) * space_scl, tree_pos);
     tree.wood /= space_scl;
     tree.leaves /= space_scl;
 

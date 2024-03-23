@@ -68,25 +68,6 @@ void agxLook(inout vec3 color) {
     color = max(luma + saturation * (color - luma), vec3(0.0));
 }
 
-const float exposureBias = 1.0;
-const float calibration = 12.5;        // Light meter calibration
-const float sensorSensitivity = 100.0; // Sensor sensitivity
-
-float computeEV100fromLuminance(float luminance) {
-    return log2(luminance * sensorSensitivity * exposureBias / calibration);
-}
-
-float computeExposureFromEV100(float ev100) {
-    return 1.0 / (1.2 * exp2(ev100));
-}
-
-float computeExposure(float averageLuminance) {
-    float ev100 = computeEV100fromLuminance(averageLuminance);
-    float exposure = computeExposureFromEV100(ev100);
-
-    return exposure;
-}
-
 vec3 color_correct(vec3 x) {
     agx(x);
     agxLook(x);
