@@ -65,7 +65,7 @@
         {
             "name": "windows-dist",
             "displayName": "Windows Distribution",
-            "inherits": [ "cl-x86_64-windows-msvc" ],
+            "inherits": [ "clang-x86_64-windows-msvc" ],
             "cacheVariables": {
                 "GVOX_ENGINE_INSTALL": true
             }
@@ -91,6 +91,8 @@
         { "name": "gcc-x86_64-linux-gnu-release", "displayName": "G++ x86_64 Linux (GNU ABI) Release", "configurePreset": "gcc-x86_64-linux-gnu", "configuration": "Release" },
         { "name": "clang-x86_64-linux-gnu-debug", "displayName": "Clang x86_64 Linux (GNU ABI) Debug", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "Debug" },
         { "name": "clang-x86_64-linux-gnu-relwithdebinfo", "displayName": "Clang x86_64 Linux (GNU ABI) RelWithDebInfo", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "RelWithDebInfo" },
-        { "name": "clang-x86_64-linux-gnu-release", "displayName": "Clang x86_64 Linux (GNU ABI) Release", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "Release" }
+        { "name": "clang-x86_64-linux-gnu-release", "displayName": "Clang x86_64 Linux (GNU ABI) Release", "configurePreset": "clang-x86_64-linux-gnu", "configuration": "Release" },
+        { "name": "windows-dist-release", "displayName": "Windows Distribution", "configurePreset": "windows-dist", "configuration": "Release" },
+        { "name": "linux-dist-release", "displayName": "Linux Distribution", "configurePreset": "linux-dist", "configuration": "Release" }
     ]
 }
