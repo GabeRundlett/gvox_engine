@@ -8,7 +8,7 @@ template <typename T>
 concept IsVoxelWorld = requires(T x, GpuContext &g, VoxelParticles &p) {
     { x.buffers };
     { x.record_startup(g) };
-    { x.begin_frame(g.device, VoxelWorldOutput{}) };
+    { x.begin_frame(g.device, GpuInput{}, VoxelWorldOutput{}) };
     { x.record_frame(g, daxa::TaskBufferView{}, daxa::TaskImageView{}, p) };
 };
 

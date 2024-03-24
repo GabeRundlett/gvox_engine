@@ -782,6 +782,8 @@ daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
 daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 daxa_RWBufferPtr(VoxelMallocPageAllocator) voxel_malloc_page_allocator = push.uses.voxel_malloc_page_allocator;
+daxa_RWBufferPtr(ChunkUpdate) chunk_updates = push.uses.chunk_updates;
+daxa_RWBufferPtr(uint) chunk_update_heap = push.uses.chunk_update_heap;
 
 #extension GL_EXT_shader_atomic_int64 : require
 
@@ -813,6 +815,16 @@ void process_palette_region(uint palette_region_voxel_index, uint my_voxel, in o
     atomicMax(palette_size, my_palette_index);
     // Necessary so that all threads have the same `palette_size` value
     barrier();
+}
+
+shared uint output_offset;
+void alloc_output(uint palette_region_voxel_index, uint compressed_size) {
+    if (palette_region_voxel_index == 0 && compressed_size > 0) {
+        output_offset = atomicAdd(deref(voxel_globals).chunk_update_heap_alloc_n, compressed_size);
+    }
+
+    barrier();
+    memoryBarrierShared();
 }
 
 #define VOXEL_WORLD deref(voxel_globals)
@@ -908,10 +920,28 @@ void main() {
     barrier();
     memoryBarrierShared();
 
+    alloc_output(palette_region_voxel_index, compressed_size);
+    uint frame_index = deref(gpu_input).frame_index % (FRAMES_IN_FLIGHT + 1);
+
     if (palette_region_voxel_index < compressed_size) {
         daxa_RWBufferPtr(uint) blob_u32s;
         voxel_malloc_address_to_u32_ptr(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(voxel_malloc_page_allocator)), blob_ptr, blob_u32s);
         deref(advance(blob_u32s, PALETTE_ACCELERATION_STRUCTURE_SIZE_U32S + palette_region_voxel_index)) = compression_result[palette_region_voxel_index];
+        deref(advance(chunk_update_heap, frame_index * MAX_CHUNK_UPDATES_PER_FRAME_VOXEL_COUNT + output_offset + palette_region_voxel_index)) = compression_result[palette_region_voxel_index];
+    }
+    if (palette_region_voxel_index == 0) {
+        CpuChunkUpdateInfo chunk_update_info;
+        chunk_update_info.chunk_index = chunk_index;
+        chunk_update_info.flags = 1;
+        deref(advance(chunk_updates, frame_index * MAX_CHUNK_UPDATES_PER_FRAME + temp_chunk_index)).info = chunk_update_info;
+        PaletteHeader palette_header;
+        palette_header.variant_n = palette_size;
+        if (compressed_size == 0) {
+            palette_header.blob_ptr = my_voxel;
+        } else {
+            palette_header.blob_ptr = output_offset;
+        }
+        deref(advance(chunk_updates, frame_index * MAX_CHUNK_UPDATES_PER_FRAME + temp_chunk_index)).palette_headers[palette_region_index] = palette_header;
     }
 
     if (palette_size > 1 && palette_region_voxel_index < 1) {

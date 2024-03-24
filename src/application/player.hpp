@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input.inl"
+#include <voxels/voxel_world.inl>
 
 struct PlayerInput {
     daxa_u32vec2 frame_dim;
@@ -18,4 +19,4 @@ using vec3 = daxa_f32vec3;
 void apply_friction(PlayerInput &INPUT, vec3 &vel, vec3 &friction_vec, float friction_coeff);
 void player_fix_chunk_offset(Player &PLAYER);
 void player_startup(Player &PLAYER);
-void player_perframe(PlayerInput &INPUT, Player &PLAYER);
+void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world);

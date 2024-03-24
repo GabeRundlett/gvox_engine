@@ -3,6 +3,7 @@
 DAXA_DECL_PUSH_CONSTANT(VoxelWorldPerframeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_RWBufferPtr(GpuOutput) gpu_output = push.uses.gpu_output;
+daxa_RWBufferPtr(ChunkUpdate) chunk_updates = push.uses.chunk_updates;
 VOXELS_USE_BUFFERS_PUSH_USES(daxa_RWBufferPtr)
 
 #include <renderer/kajiya/inc/camera.glsl>
@@ -13,12 +14,16 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     VoxelRWBufferPtrs ptrs = VOXELS_RW_BUFFER_PTRS;
 
+    uint frame_index = deref(gpu_input).frame_index % (FRAMES_IN_FLIGHT + 1);
     for (uint i = 0; i < MAX_CHUNK_UPDATES_PER_FRAME; ++i) {
         deref(ptrs.globals).chunk_update_infos[i].brush_flags = 0;
         deref(ptrs.globals).chunk_update_infos[i].i = INVALID_CHUNK_I;
+
+        deref(advance(chunk_updates, frame_index * MAX_CHUNK_UPDATES_PER_FRAME + i)).info.flags = 0;
     }
 
     deref(ptrs.globals).chunk_update_n = 0;
+    deref(ptrs.globals).chunk_update_heap_alloc_n = 0;
 
     deref(ptrs.globals).prev_offset = deref(ptrs.globals).offset;
     deref(ptrs.globals).offset = deref(gpu_input).player.player_unit_offset;

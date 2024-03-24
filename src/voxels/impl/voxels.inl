@@ -74,11 +74,22 @@ struct VoxelWorldGlobals {
     VoxelWorldGpuIndirectDispatch indirect_dispatch;
 
     VoxelChunkUpdateInfo chunk_update_infos[MAX_CHUNK_UPDATES_PER_FRAME];
-    daxa_u32 chunk_update_n; // Number of chunks to update
     daxa_i32vec3 prev_offset;
+    daxa_u32 chunk_update_n; // Number of chunks to update
     daxa_i32vec3 offset;
+    daxa_u32 chunk_update_heap_alloc_n;
 };
 DAXA_DECL_BUFFER_PTR(VoxelWorldGlobals)
+
+struct CpuChunkUpdateInfo {
+    daxa_u32 chunk_index;
+    daxa_u32 flags;
+};
+struct ChunkUpdate {
+    CpuChunkUpdateInfo info;
+    PaletteHeader palette_headers[PALETTES_PER_CHUNK];
+};
+DAXA_DECL_BUFFER_PTR(ChunkUpdate)
 
 #define VOXEL_BUFFER_USE_N 3
 
@@ -119,6 +130,8 @@ struct VoxelRWBufferPtrs {
 #define VOXELS_BUFFER_PTRS VoxelBufferPtrs(daxa_BufferPtr(VoxelMallocPageAllocator)(as_address(voxel_malloc_page_allocator)), daxa_BufferPtr(VoxelLeafChunk)(as_address(voxel_chunks)), daxa_BufferPtr(VoxelWorldGlobals)(as_address(voxel_globals)))
 #define VOXELS_RW_BUFFER_PTRS VoxelRWBufferPtrs(daxa_RWBufferPtr(VoxelMallocPageAllocator)(as_address(voxel_malloc_page_allocator)), daxa_RWBufferPtr(VoxelLeafChunk)(as_address(voxel_chunks)), daxa_RWBufferPtr(VoxelWorldGlobals)(as_address(voxel_globals)))
 
+#define MAX_CHUNK_UPDATES_PER_FRAME_VOXEL_COUNT (CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * MAX_CHUNK_UPDATES_PER_FRAME)
+
 #if defined(__cplusplus)
 
 #include <utilities/allocator.inl>
@@ -126,6 +139,8 @@ struct VoxelRWBufferPtrs {
 struct VoxelWorldBuffers {
     TemporalBuffer voxel_globals;
     TemporalBuffer voxel_chunks;
+    TemporalBuffer chunk_updates;
+    TemporalBuffer chunk_update_heap;
     AllocatorBufferState<VoxelMallocPageAllocator> voxel_malloc;
     // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
     // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;

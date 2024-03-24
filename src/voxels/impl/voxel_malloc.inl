@@ -5,8 +5,20 @@
 
 #define CHUNK_SIZE 64 // A chunk = 64^3 voxels
 #define CHUNKS_PER_AXIS 32
-#define CHUNK_LOD_LEVELS 1
 #define CHUNKS_DISPATCH_SIZE (CHUNKS_PER_AXIS / 8)
+
+#define LOG2_VOXEL_SIZE (-4)
+#if LOG2_VOXEL_SIZE <= 0
+#define VOXEL_SCL (1 << (-LOG2_VOXEL_SIZE))
+#define VOXEL_SIZE (1.0 / VOXEL_SCL)
+#else
+#define VOXEL_SIZE (1 << LOG2_VOXEL_SIZE)
+#define VOXEL_SCL (1.0 / VOXEL_SIZE)
+#endif
+#define CHUNK_WORLDSPACE_SIZE (float(CHUNK_SIZE) * float(VOXEL_SIZE))
+#if LOG2_VOXEL_SIZE < -6
+#error "this is not currently supported"
+#endif
 
 #define PALETTE_REGION_SIZE 8
 #define PALETTE_REGION_TOTAL_SIZE (PALETTE_REGION_SIZE * PALETTE_REGION_SIZE * PALETTE_REGION_SIZE)

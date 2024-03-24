@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME}
     "src/application/audio.cpp"
     "src/application/settings.cpp"
     "src/application/player.cpp"
+    "src/utilities/math.cpp"
     "src/utilities/debug.cpp"
     "src/utilities/gpu_context.cpp"
     "src/utilities/mesh/mesh_model.cpp"

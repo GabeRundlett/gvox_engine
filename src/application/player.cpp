@@ -1,119 +1,25 @@
 #include "player.hpp"
 
 #include <bit>
-#include <glm/glm.hpp>
 #include <fmt/format.h>
 
 #include <application/settings.hpp>
-#include <renderer/kajiya/inc/math_const.glsl>
 #include <utilities/debug.hpp>
-
-using vec4 = daxa_f32vec4;
-using vec2 = daxa_f32vec2;
-using ivec3 = daxa_i32vec3;
-
-float dot(vec3 a, vec3 b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-float length(vec3 v) {
-    return sqrt(dot(v, v));
-}
-
-vec3 normalize(vec3 v) {
-    float len = length(v);
-    v.x /= len;
-    v.y /= len;
-    v.z /= len;
-    return v;
-}
-
-vec3 operator+(vec3 a, vec3 b) {
-    return {a.x + b.x, a.y + b.y, a.z + b.z};
-}
-ivec3 operator+(ivec3 a, ivec3 b) {
-    return {a.x + b.x, a.y + b.y, a.z + b.z};
-}
-vec3 operator-(vec3 a, vec3 b) {
-    return {a.x - b.x, a.y - b.y, a.z - b.z};
-}
-vec3 operator*(vec3 a, vec3 b) {
-    return {a.x * b.x, a.y * b.y, a.z * b.z};
-}
-vec3 operator*(vec3 a, float b) {
-    return {a.x * b, a.y * b, a.z * b};
-}
-
+#include <utilities/math.hpp>
 using std::clamp;
-
-glm::mat4 rotation_matrix(float yaw, float pitch, float roll) {
-    float sin_rot_x = sin(pitch), cos_rot_x = cos(pitch);
-    float sin_rot_y = sin(roll), cos_rot_y = cos(roll);
-    float sin_rot_z = sin(yaw), cos_rot_z = cos(yaw);
-    return glm::mat4(
-               cos_rot_z, -sin_rot_z, 0, 0,
-               sin_rot_z, cos_rot_z, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1) *
-           glm::mat4(
-               1, 0, 0, 0,
-               0, cos_rot_x, sin_rot_x, 0,
-               0, -sin_rot_x, cos_rot_x, 0,
-               0, 0, 0, 1) *
-           glm::mat4(
-               cos_rot_y, -sin_rot_y, 0, 0,
-               sin_rot_y, cos_rot_y, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1);
-}
-glm::mat4 inv_rotation_matrix(float yaw, float pitch, float roll) {
-    float sin_rot_x = sin(-pitch), cos_rot_x = cos(-pitch);
-    float sin_rot_y = sin(-roll), cos_rot_y = cos(-roll);
-    float sin_rot_z = sin(-yaw), cos_rot_z = cos(-yaw);
-    return glm::mat4(
-               cos_rot_y, -sin_rot_y, 0, 0,
-               sin_rot_y, cos_rot_y, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1) *
-           glm::mat4(
-               1, 0, 0, 0,
-               0, cos_rot_x, sin_rot_x, 0,
-               0, -sin_rot_x, cos_rot_x, 0,
-               0, 0, 0, 1) *
-           glm::mat4(
-               cos_rot_z, -sin_rot_z, 0, 0,
-               sin_rot_z, cos_rot_z, 0, 0,
-               0, 0, 1, 0,
-               0, 0, 0, 1);
-}
-glm::mat4 translation_matrix(vec3 pos) {
-    return glm::mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        pos.x, pos.y, pos.z, 1);
-}
-
-vec3 apply_inv_rotation(vec3 pt, vec3 ypr) {
-    float yaw = ypr.x;
-    float pitch = ypr.y;
-    float roll = ypr.z;
-    auto res = inv_rotation_matrix(yaw, pitch, roll) * glm::vec4(pt.x, pt.y, pt.z, 0.0);
-    return {res.x, res.y, res.z};
-}
 
 void player_fix_chunk_offset(Player &PLAYER) {
     PLAYER.prev_unit_offset = PLAYER.player_unit_offset;
 #if ENABLE_CHUNK_WRAPPING
     const bool wrap_position = AppSettings::get<settings::Checkbox>("Player", "Wrap Position").value;
     if (wrap_position) {
-        PLAYER.player_unit_offset = PLAYER.player_unit_offset + ivec3(floor(PLAYER.pos.x), floor(PLAYER.pos.y), floor(PLAYER.pos.z));
+        PLAYER.player_unit_offset = PLAYER.player_unit_offset + daxa_i32vec3(floor(PLAYER.pos.x), floor(PLAYER.pos.y), floor(PLAYER.pos.z));
         PLAYER.pos = {PLAYER.pos.x - floor(PLAYER.pos.x), PLAYER.pos.y - floor(PLAYER.pos.y), PLAYER.pos.z - floor(PLAYER.pos.z)};
     }
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!
-    PLAYER.pos = PLAYER.pos + vec3(PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z);
-    PLAYER.player_unit_offset = ivec3(0);
+    PLAYER.pos = PLAYER.pos + daxa_f32vec3(PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z);
+    PLAYER.player_unit_offset = daxa_i32vec3(0);
 #endif
 }
 
@@ -132,7 +38,7 @@ void player_startup(Player &PLAYER) {
 
     PLAYER.pos = vec3(0.01f, 0.02f, 0.03f + ground_level);
     PLAYER.vel = vec3(0.0);
-    PLAYER.player_unit_offset = ivec3(0, 0, 0);
+    PLAYER.player_unit_offset = daxa_i32vec3(0, 0, 0);
     // PLAYER.pos = vec3(150.01, 150.02, 80.03);
     // PLAYER.pos = vec3(66.01, 38.02, 14.01);
 
@@ -155,7 +61,12 @@ void player_startup(Player &PLAYER) {
     player_fix_chunk_offset(PLAYER);
 }
 
-void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
+void toggle_fly(Player &PLAYER) {
+    auto is_flying = (PLAYER.flags >> 6) & 0x1;
+    PLAYER.flags = (PLAYER.flags & ~(0x1 << 6)) | ((1 - is_flying) << 6);
+}
+
+void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world) {
     const float mouse_sens = 1.0f;
 
     if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
@@ -183,7 +94,13 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     PLAYER.forward = std::bit_cast<vec3>(forward);
     PLAYER.lateral = std::bit_cast<vec3>(lateral);
 
-    const bool is_flying = true;
+    if (INPUT.actions[GAME_ACTION_TOGGLE_FLY] != 0) {
+        toggle_fly(PLAYER);
+        PLAYER.vel = vec3(0, 0, 0);
+    }
+
+    const bool is_flying = ((PLAYER.flags >> 6) & 0x1) == 1;
+    const bool is_on_ground = ((PLAYER.flags >> 1) & 0x1) == 1;
 
     const float speed = AppSettings::get<settings::InputFloat>("Player", "Movement Speed").value;
     const float sprint_speed = AppSettings::get<settings::InputFloat>("Player", "Sprint Multiplier").value;
@@ -198,18 +115,79 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         move_vec = move_vec + move_lateral;
 
     float applied_speed = speed;
-    if ((INPUT.actions[GAME_ACTION_SPRINT] != 0) == is_flying)
+    if ((INPUT.actions[GAME_ACTION_SPRINT] != 0) != 0)
         applied_speed *= sprint_speed;
 
-    if (INPUT.actions[GAME_ACTION_JUMP] != 0)
-        move_vec = move_vec + vec3(0, 0, 1);
-    if (INPUT.actions[GAME_ACTION_CROUCH] != 0)
-        move_vec = move_vec - vec3(0, 0, 1);
+    vec3 acc = vec3(0, 0, 0);
 
-    PLAYER.vel = move_vec * applied_speed;
-    PLAYER.pos = PLAYER.pos + PLAYER.vel * INPUT.delta_time;
+    if (is_flying) {
+        if (INPUT.actions[GAME_ACTION_JUMP] != 0)
+            move_vec = move_vec + vec3(0, 0, 1);
+        if (INPUT.actions[GAME_ACTION_CROUCH] != 0)
+            move_vec = move_vec - vec3(0, 0, 1);
+    } else {
+        if (is_on_ground && INPUT.actions[GAME_ACTION_JUMP] != 0)
+            PLAYER.vel.z = 4.0f;
+        else
+            acc.z = -9.8f;
+    }
+
+    float dt = std::min(INPUT.delta_time, 0.1f);
+
+    PLAYER.vel = PLAYER.vel + acc * dt;
+    auto offset = (PLAYER.vel + move_vec * applied_speed) * dt;
+    PLAYER.pos = PLAYER.pos + offset;
+
+    PLAYER.flags &= ~(1u << 0x1);
+    bool inside_terrain = false;
+    int32_t voxel_height = 1.8f * VOXEL_SCL;
+
+    for (int32_t xi = -2; xi <= 2; ++xi) {
+        for (int32_t yi = -2; yi <= 2; ++yi) {
+            for (int32_t zi = 0; zi < voxel_height; ++zi) {
+                auto in_voxel = voxel_world.sample(PLAYER.pos - vec3(0, 0, 1.8f) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+                if (in_voxel) {
+                    inside_terrain = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (inside_terrain) {
+        bool space_above = false;
+        for (int32_t zi = 0; zi < voxel_height / 2; ++zi) {
+            bool found_voxel = false;
+            for (int32_t xi = -2; xi <= 2; ++xi) {
+                if (found_voxel) {
+                    break;
+                }
+                for (int32_t yi = -2; yi <= 2; ++yi) {
+                    if (found_voxel) {
+                        break;
+                    }
+                    auto solid = voxel_world.sample(PLAYER.pos - vec3(0, 0, 1.8f) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+                    if (solid) {
+                        found_voxel = true;
+                    }
+                }
+            }
+            if (!found_voxel) {
+                space_above = true;
+                PLAYER.pos = PLAYER.pos + vec3(0, 0, VOXEL_SIZE * zi);
+                PLAYER.pos.z = floor(PLAYER.pos.z * VOXEL_SCL) * VOXEL_SIZE;
+                PLAYER.flags |= (1u << 0x1);
+                PLAYER.vel.z = 0;
+                break;
+            }
+        }
+        if (!space_above) {
+            PLAYER.pos = PLAYER.pos - offset;
+        }
+    }
 
     player_fix_chunk_offset(PLAYER);
+    // debug_utils::DebugDisplay::set_debug_string("Player In Voxel", fmt::format("{}", in_voxel));
 
     float tan_half_fov = tan(INPUT.fov * 0.5f);
     float aspect = float(INPUT.frame_dim.x) / float(INPUT.frame_dim.y);
@@ -234,7 +212,7 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     PLAYER.cam.clip_to_view.z.w = +1.0f / near;
     PLAYER.cam.clip_to_view.w.z = -1.0f;
 
-    vec2 sample_offset = vec2(
+    daxa_f32vec2 sample_offset = daxa_f32vec2(
         INPUT.halton_jitter.x / float(INPUT.frame_dim.x),
         INPUT.halton_jitter.y / float(INPUT.frame_dim.y));
 
