@@ -29,6 +29,7 @@ constexpr auto ceil_log2(uint32_t x) -> uint32_t {
 float dot(daxa_f32vec3 a, daxa_f32vec3 b);
 float length(daxa_f32vec3 v);
 daxa_f32vec3 normalize(daxa_f32vec3 v);
+daxa_f32vec3 sign(daxa_f32vec3 v);
 
 daxa_f32vec3 operator+(daxa_f32vec3 a, daxa_f32vec3 b);
 daxa_i32vec3 operator+(daxa_i32vec3 a, daxa_i32vec3 b);

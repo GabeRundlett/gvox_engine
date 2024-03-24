@@ -59,6 +59,7 @@ struct Camera {
 struct Player {
     Camera cam;
     daxa_f32vec3 pos; // Player (mod 1) position centered around 0.5 [0-1] (in meters)
+    daxa_f32vec3 cam_pos_offset;
     daxa_f32vec3 vel;
     daxa_f32 pitch, yaw, roll;
     daxa_f32vec3 forward, lateral;

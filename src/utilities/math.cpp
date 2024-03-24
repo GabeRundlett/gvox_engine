@@ -16,6 +16,22 @@ daxa_f32vec3 normalize(daxa_f32vec3 v) {
     return v;
 }
 
+namespace {
+    float sign(float x) {
+        if (x < 0.0f) {
+            return -1.0f;
+        } else if (x > 0.0f) {
+            return 1.0f;
+        } else {
+            return 0.0f;
+        }
+    }
+} // namespace
+
+daxa_f32vec3 sign(daxa_f32vec3 v) {
+    return {sign(v.x), sign(v.y), sign(v.z)};
+}
+
 daxa_f32vec3 operator+(daxa_f32vec3 a, daxa_f32vec3 b) {
     return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
