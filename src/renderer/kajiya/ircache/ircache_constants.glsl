@@ -32,7 +32,7 @@ const uint IRCACHE_IRRADIANCE_STRIDE = 3;
 
 const uint IRCACHE_SAMPLES_PER_FRAME = 4;
 const uint IRCACHE_VALIDATION_SAMPLES_PER_FRAME = 4;
-const uint IRCACHE_RESTIR_M_CLAMP = 30;
+const uint IRCACHE_RESTIR_M_CLAMP = 250;
 
 #include <utilities/gpu/normal.glsl>
 

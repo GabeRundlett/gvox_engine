@@ -4,10 +4,10 @@
 #include <utilities/gpu/defs.glsl>
 
 #define DIFFUSE_GI_USE_RESTIR 1
-#define RESTIR_TEMPORAL_M_CLAMP 20.0
+#define RESTIR_TEMPORAL_M_CLAMP 250.0
 
 // Reduces fireflies, but causes darkening in corners
-#define RESTIR_RESERVOIR_W_CLAMP 10.0
+#define RESTIR_RESERVOIR_W_CLAMP 250.0
 // RTDGI_RESTIR_USE_JACOBIAN_BASED_REJECTION covers the same niche.
 //#define RESTIR_RESERVOIR_W_CLAMP 1e5
 
@@ -39,7 +39,7 @@ const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;
 // in more frequent validation, but less frequent candidate generation.
 // Note that validation also updates irradiance values, so those frames are not useless
 // for the purpose of integration either.
-#define RTDGI_INTERLEAVED_VALIDATION_PERIOD 3
+#define RTDGI_INTERLEAVED_VALIDATION_PERIOD 16
 
 // If `1`, we will always trace candidate rays, but keep them short on frames where
 // `is_rtdgi_tracing_frame` yields false.

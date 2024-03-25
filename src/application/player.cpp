@@ -34,6 +34,7 @@ void player_startup(Player &PLAYER) {
     AppSettings::add<settings::InputFloat>({"Player", "Crouch Multiplier", {.value = 0.5f}});
     AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = true}});
     AppSettings::add<settings::InputFloat>({"Player", "Jump Strength (meters on Earth)", {.value = 2.0f}});
+    AppSettings::add<settings::InputFloat>({"Player", "Height", {.value = 1.75f}});
     AppSettings::add<settings::InputFloat>({"Player", "Crouch Height", {.value = 1.0f}});
 
     // float ground_level = AppSettings::get<settings::InputFloat>("Atmosphere", "atmosphere_bottom").value * 1000.0f + 2000.0f;
@@ -126,7 +127,9 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
     const float sprint_speed = AppSettings::get<settings::InputFloat>("Player", "Sprint Multiplier").value;
     const float crouch_speed = AppSettings::get<settings::InputFloat>("Player", "Crouch Multiplier").value;
     const float jump_strength = AppSettings::get<settings::InputFloat>("Player", "Jump Strength (meters on Earth)").value;
+    const float player_height = AppSettings::get<settings::InputFloat>("Player", "Height").value;
     const float crouch_height = AppSettings::get<settings::InputFloat>("Player", "Crouch Height").value;
+    float height = player_height;
 
     if (INPUT.actions[GAME_ACTION_MOVE_FORWARD] != 0)
         move_vec = move_vec + move_forward;
@@ -145,8 +148,6 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
 
     vec3 acc = vec3(0, 0, 0);
 
-    float player_height = 1.75f;
-
     if (is_flying) {
         if (INPUT.actions[GAME_ACTION_JUMP] != 0)
             move_vec = move_vec + vec3(0, 0, 1);
@@ -160,15 +161,15 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
 
         if (INPUT.actions[GAME_ACTION_CROUCH] != 0) {
             if (!is_crouched) {
-                PLAYER.pos.z -= player_height - crouch_height;
-                PLAYER.cam_pos_offset.z += player_height - crouch_height;
+                PLAYER.pos.z -= height - crouch_height;
+                PLAYER.cam_pos_offset.z += height - crouch_height;
             }
-            player_height = crouch_height;
+            height = crouch_height;
             PLAYER.flags |= (1u << 2);
         } else {
             if (is_crouched) {
-                PLAYER.pos.z += player_height - crouch_height;
-                PLAYER.cam_pos_offset.z -= player_height - crouch_height;
+                PLAYER.pos.z += height - crouch_height;
+                PLAYER.cam_pos_offset.z -= height - crouch_height;
             }
             PLAYER.flags &= ~(1u << 2);
         }
@@ -182,12 +183,12 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
 
     PLAYER.flags &= ~(1u << 0x1);
     bool inside_terrain = false;
-    int32_t voxel_height = player_height * VOXEL_SCL + 2;
+    int32_t voxel_height = height * VOXEL_SCL + 1;
 
     for (int32_t xi = -2; xi <= 2; ++xi) {
         for (int32_t yi = -2; yi <= 2; ++yi) {
-            for (int32_t zi = 0; zi < voxel_height; ++zi) {
-                auto in_voxel = voxel_world.sample(PLAYER.pos - vec3(0, 0, player_height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+            for (int32_t zi = 0; zi <= voxel_height; ++zi) {
+                auto in_voxel = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
                 if (in_voxel) {
                     inside_terrain = true;
                     break;
@@ -209,7 +210,7 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
                     if (found_voxel) {
                         break;
                     }
-                    auto solid = voxel_world.sample(PLAYER.pos - vec3(0, 0, player_height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+                    auto solid = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
                     if (solid) {
                         found_voxel = true;
                     }
@@ -294,7 +295,7 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
     if (new_cam_pos_offset_sign.z != cam_pos_offset_sign.z)
         PLAYER.cam_pos_offset.z = 0.0f;
 
-    auto cam_pos = PLAYER.pos + PLAYER.cam_pos_offset + vec3(0, 0, -0.1f);
+    auto cam_pos = PLAYER.pos + PLAYER.cam_pos_offset + vec3(0, 0, -0.2f);
 
     PLAYER.cam.view_to_sample = std::bit_cast<mat4>(clip_to_sample * std::bit_cast<glm::mat4>(PLAYER.cam.view_to_clip));
     PLAYER.cam.sample_to_view = std::bit_cast<mat4>(std::bit_cast<glm::mat4>(PLAYER.cam.clip_to_view) * sample_to_clip);
