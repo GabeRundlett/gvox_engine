@@ -21,18 +21,16 @@ vec2 hammersley(uint i, uint n) {
     return vec2(float(i + 1) / n, radical_inverse_vdc(i + 1));
 }
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 2, local_size_y = 2, local_size_z = 32) in;
 void main() {
-    uvec3 px = gl_GlobalInvocationID.xyz;
-    uint face = px.z;
+    const uvec2 wg_base_pix_pos = gl_WorkGroupID.xy * uvec2(2, 2);
+    const uvec2 sg_pix_pos = wg_base_pix_pos + uvec2(gl_SubgroupID % 2, gl_SubgroupID / 2);
+    const uvec3 px = uvec3(sg_pix_pos, gl_WorkGroupID.z);
+    uint face = gl_WorkGroupID.z;
     vec2 uv = (px.xy + 0.5) / IBL_CUBE_RES;
 
     vec3 output_dir = normalize(CUBE_MAP_FACE_ROTATION(face) * vec3(uv * 2 - 1, -1.0));
     const mat3 basis = build_orthonormal_basis(output_dir);
-
-    const uint sample_count = 128;
-
-    uint rng = hash2(px.xy);
 
     vec3 result = vec3(0);
     // TODO: Now that we sample the atmosphere directly, computing this IBL is really slow.
@@ -43,21 +41,34 @@ void main() {
     // Otherwise, we want to fully convolve and cosine weight the IBL, for use as look-up in
     //   our simple lighting model.
     if ((push.flags & 1) == 1) {
-        for (uint i = 0; i < sample_count; ++i) {
-            vec2 urand = hammersley(i, sample_count);
+        const uint sample_count = 128;
+        const uint subgroup_size = 32;
+        const uint iter_count = sample_count / subgroup_size;
+
+        for (uint i = 0; i < iter_count; ++i) {
+            const uint sample_id = i * subgroup_size + gl_SubgroupInvocationID;
+            vec2 urand = hammersley(sample_id, sample_count);
             vec3 input_dir = basis * uniform_sample_cone(urand, 0.99);
             vec3 radiance_sample = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
-            result += radiance_sample;
+            result += subgroupInclusiveAdd(radiance_sample);
         }
+        result = result / sample_count;
     } else {
-        for (uint i = 0; i < sample_count; ++i) {
-            vec2 urand = hammersley(i, sample_count);
+        const uint sample_count = 512;
+        const uint subgroup_size = 32;
+        const uint iter_count = sample_count / subgroup_size;
+
+        for (uint i = 0; i < iter_count; ++i) {
+            const uint sample_id = i * subgroup_size + gl_SubgroupInvocationID;
+            vec2 urand = hammersley(sample_id, sample_count);
             vec3 input_dir = basis * uniform_sample_cone(urand, 0.00);
             vec3 radiance_sample = sky_radiance_in_direction(gpu_input, sky_lut, transmittance_lut, input_dir);
             radiance_sample *= dot(output_dir, input_dir);
-            result += radiance_sample;
+            result += subgroupInclusiveAdd(radiance_sample);
         }
+        result = result / sample_count;
     }
-
-    imageStore(daxa_image2DArray(ibl_cube), ivec3(px), vec4(result / sample_count, 1.0));
+    if (gl_SubgroupInvocationID == 31) {
+        imageStore(daxa_image2DArray(ibl_cube), ivec3(px), vec4(result, 1.0));
+    }
 }
