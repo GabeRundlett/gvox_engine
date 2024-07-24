@@ -28,7 +28,7 @@ void player_startup(Player &PLAYER) {
     AppSettings::add<settings::InputFloat>({"Player", "Movement Speed", {.value = 1.5f}});
     AppSettings::add<settings::InputFloat>({"Player", "Sprint Multiplier", {.value = 3.0f}});
     AppSettings::add<settings::InputFloat>({"Player", "Crouch Multiplier", {.value = 0.5f}});
-    AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = true}});
+    AppSettings::add<settings::Checkbox>({"Player", "Wrap Position", {.value = false}});
     AppSettings::add<settings::InputFloat>({"Player", "Jump Strength (meters on Earth)", {.value = 1.0f}});
     AppSettings::add<settings::InputFloat>({"Player", "Height", {.value = 1.75f}});
     AppSettings::add<settings::InputFloat>({"Player", "Crouch Height", {.value = 1.0f}});
