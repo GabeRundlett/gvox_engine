@@ -3,3 +3,6 @@
 
 imgui.ini
 *.dot
+.cache
+build
+compile_commands.json
