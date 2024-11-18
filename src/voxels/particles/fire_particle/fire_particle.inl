@@ -13,7 +13,7 @@ DAXA_DECL_BUFFER_PTR(FireParticle)
 
 DECL_SIMPLE_STATIC_ALLOCATOR(FireParticleAllocator, FireParticle, MAX_FIRE_PARTICLES, daxa_u32)
 
-DAXA_DECL_TASK_HEAD_BEGIN(FireParticleSimCompute, 5 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(FireParticleSimCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -26,7 +26,7 @@ struct FireParticleSimComputePush {
     DAXA_TH_BLOB(FireParticleSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(FireParticleCubeParticleRaster, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(FireParticleCubeParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -41,7 +41,7 @@ struct FireParticleCubeParticleRasterPush {
     DAXA_TH_BLOB(FireParticleCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(FireParticleCubeParticleShadowRaster, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(FireParticleCubeParticleShadowRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -53,7 +53,7 @@ struct FireParticleCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(FireParticleCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(FireParticleSplatParticleRaster, 8)
+DAXA_DECL_TASK_HEAD_BEGIN(FireParticleSplatParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)

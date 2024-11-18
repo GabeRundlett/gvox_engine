@@ -3,7 +3,7 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
@@ -13,7 +13,7 @@ struct SsaoComputePush {
     DAXA_TH_BLOB(SsaoCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SsaoSpatialFilterCompute, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoSpatialFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, vs_normal_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
@@ -24,7 +24,7 @@ struct SsaoSpatialFilterComputePush {
     DAXA_TH_BLOB(SsaoSpatialFilterCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SsaoUpscaleCompute, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoUpscaleCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
@@ -35,7 +35,7 @@ struct SsaoUpscaleComputePush {
     DAXA_TH_BLOB(SsaoUpscaleCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SsaoTemporalFilterCompute, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(SsaoTemporalFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_image_id)

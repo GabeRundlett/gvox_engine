@@ -3,7 +3,7 @@
 #include <core.inl>
 #include <application/input.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute, 3)
+DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)

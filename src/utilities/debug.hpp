@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <map>
+#include <memory>
 
 #include <application/settings.inl>
 #include <imgui.h>

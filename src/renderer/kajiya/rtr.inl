@@ -5,7 +5,7 @@
 #include <renderer/kajiya/ircache.inl>
 #include <renderer/kajiya/rtdgi.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrTraceCompute, 13 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrTraceCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32), ranking_tile_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32), scambling_tile_buf)
@@ -27,7 +27,7 @@ struct RtrTraceComputePush {
     DAXA_TH_BLOB(RtrTraceCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrValidateCompute, 12 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrValidateCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 IRCACHE_USE_BUFFERS()
@@ -48,7 +48,7 @@ struct RtrValidateComputePush {
     DAXA_TH_BLOB(RtrValidateCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirTemporalCompute, 20)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirTemporalCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -75,7 +75,7 @@ struct RtrRestirTemporalComputePush {
     DAXA_TH_BLOB(RtrRestirTemporalCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirResolveCompute, 20)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrRestirResolveCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -102,7 +102,7 @@ struct RtrRestirResolveComputePush {
     DAXA_TH_BLOB(RtrRestirResolveCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrTemporalFilterCompute, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrTemporalFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
@@ -118,7 +118,7 @@ struct RtrTemporalFilterComputePush {
     DAXA_TH_BLOB(RtrTemporalFilterCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtrSpatialFilterCompute, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(RtrSpatialFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_i32vec2), spatial_resolve_offsets)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)

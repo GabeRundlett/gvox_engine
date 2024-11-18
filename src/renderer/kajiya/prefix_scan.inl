@@ -2,14 +2,14 @@
 
 #include <core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan1Compute, 1)
+DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan1Compute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), inout_buf)
 DAXA_DECL_TASK_HEAD_END
 struct PrefixScan1ComputePush {
     daxa_u32 element_n;
     DAXA_TH_BLOB(PrefixScan1Compute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan2Compute, 2)
+DAXA_DECL_TASK_HEAD_BEGIN(PrefixScan2Compute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), input_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), output_buf)
 DAXA_DECL_TASK_HEAD_END
@@ -17,7 +17,7 @@ struct PrefixScan2ComputePush {
     daxa_u32 element_n;
     DAXA_TH_BLOB(PrefixScan2Compute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(PrefixScanMergeCompute, 2)
+DAXA_DECL_TASK_HEAD_BEGIN(PrefixScanMergeCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(daxa_u32), inout_buf)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_u32), segment_sum_buf)
 DAXA_DECL_TASK_HEAD_END

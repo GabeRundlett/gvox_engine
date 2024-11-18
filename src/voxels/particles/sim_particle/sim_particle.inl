@@ -13,7 +13,7 @@ struct SimulatedVoxelParticle {
 };
 DAXA_DECL_BUFFER_PTR(SimulatedVoxelParticle)
 
-DAXA_DECL_TASK_HEAD_BEGIN(SimParticleSimCompute, 6 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(SimParticleSimCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -26,7 +26,7 @@ struct SimParticleSimComputePush {
     DAXA_TH_BLOB(SimParticleSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SimParticleCubeParticleRaster, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(SimParticleCubeParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -41,7 +41,7 @@ struct SimParticleCubeParticleRasterPush {
     DAXA_TH_BLOB(SimParticleCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SimParticleCubeParticleShadowRaster, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(SimParticleCubeParticleShadowRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -53,7 +53,7 @@ struct SimParticleCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(SimParticleCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(SimParticleSplatParticleRaster, 8)
+DAXA_DECL_TASK_HEAD_BEGIN(SimParticleSplatParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)

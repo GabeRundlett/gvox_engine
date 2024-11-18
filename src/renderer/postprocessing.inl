@@ -4,7 +4,7 @@
 #include <application/input.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster, 3)
+DAXA_DECL_TASK_HEAD_BEGIN(PostprocessingRaster)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, composited_image_id)
 DAXA_TH_IMAGE_INDEX(COLOR_ATTACHMENT, REGULAR_2D, render_image)
@@ -13,7 +13,7 @@ struct PostprocessingRasterPush {
     DAXA_TH_BLOB(PostprocessingRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(DebugImageRaster)
 DAXA_TH_BUFFER_PTR(FRAGMENT_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, image_id)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D_ARRAY, cube_image_id)

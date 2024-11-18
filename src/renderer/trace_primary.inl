@@ -5,7 +5,7 @@
 
 #include <voxels/particles/voxel_particles.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute, 2 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TraceDepthPrepassCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, render_depth_prepass_image)
@@ -14,7 +14,7 @@ struct TraceDepthPrepassComputePush {
     DAXA_TH_BLOB(TraceDepthPrepassCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute, 8 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
@@ -29,7 +29,7 @@ struct TracePrimaryComputePush {
     DAXA_TH_BLOB(TracePrimaryCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(R32D32Blit, 2)
+DAXA_DECL_TASK_HEAD_BEGIN(R32D32Blit)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE(DEPTH_ATTACHMENT, REGULAR_2D, output_tex)
 DAXA_DECL_TASK_HEAD_END

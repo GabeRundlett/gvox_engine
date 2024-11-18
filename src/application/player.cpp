@@ -6,6 +6,8 @@
 #include <application/settings.hpp>
 #include <utilities/debug.hpp>
 #include <utilities/math.hpp>
+#include <cmath>
+
 using std::clamp;
 
 void player_fix_chunk_offset(Player &PLAYER) {
@@ -13,8 +15,8 @@ void player_fix_chunk_offset(Player &PLAYER) {
 #if ENABLE_CHUNK_WRAPPING
     const bool wrap_position = AppSettings::get<settings::Checkbox>("Player", "Wrap Position").value;
     if (wrap_position) {
-        PLAYER.player_unit_offset = PLAYER.player_unit_offset + daxa_i32vec3(floor(PLAYER.pos.x), floor(PLAYER.pos.y), floor(PLAYER.pos.z));
-        PLAYER.pos = {PLAYER.pos.x - floor(PLAYER.pos.x), PLAYER.pos.y - floor(PLAYER.pos.y), PLAYER.pos.z - floor(PLAYER.pos.z)};
+        PLAYER.player_unit_offset = PLAYER.player_unit_offset + daxa_i32vec3(floorf(PLAYER.pos.x), floorf(PLAYER.pos.y), floorf(PLAYER.pos.z));
+        PLAYER.pos = {PLAYER.pos.x - floorf(PLAYER.pos.x), PLAYER.pos.y - floorf(PLAYER.pos.y), PLAYER.pos.z - floorf(PLAYER.pos.z)};
     }
 #else
     // Logic to recover when debugging, and toggling the ENABLE_CHUNK_WRAPPING define!

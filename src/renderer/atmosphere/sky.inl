@@ -3,14 +3,14 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute, 2)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyTransmittanceComputePush {
     DAXA_TH_BLOB(SkyTransmittanceCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute, 3)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, multiscattering_lut)
@@ -18,7 +18,7 @@ DAXA_DECL_TASK_HEAD_END
 struct SkyMultiscatteringComputePush {
     DAXA_TH_BLOB(SkyMultiscatteringCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
@@ -27,7 +27,7 @@ DAXA_DECL_TASK_HEAD_END
 struct SkySkyComputePush {
     DAXA_TH_BLOB(SkySkyCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkyAeCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(SkyAeCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
@@ -37,7 +37,7 @@ struct SkyAeComputePush {
     DAXA_TH_BLOB(SkyAeCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ConvolveCubeCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(ConvolveCubeCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)

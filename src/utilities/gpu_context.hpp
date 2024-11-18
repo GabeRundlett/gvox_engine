@@ -81,7 +81,7 @@ struct GpuContext {
 
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
     auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, std::string const &shader_id) {
-        auto push_constant_size = static_cast<uint32_t>(::push_constant_size<PushT>() + TaskHeadT::attachment_shader_blob_size());
+        auto push_constant_size = static_cast<uint32_t>(sizeof(PushT));
         if constexpr (std::is_same_v<PipelineT, AsyncManagedComputePipeline>) {
             auto pipe_iter = compute_pipelines.find(shader_id);
             if (pipe_iter == compute_pipelines.end()) {

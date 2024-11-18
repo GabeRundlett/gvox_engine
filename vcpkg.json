@@ -25,8 +25,7 @@
     {
       "name": "glfw3",
       "features": [
-        "xlib",
-        "wayland"
+        "xlib"
       ]
     },
     {
@@ -38,7 +37,9 @@
     },
     {
       "name": "fsr2",
-      "features": [ "vulkan" ]
+      "features": [
+        "vulkan"
+      ]
     }
   ],
   "builtin-baseline": "78ba9711d30c64a6b40462c72f356c681e2255f3",

@@ -4,7 +4,7 @@
 #include <voxels/particles/voxel_particles.inl>
 #include "voxels.inl"
 
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldStartupCompute, 1 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldStartupCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 VOXELS_USE_BUFFERS(daxa_RWBufferPtr, COMPUTE_SHADER_READ_WRITE)
 DAXA_DECL_TASK_HEAD_END
@@ -12,7 +12,7 @@ struct VoxelWorldStartupComputePush {
     DAXA_TH_BLOB(VoxelWorldStartupCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldPerframeCompute, 3 + VOXEL_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelWorldPerframeCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(ChunkUpdate), chunk_updates)
@@ -22,7 +22,7 @@ struct VoxelWorldPerframeComputePush {
     DAXA_TH_BLOB(VoxelWorldPerframeCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute, 5)
+DAXA_DECL_TASK_HEAD_BEGIN(PerChunkCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelWorldGlobals), voxel_globals)
@@ -33,7 +33,7 @@ struct PerChunkComputePush {
     DAXA_TH_BLOB(PerChunkCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute, 9 + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N * 4)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
@@ -52,7 +52,7 @@ struct ChunkEditComputePush {
     DAXA_TH_BLOB(ChunkEditCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditPostProcessCompute, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkEditPostProcessCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuGvoxModel), gvox_model)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
@@ -65,7 +65,7 @@ struct ChunkEditPostProcessComputePush {
     DAXA_TH_BLOB(ChunkEditPostProcessCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkOptCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkOptCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(TempVoxelChunk), temp_voxel_chunks)
@@ -75,7 +75,7 @@ struct ChunkOptComputePush {
     DAXA_TH_BLOB(ChunkOptCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ChunkAllocCompute, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(ChunkAllocCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelWorldGlobals), voxel_globals)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(TempVoxelChunk), temp_voxel_chunks)

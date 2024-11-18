@@ -13,7 +13,7 @@ DAXA_DECL_BUFFER_PTR(GrassStrand)
 
 DECL_SIMPLE_STATIC_ALLOCATOR(GrassStrandAllocator, GrassStrand, MAX_GRASS_BLADES, daxa_u32)
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSimCompute, 6 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSimCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -27,7 +27,7 @@ struct GrassStrandSimComputePush {
     DAXA_TH_BLOB(GrassStrandSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleRaster, 10)
+DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -43,7 +43,7 @@ struct GrassStrandCubeParticleRasterPush {
     DAXA_TH_BLOB(GrassStrandCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleShadowRaster, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleShadowRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -56,7 +56,7 @@ struct GrassStrandCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(GrassStrandCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSplatParticleRaster, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSplatParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)

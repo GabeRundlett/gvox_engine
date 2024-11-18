@@ -14,7 +14,7 @@ DAXA_DECL_BUFFER_PTR(TreeParticle)
 DECL_SIMPLE_STATIC_ALLOCATOR(TreeParticleAllocator, TreeParticle, MAX_TREE_PARTICLES, daxa_u32)
 #define CONSERVATIVE_PARTICLE_PER_TREE_PARTICLE 2
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSimCompute, 5 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSimCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 VOXELS_USE_BUFFERS(daxa_BufferPtr, COMPUTE_SHADER_READ)
@@ -27,7 +27,7 @@ struct TreeParticleSimComputePush {
     DAXA_TH_BLOB(TreeParticleSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleRaster, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -42,7 +42,7 @@ struct TreeParticleCubeParticleRasterPush {
     DAXA_TH_BLOB(TreeParticleCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleShadowRaster, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleShadowRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
@@ -54,7 +54,7 @@ struct TreeParticleCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(TreeParticleCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSplatParticleRaster, 8)
+DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSplatParticleRaster)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)

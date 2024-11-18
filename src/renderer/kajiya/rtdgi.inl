@@ -4,7 +4,7 @@
 #include <renderer/core.inl>
 #include <renderer/kajiya/ircache.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiFullresReprojectCompute, 4)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiFullresReprojectCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reprojection_tex)
@@ -15,7 +15,7 @@ struct RtdgiFullresReprojectComputePush {
     DAXA_TH_BLOB(RtdgiFullresReprojectCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateCompute, 12 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -36,7 +36,7 @@ struct RtdgiValidateComputePush {
     DAXA_TH_BLOB(RtdgiValidateCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceCompute, 14 + VOXEL_BUFFER_USE_N + IRCACHE_BUFFER_USE_N)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -59,7 +59,7 @@ struct RtdgiTraceComputePush {
     DAXA_TH_BLOB(RtdgiTraceCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidityIntegrateCompute, 7)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidityIntegrateCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
@@ -74,7 +74,7 @@ struct RtdgiValidityIntegrateComputePush {
     DAXA_TH_BLOB(RtdgiValidityIntegrateCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute, 21)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirTemporalCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -102,7 +102,7 @@ struct RtdgiRestirTemporalComputePush {
     DAXA_TH_BLOB(RtdgiRestirTemporalCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirSpatialCompute, 11)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirSpatialCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, reservoir_input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, bounced_radiance_input_tex)
@@ -125,7 +125,7 @@ struct RtdgiRestirSpatialComputePush {
     DAXA_TH_BLOB(RtdgiRestirSpatialCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute, 15)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiRestirResolveCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, radiance_tex)
@@ -148,7 +148,7 @@ struct RtdgiRestirResolveComputePush {
     DAXA_TH_BLOB(RtdgiRestirResolveCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTemporalFilterCompute, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTemporalFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, history_tex)
@@ -165,7 +165,7 @@ struct RtdgiTemporalFilterComputePush {
     DAXA_TH_BLOB(RtdgiTemporalFilterCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(RtdgiSpatialFilterCompute, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(RtdgiSpatialFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
@@ -723,7 +723,7 @@ struct RtdgiRenderer {
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "irradiance_output_tex",
             });
-            
+
             auto rtdgi_debug_image = gpu_context.frame_task_graph.create_transient_image({
                 .format = daxa::Format::R32G32B32A32_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},

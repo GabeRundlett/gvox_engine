@@ -13,7 +13,7 @@
 #include "tree_particle/tree_particle.inl"
 #include "fire_particle/fire_particle.inl"
 
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute, 3 + VOXEL_BUFFER_USE_N + SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N * 4)
+DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(GpuOutput), gpu_output)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)

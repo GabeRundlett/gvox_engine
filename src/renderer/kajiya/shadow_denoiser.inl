@@ -3,7 +3,7 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(ShadowBitPackCompute, 3)
+DAXA_DECL_TASK_HEAD_BEGIN(ShadowBitPackCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
@@ -14,7 +14,7 @@ struct ShadowBitPackComputePush {
     DAXA_TH_BLOB(ShadowBitPackCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ShadowSpatialFilterCompute, 6)
+DAXA_DECL_TASK_HEAD_BEGIN(ShadowSpatialFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, meta_tex)
@@ -29,7 +29,7 @@ struct ShadowSpatialFilterComputePush {
     DAXA_TH_BLOB(ShadowSpatialFilterCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ShadowTemporalFilterCompute, 9)
+DAXA_DECL_TASK_HEAD_BEGIN(ShadowTemporalFilterCompute)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
 DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, bitpacked_shadow_mask_tex)

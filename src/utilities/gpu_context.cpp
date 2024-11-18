@@ -11,16 +11,7 @@
 
 GpuContext::GpuContext() {
     daxa_instance = daxa::create_instance({});
-    device = daxa_instance.create_device({
-        .flags = daxa::DeviceFlags2{
-            // .buffer_device_address_capture_replay_bit = false,
-            // .conservative_rasterization = true,
-            .shader_float16 = true,
-            // .robust_buffer_access = true,
-            // .robust_image_access = true,
-        },
-        .name = "device",
-    });
+    device = daxa_instance.create_device_2(daxa_instance.choose_device({}, {}));
     pipeline_manager = std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo{
         .device = device,
         .shader_compile_options = {
