@@ -312,7 +312,7 @@ void main() {
             // const float prev_to_hit_vis = -dot(sample_hit_normal_ws_dot.xyz, prev_dir_to_sample_hit_ws);
 
             const vec4 prev_rad =
-                safeTexelFetch(radiance_history_tex, ivec2(spx), 0) * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
+                safeTexelFetch(radiance_history_tex, ivec2(spx), 0); // * vec4((deref(gpu_input).pre_exposure_delta).xxx, 1);
 
             // From the ReSTIR paper:
             // With temporal reuse, the number of candidates M contributing to the

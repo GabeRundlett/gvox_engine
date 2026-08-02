@@ -284,15 +284,15 @@ void try_spawn_grass(in out Voxel voxel, vec3 nrm) {
         float v = flower_noise_val.x * (1.0 / 0.875);
 
         // voxel.color = pow(vec3(85, 166, 78) / 255.0 * 0.5, vec3(2.2));
-        voxel.color = hsv2rgb(vec3(0.11 + v * 0.15 + fract(r2 * 426.7) * 0.05, 0.7, 0.4));
+        voxel.color = hsv2rgb(vec3(0.18 + v * 0.1 + fract(r2 * 426.7) * 0.01, 0.8, 0.4));
         voxel.material_type = 1;
-        voxel.roughness = 1.0;
+        voxel.roughness = 0.9;
         voxel.normal = nrm;
 
         // spawn strand!!
 
         if (r2 < 0.2) {
-            if (true || r2 < 0.99 * 0.2) {
+            if (r2 < 0.99 * 0.2) {
                 spawn_grass(voxel);
             } else {
                 uint flower_type = 0;

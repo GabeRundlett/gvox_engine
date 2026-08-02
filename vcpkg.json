@@ -17,7 +17,7 @@
     "stb",
     "nlohmann-json",
     "platform-folders",
-    "nativefiledialog",
+    "nativefiledialog-extended",
     "minizip",
     "assimp",
     "freeimage",
@@ -41,7 +41,7 @@
       "features": [ "vulkan" ]
     }
   ],
-  "builtin-baseline": "78ba9711d30c64a6b40462c72f356c681e2255f3",
+  "builtin-baseline": "7d23867a7ea813948a86ac8d76345786e7e6faf2",
   "overrides": [
     {
       "name": "glfw3",
