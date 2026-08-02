@@ -1,5 +1,6 @@
 #include "debug.hpp"
 #include <fmt/format.h>
+#include <iostream>
 
 debug_utils::Console::Console() {
     s_instance = this;

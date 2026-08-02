@@ -25,16 +25,6 @@ float luminance(vec3 color) {
     return dot(color, luminanceCoefficients);
 }
 
-const mat3 agxTransform = mat3(
-    0.842479062253094, 0.0423282422610123, 0.0423756549057051,
-    0.0784335999999992, 0.878468636469772, 0.0784336,
-    0.0792237451477643, 0.0791661274605434, 0.879142973793104);
-
-const mat3 agxTransformInverse = mat3(
-    1.19687900512017, -0.0528968517574562, -0.0529716355144438,
-    -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
-    -0.0990297440797205, -0.0989611768448433, 1.15107367264116);
-
 vec3 agxDefaultContrastApproximation(vec3 x) {
     vec3 x2 = x * x;
     vec3 x4 = x2 * x2;
@@ -42,36 +32,86 @@ vec3 agxDefaultContrastApproximation(vec3 x) {
     return +15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
 }
 
-void agx(inout vec3 color) {
-    const float minEv = -12.47393;
-    const float maxEv = 4.026069;
-
-    color = agxTransform * color;
-    color = clamp(log2(color), minEv, maxEv);
-    color = (color - minEv) / (maxEv - minEv);
-    color = agxDefaultContrastApproximation(color);
-}
-
-void agxEotf(inout vec3 color) {
-    color = agxTransformInverse * color;
-}
-
 void agxLook(inout vec3 color) {
     // Punchy
     const vec3 slope = vec3(1.0);
     const vec3 power = vec3(1.0);
-    const float saturation = 1.5;
-
+    const float saturation = 1.0;
     float luma = luminance(color);
-
     color = pow(color * slope, power);
     color = max(luma + saturation * (color - luma), vec3(0.0));
 }
 
+void agx(inout vec3 color) {
+    // AgX constants
+    const mat3 AgXInsetMatrix = mat3(
+        vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
+        vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
+        vec3(0.0482516061458583, 0.101439036467562, 0.811302368396859));
+    // explicit AgXOutsetMatrix generated from Filaments AgXOutsetMatrixInv
+    const mat3 AgXOutsetMatrix = mat3(
+        vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
+        vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
+        vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405));
+    const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
+        vec3(1.6605, -0.1246, -0.0182),
+        vec3(-0.5876, 1.1329, -0.1006),
+        vec3(-0.0728, -0.0083, 1.1187));
+    const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
+        vec3(0.6274, 0.0691, 0.0164),
+        vec3(0.3293, 0.9195, 0.0880),
+        vec3(0.0433, 0.0113, 0.8956));
+    // LOG2_MIN      = -10.0
+    // LOG2_MAX      =  +6.5
+    // MIDDLE_GRAY   =  0.18
+    const float AgxMinEv = -12.47393; // log2( pow( 2, LOG2_MIN ) * MIDDLE_GRAY )
+    const float AgxMaxEv = 4.026069;  // log2( pow( 2, LOG2_MAX ) * MIDDLE_GRAY )
+    color = LINEAR_SRGB_TO_LINEAR_REC2020 * color;
+    color = AgXInsetMatrix * color;
+    // Log2 encoding
+    color = max(color, 1e-10); // avoid 0 or negative numbers for log2
+    color = log2(color);
+    color = (color - AgxMinEv) / (AgxMaxEv - AgxMinEv);
+    color = clamp(color, 0.0, 1.0);
+    // Apply sigmoid
+    color = agxDefaultContrastApproximation(color);
+    // Apply AgX look
+    agxLook(color);
+    color = AgXOutsetMatrix * color;
+    // Linearize
+    color = pow(max(vec3(0.0), color), vec3(2.2));
+    color = LINEAR_REC2020_TO_LINEAR_SRGB * color;
+    // Gamut mapping. Simple clamp for now.
+    color = clamp(color, 0.0, 1.0);
+}
+
+// void agxEotf(inout vec3 color) {
+//     color = agxTransformInverse * color;
+// }
+
+vec3 Uncharted2ToneMapping(vec3 color) {
+    const float gamma = 1;
+    float A = 0.15;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    float W = 11.2;
+    float exposure = 2.;
+    color *= exposure;
+    color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
+    float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
+    color /= white;
+    color = pow(color, vec3(1. / gamma));
+    return color;
+}
+
 vec3 color_correct(vec3 x) {
+    // x = x * 10;
     agx(x);
-    agxLook(x);
-    agxEotf(x);
+    // agxEotf(x);
+    // x = Uncharted2ToneMapping(x);
     // x = srgb_encode(x);
     return x;
 }

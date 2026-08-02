@@ -32,13 +32,14 @@ find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(platform_folders CONFIG REQUIRED)
-find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(nfd REQUIRED)
 find_package(unofficial-minizip CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 # find_package(soloud CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(fsr2 CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 find_package(freeimage CONFIG REQUIRED)
 # FreeImage links OpenEXR, which adds /EHsc for its targets, even if we're using Clang
@@ -59,13 +60,14 @@ FIXUP_TARGET(OpenEXR::OpenEXRUtil)
 add_subdirectory("deps/blue-noise-sampler")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    GPUOpen::VulkanMemoryAllocator
     daxa::daxa
     gvox::gvox
     fmt::fmt
     glfw
     nlohmann_json::nlohmann_json
     sago::platform_folders
-    unofficial::nativefiledialog::nfd
+    nfd::nfd
     unofficial::minizip::minizip
     assimp::assimp
     freeimage::FreeImage

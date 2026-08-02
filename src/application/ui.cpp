@@ -353,7 +353,11 @@ void AppUi::settings_ui() {
             }
             if (ImGui::Button("Open Model")) {
                 nfdchar_t *out_path = nullptr;
-                nfdresult_t const result = NFD_OpenDialog("gvox,vox,vxl,gvp,rle,oct,glp,brk", (data_directory / "models").string().c_str(), &out_path);
+                auto filters = std::array{nfdu8filteritem_t{
+                    .name = "VoxelFiles",
+                    .spec = "gvox,vox,vxl,gvp,rle,oct,glp,brk",
+                }};
+                nfdresult_t const result = NFD_OpenDialog(&out_path, filters.data(), filters.size(), (data_directory / "models").string().c_str());
                 if (result == NFD_OKAY) {
                     gvox_model_path = out_path;
                     should_upload_gvox_model = true;
