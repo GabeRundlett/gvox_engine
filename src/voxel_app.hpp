@@ -7,7 +7,6 @@
 
 #include <renderer/renderer.hpp>
 #include <voxels/voxel_world.inl>
-#include <voxels/model.hpp>
 #include <daxa/utils/imgui.hpp>
 
 #include <utilities/gpu_context.hpp>
@@ -30,7 +29,6 @@ struct VoxelApp : AppWindow<VoxelApp> {
 
     VoxelWorld voxel_world;
     VoxelParticles particles;
-    VoxelModelLoader voxel_model_loader;
 
     PlayerInput player_input{};
     GpuInput gpu_input{};

@@ -2,7 +2,7 @@
 
 #include <voxels/voxels.glsl>
 #include <application/input.inl>
-#include <voxels/impl/voxels.inl>
+#include <voxels/voxels.inl>
 
 #define PAYLOAD_LOC 0
 
@@ -33,6 +33,29 @@ RayPayload miss_ray_payload() {
 }
 
 // Ray-AABB intersection
+vec2 ray_aabb(vec3 rayOrigin, vec3 rayDir, vec3 size) {
+    vec3 tMin = -rayOrigin / rayDir;
+    vec3 tMax = (size - rayOrigin) / rayDir;
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
+    float tNear = max(max(t1.x, t1.y), t1.z);
+    float tFar = min(min(t2.x, t2.y), t2.z);
+    return vec2(tNear, tFar);
+}
+int ray_aabb_normal(vec3 rayOrigin, vec3 rayDir, vec3 size) {
+    vec3 tMin = -rayOrigin / rayDir;
+    vec3 tMax = (size - rayOrigin) / rayDir;
+    vec3 t1 = min(tMin, tMax);
+    float tNear = max(max(t1.x, t1.y), t1.z);
+    vec3 normal;
+    if (tNear == t1.x)
+        return 0;
+    else if (tNear == t1.y)
+        return 1;
+    else
+        return 2;
+}
+
 float hitAabb(const Aabb aabb, const Ray r) {
     if (all(greaterThanEqual(r.origin, aabb.minimum)) && all(lessThanEqual(r.origin, aabb.maximum))) {
         return 0.0;
@@ -92,6 +115,7 @@ PackedVoxel unpack_ray_payload(
         vec3 v = deref(advance(blas_transforms, blas_id)).pos;
         Aabb aabb = deref(advance(blas_geoms, brick_id)).aabb;
         ivec3 mapPos = ivec3(voxel_index % BLAS_BRICK_SIZE, (voxel_index / BLAS_BRICK_SIZE) % BLAS_BRICK_SIZE, voxel_index / BLAS_BRICK_SIZE / BLAS_BRICK_SIZE);
+        aabb.minimum = vec3(ivec3(floor(aabb.minimum * VOXEL_SCL)) & ~0x7) * VOXEL_SIZE;
         aabb.minimum += vec3(mapPos) * VOXEL_SIZE;
         aabb.maximum = aabb.minimum + VOXEL_SIZE;
         ray.origin -= v;
@@ -120,6 +144,49 @@ HitAttribute hit_attrib;
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION || DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_COMPUTE
 
+float traceVoxelDataBitmap(daxa_BufferPtr(BlasGeom) blas_geom, vec3 origin, vec3 dir, out ivec3 coord, inout int nrm, inout int iterCount) {
+    float t = 0.0;
+    vec3 invDir = vec3(1.0) / (abs(dir) + vec3(0.0001));
+    vec3 tSign = sign(dir);
+    const vec3 zSign = step(vec3(0.0), tSign);
+    const vec3 tDelta = invDir * VOXEL_SIZE;
+    const vec3 tPos = clamp(origin * VOXEL_SCL, vec3(0.0), vec3(7.99999)); // <- clamp it to start inside chunk
+    const vec3 ti = floor(tPos);
+    vec3 tMax = (invDir * (zSign + tSign * (ti - tPos))) * VOXEL_SIZE;
+    coord = ivec3(ti);
+    const ivec3 coordDelta = ivec3(tSign);
+    while (((coord.x | coord.y | coord.z) & 0xFFFFFFF8) == 0) {
+        if (getVoxel(blas_geom, 0, coord) == true)
+            return t;
+        // const int a = deref(chunkPrimitivePtr).bitmap[coord.z * 8 + coord.y];
+        // const int mask = 1 << coord.x;
+        // if ((mask & a) != 0u)
+        //     return t;
+        float mi = min(min(tMax.x, tMax.y), tMax.z);
+        if (mi == tMax.x) {
+            nrm = 0;
+            coord.x += coordDelta.x;
+            tMax.x += tDelta.x;
+        } else if (mi == tMax.y) {
+            nrm = 1;
+            coord.y += coordDelta.y;
+            tMax.y += tDelta.y;
+        } else {
+            nrm = 2;
+            coord.z += coordDelta.z;
+            tMax.z += tDelta.z;
+        }
+        t = mi;
+        iterCount++;
+    }
+    return -1.0;
+}
+
+float traceVoxelDataBitmap(daxa_BufferPtr(BlasGeom) blas_geom, vec3 origin, vec3 dir, out ivec3 coord, inout int nrm) {
+    int iterCount = 0;
+    return traceVoxelDataBitmap(blas_geom, origin, dir, coord, nrm, iterCount);
+}
+
 void intersect_voxel_brick(daxa_BufferPtr(daxa_BufferPtr(BlasGeom)) geometry_pointers) {
     Ray ray;
 
@@ -140,14 +207,41 @@ void intersect_voxel_brick(daxa_BufferPtr(daxa_BufferPtr(BlasGeom)) geometry_poi
 
     ray.origin = (OBJECT_TO_WORLD_MAT * ray.origin).xyz;
     ray.direction = (OBJECT_TO_WORLD_MAT * ray.direction).xyz;
-    float tHit = -1;
+
     daxa_BufferPtr(BlasGeom) blas_geoms = deref(advance(geometry_pointers, INSTANCE_CUSTOM_INDEX));
     Aabb aabb = deref(advance(blas_geoms, PRIMITIVE_INDEX)).aabb;
+#if 0
+    vec2 t = ray_aabb(ray.origin - aabb.minimum, ray.direction, aabb.maximum - aabb.minimum);
+    t.x = max(0.0, t.x);
+
+    if (t.x < t.y) {
+        vec3 o = ray.origin - vec3(ivec3(floor(aabb.minimum * VOXEL_SCL)) & ~0x7) * VOXEL_SIZE + ray.direction * t.x;
+
+        ivec3 hitCoord;
+
+        int nrm = ray_aabb_normal(ray.origin - aabb.minimum, ray.direction, aabb.maximum - aabb.minimum);
+        float hitDist = traceVoxelDataBitmap(advance(blas_geoms, PRIMITIVE_INDEX), o, ray.direction, hitCoord, nrm);
+        if (hitDist >= 0.0) {
+            float tHit = t.x + hitDist;
+#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION
+            hit_attrib = pack_hit_attribute(hitCoord);
+            reportIntersectionEXT(tHit, 0);
+#else
+            if (tHit < rayQueryGetIntersectionTEXT(ray_query, true)) {
+                hit_attrib = pack_hit_attribute(hitCoord);
+                rayQueryGenerateIntersectionEXT(ray_query, tHit);
+            }
+#endif
+        }
+    }
+#else
+    float tHit = -1;
     tHit = hitAabb(aabb, ray);
     const float BIAS = uintBitsToFloat(0x3f800040); // uintBitsToFloat(0x3f800040) == 1.00000762939453125
     ray.origin += ray.direction * tHit * BIAS;
     if (tHit >= 0) {
         ivec3 bmin = ivec3(floor(aabb.minimum * VOXEL_SCL));
+        ivec3 cbmin = bmin & ~0x7;
         ivec3 mapPos = clamp(ivec3(floor(ray.origin * VOXEL_SCL)) - bmin, ivec3(0), ivec3(BLAS_BRICK_SIZE - 1));
         vec3 deltaDist = abs(vec3(length(ray.direction)) / ray.direction);
         vec3 sideDist = (sign(ray.direction) * (vec3(mapPos + bmin) - ray.origin * VOXEL_SCL) + (sign(ray.direction) * 0.5) + 0.5) * deltaDist;
@@ -188,6 +282,7 @@ void intersect_voxel_brick(daxa_BufferPtr(daxa_BufferPtr(BlasGeom)) geometry_poi
             }
         }
     }
+#endif
 }
 #endif
 

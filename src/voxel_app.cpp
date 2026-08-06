@@ -7,10 +7,6 @@
 #include <fstream>
 #include <unordered_map>
 
-// #include <voxels/gvox_model.inl>
-
-static_assert(IsVoxelWorld<VoxelWorld>);
-
 #define APPNAME "Voxel App"
 
 using namespace std::chrono_literals;
@@ -62,8 +58,6 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
         .use_custom_config = false,
     });
 
-    voxel_model_loader.create(gpu_context);
-
     record_tasks();
     gpu_context.pipeline_manager->wait();
     debug_utils::Console::add_log(fmt::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
@@ -71,8 +65,6 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();
     gpu_context.device.collect_garbage();
-
-    voxel_model_loader.destroy();
 
     // TODO: Remove this
     gpu_context.device.destroy_tlas(voxel_world.buffers.tlas);
@@ -129,12 +121,10 @@ void VoxelApp::on_update() {
         ui.should_upload_seed_data = false;
     }
 
-    if (ui.should_run_startup || voxel_model_loader.model_is_ready) {
+    if (ui.should_run_startup) {
         run_startup();
         ui.should_run_startup = false;
     }
-
-    voxel_model_loader.update(ui);
 
     if (ui.should_record_task_graph) {
         gpu_context.device.wait_idle();
@@ -287,6 +277,8 @@ void VoxelApp::run_startup() {
     ui.should_run_startup = false;
 }
 
+#define GVOX_ENGINE_INSTALL false
+
 void VoxelApp::record_tasks() {
     ui.should_record_task_graph = false;
 
@@ -315,8 +307,6 @@ void VoxelApp::record_tasks() {
 
     debug_utils::DebugDisplay::begin_passes();
 
-    gpu_context.frame_task_graph.use_persistent_buffer(voxel_model_loader.task_gvox_model_buffer);
-
     gpu_context.frame_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, gpu_context.task_input_buffer),
@@ -339,7 +329,7 @@ void VoxelApp::record_tasks() {
         .name = "GpuInputUploadTransferTask",
     });
 
-    voxel_world.record_frame(gpu_context, voxel_model_loader.task_gvox_model_buffer, particles);
+    voxel_world.record_frame(gpu_context, particles);
     particles.simulate(gpu_context, voxel_world.buffers);
 
     renderer.render(gpu_context, voxel_world.buffers, particles, gpu_context.task_swapchain_image, gpu_context.swapchain.get_format());

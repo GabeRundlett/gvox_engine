@@ -274,7 +274,7 @@ struct SkyRenderer {
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ConvolveCubeComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
-                auto do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+                auto do_global_illumination = false; // AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
                 push.flags |= do_global_illumination ? 1 : 0;
                 set_push_constant(ti, push);
                 ti.recorder.dispatch({(IBL_CUBE_RES + 1) / 2, (IBL_CUBE_RES + 1) / 2, 6});

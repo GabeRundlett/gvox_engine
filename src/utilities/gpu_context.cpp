@@ -4,7 +4,10 @@
 #include <application/settings.inl>
 
 #include <minizip/unzip.h>
-#include <FreeImage.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <fmt/format.h>
 
 #include <random>
@@ -179,26 +182,16 @@ GpuContext::GpuContext() {
                         err = unzReadCurrentFile(stbn_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
                         assert(err == file_data.size());
 
-                        auto fi_mem = FreeImage_OpenMemory(file_data.data(), static_cast<DWORD>(file_data.size()));
-                        auto fi_file_desc = FreeImage_GetFileTypeFromMemory(fi_mem, 0);
-                        FIBITMAP *fi_bitmap = FreeImage_LoadFromMemory(fi_file_desc, fi_mem);
-                        FreeImage_CloseMemory(fi_mem);
-                        size_x = static_cast<int32_t>(FreeImage_GetWidth(fi_bitmap));
-                        size_y = static_cast<int32_t>(FreeImage_GetHeight(fi_bitmap));
-                        auto *temp_data = FreeImage_GetBits(fi_bitmap);
+                        int channels = 0;
+                        auto *temp_data = stbi_load_from_memory(file_data.data(), file_data.size(), &size_x, &size_y, &channels, 4);
                         assert(temp_data != nullptr && "Failed to load image");
-                        auto pixel_size = FreeImage_GetBPP(fi_bitmap);
-                        if (pixel_size != 32) {
-                            auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
-                            FreeImage_Unload(fi_bitmap);
-                            fi_bitmap = temp;
-                        }
 
                         if (temp_data != nullptr) {
                             assert(size_x == 128 && size_y == 128);
                             std::copy(temp_data + 0, temp_data + 128 * 128 * 4, buffer_out_ptr);
                         }
-                        FreeImage_Unload(fi_bitmap);
+
+                        stbi_image_free(temp_data);
                     };
                     auto vec2_name = std::string{"STBN/stbn_vec2_2Dx1D_128x128x64_"} + std::to_string(i) + ".png";
                     load_image(vec2_name.c_str(), buffer_ptr + (128 * 128 * 4) * i + (128 * 128 * 4 * 64) * 0);
@@ -229,18 +222,9 @@ GpuContext::GpuContext() {
         });
 
         auto texture_path = "assets/debug.png";
-        auto fi_file_desc = FreeImage_GetFileType(texture_path, 0);
-        FIBITMAP *fi_bitmap = FreeImage_Load(fi_file_desc, texture_path);
-        auto size_x = static_cast<uint32_t>(FreeImage_GetWidth(fi_bitmap));
-        auto size_y = static_cast<uint32_t>(FreeImage_GetHeight(fi_bitmap));
-        auto *temp_data = FreeImage_GetBits(fi_bitmap);
+        int size_x = 0, size_y = 0, channels = 0;
+        auto *temp_data = stbi_load(texture_path, &size_x, &size_y, &channels, 4);
         assert(temp_data != nullptr && "Failed to load image");
-        auto pixel_size = FreeImage_GetBPP(fi_bitmap);
-        if (pixel_size != 32) {
-            auto *temp = FreeImage_ConvertTo32Bits(fi_bitmap);
-            FreeImage_Unload(fi_bitmap);
-            fi_bitmap = temp;
-        }
         auto size = static_cast<daxa_u32>(size_x) * static_cast<daxa_u32>(size_y) * 4 * 1;
 
         debug_texture = device.create_image({
@@ -265,7 +249,7 @@ GpuContext::GpuContext() {
                 });
                 auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
                 std::copy(temp_data + 0, temp_data + size, buffer_ptr);
-                FreeImage_Unload(fi_bitmap);
+                stbi_image_free(temp_data);
 
                 ti.recorder.pipeline_barrier({
                     .dst_access = daxa::AccessConsts::TRANSFER_WRITE,
@@ -285,6 +269,7 @@ GpuContext::GpuContext() {
     }
 
     if (false) {
+#if 0
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
             .name = "temp_task_graph",
@@ -383,6 +368,7 @@ GpuContext::GpuContext() {
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});
+#endif
     } else {
         task_test_texture.set_images({.images = std::array{debug_texture}});
         task_test_texture2.set_images({.images = std::array{debug_texture}});

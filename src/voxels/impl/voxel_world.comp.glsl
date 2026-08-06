@@ -1,15 +1,14 @@
-#include <voxels/impl/voxel_world.inl>
+#include <voxels/voxel_world.inl>
 
 #if PerChunkComputeShader
 
 DAXA_DECL_PUSH_CONSTANT(PerChunkComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
 daxa_RWBufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_RWBufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 
 #include <utilities/gpu/math.glsl>
-#include <voxels/impl/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 #define VOXEL_WORLD deref(voxel_globals)
 #define PLAYER deref(gpu_input).player
@@ -142,7 +141,6 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkEditComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
@@ -155,7 +153,7 @@ daxa_ImageViewIndex test_texture2 = push.uses.test_texture2;
 
 #include <utilities/gpu/math.glsl>
 #include <utilities/gpu/noise.glsl>
-#include <voxels/impl/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 uvec3 chunk_n;
 uint temp_chunk_index;
@@ -246,14 +244,13 @@ void main() {
 
 DAXA_DECL_PUSH_CONSTANT(ChunkEditPostProcessComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
-daxa_BufferPtr(GpuGvoxModel) gvox_model = push.uses.gvox_model;
 daxa_BufferPtr(VoxelWorldGlobals) voxel_globals = push.uses.voxel_globals;
 daxa_BufferPtr(VoxelLeafChunk) voxel_chunks = push.uses.voxel_chunks;
 daxa_RWBufferPtr(TempVoxelChunk) temp_voxel_chunks = push.uses.temp_voxel_chunks;
 
 #include <utilities/gpu/math.glsl>
 #include <utilities/gpu/noise.glsl>
-#include <voxels/impl/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 uvec3 chunk_n;
 uint temp_chunk_index;
@@ -472,7 +469,7 @@ daxa_RWBufferPtr(uint) chunk_update_heap = push.uses.chunk_update_heap;
 #extension GL_EXT_shader_atomic_int64 : require
 
 #include <utilities/gpu/math.glsl>
-#include <voxels/impl/voxels.glsl>
+#include <voxels/voxels.glsl>
 
 shared uint compression_result[PALETTE_REGION_TOTAL_SIZE];
 shared daxa_u64 voted_results[PALETTE_REGION_TOTAL_SIZE];

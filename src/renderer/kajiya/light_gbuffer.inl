@@ -57,7 +57,7 @@ inline auto light_gbuffer(
         daxa_u32 debug_shading_mode = SHADING_MODE_DEFAULT;
     };
     auto task_info = LightGbufferComputeTaskInfo{};
-    auto do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+    auto do_global_illumination = false; // AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
     if (!do_global_illumination) {
         task_info.debug_shading_mode = SHADING_MODE_RTX_OFF;
     }

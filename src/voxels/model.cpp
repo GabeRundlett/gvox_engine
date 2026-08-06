@@ -7,8 +7,6 @@
 #include <gvox/adapters/parse/voxlap.h>
 #include <gvox/adapters/parse/kvx.h>
 
-#include <voxels/gvox_model.inl>
-
 #include <fstream>
 #include <filesystem>
 using namespace std::chrono_literals;

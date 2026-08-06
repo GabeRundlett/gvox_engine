@@ -3,8 +3,6 @@
 #include <imgui_stdlib.h>
 #include <imgui_impl_glfw.h>
 #include <fmt/format.h>
-#include <sago/platform_folders.h>
-#include <nfd.h>
 #include <utilities/debug.hpp>
 
 #include <vector>
@@ -83,7 +81,7 @@ inline auto get_button_string(daxa_i32 glfw_key_id) -> char const * {
 
 AppUi::AppUi(GLFWwindow *glfw_window_ptr)
     : glfw_window_ptr{glfw_window_ptr},
-      data_directory{std::filesystem::path(sago::getDataHome()) / "GabeVoxelGame"} {
+      data_directory{"data"} {
     ImGui::CreateContext();
     auto &style = ImGui::GetStyle();
     auto &io = ImGui::GetIO();
@@ -354,22 +352,22 @@ void AppUi::settings_ui() {
             if (ImGui::Button("Re-run Startup")) {
                 should_run_startup = true;
             }
-            if (ImGui::Button("Open Model")) {
-                nfdchar_t *out_path = nullptr;
-                auto filters = std::array{nfdu8filteritem_t{
-                    .name = "VoxelFiles",
-                    .spec = "gvox,vox,vxl,gvp,rle,oct,glp,brk",
-                }};
-                nfdresult_t const result = NFD_OpenDialog(&out_path, filters.data(), filters.size(), (data_directory / "models").string().c_str());
-                if (result == NFD_OKAY) {
-                    gvox_model_path = out_path;
-                    should_upload_gvox_model = true;
-                    debug_utils::Console::add_log(fmt::format("Loaded {}", out_path));
-                    free(out_path);
-                } else if (result != NFD_CANCEL) {
-                    debug_utils::Console::add_log(fmt::format("[error]: {}", NFD_GetError()));
-                }
-            }
+            // if (ImGui::Button("Open Model")) {
+            //     nfdchar_t *out_path = nullptr;
+            //     auto filters = std::array{nfdu8filteritem_t{
+            //         .name = "VoxelFiles",
+            //         .spec = "gvox,vox,vxl,gvp,rle,oct,glp,brk",
+            //     }};
+            //     nfdresult_t const result = NFD_OpenDialog(&out_path, filters.data(), filters.size(), (data_directory / "models").string().c_str());
+            //     if (result == NFD_OKAY) {
+            //         gvox_model_path = out_path;
+            //         should_upload_gvox_model = true;
+            //         debug_utils::Console::add_log(fmt::format("Loaded {}", out_path));
+            //         free(out_path);
+            //     } else if (result != NFD_CANCEL) {
+            //         debug_utils::Console::add_log(fmt::format("[error]: {}", NFD_GetError()));
+            //     }
+            // }
             ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
             ImGui::Checkbox("Show ImGui Demo Window", &show_imgui_demo_window);
             ImGui::EndTabItem();

@@ -1,4 +1,4 @@
-#include "voxel_world.inl"
+#include "../voxel_world.inl"
 
 DAXA_DECL_PUSH_CONSTANT(VoxelWorldPerframeComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
