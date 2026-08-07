@@ -5,12 +5,12 @@
 #include <utilities/allocator.inl>
 
 // for PackedVoxel
-#include <voxels/brushes.inl>
+#include <voxels/voxel.inl>
 
 struct ParticleVertex {
     daxa_f32vec3 pos;
     daxa_f32vec3 prev_pos;
-    PackedVoxel packed_voxel;
+    GpuVoxelPackedShadingAttrib packed_voxel;
 };
 
 struct PackedParticleVertex {

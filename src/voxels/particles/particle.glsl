@@ -2,7 +2,7 @@
 
 #include <voxels/particles/voxel_particles.inl>
 #include <utilities/gpu/math.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/voxel.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 
 #define PARTICLE_ALIVE_FLAG (1 << 0)

@@ -3,7 +3,7 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-#include <voxels/particles/voxel_particles.inl>
+// #include <voxels/particles/voxel_particles.inl>
 
 DAXA_DECL_TASK_HEAD_BEGIN(R32D32Blit)
 DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, input_tex)
@@ -15,9 +15,10 @@ struct R32D32BlitPush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryRt)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
 DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
 DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
@@ -86,9 +87,10 @@ struct GbufferRenderer {
             .source = daxa::ShaderFile{"trace_primary.rt.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.chunk_primitive_pointers, voxel_buffers.chunk_primitive_pointers.task_resource}},
+                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
+                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.tlas, voxel_buffers.task_tlas}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.velocity_image_id, velocity_image}},

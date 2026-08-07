@@ -17,9 +17,10 @@ struct RtdgiFullresReprojectComputePush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiValidateRt)
 DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
 DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
 IRCACHE_USE_BUFFERS(RAY_TRACING)
 DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -41,9 +42,10 @@ struct RtdgiValidateRtPush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(RtdgiTraceRt)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
 DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
 IRCACHE_USE_BUFFERS(RAY_TRACING)
 DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, half_view_normal_tex)
@@ -514,9 +516,10 @@ struct RtdgiRenderer {
                 .source = daxa::ShaderFile{"kajiya/rtdgi/diffuse_validate.rt.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
                     daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.tlas, voxel_buffers.task_tlas}},
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiValidateRt, ircache),
                     daxa::TaskViewVariant{std::pair{RtdgiValidateRt::AT.half_view_normal_tex, half_view_normal_tex}},
@@ -554,9 +557,10 @@ struct RtdgiRenderer {
                 .source = daxa::ShaderFile{"kajiya/rtdgi/trace_diffuse.rt.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
                     daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.tlas, voxel_buffers.task_tlas}},
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiTraceRt, ircache),
                     daxa::TaskViewVariant{std::pair{RtdgiTraceRt::AT.half_view_normal_tex, half_view_normal_tex}},

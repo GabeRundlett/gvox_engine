@@ -25,7 +25,7 @@ daxa_BufferPtr(uint) ircache_entry_indirection_buf = push.uses.ircache_entry_ind
 #include <utilities/gpu/normal.glsl>
 #include "ircache_constants.glsl"
 
-#include <voxels/voxels.glsl>
+#include <voxels/voxel.glsl>
 
 bool rt_is_shadowed(RayDesc ray) {
     ShadowRayPayload shadow_payload = ShadowRayPayload_new_hit();

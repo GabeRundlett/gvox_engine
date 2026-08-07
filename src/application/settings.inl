@@ -82,8 +82,6 @@ struct DebugImageSettings {
 #define MAX_GRID_CELLS (IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_SIZE * IRCACHE_CASCADE_COUNT)
 #define MAX_ENTRIES (1024 * 64)
 
-#define BLAS_BRICK_SIZE 8
-
 #define BRUSH_SETTINGS_FLAGS_FIXED_DISTANCE_INDEX 0
 
 struct BrushSettings {
@@ -94,15 +92,3 @@ struct BrushSettings {
 #define FRAMES_IN_FLIGHT 1
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
-
-struct Aabb {
-    daxa_f32vec3 minimum;
-    daxa_f32vec3 maximum;
-};
-
-struct BlasGeom {
-    Aabb aabb;
-    daxa_u32 bitmask[BLAS_BRICK_SIZE * BLAS_BRICK_SIZE * BLAS_BRICK_SIZE / 32];
-};
-DAXA_DECL_BUFFER_PTR(BlasGeom)
-DAXA_DECL_BUFFER_PTR(daxa_BufferPtr(BlasGeom))

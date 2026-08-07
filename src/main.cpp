@@ -21,7 +21,6 @@ void search_for_path_to_fix_working_directory(std::span<std::filesystem::path co
 
 auto main() -> int {
     search_for_path_to_fix_working_directory(std::array{
-        std::filesystem::path{".out"},
         std::filesystem::path{"assets"},
     });
 

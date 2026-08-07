@@ -1,6 +1,6 @@
 #pragma once
 
-#include <voxels/voxels.inl>
+#include <voxels/voxel.inl>
 #include <application/settings.inl>
 
 // clang-format off

@@ -1,0 +1,11 @@
+#pragma once
+
+#define BRICK_SIZE_LOG2 3
+#define BRICK_SIZE (1 << BRICK_SIZE_LOG2)
+#define CHUNK_MASK 7
+
+#define LOG2_VOXELS_PER_METER 4
+#define VOXEL_SCL (1 << LOG2_VOXELS_PER_METER)
+#define VOXEL_SIZE (1.0f / VOXEL_SCL)
+
+#define MAX_VOXEL_OBJECTS (1 << 18)

@@ -1,4 +1,6 @@
 #include "voxel_app.hpp"
+#include "renderer/render_voxel_object.hpp"
+#include "scene.hpp"
 
 #include <fmt/format.h>
 
@@ -12,6 +14,7 @@
 using namespace std::chrono_literals;
 
 #include <iostream>
+#include "renderer/render_scene.hpp"
 
 constexpr auto round_frame_dim(daxa_u32vec2 size) {
     auto result = size;
@@ -58,6 +61,8 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
         .use_custom_config = false,
     });
 
+    scene = new Scene(gpu_context);
+
     record_tasks();
     gpu_context.pipeline_manager->wait();
     debug_utils::Console::add_log(fmt::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
@@ -65,9 +70,10 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();
     gpu_context.device.collect_garbage();
+    delete scene;
 
     // TODO: Remove this
-    gpu_context.device.destroy_tlas(voxel_world.buffers.tlas);
+    // gpu_context.device.destroy_tlas(voxel_world.buffers.tlas);
 }
 
 void VoxelApp::run() {
@@ -154,9 +160,14 @@ void VoxelApp::on_update() {
     player_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
     player_input.mouse = gpu_input.mouse;
     std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
-    player_perframe(player_input, gpu_input.player, voxel_world);
+    player_perframe(player_input, gpu_input.player);
 
-    voxel_world.begin_frame(gpu_context.device, gpu_input);
+    render_scene_begin(gpu_context, scene->render_scene);
+    for (auto voxel_object : scene->voxel_objects) {
+        update_render_voxel_object(gpu_context, voxel_object);
+        draw_voxel_object(voxel_object, glm::vec3(0, 0, 0), 1);
+    }
+    render_scene_end(gpu_context, scene->render_scene);
 
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
     gpu_context.frame_task_graph.execute({});
@@ -302,8 +313,8 @@ void VoxelApp::record_tasks() {
     gpu_context.render_resolution = gpu_input.rounded_frame_dim;
     gpu_context.output_resolution = gpu_input.output_resolution;
 
-    voxel_world.record_startup(gpu_context);
-    particles.record_startup(gpu_context);
+    // voxel_world.record_startup(gpu_context);
+    // particles.record_startup(gpu_context);
 
     debug_utils::DebugDisplay::begin_passes();
 
@@ -329,10 +340,11 @@ void VoxelApp::record_tasks() {
         .name = "GpuInputUploadTransferTask",
     });
 
-    voxel_world.record_frame(gpu_context, particles);
-    particles.simulate(gpu_context, voxel_world.buffers);
+    // voxel_world.record_frame(gpu_context, particles);
+    // particles.simulate(gpu_context, voxel_world.buffers);
+    record_render_scene(gpu_context, scene->render_scene);
 
-    renderer.render(gpu_context, voxel_world.buffers, particles, gpu_context.task_swapchain_image, gpu_context.swapchain.get_format());
+    renderer.render(gpu_context, scene->render_scene, gpu_context.task_swapchain_image, gpu_context.swapchain.get_format());
 
     gpu_context.frame_task_graph.add_task({
         .attachments = {
@@ -446,35 +458,35 @@ void VoxelApp::calc_vram_usage() {
     }
 
 #if defined(VOXELS_ORIGINAL_IMPL)
-    buffer_size(voxel_world.buffers.blas_attr_pointers.resource_id);
-    buffer_size(voxel_world.buffers.blas_geom_pointers.resource_id);
-    buffer_size(voxel_world.buffers.blas_transforms.resource_id);
-    buffer_size(voxel_world.buffers.voxel_chunks.resource_id);
-    buffer_size(voxel_world.buffers.voxel_globals.resource_id);
-    buffer_size(voxel_world.buffers.chunk_update_heap.resource_id);
-    buffer_size(voxel_world.buffers.chunk_updates.resource_id);
-    auto total_tlas_size = buffer_size(voxel_world.buffers.tlas_buffer);
-    auto total_blas_size = size_t{};
-    auto total_attr_size = size_t{};
-    auto total_geom_size = size_t{};
-    auto total_non_empty_blas_count = size_t{};
-    auto total_geom_count = size_t{};
-    for (auto const &blas_chunk : voxel_world.blas_chunks) {
-        total_blas_size += buffer_size(blas_chunk.blas_buffer, false);
-        total_attr_size += buffer_size(blas_chunk.attr_buffer, false);
-        total_geom_size += buffer_size(blas_chunk.geom_buffer, false);
-        if (!blas_chunk.blas_geoms.empty()) {
-            ++total_non_empty_blas_count;
-            total_geom_count += blas_chunk.blas_geoms.size();
-        }
-    }
-    debug_utils::DebugDisplay::set_debug_string("total_tlas_size", fmt::format("{:.3f} MB", static_cast<float>(total_tlas_size) / 1000000));
-    debug_utils::DebugDisplay::set_debug_string("total_blas_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_blas_size) / 1000000, static_cast<float>(total_blas_size) / total_non_empty_blas_count / 1000));
-    debug_utils::DebugDisplay::set_debug_string("total_attr_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_attr_size) / 1000000, static_cast<float>(total_attr_size) / total_non_empty_blas_count / 1000));
-    debug_utils::DebugDisplay::set_debug_string("total_geom_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_geom_size) / 1000000, static_cast<float>(total_geom_size) / total_non_empty_blas_count / 1000));
-    debug_utils::DebugDisplay::set_debug_string("total_geom_count", fmt::format("{}", total_geom_count));
-    debug_utils::DebugDisplay::set_debug_string("total_blas_count", fmt::format("{}", total_non_empty_blas_count));
-    debug_utils::DebugDisplay::set_debug_string("avg #geom per blas", fmt::format("{:.3f}", float(total_geom_count) / float(total_non_empty_blas_count)));
+    // buffer_size(voxel_world.buffers.blas_attr_pointers.resource_id);
+    // buffer_size(voxel_world.buffers.blas_geom_pointers.resource_id);
+    // buffer_size(voxel_world.buffers.blas_transforms.resource_id);
+    // buffer_size(voxel_world.buffers.voxel_chunks.resource_id);
+    // buffer_size(voxel_world.buffers.voxel_globals.resource_id);
+    // buffer_size(voxel_world.buffers.chunk_update_heap.resource_id);
+    // buffer_size(voxel_world.buffers.chunk_updates.resource_id);
+    // auto total_tlas_size = buffer_size(voxel_world.buffers.tlas_buffer);
+    // auto total_blas_size = size_t{};
+    // auto total_attr_size = size_t{};
+    // auto total_geom_size = size_t{};
+    // auto total_non_empty_blas_count = size_t{};
+    // auto total_geom_count = size_t{};
+    // for (auto const &blas_chunk : voxel_world.blas_chunks) {
+    //     total_blas_size += buffer_size(blas_chunk.blas_buffer, false);
+    //     total_attr_size += buffer_size(blas_chunk.attr_buffer, false);
+    //     total_geom_size += buffer_size(blas_chunk.geom_buffer, false);
+    //     if (!blas_chunk.blas_geoms.empty()) {
+    //         ++total_non_empty_blas_count;
+    //         total_geom_count += blas_chunk.blas_geoms.size();
+    //     }
+    // }
+    // debug_utils::DebugDisplay::set_debug_string("total_tlas_size", fmt::format("{:.3f} MB", static_cast<float>(total_tlas_size) / 1000000));
+    // debug_utils::DebugDisplay::set_debug_string("total_blas_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_blas_size) / 1000000, static_cast<float>(total_blas_size) / total_non_empty_blas_count / 1000));
+    // debug_utils::DebugDisplay::set_debug_string("total_attr_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_attr_size) / 1000000, static_cast<float>(total_attr_size) / total_non_empty_blas_count / 1000));
+    // debug_utils::DebugDisplay::set_debug_string("total_geom_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_geom_size) / 1000000, static_cast<float>(total_geom_size) / total_non_empty_blas_count / 1000));
+    // debug_utils::DebugDisplay::set_debug_string("total_geom_count", fmt::format("{}", total_geom_count));
+    // debug_utils::DebugDisplay::set_debug_string("total_blas_count", fmt::format("{}", total_non_empty_blas_count));
+    // debug_utils::DebugDisplay::set_debug_string("avg #geom per blas", fmt::format("{:.3f}", float(total_geom_count) / float(total_non_empty_blas_count)));
 
 #endif
 

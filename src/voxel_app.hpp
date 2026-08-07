@@ -6,13 +6,12 @@
 #include <application/player.hpp>
 
 #include <renderer/renderer.hpp>
-#include <voxels/voxel_world.inl>
+// #include <voxels/voxel_world.inl>
 #include <daxa/utils/imgui.hpp>
 
 #include <utilities/gpu_context.hpp>
 
 #include <chrono>
-#include <future>
 
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
@@ -27,8 +26,9 @@ struct VoxelApp : AppWindow<VoxelApp> {
     daxa::ImGuiRenderer imgui_renderer;
     Renderer renderer;
 
-    VoxelWorld voxel_world;
-    VoxelParticles particles;
+    // VoxelWorld voxel_world;
+    // VoxelParticles particles;
+    struct Scene* scene = nullptr;
 
     PlayerInput player_input{};
     GpuInput gpu_input{};

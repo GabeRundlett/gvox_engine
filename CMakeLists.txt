@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME}
     "src/main.cpp"
     "src/voxel_app.cpp"
 
-    "src/voxels/voxel_world.cpp"
+    "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
 
     "src/application/ui.cpp"
@@ -20,6 +20,8 @@ add_executable(${PROJECT_NAME}
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
     "src/renderer/kajiya/ircache.cpp"
+    "src/renderer/render_voxel_object.cpp"
+    "src/renderer/render_scene.cpp"
     # "src/voxels/worldgen.ispc"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)

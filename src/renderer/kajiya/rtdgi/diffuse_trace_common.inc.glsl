@@ -28,7 +28,7 @@ uvec2 reservoir_payload_to_px(uint payload) {
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/ray_cone.glsl>
 
-#include <voxels/voxels.glsl>
+#include <voxels/voxel.glsl>
 
 bool rt_is_shadowed(RayDesc ray) {
     ShadowRayPayload shadow_payload = ShadowRayPayload_new_hit();

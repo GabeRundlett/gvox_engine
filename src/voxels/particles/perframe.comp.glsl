@@ -9,7 +9,7 @@ SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(TreeParticleAllocator, tree_particle_a
 SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(FireParticleAllocator, fire_particle_allocator)
 
 #include <renderer/kajiya/inc/camera.glsl>
-#include <voxels/voxels.glsl>
+#include <voxels/voxel.glsl>
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint

@@ -94,6 +94,8 @@ GbufferRaytrace with_cull_back_faces(inout GbufferRaytrace self, bool v) {
 }
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN
+#include <utilities/gpu/normal.glsl>
+
 GbufferPathVertex trace(GbufferRaytrace self) {
     const uint ray_flags = gl_RayFlagsNoneEXT;
     const uint cull_mask = 0xFF;
@@ -109,8 +111,14 @@ GbufferPathVertex trace(GbufferRaytrace self) {
     if (prd.data1 != miss_ray_payload().data1) {
         vec3 world_pos = vec3(0);
         vec3 _unused_vel = vec3(0);
-        PackedVoxel voxel_data = unpack_ray_payload(push.uses.geometry_pointers, push.uses.attribute_pointers, push.uses.blas_transforms, prd, Ray(self.ray.Origin, self.ray.Direction), world_pos, _unused_vel);
-        Voxel voxel = unpack_voxel(voxel_data);
+        // PackedVoxel voxel_data = unpack_ray_payload(push.uses.geometry_pointers, push.uses.attribute_pointers, push.uses.blas_transforms, prd, Ray(self.ray.Origin, self.ray.Direction), world_pos, _unused_vel);
+        // Voxel voxel = unpack_voxel(voxel_data);
+        GpuVoxel voxel;
+        voxel.albedo = vec3(0.5);
+        voxel.normal = vec3(0,0,1);
+        voxel.roughness = 1;
+        voxel.material_type = 1;
+
 
 #if PER_VOXEL_NORMALS
         vec3 ws_nrm = voxel.normal;

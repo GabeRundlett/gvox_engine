@@ -95,7 +95,7 @@ vec3 view_vec(Player &PLAYER) {
 
 #define EARTH_JUMP_HEIGHT 0.59
 
-void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world) {
+void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     const float mouse_sens = 1.0f;
 
     if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
@@ -208,63 +208,63 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER, VoxelWorld &voxel_world
 
     PLAYER.flags &= ~(1u << 8);
     bool inside_terrain = false;
-    int32_t voxel_height = height * VOXEL_SCL + 1;
+    // int32_t voxel_height = height * VOXEL_SCL + 1;
 
-    for (int32_t xi = -2; xi <= 2; ++xi) {
-        for (int32_t yi = -2; yi <= 2; ++yi) {
-            for (int32_t zi = 0; zi <= voxel_height; ++zi) {
-                auto in_voxel = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
-                if (in_voxel) {
-                    inside_terrain = true;
-                    break;
-                }
-            }
-        }
-    }
+    // for (int32_t xi = -2; xi <= 2; ++xi) {
+    //     for (int32_t yi = -2; yi <= 2; ++yi) {
+    //         for (int32_t zi = 0; zi <= voxel_height; ++zi) {
+    //             auto in_voxel = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+    //             if (in_voxel) {
+    //                 inside_terrain = true;
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 
-    if (inside_terrain) {
-        bool space_above = false;
-        int32_t first_height = -1;
-        for (int32_t zi = 0; zi < voxel_height + voxel_height / 2; ++zi) {
-            bool found_voxel = false;
-            for (int32_t xi = -2; xi <= 2; ++xi) {
-                if (found_voxel) {
-                    break;
-                }
-                for (int32_t yi = -2; yi <= 2; ++yi) {
-                    if (found_voxel) {
-                        break;
-                    }
-                    auto solid = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
-                    if (solid) {
-                        found_voxel = true;
-                    }
-                }
-            }
-            if (zi - first_height >= voxel_height) {
-                break;
-            }
-            if (found_voxel) {
-                first_height = -1;
-                space_above = false;
-            }
-            if (!found_voxel && zi < voxel_height / 2 && first_height == -1) {
-                first_height = zi;
-                space_above = true;
-            }
-        }
-        if (space_above) {
-            float current_z = PLAYER.pos.z;
-            PLAYER.pos = PLAYER.pos + vec3(0, 0, VOXEL_SIZE * first_height);
-            PLAYER.pos.z = floor(PLAYER.pos.z * VOXEL_SCL) * VOXEL_SIZE;
-            float new_z = PLAYER.pos.z;
-            PLAYER.cam_pos_offset.z += current_z - new_z;
-            PLAYER.flags |= (1u << 8);
-            PLAYER.vel.z = 0;
-        } else {
-            PLAYER.pos = PLAYER.pos - offset;
-        }
-    }
+    // if (inside_terrain) {
+    //     bool space_above = false;
+    //     int32_t first_height = -1;
+    //     for (int32_t zi = 0; zi < voxel_height + voxel_height / 2; ++zi) {
+    //         bool found_voxel = false;
+    //         for (int32_t xi = -2; xi <= 2; ++xi) {
+    //             if (found_voxel) {
+    //                 break;
+    //             }
+    //             for (int32_t yi = -2; yi <= 2; ++yi) {
+    //                 if (found_voxel) {
+    //                     break;
+    //                 }
+    //                 auto solid = voxel_world.sample(PLAYER.pos - vec3(0, 0, height) + vec3(xi * VOXEL_SIZE, yi * VOXEL_SIZE, zi * VOXEL_SIZE), PLAYER.player_unit_offset);
+    //                 if (solid) {
+    //                     found_voxel = true;
+    //                 }
+    //             }
+    //         }
+    //         if (zi - first_height >= voxel_height) {
+    //             break;
+    //         }
+    //         if (found_voxel) {
+    //             first_height = -1;
+    //             space_above = false;
+    //         }
+    //         if (!found_voxel && zi < voxel_height / 2 && first_height == -1) {
+    //             first_height = zi;
+    //             space_above = true;
+    //         }
+    //     }
+    //     if (space_above) {
+    //         float current_z = PLAYER.pos.z;
+    //         PLAYER.pos = PLAYER.pos + vec3(0, 0, VOXEL_SIZE * first_height);
+    //         PLAYER.pos.z = floor(PLAYER.pos.z * VOXEL_SCL) * VOXEL_SIZE;
+    //         float new_z = PLAYER.pos.z;
+    //         PLAYER.cam_pos_offset.z += current_z - new_z;
+    //         PLAYER.flags |= (1u << 8);
+    //         PLAYER.vel.z = 0;
+    //     } else {
+    //         PLAYER.pos = PLAYER.pos - offset;
+    //     }
+    // }
 
     player_fix_chunk_offset(PLAYER);
     // debug_utils::DebugDisplay::set_debug_string("Player In Voxel", fmt::format("{}", in_voxel));

@@ -1,0 +1,319 @@
+#include "render_voxel_object.hpp"
+#include "voxels/voxel.inl"
+#include "voxels/voxel_object.hpp"
+#include <daxa/daxa.hpp>
+#include <daxa/types.hpp>
+
+#define RENDERER_INTERNAL 1
+#include "render_scene.hpp"
+
+struct RenderVoxelObject {
+    daxa::BlasId blas{};
+    daxa::BufferId blas_buffer{};
+    daxa::BufferId blas_scratch_buffer{};
+
+    daxa::BufferId bricks_data_buffer{};
+    uint32_t brick_count;
+
+    daxa::DeviceAddress chunk_aabb_device_address;
+    daxa::DeviceAddress chunk_shading_device_address;
+    daxa::DeviceAddress chunk_primitives_device_address;
+    daxa::DeviceAddress chunk_flags_device_address;
+    daxa::DeviceAddress blas_device_address;
+
+    RenderScene *scene;
+};
+
+struct RenderVoxelObject *create_render_voxel_object(struct RenderScene *scene) {
+    RenderVoxelObject *result = new RenderVoxelObject();
+    result->scene = scene;
+    return result;
+}
+
+void destroy_render_voxel_object(GpuContext &gpu_context, struct RenderVoxelObject *self) {
+    auto &device = gpu_context.device;
+
+    if (device.is_id_valid(self->bricks_data_buffer))
+        device.destroy_buffer(self->bricks_data_buffer);
+
+    if (device.is_id_valid(self->blas))
+        device.destroy_blas(self->blas);
+    if (device.is_id_valid(self->blas_buffer))
+        device.destroy_buffer(self->blas_buffer);
+    if (device.is_id_valid(self->blas_scratch_buffer))
+        device.destroy_buffer(self->blas_scratch_buffer);
+
+    delete self;
+}
+
+namespace {
+    struct BricksBufferInfo {
+        size_t mPrimitivesSize;
+        size_t mShadingSize;
+        size_t mAabbSize;
+        size_t mFlagsSize;
+
+        size_t mPrimitivesOffset;
+        size_t mShadingOffset;
+        size_t mAabbOffset;
+        size_t mFlagsOffset;
+
+        size_t mTotalSize;
+    };
+    auto get_bricks_buffer_info(int brick_count) -> BricksBufferInfo {
+        BricksBufferInfo result;
+
+        result.mPrimitivesSize = sizeof(ChunkPrimitive) * brick_count;
+        result.mShadingSize = sizeof(VoxelShadingAttribBrick) * brick_count;
+        result.mAabbSize = sizeof(Aabb) * brick_count;
+        result.mFlagsSize = sizeof(uint32_t) * brick_count;
+
+        result.mPrimitivesOffset = size_t{0};
+        result.mShadingOffset = result.mPrimitivesOffset + result.mPrimitivesSize;
+        result.mAabbOffset = result.mShadingOffset + result.mShadingSize;
+        result.mFlagsOffset = result.mAabbOffset + result.mAabbSize;
+        result.mTotalSize = result.mFlagsOffset + result.mFlagsSize;
+
+        return result;
+    }
+
+    inline auto GetAligned(daxa_u64 operand, daxa_u64 granularity) -> daxa_u64 {
+        return ((operand + (granularity - 1)) / granularity) * granularity;
+    }
+
+    static bool cachedBlasSizeInfo = false;
+    static daxa::AccelerationStructureBuildSizesInfo cachedBlasBuildSizeInfo;
+
+    inline void CreateBlas(daxa::Device &device, RenderVoxelObject *self, std::string name) {
+        uint32_t aabbCount = self->brick_count;
+
+        if (device.is_id_valid(self->blas))
+            device.destroy_blas(self->blas);
+        if (device.is_id_valid(self->blas_buffer))
+            device.destroy_buffer(self->blas_buffer);
+        if (device.is_id_valid(self->blas_scratch_buffer))
+            device.destroy_buffer(self->blas_scratch_buffer);
+
+        auto accelerationStructureScratchOffsetAlignment = device.properties().acceleration_structure_properties.value().min_acceleration_structure_scratch_offset_alignment;
+        auto geometry = std::array{
+            daxa::BlasAabbGeometryInfo{
+                .stride = sizeof(Aabb),
+                .count = aabbCount,
+                .flags = daxa::GeometryFlagBits::OPAQUE,
+            },
+        };
+        auto blasBuildInfo = daxa::BlasBuildInfo{
+            .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
+            .dst_blas = {}, // Ignored in blas_build_sizes.
+            .geometries = geometry,
+            .scratch_data = {}, // Ignored in blas_build_sizes.
+        };
+        const auto buildSizeInfo = (cachedBlasSizeInfo && aabbCount == 1) ? cachedBlasBuildSizeInfo : device.get_blas_build_sizes(blasBuildInfo);
+        if (!cachedBlasSizeInfo && aabbCount == 1) {
+            cachedBlasBuildSizeInfo = buildSizeInfo;
+            cachedBlasSizeInfo = true;
+        }
+
+        auto scratchAlignmentSize = GetAligned(buildSizeInfo.build_scratch_size, accelerationStructureScratchOffsetAlignment);
+        self->blas_scratch_buffer = device.create_buffer({
+            .size = scratchAlignmentSize,
+            .name = (name + " scratch buffer").c_str(),
+        });
+
+        const daxa_u32 accelerationStructureBuildOffsetAligment = 256; // NOTE: Requested by the spec
+        auto buildAligmentSize = GetAligned(buildSizeInfo.acceleration_structure_size, accelerationStructureBuildOffsetAligment);
+        self->blas_buffer = device.create_buffer({
+            .size = buildAligmentSize,
+            .name = (name + " buffer").c_str(),
+        });
+
+        self->blas = device.create_blas_from_buffer({
+            .blas_info = {
+                .size = buildSizeInfo.acceleration_structure_size,
+                .name = name.c_str(),
+            },
+            .buffer_id = self->blas_buffer,
+            .offset = 0,
+        });
+
+        self->scene->buffers.voxel_object_blases.set_blas({.blas = std::array{self->blas}});
+        self->blas_device_address = device.get_device_address(self->blas).value();
+    }
+
+    void resize_buffers(GpuContext &gpu_context, RenderVoxelObject *self) {
+        auto &device = gpu_context.device;
+        auto brick_count = self->brick_count;
+
+        auto alloc_info = get_bricks_buffer_info(brick_count);
+
+        if (device.is_id_valid(self->bricks_data_buffer)) {
+            // If the old buffers exist and they're already the same size,
+            // Just re-use them and return early.
+            auto oldTotalSize = device.info_buffer(self->bricks_data_buffer).value().size;
+            if (oldTotalSize == alloc_info.mTotalSize)
+                return;
+
+            device.destroy_buffer(self->bricks_data_buffer);
+        }
+
+        auto bufferInfo = daxa::BufferInfo{
+            .size = alloc_info.mTotalSize,
+            .name = "mPerChunkDataBuffer",
+        };
+        if (brick_count != 0) {
+            self->bricks_data_buffer = device.create_buffer(bufferInfo);
+
+            const auto *deviceAddress = (const uint8_t *)device.get_device_address(self->bricks_data_buffer).value();
+            self->chunk_primitives_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mPrimitivesOffset);
+            self->chunk_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
+            self->chunk_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
+            self->chunk_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
+
+            self->scene->buffers.voxel_object_bricks.set_buffers({.buffers = std::array{self->bricks_data_buffer}});
+        }
+        CreateBlas(device, self, "VoxelObject Blas");
+    }
+} // namespace
+
+void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src) {
+    auto self = src->render_voxel_object;
+    if (!src->render_dirty)
+        return;
+    src->render_dirty = false;
+
+    self->brick_count = 0;
+    for (auto brick : src->brick_grid) {
+        if (brick == nullptr)
+            continue;
+        if (brick->render_attribs == nullptr)
+            continue;
+        self->brick_count++;
+    }
+
+    resize_buffers(gpu_context, self);
+    if (self->brick_count == 0)
+        return;
+
+    auto &device = gpu_context.device;
+
+    auto tempTaskGraph = daxa::TaskGraph({
+        .device = device,
+        .staging_memory_pool_size = 0,
+        .name = "copy old shading data",
+    });
+    tempTaskGraph.use_persistent_blas(self->scene->buffers.voxel_object_blases);
+    tempTaskGraph.use_persistent_buffer(self->scene->buffers.voxel_object_bricks);
+    tempTaskGraph.add_task(daxa::InlineTaskInfo{
+        .attachments = {
+            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, self->scene->buffers.voxel_object_bricks),
+        },
+        .task = [&](daxa::TaskInterface ti) {
+            // upload all voxel data for now
+            auto alloc_info = get_bricks_buffer_info(self->brick_count);
+
+            auto allocation = ti.allocator->allocate(alloc_info.mTotalSize);
+            assert(allocation.has_value());
+
+            int brick_index = 0;
+            for (auto brick : src->brick_grid) {
+                if (brick == nullptr)
+                    continue;
+                if (brick->render_attribs == nullptr)
+                    continue;
+
+                Aabb &aabb = ((Aabb *)((uint8_t *)allocation->host_address + alloc_info.mAabbOffset))[brick_index];
+                ChunkPrimitive &primitive = ((ChunkPrimitive *)((uint8_t *)allocation->host_address + alloc_info.mPrimitivesOffset))[brick_index];
+
+                auto min = glm::ivec3(brick->voxel_min) + brick->brick_i * BRICK_SIZE;
+                auto max = glm::ivec3(brick->voxel_max) + brick->brick_i * BRICK_SIZE;
+                aabb.min = daxa_f32vec3(min.x, min.y, min.z);
+                aabb.max = daxa_f32vec3(max.x, max.y, max.z);
+                memcpy(primitive.bitmap, brick->bitmask, sizeof(primitive.bitmap));
+                primitive.flags = 0;
+                primitive.offset = daxa_i32vec3(min.x, min.y, min.z);
+                primitive.size_x = max.x - min.x + 1;
+                primitive.size_y = max.y - min.y + 1;
+                primitive.size_z = max.z - min.z + 1;
+
+                ++brick_index;
+            }
+
+            ti.recorder.copy_buffer_to_buffer({
+                .src_buffer = ti.allocator->buffer(),
+                .dst_buffer = self->bricks_data_buffer,
+                .src_offset = alloc_info.mPrimitivesOffset,
+                .dst_offset = alloc_info.mPrimitivesOffset,
+                .size = alloc_info.mPrimitivesSize,
+            });
+            ti.recorder.copy_buffer_to_buffer({
+                .src_buffer = ti.allocator->buffer(),
+                .dst_buffer = self->bricks_data_buffer,
+                .src_offset = alloc_info.mShadingOffset,
+                .dst_offset = alloc_info.mShadingOffset,
+                .size = alloc_info.mShadingSize,
+            });
+            ti.recorder.copy_buffer_to_buffer({
+                .src_buffer = ti.allocator->buffer(),
+                .dst_buffer = self->bricks_data_buffer,
+                .src_offset = alloc_info.mFlagsOffset,
+                .dst_offset = alloc_info.mFlagsOffset,
+                .size = alloc_info.mFlagsSize,
+            });
+            ti.recorder.copy_buffer_to_buffer({
+                .src_buffer = ti.allocator->buffer(),
+                .dst_buffer = self->bricks_data_buffer,
+                .src_offset = alloc_info.mAabbOffset,
+                .dst_offset = alloc_info.mAabbOffset,
+                .size = alloc_info.mAabbSize,
+            });
+        },
+        .name = "upload brick data",
+    });
+    tempTaskGraph.add_task(daxa::InlineTaskInfo{
+        .attachments = {
+            daxa::inl_attachment(daxa::TaskBufferAccess::ACCELERATION_STRUCTURE_BUILD_READ, self->scene->buffers.voxel_object_bricks),
+            daxa::inl_attachment(daxa::TaskBlasAccess::BUILD_WRITE, self->scene->buffers.voxel_object_blases),
+        },
+        .task = [&](const daxa::TaskInterface &ti) {
+            auto geometry = std::array{
+                daxa::BlasAabbGeometryInfo{
+                    .data = self->chunk_aabb_device_address,
+                    .stride = sizeof(Aabb),
+                    .count = self->brick_count,
+                    .flags = daxa::GeometryFlagBits::OPAQUE,
+                },
+            };
+            auto blasBuildInfo = daxa::BlasBuildInfo{
+                .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
+                .dst_blas = self->blas,
+                .geometries = geometry,
+                .scratch_data = ti.device.get_device_address(self->blas_scratch_buffer).value(),
+            };
+            ti.recorder.build_acceleration_structures({.blas_build_infos = std::span{&blasBuildInfo, 1}});
+            ti.recorder.destroy_buffer_deferred(self->blas_scratch_buffer);
+            self->blas_scratch_buffer = {};
+        },
+        .name = "build brick blas",
+    });
+
+    tempTaskGraph.submit({});
+    tempTaskGraph.complete({});
+    tempTaskGraph.execute({});
+}
+
+void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale) {
+    auto *self = object->render_voxel_object;
+    self->scene->drawn_voxel_objects.push_back(self->chunk_primitives_device_address);
+    self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
+        .transform = {
+            {scale, 0, 0, pos.x},
+            {0, scale, 0, pos.y},
+            {0, 0, scale, pos.z},
+        },
+        .instance_custom_index = 0, // (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size(),
+        .mask = 0xff,
+        .instance_shader_binding_table_record_offset = 0,
+        .flags = {},
+        .blas_device_address = self->blas_device_address,
+    });
+}

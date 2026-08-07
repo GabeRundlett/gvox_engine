@@ -10,6 +10,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define RENDERER_INTERNAL 1
+#include "render_scene.hpp"
+
 struct RendererImpl {
     GbufferRenderer gbuffer_renderer;
     KajiyaRenderer kajiya_renderer;
@@ -102,8 +105,9 @@ void Renderer::end_frame(daxa::Device &device, float dt) {
     self.kajiya_renderer.next_frame(device, auto_exposure_settings, dt);
 }
 
-auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers, VoxelParticles &particles, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {
+auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {
     auto &self = *impl;
+    auto &voxel_buffers = scene->buffers;
 
     self.sky.render(gpu_context);
 
@@ -122,7 +126,7 @@ auto Renderer::render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers,
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers);
-    auto particles_shadow_depth_image = particles.render(gpu_context, gbuffer_depth, velocity_image);
+    auto particles_shadow_depth_image = daxa::NullTaskImage; // particles.render(gpu_context, gbuffer_depth, velocity_image);
 
     auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers, particles_shadow_depth_image);
 

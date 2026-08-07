@@ -1,26 +1,12 @@
-Checks: "*,
-        -abseil-*,
-        -altera-*,
-        -android-*,
-        -fuchsia-*,
-        -google-*,
-        -llvm*,
-        -zircon-*,
-        -readability-else-after-return,
-        -readability-static-accessed-through-instance,
-        -readability-avoid-const-params-in-decls,
-        -cppcoreguidelines-non-private-member-variables-in-classes,
-        -misc-non-private-member-variables-in-classes,
-        -hicpp-uppercase-literal-suffix,
-        -readability-uppercase-literal-suffix,
-        -readability-identifier-length,
-        -cppcoreguidelines-pro-type-reinterpret-cast,
-        -performance-no-int-to-ptr,
-        -bugprone-easily-swappable-parameters,
-        -readability-simplify-boolean-expr,
-        -hicpp-signed-bitwise,
-        -cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,
-        -readability-magic-numbers,
-"
-WarningsAsErrors: ''
-HeaderFilterRegex: ''
+Checks: '-*,readability-identifier-naming'
+
+CheckOptions:
+  - { key: readability-identifier-naming.NamespaceCase,       value: CamelCase  }
+  - { key: readability-identifier-naming.ClassCase,           value: CamelCase  }
+  - { key: readability-identifier-naming.StructCase,          value: CamelCase  }
+  - { key: readability-identifier-naming.FunctionCase,        value: snake_case }
+  - { key: readability-identifier-naming.VariableCase,        value: snake_case }
+  - { key: readability-identifier-naming.ParameterCase,       value: snake_case }
+  - { key: readability-identifier-naming.MemberCase,          value: snake_case }
+  - { key: readability-identifier-naming.MethodCase,          value: snake_case }
+  - { key: readability-identifier-naming.GlobalConstantCase,  value: UPPER_CASE }

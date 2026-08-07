@@ -7,9 +7,10 @@
 
 DAXA_DECL_TASK_HEAD_BEGIN(RtrTraceRt)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
 DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_i32), ranking_tile_buf)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_i32), scambling_tile_buf)
@@ -32,9 +33,10 @@ struct RtrTraceRtPush {
 
 DAXA_DECL_TASK_HEAD_BEGIN(RtrValidateRt)
 DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
 DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
 IRCACHE_USE_BUFFERS(RAY_TRACING)
 DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
@@ -434,9 +436,10 @@ struct RtrRenderer {
             .source = daxa::ShaderFile{"kajiya/rtr/trace_reflection.rt.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                // daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
+                // daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
+                // daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
                 daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.tlas, voxel_buffers.task_tlas}},
                 daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.ranking_tile_buf, ranking_tile_buf}},
                 daxa::TaskViewVariant{std::pair{RtrTraceRt::AT.scambling_tile_buf, scambling_tile_buf}},
@@ -547,9 +550,10 @@ struct RtrRenderer {
                 .source = daxa::ShaderFile{"kajiya/rtr/reflection_validate.rt.glsl"},
                 .views = std::array{
                     daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                    daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                    daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
+                    // daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
+                    daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
                     daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.tlas, voxel_buffers.task_tlas}},
                     IRCACHE_BUFFER_USES_ASSIGN(RtrValidateRt, ircache),
                     daxa::TaskViewVariant{std::pair{RtrValidateRt::AT.gbuffer_tex, gbuffer_depth.gbuffer}},
