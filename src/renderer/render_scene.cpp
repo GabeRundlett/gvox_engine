@@ -4,10 +4,10 @@
 
 struct RenderScene *create_render_scene(struct GpuContext &gpu_context) {
     RenderScene *result = new RenderScene();
-    result->buffers.task_tlas_instances = daxa::TaskBuffer({.name = "task_tlas_instances"});
-    result->buffers.task_tlas = daxa::TaskTlas({.name = "task_tlas"});
-    result->buffers.voxel_object_blases = daxa::TaskBlas({.name = "voxel_object_blases"});
-    result->buffers.voxel_object_bricks = daxa::TaskBuffer({.name = "voxel_object_bricks"});
+    result->buffers.task_tlas_instances = daxa::ExternalTaskBuffer({.name = "task_tlas_instances"});
+    result->buffers.task_tlas = daxa::ExternalTaskTlas({.name = "task_tlas"});
+    result->buffers.voxel_object_blases = daxa::ExternalTaskBlas({.name = "voxel_object_blases"});
+    result->buffers.voxel_object_bricks = daxa::ExternalTaskBuffer({.name = "voxel_object_bricks"});
     return result;
 }
 
@@ -19,9 +19,8 @@ void destroy_render_scene(struct GpuContext &gpu_context, struct RenderScene *se
         device.destroy_buffer(self->buffers.tlas_buffer);
     if (device.is_id_valid(self->buffers.tlas_scratch_buffer))
         device.destroy_buffer(self->buffers.tlas_scratch_buffer);
-    for (auto buffer : self->buffers.task_tlas_instances.get_state().buffers)
-        if (device.is_id_valid(buffer))
-            device.destroy_buffer(buffer);
+    if (device.is_id_valid(self->buffers.task_tlas_instances.id()))
+        device.destroy_buffer(self->buffers.task_tlas_instances.id());
 
     delete self;
 }
@@ -53,13 +52,13 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
             .instances = tlasInstanceInfo,
             .scratch_data = {}, // Ignored in get_acceleration_structure_build_sizes.
         };
-        auto tlasBuildSizes = device.get_tlas_build_sizes(tlasBuildInfo);
+        auto tlasBuildSizes = device.tlas_build_sizes(tlasBuildInfo);
         auto accelerationStructureScratchOffsetAlignment = device.properties().acceleration_structure_properties.value().min_acceleration_structure_scratch_offset_alignment;
         auto instancesSize = sizeof(daxa_BlasInstanceData) * new_tlas_instance_count;
 
         bool createTlasBuffer = true;
         if (device.is_id_valid(self->buffers.tlas_buffer)) {
-            if (device.info_buffer(self->buffers.tlas_buffer).value().size >= tlasBuildSizes.acceleration_structure_size)
+            if (device.buffer_info(self->buffers.tlas_buffer).value().size >= tlasBuildSizes.acceleration_structure_size)
                 createTlasBuffer = false;
             else
                 device.destroy_buffer(self->buffers.tlas_buffer);
@@ -67,7 +66,7 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
 
         bool createScratchBuffer = true;
         if (device.is_id_valid(self->buffers.tlas_scratch_buffer)) {
-            if (device.info_buffer(self->buffers.tlas_scratch_buffer).value().size >= GetAligned(tlasBuildSizes.build_scratch_size, accelerationStructureScratchOffsetAlignment))
+            if (device.buffer_info(self->buffers.tlas_scratch_buffer).value().size >= GetAligned(tlasBuildSizes.build_scratch_size, accelerationStructureScratchOffsetAlignment))
                 createScratchBuffer = false;
             else
                 device.destroy_buffer(self->buffers.tlas_scratch_buffer);
@@ -75,10 +74,10 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
 
         bool createInstancesBuffer = instancesSize > 0;
         auto instances_buffer = daxa::BufferId{};
-        if (!self->buffers.task_tlas_instances.get_state().buffers.empty())
-            instances_buffer = self->buffers.task_tlas_instances.get_state().buffers[0];
+        if (!self->buffers.task_tlas_instances.is_valid())
+            instances_buffer = self->buffers.task_tlas_instances.id();
         if (device.is_id_valid(instances_buffer)) {
-            if (device.info_buffer(instances_buffer).value().size >= instancesSize)
+            if (device.buffer_info(instances_buffer).value().size >= instancesSize)
                 createInstancesBuffer = false;
             else
                 device.destroy_buffer(instances_buffer);
@@ -101,7 +100,7 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
             });
         }
 
-        self->buffers.task_tlas_instances.set_buffers({.buffers = std::array{instances_buffer}});
+        self->buffers.task_tlas_instances.set_buffer(instances_buffer);
 
         if (!self->buffers.tlas.is_empty())
             device.destroy_tlas(self->buffers.tlas);
@@ -111,10 +110,10 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
                 .size = tlasBuildSizes.acceleration_structure_size,
                 .name = "tlas",
             },
-            .buffer_id = self->buffers.tlas_buffer,
+            .buffer = self->buffers.tlas_buffer,
             .offset = 0,
         });
-        self->buffers.task_tlas.set_tlas({.tlas = std::array{self->buffers.tlas}});
+        self->buffers.task_tlas.set_tlas(self->buffers.tlas);
     }
 }
 
@@ -126,12 +125,12 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
         .name = "blas_attr_pointers",
     });
 
-    task_graph.use_persistent_buffer(self->buffers.brick_primitive_pointers.task_resource);
+    task_graph.register_buffer(self->buffers.brick_primitive_pointers.task_resource);
 
-    task_graph.use_persistent_buffer(self->buffers.task_tlas_instances);
-    task_graph.use_persistent_tlas(self->buffers.task_tlas);
-    task_graph.use_persistent_blas(self->buffers.voxel_object_blases);
-    task_graph.use_persistent_buffer(self->buffers.voxel_object_bricks);
+    task_graph.register_buffer(self->buffers.task_tlas_instances);
+    task_graph.register_tlas(self->buffers.task_tlas);
+    task_graph.register_blas(self->buffers.voxel_object_blases);
+    task_graph.register_buffer(self->buffers.voxel_object_bricks);
 
     task_graph.add_task({
         .attachments = {
@@ -149,7 +148,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
             // NOTE: Don't forget about deletion of objects, this should mark the re-allocated object as a dirty tlas!
             ti.recorder.copy_buffer_to_buffer({
                 .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).ids[0],
+                .dst_buffer = ti.get(self->buffers.task_tlas_instances).id,
                 .size = staging_allocation->size,
             });
 
@@ -157,7 +156,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
             memcpy(staging_allocation->host_address, self->drawn_voxel_objects.data(), staging_allocation->size);
             ti.recorder.copy_buffer_to_buffer({
                 .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0],
+                .dst_buffer = ti.get(self->buffers.brick_primitive_pointers.task_resource).id,
                 .size = staging_allocation->size,
             });
         },
@@ -175,7 +174,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
             auto tlasInstancesBuffer = ti.get(self->buffers.task_tlas_instances).ids[0];
             auto tlasInstanceInfo = std::array{
                 daxa::TlasInstanceInfo{
-                    .data = tlasInstanceN == 0 ? daxa::DeviceAddress{} : ti.device.get_device_address(tlasInstancesBuffer).value(),
+                    .data = tlasInstanceN == 0 ? daxa::DeviceAddress{} : ti.device.device_address(tlasInstancesBuffer).value(),
                     .count = static_cast<uint32_t>(tlasInstanceN),
                     .is_data_array_of_pointers = false, // Buffer contains flat array of instances, not an array of pointers to instances.
                     .flags = daxa::GeometryFlagBits::OPAQUE,
@@ -185,7 +184,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
                 .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
                 .dst_tlas = self->buffers.tlas,
                 .instances = tlasInstanceInfo,
-                .scratch_data = ti.device.get_device_address(self->buffers.tlas_scratch_buffer).value(),
+                .scratch_data = ti.device.device_address(self->buffers.tlas_scratch_buffer).value(),
             };
             ti.recorder.build_acceleration_structures({
                 .tlas_build_infos = std::array{tlasBuildInfo},

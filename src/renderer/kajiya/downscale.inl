@@ -3,10 +3,10 @@
 #include <core.inl>
 #include <application/input.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(DownscaleCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, src_image_id)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, dst_image_id)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(DownscaleCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, src_image_id)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, dst_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct DownscaleComputePush {
     DAXA_TH_BLOB(DownscaleCompute, uses)
@@ -23,7 +23,7 @@ inline auto extract_downscaled_depth(GpuContext &gpu_context, daxa::TaskImageVie
         .name = "downscaled_depth",
     });
 
-    gpu_context.add(ComputeTask<DownscaleCompute::Task, DownscaleComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_DEPTH", "1"}},
         .views = std::array{
@@ -32,7 +32,7 @@ inline auto extract_downscaled_depth(GpuContext &gpu_context, daxa::TaskImageVie
             daxa::TaskViewVariant{std::pair{DownscaleCompute::AT.dst_image_id, output_tex}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, DownscaleComputePush &push, NoTaskInfo const &) {
-            auto const image_info = ti.device.info_image(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
@@ -51,7 +51,7 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(GpuContext &gpu_context
         .name = "downscaled_gbuffer_view_normal",
     });
 
-    gpu_context.add(ComputeTask<DownscaleCompute::Task, DownscaleComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_NRM", "1"}},
         .views = std::array{
@@ -60,7 +60,7 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(GpuContext &gpu_context
             daxa::TaskViewVariant{std::pair{DownscaleCompute::AT.dst_image_id, output_tex}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, DownscaleComputePush &push, NoTaskInfo const &) {
-            auto const image_info = ti.device.info_image(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});
@@ -79,7 +79,7 @@ inline auto extract_downscaled_ssao(GpuContext &gpu_context, daxa::TaskImageView
         .name = "downscaled_ssao",
     });
 
-    gpu_context.add(ComputeTask<DownscaleCompute::Task, DownscaleComputePush, NoTaskInfo>{
+    gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
         .extra_defines = {{"DOWNSCALE_SSAO", "1"}},
         .views = std::array{
@@ -88,7 +88,7 @@ inline auto extract_downscaled_ssao(GpuContext &gpu_context, daxa::TaskImageView
             daxa::TaskViewVariant{std::pair{DownscaleCompute::AT.dst_image_id, output_tex}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, DownscaleComputePush &push, NoTaskInfo const &) {
-            auto const image_info = ti.device.info_image(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(DownscaleCompute::AT.dst_image_id).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(image_info.size.x + 7) / 8, (image_info.size.y + 7) / 8});

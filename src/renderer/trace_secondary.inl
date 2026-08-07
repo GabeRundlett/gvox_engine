@@ -3,19 +3,19 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(TraceShadowRt)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
-DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_3D, blue_noise_vec2)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, depth_image_id)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_SAMPLED, REGULAR_2D, particles_shadow_depth_tex)
+DAXA_DECL_RAY_TRACING_TASK_HEAD_BEGIN(TraceShadowRt)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_TLAS_PTR(READ, tlas)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_3D, blue_noise_vec2)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, depth_image_id)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, particles_shadow_depth_tex)
 // TODO: Figure out why this needs to be an ID...
-DAXA_TH_IMAGE_ID(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, shadow_mask)
+DAXA_TH_IMAGE_ID(WRITE, REGULAR_2D, shadow_mask)
 DAXA_DECL_TASK_HEAD_END
 #if defined(DAXA_RAY_TRACING) || defined(__cplusplus)
 struct TraceShadowRtPush {
@@ -39,7 +39,7 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
     auto render_shadows = AppSettings::get<settings::Checkbox>("Graphics", "Render Shadows").value;
 
     if (render_shadows) {
-        gpu_context.add(RayTracingTask<TraceShadowRt::Task, TraceShadowRtPush, NoTaskInfo>{
+        gpu_context.add(RayTracingTask<TraceShadowRt::Info, TraceShadowRtPush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_shadow.rt.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -55,7 +55,7 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
                 daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.shadow_mask, shadow_mask}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, TraceShadowRtPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(TraceShadowRt::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(TraceShadowRt::AT.g_buffer_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1});

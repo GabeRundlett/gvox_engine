@@ -13,30 +13,30 @@ DAXA_DECL_BUFFER_PTR(GrassStrand)
 
 DECL_SIMPLE_STATIC_ALLOCATOR(GrassStrandAllocator, GrassStrand, MAX_GRASS_BLADES, daxa_u32)
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSimCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_TLAS_PTR(COMPUTE_SHADER_READ, tlas)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, GrassStrandAllocator)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
-DAXA_TH_IMAGE(COMPUTE_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(GrassStrandSimCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_TLAS_PTR(READ, tlas)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, GrassStrandAllocator)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
+DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_DECL_TASK_HEAD_END
 struct GrassStrandSimComputePush {
     DAXA_TH_BLOB(GrassStrandSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(GrassStrandCubeParticleRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GrassStrand), grass_strands)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GrassStrand), grass_strands)
 DAXA_TH_BUFFER(INDEX_READ, indices)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -46,25 +46,25 @@ struct GrassStrandCubeParticleRasterPush {
     DAXA_TH_BLOB(GrassStrandCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandCubeParticleShadowRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(GrassStrandCubeParticleShadowRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GrassStrand), grass_strands)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GrassStrand), grass_strands)
 DAXA_TH_BUFFER(INDEX_READ, indices)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct GrassStrandCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(GrassStrandCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(GrassStrandSplatParticleRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(GrassStrandSplatParticleRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GrassStrand), grass_strands)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLED, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GrassStrand), grass_strands)
+DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -100,11 +100,11 @@ struct GrassStrands {
             .name = "grass.splat_rendered_particle_verts",
         });
 
-        gpu_context.frame_task_graph.use_persistent_buffer(cube_rendered_particle_verts.task_resource);
-        gpu_context.frame_task_graph.use_persistent_buffer(shadow_cube_rendered_particle_verts.task_resource);
-        gpu_context.frame_task_graph.use_persistent_buffer(splat_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(cube_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(shadow_cube_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(splat_rendered_particle_verts.task_resource);
 
-        gpu_context.add(ComputeTask<GrassStrandSimCompute::Task, GrassStrandSimComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<GrassStrandSimCompute::Info, GrassStrandSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/grass/sim.comp.glsl"},
             .extra_defines = {daxa::ShaderDefine{.name = "GRASS", .value = "1"}},
             .views = std::array{
@@ -129,7 +129,7 @@ struct GrassStrands {
     }
 
     void render_cubes(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state, daxa::TaskBufferView cube_index_buffer) {
-        gpu_context.add(RasterTask<GrassStrandCubeParticleRaster::Task, GrassStrandCubeParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<GrassStrandCubeParticleRaster::Info, GrassStrandCubeParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .color_attachments = {
@@ -160,7 +160,7 @@ struct GrassStrands {
                 daxa::TaskViewVariant{std::pair{GrassStrandCubeParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, GrassStrandCubeParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(GrassStrandCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(GrassStrandCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(GrassStrandCubeParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -185,7 +185,7 @@ struct GrassStrands {
             },
         });
 
-        gpu_context.add(RasterTask<GrassStrandCubeParticleShadowRaster::Task, GrassStrandCubeParticleShadowRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<GrassStrandCubeParticleShadowRaster::Info, GrassStrandCubeParticleShadowRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .depth_test = daxa::DepthTestInfo{
@@ -208,7 +208,7 @@ struct GrassStrands {
                 daxa::TaskViewVariant{std::pair{GrassStrandCubeParticleShadowRaster::AT.depth_image_id, shadow_depth}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, GrassStrandCubeParticleShadowRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
@@ -230,7 +230,7 @@ struct GrassStrands {
     }
 
     void render_splats(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state) {
-        gpu_context.add(RasterTask<GrassStrandSplatParticleRaster::Task, GrassStrandSplatParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<GrassStrandSplatParticleRaster::Info, GrassStrandSplatParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .color_attachments = {
@@ -260,7 +260,7 @@ struct GrassStrands {
                 daxa::TaskViewVariant{std::pair{GrassStrandSplatParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, GrassStrandSplatParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(GrassStrandSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(GrassStrandSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(GrassStrandSplatParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},

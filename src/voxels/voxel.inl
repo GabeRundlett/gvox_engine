@@ -63,19 +63,20 @@ struct VoxelRtBufferPtrs {
 
 #if defined(__cplusplus)
 
-#include <utilities/allocator.inl>
+#include <core.inl>
+// #include <utilities/allocator.inl>
 
 struct VoxelWorldBuffers {
     TemporalBuffer brick_primitive_pointers;
-    daxa::TaskBuffer voxel_object_bricks;
-    daxa::TaskBlas voxel_object_blases;
+    daxa::ExternalTaskBuffer voxel_object_bricks;
+    daxa::ExternalTaskBlas voxel_object_blases;
 
     uint32_t tlas_instance_count = 0;
     daxa::BufferId tlas_scratch_buffer;
     daxa::BufferId tlas_buffer;
     daxa::TlasId tlas;
-    daxa::TaskTlas task_tlas;
-    daxa::TaskBuffer task_tlas_instances;
+    daxa::ExternalTaskTlas task_tlas;
+    daxa::ExternalTaskBuffer task_tlas_instances;
 
     // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
     // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;

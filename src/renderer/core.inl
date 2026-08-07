@@ -39,7 +39,7 @@ namespace {
         auto task_image_views = std::array<daxa::TaskImageView, N>{};
         for (size_t i = 0; i < N; ++i) {
             task_image_views[i] = task_images[i];
-            temp_task_graph.use_persistent_image(task_images[i]);
+            temp_task_graph.register_image(task_images[i]);
         }
         clear_task_images(temp_task_graph, task_image_views);
         temp_task_graph.submit({});

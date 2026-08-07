@@ -58,9 +58,9 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
     auto depth_image = gbuffer_depth.depth.current().view();
     gpu_context.frame_task_graph.add_task({
         .attachments = {
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, color_image),
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, depth_image),
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, velocity_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, color_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, depth_image),
+            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, velocity_image),
             daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_STORAGE_WRITE_ONLY, daxa::ImageViewType::REGULAR_2D, output_image),
         },
         .task = [=, this](daxa::TaskInterface const &ti) {
@@ -89,15 +89,15 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
             HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(velocity_use.view_ids[0]), &velocity_vk_image_view));
             HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(output_use.view_ids[0]), &output_vk_image_view));
 
-            auto const color_extent = ti.device.info_image(color_use.ids[0]).value().size;
-            auto const depth_extent = ti.device.info_image(depth_use.ids[0]).value().size;
-            auto const velocity_extent = ti.device.info_image(velocity_use.ids[0]).value().size;
-            auto const output_extent = ti.device.info_image(output_use.ids[0]).value().size;
+            auto const color_extent = ti.device.image_info(color_use.ids[0]).value().size;
+            auto const depth_extent = ti.device.image_info(depth_use.ids[0]).value().size;
+            auto const velocity_extent = ti.device.image_info(velocity_use.ids[0]).value().size;
+            auto const output_extent = ti.device.image_info(output_use.ids[0]).value().size;
 
-            auto const color_format = static_cast<VkFormat>(ti.device.info_image(color_use.ids[0]).value().format);
-            auto const depth_format = static_cast<VkFormat>(ti.device.info_image(depth_use.ids[0]).value().format);
-            auto const velocity_format = static_cast<VkFormat>(ti.device.info_image(velocity_use.ids[0]).value().format);
-            auto const output_format = static_cast<VkFormat>(ti.device.info_image(output_use.ids[0]).value().format);
+            auto const color_format = static_cast<VkFormat>(ti.device.image_info(color_use.ids[0]).value().format);
+            auto const depth_format = static_cast<VkFormat>(ti.device.image_info(depth_use.ids[0]).value().format);
+            auto const velocity_format = static_cast<VkFormat>(ti.device.image_info(velocity_use.ids[0]).value().format);
+            auto const output_format = static_cast<VkFormat>(ti.device.image_info(output_use.ids[0]).value().format);
 
             wchar_t fsr_input_color[] = L"FSR2_InputColor";
             wchar_t fsr_input_depth[] = L"FSR2_InputDepth";

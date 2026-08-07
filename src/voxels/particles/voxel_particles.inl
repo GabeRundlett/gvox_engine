@@ -13,13 +13,13 @@
 #include <voxels/particles/tree_particle/tree_particle.inl>
 #include <voxels/particles/fire_particle/fire_particle.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, GrassStrandAllocator)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, FlowerAllocator)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, TreeParticleAllocator)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, FireParticleAllocator)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(VoxelParticlePerframeCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, GrassStrandAllocator)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, FlowerAllocator)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, TreeParticleAllocator)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, FireParticleAllocator)
 DAXA_DECL_TASK_HEAD_END
 struct VoxelParticlePerframeComputePush {
     DAXA_TH_BLOB(VoxelParticlePerframeCompute, uses)
@@ -44,7 +44,7 @@ struct VoxelParticles {
             .name = "globals_buffer",
         });
 
-        gpu_context.startup_task_graph.use_persistent_buffer(global_state.task_resource);
+        gpu_context.startup_task_graph.register_buffer(global_state.task_resource);
 
         gpu_context.startup_task_graph.add_task({
             .attachments = {
@@ -52,7 +52,7 @@ struct VoxelParticles {
             },
             .task = [this](daxa::TaskInterface const &ti) {
                 ti.recorder.clear_buffer({
-                    .buffer = global_state.task_resource.get_state().buffers[0],
+                    .buffer = global_state.task_resource.id(),
                     .offset = 0,
                     .size = sizeof(VoxelParticlesState),
                     .clear_value = 0,
@@ -67,7 +67,7 @@ struct VoxelParticles {
             .name = "particles.cube_index_buffer",
         });
 
-        gpu_context.startup_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
+        gpu_context.startup_task_graph.register_buffer(cube_index_buffer.task_resource);
 
         gpu_context.startup_task_graph.add_task({
             .attachments = {
@@ -76,15 +76,15 @@ struct VoxelParticles {
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
                     .size = sizeof(cube_indices),
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "cube_staging_buffer",
                 });
                 ti.recorder.destroy_buffer_deferred(staging_buffer);
-                auto *buffer_ptr = ti.device.get_host_address_as<std::remove_cv_t<decltype(cube_indices)>>(staging_buffer).value();
+                auto *buffer_ptr = ti.device.buffer_host_address_as<std::remove_cv_t<decltype(cube_indices)>>(staging_buffer).value();
                 *buffer_ptr = cube_indices;
                 ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_buffer,
-                    .dst_buffer = cube_index_buffer.task_resource.get_state().buffers[0],
+                    .dst_buffer = cube_index_buffer.task_resource.id(),
                     .size = sizeof(cube_indices),
                 });
             },
@@ -98,10 +98,10 @@ struct VoxelParticles {
     }
 
     void simulate(GpuContext &gpu_context, VoxelWorldBuffers &voxel_world_buffers) {
-        gpu_context.frame_task_graph.use_persistent_buffer(global_state.task_resource);
-        gpu_context.frame_task_graph.use_persistent_buffer(cube_index_buffer.task_resource);
+        gpu_context.frame_task_graph.register_buffer(global_state.task_resource);
+        gpu_context.frame_task_graph.register_buffer(cube_index_buffer.task_resource);
 
-        gpu_context.add(ComputeTask<VoxelParticlePerframeCompute::Task, VoxelParticlePerframeComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<VoxelParticlePerframeCompute::Info, VoxelParticlePerframeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/perframe.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{VoxelParticlePerframeCompute::AT.gpu_input, gpu_context.task_input_buffer}},

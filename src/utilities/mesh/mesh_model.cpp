@@ -155,10 +155,10 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         size_t image_size = sx * sy * sizeof(uint8_t) * dst_channel_n;
         auto texture_staging_buffer = device.create_buffer({
             .size = image_size,
-            .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
             .name = "texture_staging_buffer",
         });
-        auto *staging_buffer_ptr = device.get_host_address_as<uint8_t>(texture_staging_buffer).value();
+        auto *staging_buffer_ptr = device.buffer_host_address_as<uint8_t>(texture_staging_buffer).value();
         for (size_t i = 0; i < sx * sy; ++i) {
             size_t src_offset = i * src_channel_n;
             size_t dst_offset = i * dst_channel_n;
@@ -178,7 +178,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
             },
             .name = name + key,
         });
-        mip_task_list.use_persistent_image(texture->task_image);
+        mip_task_list.register_image(texture->task_image);
         auto task_image_mip_view = texture->task_image.view().view({.base_mip_level = 0, .level_count = 4});
 
         mip_task_list.add_task({
@@ -207,7 +207,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
                 .task = [=, &device](daxa::TaskInterface const &ti) {
                     auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
                     auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
-                    auto image_info = device.info_image(image_a).value();
+                    auto image_info = device.image_info(image_a).value();
                     auto mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, static_cast<int32_t>(image_info.size.x)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.y)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.z))};
                     for (uint32_t j = 0; j < i; ++j) {
                         mip_size = {std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
@@ -238,7 +238,7 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         }
         mip_task_list.add_task({
             .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::FRAGMENT_SHADER_SAMPLED, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
+                daxa::inl_attachment(daxa::TaskImageAccess::SAMPLE, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
             },
             .task = [](daxa::TaskInterface const &) {},
             .name = "Transition",

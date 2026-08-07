@@ -137,7 +137,7 @@ namespace {
         });
 
         self->scene->buffers.voxel_object_blases.set_blas({.blas = std::array{self->blas}});
-        self->blas_device_address = device.get_device_address(self->blas).value();
+        self->blas_device_address = device.device_address(self->blas).value();
     }
 
     void resize_buffers(GpuContext &gpu_context, RenderVoxelObject *self) {
@@ -149,7 +149,7 @@ namespace {
         if (device.is_id_valid(self->bricks_data_buffer)) {
             // If the old buffers exist and they're already the same size,
             // Just re-use them and return early.
-            auto oldTotalSize = device.info_buffer(self->bricks_data_buffer).value().size;
+            auto oldTotalSize = device.buffer_info(self->bricks_data_buffer).value().size;
             if (oldTotalSize == alloc_info.mTotalSize)
                 return;
 
@@ -163,13 +163,13 @@ namespace {
         if (brick_count != 0) {
             self->bricks_data_buffer = device.create_buffer(bufferInfo);
 
-            const auto *deviceAddress = (const uint8_t *)device.get_device_address(self->bricks_data_buffer).value();
+            const auto *deviceAddress = (const uint8_t *)device.device_address(self->bricks_data_buffer).value();
             self->chunk_primitives_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mPrimitivesOffset);
             self->chunk_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
             self->chunk_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
             self->chunk_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
 
-            self->scene->buffers.voxel_object_bricks.set_buffers({.buffers = std::array{self->bricks_data_buffer}});
+            self->scene->buffers.voxel_object_bricks.set_buffer(self->bricks_data_buffer);
         }
         CreateBlas(device, self, "VoxelObject Blas");
     }
@@ -201,8 +201,8 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
         .staging_memory_pool_size = 0,
         .name = "copy old shading data",
     });
-    tempTaskGraph.use_persistent_blas(self->scene->buffers.voxel_object_blases);
-    tempTaskGraph.use_persistent_buffer(self->scene->buffers.voxel_object_bricks);
+    tempTaskGraph.register_blas(self->scene->buffers.voxel_object_blases);
+    tempTaskGraph.register_buffer(self->scene->buffers.voxel_object_bricks);
     tempTaskGraph.add_task(daxa::InlineTaskInfo{
         .attachments = {
             daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, self->scene->buffers.voxel_object_bricks),
@@ -287,7 +287,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                 .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
                 .dst_blas = self->blas,
                 .geometries = geometry,
-                .scratch_data = ti.device.get_device_address(self->blas_scratch_buffer).value(),
+                .scratch_data = ti.device.device_address(self->blas_scratch_buffer).value(),
             };
             ti.recorder.build_acceleration_structures({.blas_build_infos = std::span{&blasBuildInfo, 1}});
             ti.recorder.destroy_buffer_deferred(self->blas_scratch_buffer);

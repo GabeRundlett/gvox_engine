@@ -12,19 +12,19 @@
 #define SHADING_MODE_RTX_OFF 4
 #define SHADING_MODE_IRCACHE 5
 
-DAXA_DECL_TASK_HEAD_BEGIN(LightGbufferCompute)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(LightGbufferCompute)
 // IRCACHE_USE_BUFFERS(COMPUTE)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, gbuffer_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, depth_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, shadow_mask_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtr_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, rtdgi_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, output_tex)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, CUBE, ibl_cube)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_3D, ae_lut)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, gbuffer_tex)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, depth_tex)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, shadow_mask_tex)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, rtr_tex)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, rtdgi_tex)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, output_tex)
+DAXA_TH_IMAGE_INDEX(SAMPLE, CUBE, ibl_cube)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_3D, ae_lut)
 DAXA_DECL_TASK_HEAD_END
 struct LightGbufferComputePush {
     daxa_f32vec4 output_tex_size;
@@ -62,7 +62,7 @@ inline auto light_gbuffer(
         task_info.debug_shading_mode = SHADING_MODE_RTX_OFF;
     }
 
-    gpu_context.add(ComputeTask<LightGbufferCompute::Task, LightGbufferComputePush, LightGbufferComputeTaskInfo>{
+    gpu_context.add(ComputeTask<LightGbufferCompute::Info, LightGbufferComputePush, LightGbufferComputeTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
         .views = std::array{
             // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
@@ -79,7 +79,7 @@ inline auto light_gbuffer(
             daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.ae_lut, ae_lut}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, LightGbufferComputeTaskInfo const &info) {
-            auto const image_info = ti.device.info_image(ti.get(LightGbufferCompute::AT.gbuffer_tex).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(LightGbufferCompute::AT.gbuffer_tex).ids[0]).value();
             ti.recorder.set_pipeline(pipeline);
             push.debug_shading_mode = info.debug_shading_mode;
             push.debug_show_wrc = 0;

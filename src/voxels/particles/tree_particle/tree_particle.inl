@@ -14,27 +14,27 @@ DAXA_DECL_BUFFER_PTR(TreeParticle)
 DECL_SIMPLE_STATIC_ALLOCATOR(TreeParticleAllocator, TreeParticle, MAX_TREE_PARTICLES, daxa_u32)
 #define CONSERVATIVE_PARTICLE_PER_TREE_PARTICLE 2
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSimCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_TLAS_PTR(COMPUTE_SHADER_READ, tlas)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(COMPUTE_SHADER_READ_WRITE, TreeParticleAllocator)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(TreeParticleSimCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_TLAS_PTR(READ, tlas)
+SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, TreeParticleAllocator)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
 DAXA_DECL_TASK_HEAD_END
 struct TreeParticleSimComputePush {
     DAXA_TH_BLOB(TreeParticleSimCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(TreeParticleCubeParticleRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(TreeParticle), tree_particles)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(TreeParticle), tree_particles)
 DAXA_TH_BUFFER(INDEX_READ, indices)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
@@ -45,11 +45,11 @@ struct TreeParticleCubeParticleRasterPush {
     DAXA_TH_BLOB(TreeParticleCubeParticleRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleCubeParticleShadowRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(TreeParticleCubeParticleShadowRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(TreeParticle), tree_particles)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(TreeParticle), tree_particles)
 DAXA_TH_BUFFER(INDEX_READ, indices)
 DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
@@ -57,11 +57,11 @@ struct TreeParticleCubeParticleShadowRasterPush {
     DAXA_TH_BLOB(TreeParticleCubeParticleShadowRaster, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TreeParticleSplatParticleRaster)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(TreeParticleSplatParticleRaster)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
-DAXA_TH_BUFFER_PTR(GRAPHICS_SHADER_READ, daxa_BufferPtr(TreeParticle), tree_particles)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(TreeParticle), tree_particles)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -97,11 +97,11 @@ struct TreeParticles {
             .name = "tree_particle.splat_rendered_particle_verts",
         });
 
-        gpu_context.frame_task_graph.use_persistent_buffer(cube_rendered_particle_verts.task_resource);
-        gpu_context.frame_task_graph.use_persistent_buffer(shadow_cube_rendered_particle_verts.task_resource);
-        gpu_context.frame_task_graph.use_persistent_buffer(splat_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(cube_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(shadow_cube_rendered_particle_verts.task_resource);
+        gpu_context.frame_task_graph.register_buffer(splat_rendered_particle_verts.task_resource);
 
-        gpu_context.add(ComputeTask<TreeParticleSimCompute::Task, TreeParticleSimComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<TreeParticleSimCompute::Info, TreeParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/tree_particle/sim.comp.glsl"},
             .extra_defines = {daxa::ShaderDefine{.name = "TREE_PARTICLE", .value = "1"}},
             .views = std::array{
@@ -125,7 +125,7 @@ struct TreeParticles {
     }
 
     void render_cubes(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state, daxa::TaskBufferView cube_index_buffer) {
-        gpu_context.add(RasterTask<TreeParticleCubeParticleRaster::Task, TreeParticleCubeParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<TreeParticleCubeParticleRaster::Info, TreeParticleCubeParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .color_attachments = {
@@ -155,7 +155,7 @@ struct TreeParticles {
                 daxa::TaskViewVariant{std::pair{TreeParticleCubeParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, TreeParticleCubeParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(TreeParticleCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(TreeParticleCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(TreeParticleCubeParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -180,7 +180,7 @@ struct TreeParticles {
             },
         });
 
-        gpu_context.add(RasterTask<TreeParticleCubeParticleShadowRaster::Task, TreeParticleCubeParticleShadowRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<TreeParticleCubeParticleShadowRaster::Info, TreeParticleCubeParticleShadowRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
             .depth_test = daxa::DepthTestInfo{
@@ -202,7 +202,7 @@ struct TreeParticles {
                 daxa::TaskViewVariant{std::pair{TreeParticleCubeParticleShadowRaster::AT.depth_image_id, shadow_depth}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, TreeParticleCubeParticleShadowRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(TreeParticleCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(TreeParticleCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(TreeParticleCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
@@ -224,7 +224,7 @@ struct TreeParticles {
     }
 
     void render_splats(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state) {
-        gpu_context.add(RasterTask<TreeParticleSplatParticleRaster::Task, TreeParticleSplatParticleRasterPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<TreeParticleSplatParticleRaster::Info, TreeParticleSplatParticleRasterPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .frag_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
             .color_attachments = {
@@ -253,7 +253,7 @@ struct TreeParticles {
                 daxa::TaskViewVariant{std::pair{TreeParticleSplatParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, TreeParticleSplatParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(TreeParticleSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(TreeParticleSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(TreeParticleSplatParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},

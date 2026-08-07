@@ -9,22 +9,20 @@
 #include <daxa/daxa.hpp>
 #include <daxa/utils/pipeline_manager.hpp>
 
-template<typename PipelineType>
+#include <future>
+
+template <typename PipelineType>
 struct AsyncManagedPipeline {
     using PipelineT = PipelineType;
     std::shared_ptr<PipelineT> pipeline;
-#if ENABLE_THREAD_POOL
     std::shared_ptr<std::promise<std::shared_ptr<PipelineT>>> pipeline_promise;
     std::future<std::shared_ptr<PipelineT>> pipeline_future;
-#endif
 
     auto is_valid() -> bool {
-#if ENABLE_THREAD_POOL
         if (pipeline_future.valid()) {
             pipeline_future.wait();
             pipeline = pipeline_future.get();
         }
-#endif
         return pipeline && pipeline->is_valid();
     }
     auto get() -> PipelineT & {
@@ -40,9 +38,10 @@ struct AsyncPipelineManager {
     std::array<daxa::PipelineManager, 8> pipeline_managers;
     std::array<std::mutex, 8> mutexes{};
     std::atomic_uint64_t current_index = 0;
-    ThreadPool thread_pool{};
 
-    AsyncPipelineManager(daxa::PipelineManagerInfo info) {
+    std::vector<thread_pool::Task> tasks;
+
+    AsyncPipelineManager(daxa::PipelineManagerInfo2 info) {
         pipeline_managers = {
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
@@ -52,22 +51,7 @@ struct AsyncPipelineManager {
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
             daxa::PipelineManager(info),
-
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
-            // daxa::PipelineManager(info),
         };
-
-        thread_pool.start();
-    }
-
-    ~AsyncPipelineManager() {
-        thread_pool.stop();
     }
 
     AsyncPipelineManager(AsyncPipelineManager const &) = delete;
@@ -75,119 +59,116 @@ struct AsyncPipelineManager {
     AsyncPipelineManager &operator=(AsyncPipelineManager const &) = delete;
     AsyncPipelineManager &operator=(AsyncPipelineManager &&) noexcept = delete;
 
-    auto add_compute_pipeline(daxa::ComputePipelineCompileInfo const &info) -> AsyncManagedComputePipeline {
-#if ENABLE_THREAD_POOL
+    template <typename PipelineT, typename PipelineInfoT>
+    struct TaskState {
+        AsyncPipelineManager *self;
+        std::shared_ptr<std::promise<std::shared_ptr<PipelineT>>> pipeline_promise;
+        PipelineInfoT info_copy;
+    };
+
+    using ComputeTaskState = TaskState<daxa::ComputePipeline, daxa::ComputePipelineCompileInfo2>;
+    using RasterTaskState = TaskState<daxa::RasterPipeline, daxa::RasterPipelineCompileInfo2>;
+    using RaytraceTaskState = TaskState<daxa::RayTracingPipeline, daxa::RayTracingPipelineCompileInfo2>;
+
+    auto add_compute_pipeline(daxa::ComputePipelineCompileInfo2 const &info) -> AsyncManagedComputePipeline {
         auto pipeline_promise = std::make_shared<std::promise<std::shared_ptr<daxa::ComputePipeline>>>();
         auto result = AsyncManagedComputePipeline{};
         result.pipeline_promise = pipeline_promise;
         result.pipeline_future = pipeline_promise->get_future();
-        auto info_copy = info;
 
-        thread_pool.enqueue([this, pipeline_promise, info_copy]() {
-            auto [pipeline_manager, lock] = get_pipeline_manager();
-            auto compile_result = pipeline_manager.add_compute_pipeline(info_copy);
-            if (compile_result.is_err()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            if (!compile_result.value()->is_valid()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            pipeline_promise->set_value(compile_result.value());
-        });
+        auto *task_state = new ComputeTaskState{
+            .self = this,
+            .pipeline_promise = pipeline_promise,
+            .info_copy = info,
+        };
+        auto task = thread_pool::create_task(
+            [](void *state_ptr) {
+                auto &state = *(ComputeTaskState *)state_ptr;
+                auto [pipeline_manager, lock] = state.self->get_pipeline_manager();
+                auto compile_result = pipeline_manager.add_compute_pipeline2(state.info_copy);
+                if (compile_result.is_err()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                if (!compile_result.value()->is_valid()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                state.pipeline_promise->set_value(compile_result.value());
+                delete &state;
+            },
+            task_state);
+        thread_pool::async_dispatch(task);
+        tasks.push_back(task);
 
         return result;
-#else
-        auto [pipeline_manager, lock] = get_pipeline_manager();
-        auto compile_result = pipeline_manager.add_compute_pipeline(info);
-        if (compile_result.is_err()) {
-            debug_utils::Console::add_log(compile_result.message());
-            return {};
-        }
-        auto result = AsyncManagedComputePipeline{};
-        result.pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            debug_utils::Console::add_log(compile_result.message());
-        }
-        return result;
-#endif
     }
-    auto add_ray_tracing_pipeline(daxa::RayTracingPipelineCompileInfo const &info) -> AsyncManagedRayTracingPipeline {
-#if ENABLE_THREAD_POOL
+    auto add_ray_tracing_pipeline(daxa::RayTracingPipelineCompileInfo2 const &info) -> AsyncManagedRayTracingPipeline {
         auto pipeline_promise = std::make_shared<std::promise<std::shared_ptr<daxa::RayTracingPipeline>>>();
         auto result = AsyncManagedRayTracingPipeline{};
         result.pipeline_promise = pipeline_promise;
         result.pipeline_future = pipeline_promise->get_future();
-        auto info_copy = info;
 
-        thread_pool.enqueue([this, pipeline_promise, info_copy]() {
-            auto [pipeline_manager, lock] = get_pipeline_manager();
-            auto compile_result = pipeline_manager.add_ray_tracing_pipeline(info_copy);
-            if (compile_result.is_err()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            if (!compile_result.value()->is_valid()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            pipeline_promise->set_value(compile_result.value());
-        });
+        auto *task_state = new RaytraceTaskState{
+            .self = this,
+            .pipeline_promise = pipeline_promise,
+            .info_copy = info,
+        };
+        auto task = thread_pool::create_task(
+            [](void *state_ptr) {
+                auto &state = *(RaytraceTaskState *)state_ptr;
+                auto [pipeline_manager, lock] = state.self->get_pipeline_manager();
+                auto compile_result = pipeline_manager.add_ray_tracing_pipeline2(state.info_copy);
+                if (compile_result.is_err()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                if (!compile_result.value()->is_valid()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                state.pipeline_promise->set_value(compile_result.value());
+                delete &state;
+            },
+            task_state);
+        thread_pool::async_dispatch(task);
+        tasks.push_back(task);
 
         return result;
-#else
-        auto [pipeline_manager, lock] = get_pipeline_manager();
-        auto compile_result = pipeline_manager.add_ray_tracing_pipeline(info);
-        if (compile_result.is_err()) {
-            debug_utils::Console::add_log(compile_result.message());
-            return {};
-        }
-        auto result = AsyncManagedRayTracingPipeline{};
-        result.pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            debug_utils::Console::add_log(compile_result.message());
-        }
-        return result;
-#endif
     }
-    auto add_raster_pipeline(daxa::RasterPipelineCompileInfo const &info) -> AsyncManagedRasterPipeline {
-#if ENABLE_THREAD_POOL
+    auto add_raster_pipeline(daxa::RasterPipelineCompileInfo2 const &info) -> AsyncManagedRasterPipeline {
         auto pipeline_promise = std::make_shared<std::promise<std::shared_ptr<daxa::RasterPipeline>>>();
         auto result = AsyncManagedRasterPipeline{};
         result.pipeline_promise = pipeline_promise;
         result.pipeline_future = pipeline_promise->get_future();
         auto info_copy = info;
 
-        thread_pool.enqueue([this, pipeline_promise, info_copy]() {
-            auto [pipeline_manager, lock] = get_pipeline_manager();
-            auto compile_result = pipeline_manager.add_raster_pipeline(info_copy);
-            if (compile_result.is_err()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            if (!compile_result.value()->is_valid()) {
-                debug_utils::Console::add_log(compile_result.message());
-                return;
-            }
-            pipeline_promise->set_value(compile_result.value());
-        });
+        auto *task_state = new RasterTaskState{
+            .self = this,
+            .pipeline_promise = pipeline_promise,
+            .info_copy = info,
+        };
+        auto task = thread_pool::create_task(
+            [](void *state_ptr) {
+                auto &state = *(RasterTaskState *)state_ptr;
+                auto [pipeline_manager, lock] = state.self->get_pipeline_manager();
+                auto compile_result = pipeline_manager.add_raster_pipeline2(state.info_copy);
+                if (compile_result.is_err()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                if (!compile_result.value()->is_valid()) {
+                    // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    return;
+                }
+                state.pipeline_promise->set_value(compile_result.value());
+                delete &state;
+            },
+            task_state);
+        thread_pool::async_dispatch(task);
+        tasks.push_back(task);
 
         return result;
-#else
-        auto [pipeline_manager, lock] = get_pipeline_manager();
-        auto compile_result = pipeline_manager.add_raster_pipeline(info);
-        if (compile_result.is_err()) {
-            debug_utils::Console::add_log(compile_result.message());
-            return {};
-        }
-        auto result = AsyncManagedRasterPipeline{};
-        result.pipeline = compile_result.value();
-        if (!compile_result.value()->is_valid()) {
-            debug_utils::Console::add_log(compile_result.message());
-        }
-        return result;
-#endif
     }
     void remove_compute_pipeline(std::shared_ptr<daxa::ComputePipeline> const &pipeline) {
         auto [pipeline_manager, lock] = get_pipeline_manager();
@@ -203,30 +184,18 @@ struct AsyncPipelineManager {
         }
     }
     void wait() {
-#if ENABLE_THREAD_POOL
-        while (thread_pool.busy()) {
+        for (auto const &task : tasks) {
+            thread_pool::wait(task);
         }
-#endif
+        tasks.clear();
     }
     auto reload_all() -> daxa::PipelineReloadResult {
         std::array<daxa::PipelineReloadResult, 8> results;
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
-            // #if ENABLE_THREAD_POOL
-            //             thread_pool.enqueue([this, i, &results]() {
-            //                 auto &pipeline_manager = this->pipeline_managers[i];
-            //                 auto lock = std::lock_guard{this->mutexes[i]};
-            //                 (results)[i] = pipeline_manager.reload_all();
-            //             });
-            // #else
             auto &pipeline_manager = pipeline_managers[i];
             auto lock = std::lock_guard{mutexes[i]};
             results[i] = pipeline_manager.reload_all();
-            // #endif
         }
-        // #if ENABLE_THREAD_POOL
-        //         while (thread_pool.busy()) {
-        //         }
-        // #endif
         for (auto const &result : results) {
             if (daxa::holds_alternative<daxa::PipelineReloadError>(result)) {
                 return result;
@@ -237,11 +206,10 @@ struct AsyncPipelineManager {
 
   private:
     auto get_pipeline_manager() -> std::pair<daxa::PipelineManager &, std::unique_lock<std::mutex>> {
-#if ENABLE_THREAD_POOL
         auto index = current_index.fetch_add(1);
         index = (index / 4) % pipeline_managers.size();
 
-#if NDEBUG // Pipeline manager really needs to be internally thread-safe
+#if NDEBUG // Instead of this, Pipeline manager really needs to be internally thread-safe
         // try to find one that's not locked, otherwise we'll fall back on the index above.
         for (daxa_u32 i = 0; i < pipeline_managers.size(); ++i) {
             auto &mtx = this->mutexes[i];
@@ -251,9 +219,6 @@ struct AsyncPipelineManager {
                 break;
             }
         }
-#endif
-#else
-        auto index = 0;
 #endif
         return {
             pipeline_managers[index],

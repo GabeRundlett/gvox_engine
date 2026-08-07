@@ -5,25 +5,25 @@
 
 // #include <voxels/particles/voxel_particles.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(R32D32Blit)
-DAXA_TH_IMAGE_INDEX(FRAGMENT_SHADER_SAMPLED, REGULAR_2D, input_tex)
+DAXA_DECL_RASTER_TASK_HEAD_BEGIN(R32D32Blit)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, input_tex)
 DAXA_TH_IMAGE(DEPTH_ATTACHMENT, REGULAR_2D, output_tex)
 DAXA_DECL_TASK_HEAD_END
 struct R32D32BlitPush {
     DAXA_TH_BLOB(R32D32Blit, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(TracePrimaryRt)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-// DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(RAY_TRACING_SHADER_READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
-DAXA_TH_TLAS_PTR(RAY_TRACING_SHADER_READ, tlas)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, g_buffer_image_id)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, velocity_image_id)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, vs_normal_image_id)
-DAXA_TH_IMAGE_INDEX(RAY_TRACING_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, depth_image_id)
+DAXA_DECL_RAY_TRACING_TASK_HEAD_BEGIN(TracePrimaryRt)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
+// DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_TLAS_PTR(READ, tlas)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, g_buffer_image_id)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, velocity_image_id)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, vs_normal_image_id)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 #if defined(DAXA_RAY_TRACING) || defined(__cplusplus)
 struct TracePrimaryRtPush {
@@ -68,8 +68,8 @@ struct GbufferRenderer {
                 .name = "depth_image",
             });
 
-        gpu_context.frame_task_graph.use_persistent_image(depth_image);
-        gpu_context.frame_task_graph.use_persistent_image(prev_depth_image);
+        gpu_context.frame_task_graph.register_image(depth_image);
+        gpu_context.frame_task_graph.register_image(prev_depth_image);
 
         auto velocity_image = gpu_context.frame_task_graph.create_transient_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -83,7 +83,7 @@ struct GbufferRenderer {
             .name = "temp_depth_image",
         });
 
-        gpu_context.add(RayTracingTask<TracePrimaryRt::Task, TracePrimaryRtPush, NoTaskInfo>{
+        gpu_context.add(RayTracingTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.rt.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -98,14 +98,14 @@ struct GbufferRenderer {
                 daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.depth_image_id, temp_depth_image}},
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, TracePrimaryRtPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.info_image(ti.get(TracePrimaryRt::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(TracePrimaryRt::AT.g_buffer_image_id).ids[0]).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1});
             },
         });
 
-        gpu_context.add(RasterTask<R32D32Blit::Task, R32D32BlitPush, NoTaskInfo>{
+        gpu_context.add(RasterTask<R32D32Blit::Info, R32D32BlitPush, NoTaskInfo>{
             .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
             .frag_source = daxa::ShaderFile{"R32_D32_BLIT"},
             .depth_test = daxa::DepthTestInfo{
@@ -119,7 +119,7 @@ struct GbufferRenderer {
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, R32D32BlitPush &push, NoTaskInfo const &) {
                 auto render_image = ti.get(R32D32Blit::AT.output_tex).ids[0];
-                auto const image_info = ti.device.info_image(render_image).value();
+                auto const image_info = ti.device.image_info(render_image).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(R32D32Blit::AT.output_tex).view_ids[0], .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array{0.0f, 0.0f, 0.0f, 0.0f}}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},

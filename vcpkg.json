@@ -2,16 +2,6 @@
   "name": "gvox-engine",
   "version": "0.1.0",
   "dependencies": [
-    {
-      "name": "daxa",
-      "features": [
-        "utils-pipeline-manager-spirv-validation",
-        "utils-imgui",
-        "utils-mem",
-        "utils-pipeline-manager-glslang",
-        "utils-task-graph"
-      ]
-    },
     "gvox",
     "fmt",
     "stb",
@@ -19,13 +9,7 @@
     "minizip",
     "assimp",
     "glm",
-    {
-      "name": "glfw3",
-      "features": [
-        "xlib",
-        "wayland"
-      ]
-    },
+    "glfw3",
     {
       "name": "imgui",
       "features": [
@@ -39,18 +23,10 @@
     }
   ],
   "builtin-baseline": "7d23867a7ea813948a86ac8d76345786e7e6faf2",
-  "overrides": [
-    {
-      "name": "glfw3",
-      "version-string": "custom"
-    }
-  ],
   "vcpkg-configuration": {
     "overlay-ports": [
       "./deps/gvox",
-      "./deps/Daxa",
-      "./deps/Daxa/cmake/vcpkg-overlay-ports/glfw3",
-      "./deps/Daxa/cmake/vcpkg-overlay-ports/fsr2",
+      "./cmake/vcpkg-overlay-ports/fsr2",
       "./cmake/vcpkg-overlay-ports/fiber-tasking-lib"
     ]
   }

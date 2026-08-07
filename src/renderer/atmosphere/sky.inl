@@ -3,45 +3,45 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-DAXA_DECL_TASK_HEAD_BEGIN(SkyTransmittanceCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, transmittance_lut)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(SkyTransmittanceCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, transmittance_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyTransmittanceComputePush {
     DAXA_TH_BLOB(SkyTransmittanceCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkyMultiscatteringCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, multiscattering_lut)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(SkyMultiscatteringCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, multiscattering_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyMultiscatteringComputePush {
     DAXA_TH_BLOB(SkyMultiscatteringCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkySkyCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D, sky_lut)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(SkySkyCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, multiscattering_lut)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, sky_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkySkyComputePush {
     DAXA_TH_BLOB(SkySkyCompute, uses)
 };
-DAXA_DECL_TASK_HEAD_BEGIN(SkyAeCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, multiscattering_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_3D, aerial_perspective_lut)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(SkyAeCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, multiscattering_lut)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_3D, aerial_perspective_lut)
 DAXA_DECL_TASK_HEAD_END
 struct SkyAeComputePush {
     DAXA_TH_BLOB(SkyAeCompute, uses)
 };
 
-DAXA_DECL_TASK_HEAD_BEGIN(ConvolveCubeCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, sky_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, transmittance_lut)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_STORAGE_WRITE_ONLY, REGULAR_2D_ARRAY, ibl_cube)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(ConvolveCubeCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, sky_lut)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, transmittance_lut)
+DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D_ARRAY, ibl_cube)
 DAXA_DECL_TASK_HEAD_END
 struct ConvolveCubeComputePush {
     daxa_u32 flags;
@@ -196,7 +196,7 @@ struct SkyRenderer {
             .size = {SKY_MULTISCATTERING_RES.x, SKY_MULTISCATTERING_RES.y, 1},
             .name = "multiscattering_lut",
         });
-        gpu_context.add(ComputeTask<SkyTransmittanceCompute::Task, SkyTransmittanceComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SkyTransmittanceCompute::Info, SkyTransmittanceComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SkyTransmittanceCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -209,7 +209,7 @@ struct SkyRenderer {
             },
             .task_graph_ptr = &sky_render_task_graph,
         });
-        gpu_context.add(ComputeTask<SkyMultiscatteringCompute::Task, SkyMultiscatteringComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SkyMultiscatteringCompute::Info, SkyMultiscatteringComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SkyMultiscatteringCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -223,7 +223,7 @@ struct SkyRenderer {
             },
             .task_graph_ptr = &sky_render_task_graph,
         });
-        gpu_context.add(ComputeTask<SkySkyCompute::Task, SkySkyComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SkySkyCompute::Info, SkySkyComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SkySkyCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -238,7 +238,7 @@ struct SkyRenderer {
             },
             .task_graph_ptr = &sky_render_task_graph,
         });
-        gpu_context.add(ComputeTask<SkyAeCompute::Task, SkyAeComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<SkyAeCompute::Info, SkyAeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{SkyAeCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -264,7 +264,7 @@ struct SkyRenderer {
     void convolve_cube(GpuContext &gpu_context) {
         auto ibl_cube_view = ibl_cube.task_resource.view().view({.layer_count = 6});
 
-        gpu_context.add(ComputeTask<ConvolveCubeCompute::Task, ConvolveCubeComputePush, NoTaskInfo>{
+        gpu_context.add(ComputeTask<ConvolveCubeCompute::Info, ConvolveCubeComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"atmosphere/convolve_cube.comp.glsl"},
             .views = std::array{
                 daxa::TaskViewVariant{std::pair{ConvolveCubeCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -291,7 +291,7 @@ struct SkyRenderer {
             .name = "sky_render_task_graph",
         });
 
-        sky_render_task_graph.use_persistent_buffer(gpu_context.task_input_buffer);
+        sky_render_task_graph.register_buffer(gpu_context.task_input_buffer);
 
         transmittance_lut = gpu_context.find_or_add_temporal_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
@@ -321,10 +321,10 @@ struct SkyRenderer {
             .name = "temporal ae_lut",
         });
 
-        sky_render_task_graph.use_persistent_image(transmittance_lut.task_resource);
-        sky_render_task_graph.use_persistent_image(sky_lut.task_resource);
-        sky_render_task_graph.use_persistent_image(ibl_cube.task_resource);
-        sky_render_task_graph.use_persistent_image(aerial_perspective_lut.task_resource);
+        sky_render_task_graph.register_image(transmittance_lut.task_resource);
+        sky_render_task_graph.register_image(sky_lut.task_resource);
+        sky_render_task_graph.register_image(ibl_cube.task_resource);
+        sky_render_task_graph.register_image(aerial_perspective_lut.task_resource);
 
         generate_procedural_sky(gpu_context);
 

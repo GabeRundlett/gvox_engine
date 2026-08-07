@@ -7,10 +7,10 @@
 #define LUMINANCE_HISTOGRAM_MIN_LOG2 -10.0
 #define LUMINANCE_HISTOGRAM_MAX_LOG2 +16.0
 
-DAXA_DECL_TASK_HEAD_BEGIN(CalculateHistogramCompute)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_IMAGE_INDEX(COMPUTE_SHADER_SAMPLED, REGULAR_2D, input_tex)
-DAXA_TH_BUFFER_PTR(COMPUTE_SHADER_WRITE, daxa_RWBufferPtr(daxa_u32), output_buffer)
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(CalculateHistogramCompute)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
+DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, input_tex)
+DAXA_TH_BUFFER_PTR(WRITE, daxa_RWBufferPtr(daxa_u32), output_buffer)
 DAXA_DECL_TASK_HEAD_END
 struct CalculateHistogramComputePush {
     daxa_u32vec2 input_extent;
@@ -49,7 +49,7 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
     struct CalculateHistogramTaskInfo {
         daxa_u32 input_mip_level;
     };
-    gpu_context.add(ComputeTask<CalculateHistogramCompute::Task, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
+    gpu_context.add(ComputeTask<CalculateHistogramCompute::Info, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/calculate_histogram.comp.glsl"},
         .views = std::array{
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::AT.gpu_input, gpu_context.task_input_buffer}},
@@ -57,7 +57,7 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
             daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::AT.output_buffer, tmp_histogram}},
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CalculateHistogramComputePush &push, CalculateHistogramTaskInfo const &info) {
-            auto const image_info = ti.device.info_image(ti.get(CalculateHistogramCompute::AT.input_tex).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(CalculateHistogramCompute::AT.input_tex).ids[0]).value();
             push.input_extent = {(image_info.size.x + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level, (image_info.size.y + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level};
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);

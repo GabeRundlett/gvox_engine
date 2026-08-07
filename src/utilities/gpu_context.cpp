@@ -1,4 +1,5 @@
 #include "gpu_context.hpp"
+#include "daxa/device.hpp"
 
 #include <application/input.inl>
 #include <application/settings.inl>
@@ -14,37 +15,37 @@
 
 GpuContext::GpuContext() {
     daxa_instance = daxa::create_instance({});
-    device = daxa_instance.create_device({
-        .flags = daxa::DeviceFlags2{
-            // .buffer_device_address_capture_replay_bit = false,
-            // .conservative_rasterization = true,
-            .ray_tracing = true,
-            .shader_float16 = true,
-            .shader_int8 = true,
-            .robust_buffer_access = true,
-            .robust_image_access = true,
-        },
-        .max_allowed_buffers = 150'000,
-        .name = "device",
-    });
-    pipeline_manager = std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo{
+    auto required_implicit =
+        daxa::ImplicitFeatureFlagBits::RAY_TRACING_PIPELINE |
+        daxa::ImplicitFeatureFlagBits::SHADER_CLOCK |
+        daxa::ImplicitFeatureFlagBits::SHADER_ATOMIC_INT64 |
+        daxa::ImplicitFeatureFlagBits::SHADER_INT8 |
+        daxa::ImplicitFeatureFlagBits::SHADER_INT16 |
+        daxa::ImplicitFeatureFlagBits::SWAPCHAIN;
+
+    auto device_info = daxa::DeviceInfo2{};
+    device_info.name = "gvox_engine";
+    device_info.max_allowed_buffers = 150'000;
+    device_info.explicit_features = daxa::ExplicitFeatureFlagBits::ROBUSTNESS_2;
+    device_info = daxa_instance.choose_device(required_implicit, device_info);
+    device = daxa_instance.create_device_2(device_info);
+
+    pipeline_manager = std::make_shared<AsyncPipelineManager>(daxa::PipelineManagerInfo2{
         .device = device,
-        .shader_compile_options = {
-            .root_paths = {
-                DAXA_SHADER_INCLUDE_DIR,
+        .root_paths = {
+            "deps/Daxa/include",
                 "assets",
                 "src",
                 "gpu",
                 "src/gpu",
                 "src/renderer",
-            },
-            // .write_out_preprocessed_code = ".out/",
-            .write_out_shader_binary = ".out/spirv",
-            // .spirv_cache_folder = ".out/spirv_cache",
-            .language = daxa::ShaderLanguage::GLSL,
-            .enable_debug_info = true,
         },
+        // .write_out_preprocessed_code = ".out/",
+        .write_out_spirv = ".out/spirv",
+        // .spirv_cache_folder = ".out/spirv_cache",
         .register_null_pipelines_when_first_compile_fails = true,
+        .default_language = daxa::ShaderLanguage::GLSL,
+        .default_enable_debug_info = true,
         .name = "pipeline_manager",
     });
 
@@ -141,19 +142,19 @@ GpuContext::GpuContext() {
     g_value_noise_header.contents += "daxa_ImageViewIndex g_value_noise_tex = daxa_ImageViewIndex(" + std::to_string(std::bit_cast<uint64_t>(value_noise_image_view.index)) + ");\n";
     pipeline_manager->add_virtual_file(g_value_noise_header);
 
-    task_input_buffer.set_buffers({.buffers = std::array{input_buffer}});
+    task_input_buffer.set_buffer(input_buffer);
 
-    task_value_noise_image.set_images({.images = std::array{value_noise_image}});
-    task_value_noise_image_view = task_value_noise_image.view().view({.layer_count = 256});
+    task_value_noise_image.set_image(value_noise_image);
+    task_value_noise_image_view = task_value_noise_image.view().layers(0, 256);
 
-    task_blue_noise_vec2_image.set_images({.images = std::array{blue_noise_vec2_image}});
+    task_blue_noise_vec2_image.set_image(blue_noise_vec2_image);
 
     {
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
             .name = "temp_task_graph",
         });
-        temp_task_graph.use_persistent_image(task_blue_noise_vec2_image);
+        temp_task_graph.register_image(task_blue_noise_vec2_image);
         temp_task_graph.add_task({
             .attachments = {
                 daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_3D, task_blue_noise_vec2_image),
@@ -161,10 +162,10 @@ GpuContext::GpuContext() {
             .task = [this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
                     .size = 128 * 128 * 4 * 64 * 1,
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_buffer",
                 });
-                auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                auto *buffer_ptr = ti.device.buffer_host_address_as<uint8_t>(staging_buffer).value();
                 auto *stbn_zip = unzOpen("assets/STBN.zip");
                 for (auto i = 0; i < 64; ++i) {
                     [[maybe_unused]] int err = 0;
@@ -236,8 +237,8 @@ GpuContext::GpuContext() {
             .name = "debug_texture",
         });
 
-        task_debug_texture.set_images({.images = std::array{debug_texture}});
-        temp_task_graph.use_persistent_image(task_debug_texture);
+        task_debug_texture.set_image(debug_texture);
+        temp_task_graph.register_image(task_debug_texture);
         temp_task_graph.add_task({
             .attachments = {
                 daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_debug_texture),
@@ -245,10 +246,10 @@ GpuContext::GpuContext() {
             .task = [&, this](daxa::TaskInterface const &ti) {
                 auto staging_buffer = ti.device.create_buffer({
                     .size = size,
-                    .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                     .name = "staging_buffer",
                 });
-                auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                auto *buffer_ptr = ti.device.buffer_host_address_as<uint8_t>(staging_buffer).value();
                 std::copy(temp_data + 0, temp_data + size, buffer_ptr);
                 stbi_image_free(temp_data);
 
@@ -321,10 +322,10 @@ GpuContext::GpuContext() {
             .name = "test_texture",
         });
 
-        task_test_texture.set_images({.images = std::array{test_texture}});
-        task_test_texture2.set_images({.images = std::array{test_texture2}});
-        temp_task_graph.use_persistent_image(task_test_texture);
-        temp_task_graph.use_persistent_image(task_test_texture2);
+        task_test_texture.set_image(test_texture);
+        task_test_texture2.set_image(test_texture2);
+        temp_task_graph.register_image(task_test_texture);
+        temp_task_graph.register_image(task_test_texture2);
         temp_task_graph.add_task({
             .attachments = {
                 daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_test_texture),
@@ -334,10 +335,10 @@ GpuContext::GpuContext() {
                 {
                     auto staging_buffer = ti.device.create_buffer({
                         .size = size,
-                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                    auto *buffer_ptr = ti.device.buffer_host_address_as<uint8_t>(staging_buffer).value();
                     std::copy(temp_data + 0, temp_data + size, buffer_ptr);
                     FreeImage_Unload(fi_bitmap);
                     ti.recorder.destroy_buffer_deferred(staging_buffer);
@@ -350,10 +351,10 @@ GpuContext::GpuContext() {
                 {
                     auto staging_buffer = ti.device.create_buffer({
                         .size = size2,
-                        .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                        .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                         .name = "staging_buffer",
                     });
-                    auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+                    auto *buffer_ptr = ti.device.buffer_host_address_as<uint8_t>(staging_buffer).value();
                     std::copy(temp_data2 + 0, temp_data2 + size2, buffer_ptr);
                     FreeImage_Unload(fi_bitmap2);
                     ti.recorder.destroy_buffer_deferred(staging_buffer);
@@ -371,8 +372,8 @@ GpuContext::GpuContext() {
         temp_task_graph.execute({});
 #endif
     } else {
-        task_test_texture.set_images({.images = std::array{debug_texture}});
-        task_test_texture2.set_images({.images = std::array{debug_texture}});
+        task_test_texture.set_image(debug_texture);
+        task_test_texture2.set_image(debug_texture);
     }
 }
 
@@ -396,10 +397,10 @@ GpuContext::~GpuContext() {
     device.destroy_sampler(sampler_llr);
 
     for (auto const &[id, temporal_buffer] : temporal_buffers) {
-        device.destroy_buffer(temporal_buffer.resource_id);
+        device.destroy_buffer(temporal_buffer.task_resource.id());
     }
     for (auto const &[id, temporal_image] : temporal_images) {
-        device.destroy_image(temporal_image.resource_id);
+        device.destroy_image(temporal_image.task_resource.id());
     }
 }
 
@@ -408,16 +409,16 @@ void GpuContext::create_swapchain(daxa::SwapchainInfo const &info) {
 }
 
 void GpuContext::use_resources() {
-    frame_task_graph.use_persistent_image(task_swapchain_image);
+    frame_task_graph.register_image(task_swapchain_image);
 
     auto use_shared_resources = [this](daxa::TaskGraph &task_graph) {
-        task_graph.use_persistent_image(task_value_noise_image);
-        task_graph.use_persistent_image(task_blue_noise_vec2_image);
-        task_graph.use_persistent_image(task_debug_texture);
-        task_graph.use_persistent_image(task_test_texture);
-        task_graph.use_persistent_image(task_test_texture2);
+        task_graph.register_image(task_value_noise_image);
+        task_graph.register_image(task_blue_noise_vec2_image);
+        task_graph.register_image(task_debug_texture);
+        task_graph.register_image(task_test_texture);
+        task_graph.register_image(task_test_texture2);
 
-        task_graph.use_persistent_buffer(task_input_buffer);
+        task_graph.register_buffer(task_input_buffer);
     };
 
     use_shared_resources(frame_task_graph);
@@ -429,7 +430,7 @@ void GpuContext::update_seeded_value_noise(uint64_t seed) {
         .device = device,
         .name = "temp_task_graph",
     });
-    temp_task_graph.use_persistent_image(task_value_noise_image);
+    temp_task_graph.register_image(task_value_noise_image);
     temp_task_graph.add_task({
         .attachments = {
             daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_value_noise_image_view),
@@ -437,10 +438,10 @@ void GpuContext::update_seeded_value_noise(uint64_t seed) {
         .task = [this, seed](daxa::TaskInterface const &ti) {
             auto staging_buffer = ti.device.create_buffer({
                 .size = 256 * 256 * 256 * 1,
-                .allocate_info = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
                 .name = "staging_buffer",
             });
-            auto *buffer_ptr = ti.device.get_host_address_as<uint8_t>(staging_buffer).value();
+            auto *buffer_ptr = ti.device.buffer_host_address_as<uint8_t>(staging_buffer).value();
             std::mt19937_64 rng(seed);
             std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
             for (daxa_u32 i = 0; i < (256 * 256 * 256 * 1); ++i) {
@@ -476,12 +477,12 @@ auto GpuContext::find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> Te
 
     if (iter == temporal_buffers.end()) {
         auto result = TemporalBuffer{};
-        result.resource_id = device.create_buffer(info);
-        result.task_resource = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{result.resource_id}}, .name = id});
+        result.task_resource.id() = device.create_buffer(info);
+        result.task_resource = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{result.task_resource.id()}}, .name = id});
         auto emplace_result = temporal_buffers.emplace(id, result);
         iter = emplace_result.first;
     } else {
-        auto existing_info = device.info_buffer(iter->second.resource_id).value();
+        auto existing_info = device.buffer_info(iter->second.task_resource.id()).value();
         if (existing_info.size != info.size) {
             debug_utils::Console::add_log(fmt::format("TemporalBuffer \"{}\" recreated with bad size... This should NEVER happen!!!", id));
         }
@@ -496,12 +497,12 @@ auto GpuContext::find_or_add_temporal_image(daxa::ImageInfo const &info) -> Temp
 
     if (iter == temporal_images.end()) {
         auto result = TemporalImage{};
-        result.resource_id = device.create_image(info);
-        result.task_resource = daxa::TaskImage(daxa::TaskImageInfo{.initial_images = {.images = std::array{result.resource_id}}, .name = id});
+        result.task_resource.id() = device.create_image(info);
+        result.task_resource = daxa::TaskImage(daxa::TaskImageInfo{.initial_images = {.images = std::array{result.task_resource.id()}}, .name = id});
         auto emplace_result = temporal_images.emplace(id, result);
         iter = emplace_result.first;
     } else {
-        auto existing_info = device.info_image(iter->second.resource_id).value();
+        auto existing_info = device.image_info(iter->second.task_resource.id()).value();
         if (existing_info.size != info.size) {
             debug_utils::Console::add_log(fmt::format("TemporalImage \"{}\" recreated with bad size... This should NEVER happen!!!", id));
         }
@@ -513,7 +514,7 @@ auto GpuContext::find_or_add_temporal_image(daxa::ImageInfo const &info) -> Temp
 void GpuContext::remove_temporal_buffer(std::string const &id) {
     auto iter = temporal_buffers.find(id);
     if (iter != temporal_buffers.end()) {
-        device.destroy_buffer(iter->second.resource_id);
+        device.destroy_buffer(iter->second.task_resource.id());
         temporal_buffers.erase(iter);
     }
 }
@@ -521,15 +522,15 @@ void GpuContext::remove_temporal_buffer(std::string const &id) {
 void GpuContext::remove_temporal_image(std::string const &id) {
     auto iter = temporal_images.find(id);
     if (iter != temporal_images.end()) {
-        device.destroy_image(iter->second.resource_id);
+        device.destroy_image(iter->second.task_resource.id());
         temporal_images.erase(iter);
     }
 }
 
 void GpuContext::remove_temporal_buffer(daxa::BufferId id) {
-    remove_temporal_buffer(std::string{device.info_buffer(id).value().name.view()});
+    remove_temporal_buffer(std::string{device.buffer_info(id).value().name.view()});
 }
 
 void GpuContext::remove_temporal_image(daxa::ImageId id) {
-    remove_temporal_image(std::string{device.info_image(id).value().name.view()});
+    remove_temporal_image(std::string{device.image_info(id).value().name.view()});
 }

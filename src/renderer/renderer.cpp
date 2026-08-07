@@ -115,10 +115,10 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
     auto sky_lut = self.sky.sky_lut.task_resource.view();
     auto ibl_cube = self.sky.ibl_cube.task_resource.view().view({.base_array_layer = 0, .layer_count = 6});
     auto ae_lut = self.sky.aerial_perspective_lut.task_resource.view();
-    gpu_context.frame_task_graph.use_persistent_image(self.sky.transmittance_lut.task_resource);
-    gpu_context.frame_task_graph.use_persistent_image(self.sky.sky_lut.task_resource);
-    gpu_context.frame_task_graph.use_persistent_image(self.sky.ibl_cube.task_resource);
-    gpu_context.frame_task_graph.use_persistent_image(self.sky.aerial_perspective_lut.task_resource);
+    gpu_context.frame_task_graph.register_image(self.sky.transmittance_lut.task_resource);
+    gpu_context.frame_task_graph.register_image(self.sky.sky_lut.task_resource);
+    gpu_context.frame_task_graph.register_image(self.sky.ibl_cube.task_resource);
+    gpu_context.frame_task_graph.register_image(self.sky.aerial_perspective_lut.task_resource);
 
     debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
@@ -160,8 +160,8 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
                 .task = [=](daxa::TaskInterface const &ti) {
                     auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
                     auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
-                    auto image_a_info = ti.device.info_image(image_a).value();
-                    auto image_b_info = ti.device.info_image(image_b).value();
+                    auto image_a_info = ti.device.image_info(image_a).value();
+                    auto image_b_info = ti.device.image_info(image_b).value();
 
                     ti.recorder.blit_image_to_image({
                         .src_image = image_a,
