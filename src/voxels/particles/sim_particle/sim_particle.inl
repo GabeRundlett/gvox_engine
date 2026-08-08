@@ -104,23 +104,23 @@ struct SimParticles {
         gpu_context.add(ComputeTask<SimParticleSimCompute::Info, SimParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/sim_particle/sim.comp.glsl"},
             .extra_defines = {daxa::ShaderDefine{.name = "SIM_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.geometry_pointers, voxel_world_buffers.blas_geom_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.attribute_pointers, voxel_world_buffers.blas_attr_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.blas_transforms, voxel_world_buffers.blas_transforms.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.tlas, voxel_world_buffers.task_tlas}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.simulated_voxel_particles, simulated_voxel_particles.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.cube_rendered_particle_verts, cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.shadow_cube_rendered_particle_verts, shadow_cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSimCompute::AT.splat_rendered_particle_verts, splat_rendered_particle_verts.task_resource}},
+            .views = SimParticleSimCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .geometry_pointers = voxel_world_buffers.blas_geom_pointers.task_resource.view(),
+                .attribute_pointers = voxel_world_buffers.blas_attr_pointers.task_resource.view(),
+                .blas_transforms = voxel_world_buffers.blas_transforms.task_resource.view(),
+                .tlas = voxel_world_buffers.task_tlas.view(),
+                .simulated_voxel_particles = simulated_voxel_particles.task_resource.view(),
+                .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
+                .shadow_cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
+                .splat_rendered_particle_verts = splat_rendered_particle_verts.task_resource.view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, SimParticleSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
                 ti.recorder.dispatch_indirect({
-                    .indirect_buffer = ti.get(SimParticleSimCompute::AT.particles_state).ids[0],
+                    .indirect_buffer = ti.get(SimParticleSimCompute::AT.particles_state).id,
                     .offset = offsetof(VoxelParticlesState, simulation_dispatch),
                 });
             },
@@ -146,19 +146,19 @@ struct SimParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "SIM_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.cube_rendered_particle_verts, cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.indices, cube_index_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.simulated_voxel_particles, simulated_voxel_particles.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.velocity_image_id, velocity_image}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.vs_normal_image_id, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
+            .views = SimParticleCubeParticleRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
+                .indices = cube_index_buffer,
+                .simulated_voxel_particles = simulated_voxel_particles.task_resource.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .velocity_image_id = velocity_image,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.current().view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, SimParticleCubeParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(SimParticleCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(SimParticleCubeParticleRaster::AT.g_buffer_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(SimParticleCubeParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -171,11 +171,11 @@ struct SimParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.set_index_buffer({
-                    .id = ti.get(SimParticleCubeParticleRaster::AT.indices).ids[0],
+                    .buffer = ti.get(SimParticleCubeParticleRaster::AT.indices).id,
                     .index_type = daxa::IndexType::uint16,
                 });
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(SimParticleCubeParticleRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(SimParticleCubeParticleRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, sim_particle) + offsetof(ParticleDrawParams, cube_draw_params),
                     .is_indexed = true,
                 });
@@ -196,16 +196,16 @@ struct SimParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "SIM_PARTICLE", .value = "1"}, daxa::ShaderDefine{.name = "SHADOW_MAP", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.cube_rendered_particle_verts, shadow_cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.simulated_voxel_particles, simulated_voxel_particles.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.indices, cube_index_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleCubeParticleShadowRaster::AT.depth_image_id, shadow_depth}},
+            .views = SimParticleCubeParticleShadowRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
+                .simulated_voxel_particles = simulated_voxel_particles.task_resource.view(),
+                .indices = cube_index_buffer,
+                .depth_image_id = shadow_depth,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, SimParticleCubeParticleShadowRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(SimParticleCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(SimParticleCubeParticleShadowRaster::AT.depth_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(SimParticleCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = daxa::DepthValue{0.0f, 0}}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
@@ -213,11 +213,11 @@ struct SimParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.set_index_buffer({
-                    .id = ti.get(SimParticleCubeParticleShadowRaster::AT.indices).ids[0],
+                    .buffer = ti.get(SimParticleCubeParticleShadowRaster::AT.indices).id,
                     .index_type = daxa::IndexType::uint16,
                 });
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(SimParticleCubeParticleShadowRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(SimParticleCubeParticleShadowRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, sim_particle) + offsetof(ParticleDrawParams, shadow_cube_draw_params),
                     .is_indexed = true,
                 });
@@ -246,18 +246,18 @@ struct SimParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "SIM_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.splat_rendered_particle_verts, splat_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.simulated_voxel_particles, simulated_voxel_particles.task_resource}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.velocity_image_id, velocity_image}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.vs_normal_image_id, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{SimParticleSplatParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
+            .views = SimParticleSplatParticleRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .splat_rendered_particle_verts = splat_rendered_particle_verts.task_resource.view(),
+                .simulated_voxel_particles = simulated_voxel_particles.task_resource.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .velocity_image_id = velocity_image,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.current().view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, SimParticleSplatParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(SimParticleSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(SimParticleSplatParticleRaster::AT.g_buffer_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(SimParticleSplatParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -270,7 +270,7 @@ struct SimParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(SimParticleSplatParticleRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(SimParticleSplatParticleRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, sim_particle) + offsetof(ParticleDrawParams, splat_draw_params),
                     .is_indexed = false,
                 });

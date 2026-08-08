@@ -65,21 +65,19 @@ DAXA_DECL_BUFFER_PTR(IrcacheBuffers)
     DAXA_TH_BUFFER(READ_WRITE_CONCURRENT, ircache_reposition_proposal_buf)    \
     DAXA_TH_BUFFER(READ_WRITE_CONCURRENT, ircache_reposition_proposal_count_buf)
 
-#define IRCACHE_BUFFER_USES_ASSIGN(TaskHeadName, ircache)                                                                            \
-    daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_buffers, ircache.ircache_buffers}},                                     \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_meta_buf, ircache.ircache_meta_buf}},                               \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_grid_meta_buf, ircache.ircache_grid_meta_buf}},                     \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_entry_cell_buf, ircache.ircache_entry_cell_buf}},                   \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_spatial_buf, ircache.ircache_spatial_buf}},                         \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_irradiance_buf, ircache.ircache_irradiance_buf}},                   \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_aux_buf, ircache.ircache_aux_buf}},                                 \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_life_buf, ircache.ircache_life_buf}},                               \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_pool_buf, ircache.ircache_pool_buf}},                               \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_entry_indirection_buf, ircache.ircache_entry_indirection_buf}},     \
-        daxa::TaskViewVariant{std::pair{TaskHeadName::AT.ircache_reposition_proposal_buf, ircache.ircache_reposition_proposal_buf}}, \
-        daxa::TaskViewVariant {                                                                                                      \
-        std::pair { TaskHeadName::AT.ircache_reposition_proposal_count_buf, ircache.ircache_reposition_proposal_count_buf }          \
-    }
+#define IRCACHE_BUFFER_USES_ASSIGN(TaskHeadName, ircache)                                                       \
+    .ircache_buffers = ircache.ircache_buffers,                                                                 \
+        .ircache_meta_buf = ircache.ircache_meta_buf.view(),                                                    \
+        .ircache_grid_meta_buf = ircache.ircache_grid_meta_buf.view(),                                          \
+        .ircache_entry_cell_buf = ircache.ircache_entry_cell_buf.view(),                                        \
+        .ircache_spatial_buf = ircache.ircache_spatial_buf.view(),                                              \
+        .ircache_irradiance_buf = ircache.ircache_irradiance_buf.view(),                                        \
+        .ircache_aux_buf = ircache.ircache_aux_buf.view(),                                                      \
+        .ircache_life_buf = ircache.ircache_life_buf.view(),                                                    \
+        .ircache_pool_buf = ircache.ircache_pool_buf.view(),                                                    \
+        .ircache_entry_indirection_buf = ircache.ircache_entry_indirection_buf.view(),                          \
+        .ircache_reposition_proposal_buf = ircache.ircache_reposition_proposal_buf.view(),                      \
+        .ircache_reposition_proposal_count_buf = ircache.ircache_reposition_proposal_count_buf.view()
 
 DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(ClearIrcachePoolCompute)
 DAXA_TH_BUFFER_PTR(WRITE, daxa_RWBufferPtr(daxa_u32), ircache_pool_buf)
@@ -242,22 +240,22 @@ struct IrcacheIrradiancePendingSummation {
 };
 
 struct IrcacheRenderState {
-    daxa::TaskBuffer ircache_meta_buf;
+    daxa::ExternalTaskBuffer ircache_meta_buf;
 
-    daxa::TaskBuffer ircache_grid_meta_buf;
-    daxa::TaskBuffer ircache_grid_meta_buf2;
+    daxa::ExternalTaskBuffer ircache_grid_meta_buf;
+    daxa::ExternalTaskBuffer ircache_grid_meta_buf2;
 
-    daxa::TaskBuffer ircache_entry_cell_buf;
-    daxa::TaskBuffer ircache_spatial_buf;
-    daxa::TaskBuffer ircache_irradiance_buf;
-    daxa::TaskBuffer ircache_aux_buf;
+    daxa::ExternalTaskBuffer ircache_entry_cell_buf;
+    daxa::ExternalTaskBuffer ircache_spatial_buf;
+    daxa::ExternalTaskBuffer ircache_irradiance_buf;
+    daxa::ExternalTaskBuffer ircache_aux_buf;
 
-    daxa::TaskBuffer ircache_life_buf;
-    daxa::TaskBuffer ircache_pool_buf;
-    daxa::TaskBuffer ircache_entry_indirection_buf;
+    daxa::ExternalTaskBuffer ircache_life_buf;
+    daxa::ExternalTaskBuffer ircache_pool_buf;
+    daxa::ExternalTaskBuffer ircache_entry_indirection_buf;
 
-    daxa::TaskBuffer ircache_reposition_proposal_buf;
-    daxa::TaskBuffer ircache_reposition_proposal_count_buf;
+    daxa::ExternalTaskBuffer ircache_reposition_proposal_buf;
+    daxa::ExternalTaskBuffer ircache_reposition_proposal_count_buf;
 
     daxa::TaskBufferView ircache_buffers;
 

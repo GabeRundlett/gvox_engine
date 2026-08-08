@@ -168,81 +168,63 @@ void open_mesh_model(daxa::Device device, MeshModel &model, std::filesystem::pat
         }
         texture_staging_buffers.push_back(texture_staging_buffer);
 
-        texture->task_image = daxa::TaskImage(daxa::TaskImageInfo{
-            .initial_images = {
-                .images = std::array{image_id},
-                .latest_slice_states = std::array{daxa::ImageSliceState{
-                    .latest_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    .slice = {.level_count = 4},
-                }},
-            },
+        texture->task_image = daxa::ExternalTaskImage(daxa::ExternalTaskImageInfo{
+            .image = image_id,
             .name = name + key,
         });
         mip_task_list.register_image(texture->task_image);
-        auto task_image_mip_view = texture->task_image.view().view({.base_mip_level = 0, .level_count = 4});
+        auto task_image_mip_view = texture->task_image.view().mips(0, 4);
 
-        mip_task_list.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image_mip_view),
-            },
-            .task = [texture_staging_buffer, task_image_mip_view, sx, sy](daxa::TaskInterface const &ti) {
-                ti.recorder.copy_buffer_to_image({
-                    .buffer = texture_staging_buffer,
-                    .image = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0],
-                    .image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
-                    .image_offset = {0, 0, 0},
-                    .image_extent = {sx, sy, 1},
-                });
-            },
-            .name = "upload",
-        });
-        for (uint32_t i = 0; i < 3; ++i) {
-            auto view_a = texture->task_image.view().view({.base_mip_level = i});
-            auto view_b = texture->task_image.view().view({.base_mip_level = i + 1});
-            mip_task_list.add_task({
-                .attachments = {
-                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, view_a),
-                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, view_b),
-                },
-                .task = [=, &device](daxa::TaskInterface const &ti) {
-                    auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
-                    auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
-                    auto image_info = device.image_info(image_a).value();
-                    auto mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, static_cast<int32_t>(image_info.size.x)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.y)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.z))};
-                    for (uint32_t j = 0; j < i; ++j) {
-                        mip_size = {std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
-                    }
-                    auto next_mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
-                    ti.recorder.blit_image_to_image({
-                        .src_image = image_a,
-                        .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
-                        .dst_image = image_b,
-                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
-                        .src_slice = {
-                            .mip_level = i,
-                            .base_array_layer = 0,
-                            .layer_count = 1,
-                        },
-                        .src_offsets = {{{0, 0, 0}, {mip_size[0], mip_size[1], mip_size[2]}}},
-                        .dst_slice = {
-                            .mip_level = i + 1,
-                            .base_array_layer = 0,
-                            .layer_count = 1,
-                        },
-                        .dst_offsets = {{{0, 0, 0}, {next_mip_size[0], next_mip_size[1], next_mip_size[2]}}},
-                        .filter = daxa::Filter::LINEAR,
+        mip_task_list.add_task(
+            daxa::InlineTask::Transfer("upload")
+                .writes(daxa::ImageViewType::REGULAR_2D, task_image_mip_view)
+                .executes([texture_staging_buffer, task_image_mip_view, sx, sy](daxa::TaskInterface ti) {
+                    ti.recorder.copy_buffer_to_image({
+                        .src_buffer = texture_staging_buffer,
+                        .dst_image = ti.get(daxa::TaskImageAttachmentIndex{0}).id,
+                        .image_offset = {0, 0, 0},
+                        .image_extent = {sx, sy, 1},
                     });
-                },
-                .name = "mip_level_" + std::to_string(i),
-            });
+                }));
+        for (uint32_t i = 0; i < 3; ++i) {
+            auto view_a = texture->task_image.view().mips(i);
+            auto view_b = texture->task_image.view().mips(i + 1);
+            mip_task_list.add_task(
+                daxa::InlineTask::Transfer("mip_level_" + std::to_string(i))
+                    .reads(daxa::ImageViewType::REGULAR_2D, view_a)
+                    .writes(daxa::ImageViewType::REGULAR_2D, view_b)
+                    .executes([=, &device](daxa::TaskInterface ti) {
+                        auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).id;
+                        auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).id;
+                        auto image_info = device.image_info(image_a).value();
+                        auto mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, static_cast<int32_t>(image_info.size.x)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.y)), std::max<int32_t>(1, static_cast<int32_t>(image_info.size.z))};
+                        for (uint32_t j = 0; j < i; ++j) {
+                            mip_size = {std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
+                        }
+                        auto next_mip_size = std::array<int32_t, 3>{std::max<int32_t>(1, mip_size[0] / 2), std::max<int32_t>(1, mip_size[1] / 2), std::max<int32_t>(1, mip_size[2] / 2)};
+                        ti.recorder.blit_image_to_image({
+                            .src_image = image_a,
+                            .dst_image = image_b,
+                            .src_slice = {
+                                .mip_level = i,
+                                .base_array_layer = 0,
+                                .layer_count = 1,
+                            },
+                            .src_offsets = {{{0, 0, 0}, {mip_size[0], mip_size[1], mip_size[2]}}},
+                            .dst_slice = {
+                                .mip_level = i + 1,
+                                .base_array_layer = 0,
+                                .layer_count = 1,
+                            },
+                            .dst_offsets = {{{0, 0, 0}, {next_mip_size[0], next_mip_size[1], next_mip_size[2]}}},
+                            .filter = daxa::Filter::LINEAR,
+                        });
+                    }));
         }
-        mip_task_list.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::SAMPLE, daxa::ImageViewType::REGULAR_2D, texture->task_image.view().view({.base_mip_level = 0, .level_count = 4})),
-            },
-            .task = [](daxa::TaskInterface const &) {},
-            .name = "Transition",
-        });
+        mip_task_list.add_task(
+            daxa::InlineTask("Transition")
+                .samples(daxa::ImageViewType::REGULAR_2D, texture->task_image.view().mips(0, 4))
+                .executes([](daxa::TaskInterface) {}));
     }
 
     mip_task_list.submit({});

@@ -153,12 +153,12 @@ struct TaaRenderer {
         gpu_context.frame_task_graph.register_image(smooth_var_output_tex);
         gpu_context.frame_task_graph.register_image(smooth_var_history_tex);
 
-        auto reprojected_history_img = gpu_context.frame_task_graph.create_transient_image({
+        auto reprojected_history_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
             .name = "reprojected_history_img",
         });
-        auto closest_velocity_img = gpu_context.frame_task_graph.create_transient_image({
+        auto closest_velocity_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16_SFLOAT,
             .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
             .name = "closest_velocity_img",
@@ -175,15 +175,15 @@ struct TaaRenderer {
 
         gpu_context.add(ComputeTask<TaaReprojectCompute::Info, TaaReprojectComputePush, TaaTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/taa/reproject_history.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+            .views = TaaReprojectCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
 
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.history_tex, history_tex}},
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.reprojection_map, reprojection_map}},
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.depth_image, depth_image}},
+                .history_tex = history_tex.view(),
+                .reprojection_map = reprojection_map,
+                .depth_image = depth_image,
 
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.reprojected_history_img, reprojected_history_img}},
-                daxa::TaskViewVariant{std::pair{TaaReprojectCompute::AT.closest_velocity_img, closest_velocity_img}},
+                .reprojected_history_img = reprojected_history_img,
+                .closest_velocity_img = closest_velocity_img,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaReprojectComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
@@ -201,12 +201,12 @@ struct TaaRenderer {
 
         debug_utils::DebugDisplay::add_pass({.name = "taa reproject", .task_image_id = reprojected_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-        auto filtered_input_img = gpu_context.frame_task_graph.create_transient_image({
+        auto filtered_input_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "filtered_input_img",
         });
-        auto filtered_input_deviation_img = gpu_context.frame_task_graph.create_transient_image({
+        auto filtered_input_deviation_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "filtered_input_deviation_img",
@@ -214,14 +214,14 @@ struct TaaRenderer {
 
         gpu_context.add(ComputeTask<TaaFilterInputCompute::Info, TaaFilterInputComputePush, TaaTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/taa/filter_input.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+            .views = TaaFilterInputCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
 
-                daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::AT.input_image, input_image}},
-                daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::AT.depth_image, depth_image}},
+                .input_image = input_image,
+                .depth_image = depth_image,
 
-                daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::AT.filtered_input_img, filtered_input_img}},
-                daxa::TaskViewVariant{std::pair{TaaFilterInputCompute::AT.filtered_input_deviation_img, filtered_input_deviation_img}},
+                .filtered_input_img = filtered_input_img,
+                .filtered_input_deviation_img = filtered_input_deviation_img,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterInputComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
@@ -240,7 +240,7 @@ struct TaaRenderer {
         debug_utils::DebugDisplay::add_pass({.name = "taa filter input", .task_image_id = filtered_input_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
         debug_utils::DebugDisplay::add_pass({.name = "taa filter input deviation", .task_image_id = filtered_input_deviation_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-        auto filtered_history_img = gpu_context.frame_task_graph.create_transient_image({
+        auto filtered_history_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "filtered_history_img",
@@ -248,12 +248,12 @@ struct TaaRenderer {
 
         gpu_context.add(ComputeTask<TaaFilterHistoryCompute::Info, TaaFilterHistoryComputePush, TaaTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/taa/filter_history.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+            .views = TaaFilterHistoryCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
 
-                daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::AT.reprojected_history_img, reprojected_history_img}},
+                .reprojected_history_img = reprojected_history_img,
 
-                daxa::TaskViewVariant{std::pair{TaaFilterHistoryCompute::AT.filtered_history_img, filtered_history_img}},
+                .filtered_history_img = filtered_history_img,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaFilterHistoryComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;
@@ -272,27 +272,27 @@ struct TaaRenderer {
         debug_utils::DebugDisplay::add_pass({.name = "taa filter history", .task_image_id = filtered_history_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
         auto input_prob_img = [&]() {
-            auto input_prob_img = gpu_context.frame_task_graph.create_transient_image({
+            auto input_prob_img = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "input_prob_img",
             });
             gpu_context.add(ComputeTask<TaaInputProbCompute::Info, TaaInputProbComputePush, TaaTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/taa/input_prob.comp.glsl"},
-                .views = std::array{
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+                .views = TaaInputProbCompute::Views{
+                    .gpu_input = gpu_context.task_input_buffer.view(),
 
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.input_image, input_image}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.filtered_input_img, filtered_input_img}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.filtered_input_deviation_img, filtered_input_deviation_img}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.reprojected_history_img, reprojected_history_img}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.filtered_history_img, filtered_history_img}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.reprojection_map, reprojection_map}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.depth_image, depth_image}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.smooth_var_history_tex, smooth_var_history_tex}},
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.velocity_history_tex, velocity_history_tex}},
+                    .input_image = input_image,
+                    .filtered_input_img = filtered_input_img,
+                    .filtered_input_deviation_img = filtered_input_deviation_img,
+                    .reprojected_history_img = reprojected_history_img,
+                    .filtered_history_img = filtered_history_img,
+                    .reprojection_map = reprojection_map,
+                    .depth_image = depth_image,
+                    .smooth_var_history_tex = smooth_var_history_tex.view(),
+                    .velocity_history_tex = velocity_history_tex.view(),
 
-                    daxa::TaskViewVariant{std::pair{TaaInputProbCompute::AT.input_prob_img, input_prob_img}},
+                    .input_prob_img = input_prob_img,
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaInputProbComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
@@ -310,7 +310,7 @@ struct TaaRenderer {
 
             debug_utils::DebugDisplay::add_pass({.name = "taa input prob", .task_image_id = input_prob_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-            auto prob_filtered1_img = gpu_context.frame_task_graph.create_transient_image({
+            auto prob_filtered1_img = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "prob_filtered1_img",
@@ -318,12 +318,12 @@ struct TaaRenderer {
 
             gpu_context.add(ComputeTask<TaaProbFilterCompute::Info, TaaProbFilterComputePush, TaaTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/taa/filter_prob.comp.glsl"},
-                .views = std::array{
-                    daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+                .views = TaaProbFilterCompute::Views{
+                    .gpu_input = gpu_context.task_input_buffer.view(),
 
-                    daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::AT.input_prob_img, input_prob_img}},
+                    .input_prob_img = input_prob_img,
 
-                    daxa::TaskViewVariant{std::pair{TaaProbFilterCompute::AT.prob_filtered1_img, prob_filtered1_img}},
+                    .prob_filtered1_img = prob_filtered1_img,
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilterComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
@@ -341,7 +341,7 @@ struct TaaRenderer {
 
             debug_utils::DebugDisplay::add_pass({.name = "taa prob filter 1", .task_image_id = prob_filtered1_img, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
-            auto prob_filtered2_img = gpu_context.frame_task_graph.create_transient_image({
+            auto prob_filtered2_img = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "prob_filtered2_img",
@@ -349,12 +349,12 @@ struct TaaRenderer {
 
             gpu_context.add(ComputeTask<TaaProbFilter2Compute::Info, TaaProbFilter2ComputePush, TaaTaskInfo>{
                 .source = daxa::ShaderFile{"kajiya/taa/filter_prob2.comp.glsl"},
-                .views = std::array{
-                    daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::AT.gpu_input, gpu_context.task_input_buffer}},
+                .views = TaaProbFilter2Compute::Views{
+                    .gpu_input = gpu_context.task_input_buffer.view(),
 
-                    daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::AT.prob_filtered1_img, prob_filtered1_img}},
+                    .prob_filtered1_img = prob_filtered1_img,
 
-                    daxa::TaskViewVariant{std::pair{TaaProbFilter2Compute::AT.prob_filtered2_img, prob_filtered2_img}},
+                    .prob_filtered2_img = prob_filtered2_img,
                 },
                 .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaProbFilter2ComputePush &push, TaaTaskInfo const &info) {
                     push.input_tex_size = info.input_tex_size;
@@ -375,7 +375,7 @@ struct TaaRenderer {
             return prob_filtered2_img;
         }();
 
-        auto this_frame_output_img = gpu_context.frame_task_graph.create_transient_image({
+        auto this_frame_output_img = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
             .name = "this_frame_output_img",
@@ -383,22 +383,22 @@ struct TaaRenderer {
 
         gpu_context.add(ComputeTask<TaaCompute::Info, TaaComputePush, TaaTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/taa/taa.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.gpu_input, gpu_context.task_input_buffer}},
+            .views = TaaCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
 
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.input_image, input_image}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.reprojected_history_img, reprojected_history_img}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.reprojection_map, reprojection_map}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.closest_velocity_img, closest_velocity_img}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.velocity_history_tex, velocity_history_tex}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.depth_image, depth_image}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.smooth_var_history_tex, smooth_var_history_tex}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.input_prob_img, input_prob_img}},
+                .input_image = input_image,
+                .reprojected_history_img = reprojected_history_img,
+                .reprojection_map = reprojection_map,
+                .closest_velocity_img = closest_velocity_img,
+                .velocity_history_tex = velocity_history_tex.view(),
+                .depth_image = depth_image,
+                .smooth_var_history_tex = smooth_var_history_tex.view(),
+                .input_prob_img = input_prob_img,
 
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.temporal_output_tex, temporal_output_tex}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.this_frame_output_img, this_frame_output_img}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.smooth_var_output_tex, smooth_var_output_tex}},
-                daxa::TaskViewVariant{std::pair{TaaCompute::AT.temporal_velocity_output_tex, temporal_velocity_output_tex}},
+                .temporal_output_tex = temporal_output_tex.view(),
+                .this_frame_output_img = this_frame_output_img,
+                .smooth_var_output_tex = smooth_var_output_tex.view(),
+                .temporal_velocity_output_tex = temporal_velocity_output_tex.view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TaaComputePush &push, TaaTaskInfo const &info) {
                 push.input_tex_size = info.input_tex_size;

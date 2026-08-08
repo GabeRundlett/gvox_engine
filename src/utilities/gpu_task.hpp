@@ -13,41 +13,50 @@ struct NoTaskInfo {
 template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
 struct Task : TaskHeadT {
     daxa::ShaderSource source;
+    std::optional<uint32_t> required_subgroup_size{};
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::AttachmentViews views{};
+    TaskHeadT::Views views{};
     TaskCallback<TaskHeadT, PushT, InfoT, PipelineT> *callback_{};
     InfoT info{};
     // Not set by user
     // std::string_view name = TaskHeadT::NAME;
     std::shared_ptr<PipelineT> pipeline;
     daxa::TaskGraph *task_graph_ptr = nullptr;
-    void callback(daxa::TaskInterface const &ti) {
+    static void callback(daxa::TaskInterface const &ti, Task task) {
         auto push = PushT{};
-        if (!pipeline->is_valid()) {
+        if (!task.pipeline->is_valid()) {
             return;
         }
-        callback_(ti, pipeline->get(), push, info);
+        task.callback_(ti, task.pipeline->get(), push, task.info);
+    }
+    daxa::Task create() {
+        return daxa::ComputeTask(TaskHeadT::NAME);
     }
 };
+
+template <typename TaskHeadT, typename PushT, typename InfoT>
+using RayTracingTaskCallback = void(daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, daxa::RayTracingShaderBindingTable const &shader_binding_table, PushT &push, InfoT const &info);
 
 template <typename TaskHeadT, typename PushT, typename InfoT>
 struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRayTracingPipeline> : TaskHeadT {
     daxa::ShaderSource source;
     uint32_t max_ray_recursion_depth = 1;
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::AttachmentViews views{};
-    TaskCallback<TaskHeadT, PushT, InfoT, AsyncManagedRayTracingPipeline> *callback_{};
+    TaskHeadT::Views views{};
+    RayTracingTaskCallback<TaskHeadT, PushT, InfoT> *callback_{};
     InfoT info{};
     // Not set by user
     std::shared_ptr<AsyncManagedRayTracingPipeline> pipeline;
     daxa::TaskGraph *task_graph_ptr = nullptr;
-    void callback(daxa::TaskInterface const &ti) {
+    static void callback(daxa::TaskInterface const &ti, Task task) {
         auto push = PushT{};
-        // ti.copy_task_head_to(&push.uses);
-        if (!pipeline->is_valid()) {
+        if (!task.pipeline->is_valid()) {
             return;
         }
-        callback_(ti, pipeline->get(), push, info);
+        task.callback_(ti, task.pipeline->get(), task.pipeline->sbt().table, push, task.info);
+    }
+    daxa::Task create() {
+        return daxa::RayTracingTask(TaskHeadT::NAME);
     }
 };
 
@@ -59,19 +68,21 @@ struct Task<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> : TaskHeadT {
     daxa::Optional<daxa::DepthTestInfo> depth_test{};
     daxa::RasterizerInfo raster{};
     std::vector<daxa::ShaderDefine> extra_defines{};
-    TaskHeadT::AttachmentViews views{};
+    TaskHeadT::Views views{};
     TaskCallback<TaskHeadT, PushT, InfoT, AsyncManagedRasterPipeline> *callback_{};
     InfoT info{};
     // Not set by user
     std::shared_ptr<AsyncManagedRasterPipeline> pipeline;
     daxa::TaskGraph *task_graph_ptr = nullptr;
-    void callback(daxa::TaskInterface const &ti) {
+    static void callback(daxa::TaskInterface const &ti, Task task) {
         auto push = PushT{};
-        // ti.copy_task_head_to(&push.uses);
-        if (!pipeline->is_valid()) {
+        if (!task.pipeline->is_valid()) {
             return;
         }
-        callback_(ti, pipeline->get(), push, info);
+        task.callback_(ti, task.pipeline->get(), push, task.info);
+    }
+    daxa::Task create() {
+        return daxa::RasterTask(TaskHeadT::NAME);
     }
 };
 
@@ -93,7 +104,7 @@ namespace {
     template <typename PushT>
     void set_push_constant(daxa::TaskInterface const &ti, PushT push) {
         if constexpr (requires(PushT p) { p.uses; }) {
-            ti.assign_attachment_shader_blob(push.uses.value);
+            push.uses = ti.attachment_shader_blob;
         }
         ti.recorder.push_constant(push);
     }
@@ -101,7 +112,7 @@ namespace {
     template <typename PushT>
     void set_push_constant(daxa::TaskInterface const &ti, daxa::RenderCommandRecorder &render_recorder, PushT push) {
         if constexpr (requires(PushT p) { p.uses; }) {
-            ti.assign_attachment_shader_blob(push.uses.value);
+            push.uses = ti.attachment_shader_blob;
             // ti.assign_attachment_shader_blob(reinterpret_cast<daxa::u8*>(&push.uses));
         }
         render_recorder.push_constant(push);

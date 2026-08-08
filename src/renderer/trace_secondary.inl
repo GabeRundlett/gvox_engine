@@ -28,7 +28,7 @@ struct TraceShadowRtPush {
 #include <application/settings.hpp>
 
 inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, VoxelWorldBuffers &voxel_buffers, daxa::TaskImageView particles_shadow_depth_image) -> daxa::TaskImageView {
-    auto shadow_mask = gpu_context.frame_task_graph.create_transient_image({
+    auto shadow_mask = gpu_context.frame_task_graph.create_task_image({
         .format = daxa::Format::R8_UNORM,
         .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
         .name = "shadow_mask",
@@ -41,24 +41,24 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
     if (render_shadows) {
         gpu_context.add(RayTracingTask<TraceShadowRt::Info, TraceShadowRtPush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_shadow.rt.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                // daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.geometry_pointers, voxel_buffers.blas_geom_pointers.task_resource}},
-                // daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                // daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.tlas, voxel_buffers.task_tlas}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.blue_noise_vec2, gpu_context.task_blue_noise_vec2_image}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.depth_image_id, gbuffer_depth.depth.current()}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.particles_shadow_depth_tex, particles_shadow_depth_image}},
-                daxa::TaskViewVariant{std::pair{TraceShadowRt::AT.shadow_mask, shadow_mask}},
+            .views = TraceShadowRt::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
+                // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
+                // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
+                .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                .tlas = voxel_buffers.task_tlas.view(),
+                .blue_noise_vec2 = gpu_context.task_blue_noise_vec2_image.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .depth_image_id = gbuffer_depth.depth.current().view(),
+                .particles_shadow_depth_tex = particles_shadow_depth_image,
+                .shadow_mask = shadow_mask,
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, TraceShadowRtPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(TraceShadowRt::AT.g_buffer_image_id).ids[0]).value();
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, daxa::RayTracingShaderBindingTable const &shader_binding_table, TraceShadowRtPush &push, NoTaskInfo const &) {
+                auto const image_info = ti.device.image_info(ti.get(TraceShadowRt::AT.g_buffer_image_id).id).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
-                ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1});
+                ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1, .shader_binding_table = shader_binding_table});
             },
         });
     } else {

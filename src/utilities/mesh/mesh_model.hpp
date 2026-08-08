@@ -7,7 +7,7 @@
 struct Texture {
     std::filesystem::path path;
     daxa::ImageId image_id;
-    daxa::TaskImage task_image;
+    daxa::ExternalTaskImage task_image;
     daxa_u32 size_x, size_y;
     daxa_i32 channel_n;
     uint8_t const *pixels;

@@ -10,28 +10,23 @@
 namespace {
     template <size_t N>
     inline void clear_task_images(daxa::TaskGraph &task_graph, std::array<daxa::TaskImageView, N> const &task_image_views, std::array<daxa::ClearValue, N> clear_values = {}) {
-        auto uses = std::vector<daxa::TaskAttachmentInfo>{};
         auto use_count = task_image_views.size();
-        uses.reserve(use_count);
+        auto task = daxa::InlineTask::Transfer("clear images");
         for (auto const &task_image : task_image_views) {
-            uses.push_back(daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_image));
+            task.writes(daxa::ImageViewType::REGULAR_2D, task_image);
         }
-        task_graph.add_task({
-            .attachments = std::move(uses),
-            .task = [use_count, clear_values](daxa::TaskInterface const &ti) {
-                for (uint8_t i = 0; i < use_count; ++i) {
-                    ti.recorder.clear_image({
-                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{i}).layout,
-                        .clear_value = clear_values[i],
-                        .dst_image = ti.get(daxa::TaskImageAttachmentIndex{i}).ids[0],
-                    });
-                }
-            },
-            .name = "clear images",
+        task.executes([use_count, clear_values](daxa::TaskInterface const &ti) {
+            for (uint8_t i = 0; i < use_count; ++i) {
+                ti.recorder.clear_image({
+                    .image = ti.get(daxa::TaskImageAttachmentIndex{i}).id,
+                    .clear_value = clear_values[i],
+                });
+            }
         });
+        task_graph.add_task(task);
     }
     template <size_t N>
-    inline void clear_task_images(daxa::Device &device, std::array<daxa::TaskImage, N> const &task_images) {
+    inline void clear_task_images(daxa::Device &device, std::array<daxa::ExternalTaskImage, N> const &task_images) {
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
             .name = "temp_task_graph",

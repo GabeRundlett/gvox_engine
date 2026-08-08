@@ -50,20 +50,17 @@ void Fsr2Renderer::next_frame() {
 }
 
 auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_depth, daxa::TaskImageView color_image, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
-    auto output_image = gpu_context.frame_task_graph.create_transient_image({
+    auto output_image = gpu_context.frame_task_graph.create_task_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
         .name = "fsr2_output_image",
     });
     auto depth_image = gbuffer_depth.depth.current().view();
-    gpu_context.frame_task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, color_image),
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, depth_image),
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_SAMPLE, daxa::ImageViewType::REGULAR_2D, velocity_image),
-            daxa::inl_attachment(daxa::TaskImageAccess::COMPUTE_SHADER_STORAGE_WRITE_ONLY, daxa::ImageViewType::REGULAR_2D, output_image),
-        },
-        .task = [=, this](daxa::TaskInterface const &ti) {
+    gpu_context.frame_task_graph.add_task(
+        daxa::InlineTask::Compute("FSR2")
+            .compute_shader.samples(daxa::ImageViewType::REGULAR_2D, color_image, depth_image, velocity_image)
+            .compute_shader.writes(daxa::ImageViewType::REGULAR_2D, output_image)
+            .executes([=, this](daxa::TaskInterface ti) {
             auto const &color_use = ti.get(daxa::TaskImageAttachmentIndex{0});
             auto const &depth_use = ti.get(daxa::TaskImageAttachmentIndex{1});
             auto const &velocity_use = ti.get(daxa::TaskImageAttachmentIndex{2});
@@ -78,10 +75,10 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
     }
 
             VkImage color_vk_image = {}, depth_vk_image = {}, velocity_vk_image = {}, output_vk_image = {};
-            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(color_use.ids[0]), &color_vk_image));
-            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(depth_use.ids[0]), &depth_vk_image));
-            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(velocity_use.ids[0]), &velocity_vk_image));
-            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(output_use.ids[0]), &output_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(color_use.id), &color_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(depth_use.id), &depth_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(velocity_use.id), &velocity_vk_image));
+            HANDLE_RES(daxa_dvc_get_vk_image(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageId>(output_use.id), &output_vk_image));
 
             VkImageView color_vk_image_view = {}, depth_vk_image_view = {}, velocity_vk_image_view = {}, output_vk_image_view = {};
             HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(color_use.view_ids[0]), &color_vk_image_view));
@@ -89,15 +86,15 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
             HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(velocity_use.view_ids[0]), &velocity_vk_image_view));
             HANDLE_RES(daxa_dvc_get_vk_image_view(*reinterpret_cast<daxa_Device *>(&ti.device), std::bit_cast<daxa_ImageViewId>(output_use.view_ids[0]), &output_vk_image_view));
 
-            auto const color_extent = ti.device.image_info(color_use.ids[0]).value().size;
-            auto const depth_extent = ti.device.image_info(depth_use.ids[0]).value().size;
-            auto const velocity_extent = ti.device.image_info(velocity_use.ids[0]).value().size;
-            auto const output_extent = ti.device.image_info(output_use.ids[0]).value().size;
+            auto const color_extent = ti.device.image_info(color_use.id).value().size;
+            auto const depth_extent = ti.device.image_info(depth_use.id).value().size;
+            auto const velocity_extent = ti.device.image_info(velocity_use.id).value().size;
+            auto const output_extent = ti.device.image_info(output_use.id).value().size;
 
-            auto const color_format = static_cast<VkFormat>(ti.device.image_info(color_use.ids[0]).value().format);
-            auto const depth_format = static_cast<VkFormat>(ti.device.image_info(depth_use.ids[0]).value().format);
-            auto const velocity_format = static_cast<VkFormat>(ti.device.image_info(velocity_use.ids[0]).value().format);
-            auto const output_format = static_cast<VkFormat>(ti.device.image_info(output_use.ids[0]).value().format);
+            auto const color_format = static_cast<VkFormat>(ti.device.image_info(color_use.id).value().format);
+            auto const depth_format = static_cast<VkFormat>(ti.device.image_info(depth_use.id).value().format);
+            auto const velocity_format = static_cast<VkFormat>(ti.device.image_info(velocity_use.id).value().format);
+            auto const output_format = static_cast<VkFormat>(ti.device.image_info(output_use.id).value().format);
 
             wchar_t fsr_input_color[] = L"FSR2_InputColor";
             wchar_t fsr_input_depth[] = L"FSR2_InputDepth";
@@ -152,8 +149,6 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
             if (err != FFX_OK) {
                 throw std::runtime_error("[ERROR][Fsr::Fsr()] FSR Failed to create context");
             }
-        },
-        .name = "FSR2",
-    });
+            }));
     return output_image;
 }

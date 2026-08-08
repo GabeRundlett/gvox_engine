@@ -280,7 +280,7 @@ void VoxelApp::on_drop(std::span<char const *> filepaths) {
 
 void VoxelApp::run_startup() {
     player_startup(gpu_input.player);
-    gpu_context.startup_task_graph.execute({});
+    // gpu_context.startup_task_graph.execute({});
 
     ui.should_run_startup = false;
 }
@@ -289,6 +289,7 @@ void VoxelApp::run_startup() {
 
 void VoxelApp::record_tasks() {
     ui.should_record_task_graph = false;
+    gpu_context.task_states.reserve(500);
 
     gpu_input.frame_dim.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
     gpu_input.frame_dim.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
@@ -353,8 +354,8 @@ void VoxelApp::record_tasks() {
     gpu_context.frame_task_graph.present({});
     gpu_context.frame_task_graph.complete({});
 
-    gpu_context.startup_task_graph.submit({});
-    gpu_context.startup_task_graph.complete({});
+    // gpu_context.startup_task_graph.submit({});
+    // gpu_context.startup_task_graph.complete({});
 
     needs_vram_calc = true;
 }

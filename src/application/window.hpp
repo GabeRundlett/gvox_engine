@@ -84,7 +84,7 @@ struct AppWindow {
 
 #if defined(_WIN32)
         {
-            auto hwnd = static_cast<HWND>(get_native_handle());
+            auto hwnd = static_cast<HWND>(glfwGetWin32Window((GLFWwindow *)glfw_window_ptr));
             BOOL value = TRUE;
             DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
             auto is_windows11_or_greater = []() -> bool {

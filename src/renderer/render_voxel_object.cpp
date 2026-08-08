@@ -108,7 +108,7 @@ namespace {
             .geometries = geometry,
             .scratch_data = {}, // Ignored in blas_build_sizes.
         };
-        const auto buildSizeInfo = (cachedBlasSizeInfo && aabbCount == 1) ? cachedBlasBuildSizeInfo : device.get_blas_build_sizes(blasBuildInfo);
+        const auto buildSizeInfo = (cachedBlasSizeInfo && aabbCount == 1) ? cachedBlasBuildSizeInfo : device.blas_build_sizes(blasBuildInfo);
         if (!cachedBlasSizeInfo && aabbCount == 1) {
             cachedBlasBuildSizeInfo = buildSizeInfo;
             cachedBlasSizeInfo = true;
@@ -132,11 +132,11 @@ namespace {
                 .size = buildSizeInfo.acceleration_structure_size,
                 .name = name.c_str(),
             },
-            .buffer_id = self->blas_buffer,
+            .buffer = self->blas_buffer,
             .offset = 0,
         });
 
-        self->scene->buffers.voxel_object_blases.set_blas({.blas = std::array{self->blas}});
+        self->scene->buffers.voxel_object_blases.set_blas(self->blas);
         self->blas_device_address = device.device_address(self->blas).value();
     }
 
@@ -203,11 +203,10 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
     });
     tempTaskGraph.register_blas(self->scene->buffers.voxel_object_blases);
     tempTaskGraph.register_buffer(self->scene->buffers.voxel_object_bricks);
-    tempTaskGraph.add_task(daxa::InlineTaskInfo{
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, self->scene->buffers.voxel_object_bricks),
-        },
-        .task = [&](daxa::TaskInterface ti) {
+    tempTaskGraph.add_task(
+        daxa::InlineTask::Transfer("upload brick data")
+            .writes(self->scene->buffers.voxel_object_bricks)
+            .executes([&](daxa::TaskInterface ti) {
             // upload all voxel data for now
             auto alloc_info = get_bricks_buffer_info(self->brick_count);
 
@@ -266,15 +265,12 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                 .dst_offset = alloc_info.mAabbOffset,
                 .size = alloc_info.mAabbSize,
             });
-        },
-        .name = "upload brick data",
-    });
-    tempTaskGraph.add_task(daxa::InlineTaskInfo{
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::ACCELERATION_STRUCTURE_BUILD_READ, self->scene->buffers.voxel_object_bricks),
-            daxa::inl_attachment(daxa::TaskBlasAccess::BUILD_WRITE, self->scene->buffers.voxel_object_blases),
-        },
-        .task = [&](const daxa::TaskInterface &ti) {
+            }));
+    tempTaskGraph.add_task(
+        daxa::InlineTask::Compute("build brick blas")
+            .acceleration_structure_build.reads(self->scene->buffers.voxel_object_bricks)
+            .acceleration_structure_build.writes(self->scene->buffers.voxel_object_blases)
+            .executes([&](daxa::TaskInterface ti) {
             auto geometry = std::array{
                 daxa::BlasAabbGeometryInfo{
                     .data = self->chunk_aabb_device_address,
@@ -292,9 +288,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
             ti.recorder.build_acceleration_structures({.blas_build_infos = std::span{&blasBuildInfo, 1}});
             ti.recorder.destroy_buffer_deferred(self->blas_scratch_buffer);
             self->blas_scratch_buffer = {};
-        },
-        .name = "build brick blas",
-    });
+            }));
 
     tempTaskGraph.submit({});
     tempTaskGraph.complete({});

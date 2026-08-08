@@ -30,18 +30,18 @@ struct PrefixScanMergeComputePush {
 
 inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBufferView input_buf) {
     const auto SEGMENT_SIZE = uint32_t{1024};
-    auto segment_sum_buf = gpu_context.frame_task_graph.create_transient_buffer({
+    auto segment_sum_buf = gpu_context.frame_task_graph.create_task_buffer({
         .size = sizeof(uint32_t) * SEGMENT_SIZE,
         .name = "segment_sum_buf",
     });
 
     gpu_context.add(ComputeTask<PrefixScan1Compute::Info, PrefixScan1ComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{PrefixScan1Compute::AT.inout_buf, input_buf}},
+        .views = PrefixScan1Compute::Views{
+            .inout_buf = input_buf,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PrefixScan1ComputePush &push, NoTaskInfo const &) {
-            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScan1Compute::AT.inout_buf).ids[0]).value().size / sizeof(uint32_t));
+            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScan1Compute::AT.inout_buf).id).value().size / sizeof(uint32_t));
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SEGMENT_SIZE * SEGMENT_SIZE / 2 + 511) / 512});
@@ -50,12 +50,12 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
 
     gpu_context.add(ComputeTask<PrefixScan2Compute::Info, PrefixScan2ComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{PrefixScan2Compute::AT.input_buf, input_buf}},
-            daxa::TaskViewVariant{std::pair{PrefixScan2Compute::AT.output_buf, segment_sum_buf}},
+        .views = PrefixScan2Compute::Views{
+            .input_buf = input_buf,
+            .output_buf = segment_sum_buf,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PrefixScan2ComputePush &push, NoTaskInfo const &) {
-            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScan2Compute::AT.input_buf).ids[0]).value().size / sizeof(uint32_t));
+            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScan2Compute::AT.input_buf).id).value().size / sizeof(uint32_t));
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SEGMENT_SIZE / 2 + 511) / 512});
@@ -64,12 +64,12 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
 
     gpu_context.add(ComputeTask<PrefixScanMergeCompute::Info, PrefixScanMergeComputePush, NoTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{PrefixScanMergeCompute::AT.inout_buf, input_buf}},
-            daxa::TaskViewVariant{std::pair{PrefixScanMergeCompute::AT.segment_sum_buf, segment_sum_buf}},
+        .views = PrefixScanMergeCompute::Views{
+            .inout_buf = input_buf,
+            .segment_sum_buf = segment_sum_buf,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, PrefixScanMergeComputePush &push, NoTaskInfo const &) {
-            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScanMergeCompute::AT.inout_buf).ids[0]).value().size / sizeof(uint32_t));
+            push.element_n = static_cast<uint32_t>(ti.device.buffer_info(ti.get(PrefixScanMergeCompute::AT.inout_buf).id).value().size / sizeof(uint32_t));
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
             ti.recorder.dispatch({(SEGMENT_SIZE * SEGMENT_SIZE / 2 + 511) / 512});

@@ -29,7 +29,7 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
-    auto output = gpu_context.frame_task_graph.create_transient_image({
+    auto output = gpu_context.frame_task_graph.create_task_image({
         .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
         .size = {image_size.x, image_size.y, 1},
         .mip_level_count = mip_count,
@@ -40,7 +40,7 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         daxa_u32 mip_i;
     };
     auto blur_dispatch = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, BlurComputePush &push, BlurTaskInfo const &info) {
-        auto const image_info = ti.device.image_info(ti.get(BlurCompute::AT.output_tex).ids[0]).value();
+        auto const image_info = ti.device.image_info(ti.get(BlurCompute::AT.output_tex).id).value();
         auto downscale_factor = 1u << info.mip_i;
         ti.recorder.set_pipeline(pipeline);
         set_push_constant(ti, push);
@@ -48,9 +48,9 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
     };
     gpu_context.add(ComputeTask<BlurCompute::Info, BlurComputePush, BlurTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{BlurCompute::AT.input_tex, input_image}},
-            daxa::TaskViewVariant{std::pair{BlurCompute::AT.output_tex, output.view({.base_mip_level = 0, .level_count = 1})}},
+        .views = BlurCompute::Views{
+            .input_tex = input_image,
+            .output_tex = output.mips(0, 1),
         },
         .callback_ = blur_dispatch,
         .info = {
@@ -58,15 +58,16 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         },
     });
 
+    #if 0
     // debug_utils::DebugDisplay::add_pass({.name = "blur_pyramid mip 0", .task_image_id = output, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     for (uint32_t mip_i = 0; mip_i < mip_count - 1; ++mip_i) {
-        auto src = output.view({.base_mip_level = mip_i + 0, .level_count = 1});
-        auto dst = output.view({.base_mip_level = mip_i + 1, .level_count = 1});
+        auto src = output.mips(mip_i + 0, 1);
+        auto dst = output.mips(mip_i + 1, 1);
         gpu_context.add(ComputeTask<BlurCompute::Info, BlurComputePush, BlurTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{BlurCompute::AT.input_tex, src}},
-                daxa::TaskViewVariant{std::pair{BlurCompute::AT.output_tex, dst}},
+            .views = BlurCompute::Views{
+                .input_tex = src,
+                .output_tex = dst,
             },
             .callback_ = blur_dispatch,
             .info = {
@@ -75,6 +76,7 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         });
         // debug_utils::DebugDisplay::add_pass({.name = "blur_pyramid mip " + std::to_string(mip_i + 1), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     }
+    #endif
 
     return output;
 }
@@ -83,7 +85,7 @@ inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_
     image_size = {(image_size.x + 1) / 2, (image_size.y + 1) / 2};
     auto mip_count = ceil_log2(std::max(image_size.x, image_size.y)) - 1;
 
-    auto output = gpu_context.frame_task_graph.create_transient_image({
+    auto output = gpu_context.frame_task_graph.create_task_image({
         .format = daxa::Format::B10G11R11_UFLOAT_PACK32,
         .size = {image_size.x, image_size.y, 1},
         .mip_level_count = mip_count,
@@ -95,9 +97,9 @@ inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_
         auto downsample_amount = 1u << target_mip_i;
         auto self_weight = (target_mip_i + 1 == mip_count) ? 0.0f : 0.5f;
 
-        auto tail = input_image.view({.base_mip_level = target_mip_i + 0, .level_count = 1});
-        auto src = output.view({.base_mip_level = target_mip_i + 1, .level_count = 1});
-        auto dst = output.view({.base_mip_level = target_mip_i + 0, .level_count = 1});
+        auto tail = input_image.mips(target_mip_i + 0, 1);
+        auto src = output.mips(target_mip_i + 1, 1);
+        auto dst = output.mips(target_mip_i + 0, 1);
 
         struct RevBlurTaskInfo {
             daxa_u32 downsample_amount;
@@ -105,14 +107,14 @@ inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_
         };
         gpu_context.add(ComputeTask<RevBlurCompute::Info, RevBlurComputePush, RevBlurTaskInfo>{
             .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::AT.input_tail_tex, tail}},
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::AT.input_tex, src}},
-                daxa::TaskViewVariant{std::pair{RevBlurCompute::AT.output_tex, dst}},
+            .views = RevBlurCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .input_tail_tex = tail,
+                .input_tex = src,
+                .output_tex = dst,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, RevBlurComputePush &push, RevBlurTaskInfo const &info) {
-                auto const image_info = ti.device.image_info(ti.get(RevBlurCompute::AT.output_tex).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(RevBlurCompute::AT.output_tex).id).value();
                 push.output_extent = {image_info.size.x / info.downsample_amount, image_info.size.y / info.downsample_amount, 1};
                 push.self_weight = info.self_weight;
                 ti.recorder.set_pipeline(pipeline);

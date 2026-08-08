@@ -160,13 +160,13 @@ struct GpuContext {
                 auto emplace_result = raster_pipelines.emplace(
                     shader_id,
                     std::make_shared<AsyncManagedRasterPipeline>(pipeline_manager->add_raster_pipeline({
-                        .mesh_shader_info = daxa::holds_alternative<daxa::Monostate>(task.mesh_source)
-                                                ? daxa::Optional<daxa::ShaderCompileInfo2>{}
-                                                : daxa::Optional<daxa::ShaderCompileInfo2>{daxa::ShaderCompileInfo2{
-                                                      .source = task.mesh_source,
-                                                      .defines = task.extra_defines,
-                                                      .required_subgroup_size = task.required_subgroup_size,
-                                                  }},
+                        // .mesh_shader_info = daxa::holds_alternative<daxa::Monostate>(task.mesh_source)
+                        //                         ? daxa::Optional<daxa::ShaderCompileInfo2>{}
+                        //                         : daxa::Optional<daxa::ShaderCompileInfo2>{daxa::ShaderCompileInfo2{
+                        //                               .source = task.mesh_source,
+                        //                               .defines = task.extra_defines,
+                        //                               .required_subgroup_size = task.required_subgroup_size,
+                        //                           }},
                         .vertex_shader_info = daxa::holds_alternative<daxa::Monostate>(task.vert_source)
                                                   ? daxa::Optional<daxa::ShaderCompileInfo2>{}
                                                   : daxa::Optional<daxa::ShaderCompileInfo2>{daxa::ShaderCompileInfo2{
@@ -211,7 +211,10 @@ struct GpuContext {
         task.pipeline = pipe_iter->second;
         task_states.push_back(std::make_any<MetaTaskT>(task));
         auto *task_ptr = std::any_cast<MetaTaskT>(&task_states.back());
-        task.task_graph->add_task(task.create().template uses_head<TaskHeadT>().head_views(task.views).executes([task_ptr](daxa::TaskInterface const &ti) {
+        if (task.task_graph_ptr == nullptr) {
+            task.task_graph_ptr = &frame_task_graph;
+        }
+        task.task_graph_ptr->add_task(task.create().template uses_head<TaskHeadT>().head_views(task.views).executes([task_ptr](daxa::TaskInterface const &ti) {
             MetaTaskT::callback(ti, *task_ptr);
         }));
     }

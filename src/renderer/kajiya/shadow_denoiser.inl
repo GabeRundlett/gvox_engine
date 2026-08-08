@@ -60,7 +60,7 @@ struct ShadowDenoiser {
     auto denoise_shadow_mask(GpuContext &gpu_context, GbufferDepth const &gbuffer_depth, daxa::TaskImageView shadow_mask, daxa::TaskImageView reprojection_map) -> daxa::TaskImageView {
         auto bitpacked_shadow_mask_extent = daxa_u32vec2{(gpu_context.render_resolution.x + 7) / 8, (gpu_context.render_resolution.y + 3) / 4};
 
-        auto bitpacked_shadows_image = gpu_context.frame_task_graph.create_transient_image({
+        auto bitpacked_shadows_image = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R32_UINT,
             .size = {bitpacked_shadow_mask_extent.x, bitpacked_shadow_mask_extent.y, 1},
             .name = "bitpacked_shadows_image",
@@ -72,13 +72,13 @@ struct ShadowDenoiser {
         };
         gpu_context.add(ComputeTask<ShadowBitPackCompute::Info, ShadowBitPackComputePush, ShadowBitPackComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::AT.input_tex, shadow_mask}},
-                daxa::TaskViewVariant{std::pair{ShadowBitPackCompute::AT.output_tex, bitpacked_shadows_image}},
+            .views = ShadowBitPackCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .input_tex = shadow_mask,
+                .output_tex = bitpacked_shadows_image,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowBitPackComputePush &push, ShadowBitPackComputeInfo const &info) {
-                auto const image_info = ti.device.image_info(ti.get(ShadowBitPackCompute::AT.input_tex).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(ShadowBitPackCompute::AT.input_tex).id).value();
                 push.input_tex_size = daxa_f32vec4{float(image_info.size.x), float(image_info.size.y), 0.0f, 0.0f};
                 push.input_tex_size.z = 1.0f / push.input_tex_size.x;
                 push.input_tex_size.w = 1.0f / push.input_tex_size.y;
@@ -120,18 +120,18 @@ struct ShadowDenoiser {
 
         clear_task_images(gpu_context.device, std::array{prev_moments_image, prev_accum_image});
 
-        auto spatial_input_image = gpu_context.frame_task_graph.create_transient_image({
+        auto spatial_input_image = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "spatial_input_image",
         });
-        auto shadow_denoise_intermediary_1 = gpu_context.frame_task_graph.create_transient_image({
+        auto shadow_denoise_intermediary_1 = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "shadow_denoise_intermediary_1",
         });
 
-        auto metadata_image = gpu_context.frame_task_graph.create_transient_image({
+        auto metadata_image = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R32_UINT,
             .size = {bitpacked_shadow_mask_extent.x, bitpacked_shadow_mask_extent.y, 1},
             .name = "metadata_image",
@@ -139,20 +139,20 @@ struct ShadowDenoiser {
 
         gpu_context.add(ComputeTask<ShadowTemporalFilterCompute::Info, ShadowTemporalFilterComputePush, ShadowBitPackComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.shadow_mask_tex, shadow_mask}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.bitpacked_shadow_mask_tex, bitpacked_shadows_image}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.prev_moments_tex, prev_moments_image}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.prev_accum_tex, prev_accum_image}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.reprojection_tex, reprojection_map}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.output_moments_tex, moments_image}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.temporal_output_tex, spatial_input_image}},
-                daxa::TaskViewVariant{std::pair{ShadowTemporalFilterCompute::AT.meta_output_tex, metadata_image}},
+            .views = ShadowTemporalFilterCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .shadow_mask_tex = shadow_mask,
+                .bitpacked_shadow_mask_tex = bitpacked_shadows_image,
+                .prev_moments_tex = prev_moments_image.view(),
+                .prev_accum_tex = prev_accum_image.view(),
+                .reprojection_tex = reprojection_map,
+                .output_moments_tex = moments_image.view(),
+                .temporal_output_tex = spatial_input_image,
+                .meta_output_tex = metadata_image,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowTemporalFilterComputePush &push, ShadowBitPackComputeInfo const &info) {
-                auto const image_info = ti.device.image_info(ti.get(ShadowTemporalFilterCompute::AT.output_moments_tex).ids[0]).value();
-                auto const input_image_info = ti.device.image_info(ti.get(ShadowTemporalFilterCompute::AT.shadow_mask_tex).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(ShadowTemporalFilterCompute::AT.output_moments_tex).id).value();
+                auto const input_image_info = ti.device.image_info(ti.get(ShadowTemporalFilterCompute::AT.shadow_mask_tex).id).value();
                 push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
                 push.input_tex_size.z = 1.0f / push.input_tex_size.x;
                 push.input_tex_size.w = 1.0f / push.input_tex_size.y;
@@ -172,8 +172,8 @@ struct ShadowDenoiser {
             daxa_u32vec2 bitpacked_shadow_mask_extent;
         };
         auto shadow_spatial_task_callback = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, ShadowSpatialFilterComputePush &push, ShadowSpatialFilterComputeInfo const &info) {
-            auto const image_info = ti.device.image_info(ti.get(ShadowSpatialFilterCompute::AT.output_tex).ids[0]).value();
-            auto const input_image_info = ti.device.image_info(ti.get(ShadowSpatialFilterCompute::AT.input_tex).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(ShadowSpatialFilterCompute::AT.output_tex).id).value();
+            auto const input_image_info = ti.device.image_info(ti.get(ShadowSpatialFilterCompute::AT.input_tex).id).value();
             push.step_size = info.step_size;
             push.input_tex_size = daxa_f32vec4{float(input_image_info.size.x), float(input_image_info.size.y), 0.0f, 0.0f};
             push.input_tex_size.z = 1.0f / push.input_tex_size.x;
@@ -187,13 +187,13 @@ struct ShadowDenoiser {
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.input_tex, spatial_input_image}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.meta_tex, metadata_image}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.depth_tex, gbuffer_depth.depth.current()}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.output_tex, accum_image}},
+            .views = ShadowSpatialFilterCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .input_tex = spatial_input_image,
+                .meta_tex = metadata_image,
+                .geometric_normal_tex = gbuffer_depth.geometric_normal,
+                .depth_tex = gbuffer_depth.depth.current().view(),
+                .output_tex = accum_image.view(),
             },
             .callback_ = shadow_spatial_task_callback,
             .info = {
@@ -204,13 +204,13 @@ struct ShadowDenoiser {
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.input_tex, accum_image}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.meta_tex, metadata_image}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.depth_tex, gbuffer_depth.depth.current()}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.output_tex, shadow_denoise_intermediary_1}},
+            .views = ShadowSpatialFilterCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .input_tex = accum_image.view(),
+                .meta_tex = metadata_image,
+                .geometric_normal_tex = gbuffer_depth.geometric_normal,
+                .depth_tex = gbuffer_depth.depth.current().view(),
+                .output_tex = shadow_denoise_intermediary_1,
             },
             .callback_ = shadow_spatial_task_callback,
             .info = {
@@ -221,13 +221,13 @@ struct ShadowDenoiser {
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
             .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.input_tex, shadow_denoise_intermediary_1}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.meta_tex, metadata_image}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.geometric_normal_tex, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.depth_tex, gbuffer_depth.depth.current()}},
-                daxa::TaskViewVariant{std::pair{ShadowSpatialFilterCompute::AT.output_tex, spatial_input_image}},
+            .views = ShadowSpatialFilterCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .input_tex = shadow_denoise_intermediary_1,
+                .meta_tex = metadata_image,
+                .geometric_normal_tex = gbuffer_depth.geometric_normal,
+                .depth_tex = gbuffer_depth.depth.current().view(),
+                .output_tex = spatial_input_image,
             },
             .callback_ = shadow_spatial_task_callback,
             .info = {

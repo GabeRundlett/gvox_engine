@@ -64,7 +64,7 @@ struct PingPongResource {
         TemporalResourceType resource_b;
 
         ~Resources() {
-            if (!resource_a.task_resource.is_valid()) {
+            if (resource_a.task_resource.is_valid() && !resource_a.task_resource.id().is_empty()) {
                 Impl::destroy(*gpu_context, resource_a);
                 Impl::destroy(*gpu_context, resource_b);
             }
@@ -84,7 +84,7 @@ struct PingPongResource {
     auto get(GpuContext &gpu_context, ResourceInfoType const &a_info) -> std::pair<TaskResourceType &, TaskResourceType &> {
         resources.gpu_context = &gpu_context;
         // assert(resources.device == a_device);
-        if (resources.resource_a.task_resource.is_valid()) {
+        if (!resources.resource_a.task_resource.is_valid() || resources.resource_a.task_resource.id().is_empty()) {
             auto info_a = a_info;
             auto info_b = a_info;
             info_a.name = std::string(info_a.name.view()) + "_a";

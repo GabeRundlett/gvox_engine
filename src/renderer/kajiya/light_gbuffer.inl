@@ -47,7 +47,7 @@ inline auto light_gbuffer(
     daxa::TaskImageView transmittance_lut,
     daxa::TaskImageView ae_lut) -> daxa::TaskImageView {
 
-    auto output_image = gpu_context.frame_task_graph.create_transient_image({
+    auto output_image = gpu_context.frame_task_graph.create_task_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
         .name = "composited_image",
@@ -64,22 +64,22 @@ inline auto light_gbuffer(
 
     gpu_context.add(ComputeTask<LightGbufferCompute::Info, LightGbufferComputePush, LightGbufferComputeTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
-        .views = std::array{
+        .views = LightGbufferCompute::Views{
             // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.gbuffer_tex, gbuffer_depth.gbuffer}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.depth_tex, gbuffer_depth.depth.current().view()}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.shadow_mask_tex, shadow_mask}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.rtr_tex, rtr}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.rtdgi_tex, rtdgi}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.output_tex, output_image}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.ibl_cube, ibl_cube}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.sky_lut, sky_lut}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.transmittance_lut, transmittance_lut}},
-            daxa::TaskViewVariant{std::pair{LightGbufferCompute::AT.ae_lut, ae_lut}},
+            .gpu_input = gpu_context.task_input_buffer.view(),
+            .gbuffer_tex = gbuffer_depth.gbuffer,
+            .depth_tex = gbuffer_depth.depth.current().view(),
+            .shadow_mask_tex = shadow_mask,
+            .rtr_tex = rtr,
+            .rtdgi_tex = rtdgi,
+            .output_tex = output_image,
+            .ibl_cube = ibl_cube,
+            .sky_lut = sky_lut,
+            .transmittance_lut = transmittance_lut,
+            .ae_lut = ae_lut,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, LightGbufferComputePush &push, LightGbufferComputeTaskInfo const &info) {
-            auto const image_info = ti.device.image_info(ti.get(LightGbufferCompute::AT.gbuffer_tex).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(LightGbufferCompute::AT.gbuffer_tex).id).value();
             ti.recorder.set_pipeline(pipeline);
             push.debug_shading_mode = info.debug_shading_mode;
             push.debug_show_wrc = 0;

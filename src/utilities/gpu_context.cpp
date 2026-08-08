@@ -155,11 +155,10 @@ GpuContext::GpuContext() {
             .name = "temp_task_graph",
         });
         temp_task_graph.register_image(task_blue_noise_vec2_image);
-        temp_task_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_3D, task_blue_noise_vec2_image),
-            },
-            .task = [this](daxa::TaskInterface const &ti) {
+        temp_task_graph.add_task(
+            daxa::InlineTask::Transfer("upload_blue_noise")
+                .transfer.writes(daxa::ImageViewType::REGULAR_3D, task_blue_noise_vec2_image)
+                .executes([this](daxa::TaskInterface ti) {
                 auto staging_buffer = ti.device.create_buffer({
                     .size = 128 * 128 * 4 * 64 * 1,
                     .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -204,14 +203,12 @@ GpuContext::GpuContext() {
                 });
                 ti.recorder.destroy_buffer_deferred(staging_buffer);
                 ti.recorder.copy_buffer_to_image({
-                    .buffer = staging_buffer,
+                    .src_buffer = staging_buffer,
                     .buffer_offset = (size_t{128} * 128 * 4 * 64) * 0,
-                    .image = task_blue_noise_vec2_image.get_state().images[0],
+                    .dst_image = task_blue_noise_vec2_image.id(),
                     .image_extent = {128, 128, 64},
                 });
-            },
-            .name = "upload_blue_noise",
-        });
+                }));
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});
@@ -239,11 +236,10 @@ GpuContext::GpuContext() {
 
         task_debug_texture.set_image(debug_texture);
         temp_task_graph.register_image(task_debug_texture);
-        temp_task_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_debug_texture),
-            },
-            .task = [&, this](daxa::TaskInterface const &ti) {
+        temp_task_graph.add_task(
+            daxa::InlineTask::Transfer("upload_debug_texture")
+                .transfer.writes(daxa::ImageViewType::REGULAR_2D, task_debug_texture)
+                .executes([&, this](daxa::TaskInterface ti) {
                 auto staging_buffer = ti.device.create_buffer({
                     .size = size,
                     .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -258,13 +254,11 @@ GpuContext::GpuContext() {
                 });
                 ti.recorder.destroy_buffer_deferred(staging_buffer);
                 ti.recorder.copy_buffer_to_image({
-                    .buffer = staging_buffer,
-                    .image = task_debug_texture.get_state().images[0],
+                    .src_buffer = staging_buffer,
+                    .dst_image = task_debug_texture.id(),
                     .image_extent = {static_cast<daxa_u32>(size_x), static_cast<daxa_u32>(size_y), 1},
                 });
-            },
-            .name = "upload_debug_texture",
-        });
+                }));
         temp_task_graph.submit({});
         temp_task_graph.complete({});
         temp_task_graph.execute({});
@@ -402,6 +396,11 @@ GpuContext::~GpuContext() {
     for (auto const &[id, temporal_image] : temporal_images) {
         device.destroy_image(temporal_image.task_resource.id());
     }
+    for (auto const &[id, rt_pipeline] : ray_tracing_pipelines) {
+        if (rt_pipeline->sbt_storage.has_value()) {
+            device.destroy_buffer(rt_pipeline->sbt_storage.value().buffer);
+        }
+    }
 }
 
 void GpuContext::create_swapchain(daxa::SwapchainInfo const &info) {
@@ -431,11 +430,10 @@ void GpuContext::update_seeded_value_noise(uint64_t seed) {
         .name = "temp_task_graph",
     });
     temp_task_graph.register_image(task_value_noise_image);
-    temp_task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, task_value_noise_image_view),
-        },
-        .task = [this, seed](daxa::TaskInterface const &ti) {
+    temp_task_graph.add_task(
+        daxa::InlineTask::Transfer("upload_value_noise")
+            .transfer.writes(daxa::ImageViewType::REGULAR_2D_ARRAY, task_value_noise_image_view)
+            .executes([this, seed](daxa::TaskInterface ti) {
             auto staging_buffer = ti.device.create_buffer({
                 .size = 256 * 256 * 256 * 1,
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
@@ -453,9 +451,9 @@ void GpuContext::update_seeded_value_noise(uint64_t seed) {
             ti.recorder.destroy_buffer_deferred(staging_buffer);
             for (daxa_u32 i = 0; i < 256; ++i) {
                 ti.recorder.copy_buffer_to_image({
-                    .buffer = staging_buffer,
+                    .src_buffer = staging_buffer,
                     .buffer_offset = 256 * 256 * i,
-                    .image = task_value_noise_image.get_state().images[0],
+                    .dst_image = task_value_noise_image.id(),
                     .image_slice{
                         .base_array_layer = i,
                         .layer_count = 1,
@@ -463,9 +461,7 @@ void GpuContext::update_seeded_value_noise(uint64_t seed) {
                     .image_extent = {256, 256, 1},
                 });
             }
-        },
-        .name = "upload_value_noise",
-    });
+            }));
     temp_task_graph.submit({});
     temp_task_graph.complete({});
     temp_task_graph.execute({});
@@ -477,8 +473,8 @@ auto GpuContext::find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> Te
 
     if (iter == temporal_buffers.end()) {
         auto result = TemporalBuffer{};
-        result.task_resource.id() = device.create_buffer(info);
-        result.task_resource = daxa::TaskBuffer(daxa::TaskBufferInfo{.initial_buffers = {.buffers = std::array{result.task_resource.id()}}, .name = id});
+        auto buffer_id = device.create_buffer(info);
+        result.task_resource = daxa::ExternalTaskBuffer(daxa::ExternalTaskBufferInfo{.buffer = buffer_id, .name = id});
         auto emplace_result = temporal_buffers.emplace(id, result);
         iter = emplace_result.first;
     } else {
@@ -497,8 +493,8 @@ auto GpuContext::find_or_add_temporal_image(daxa::ImageInfo const &info) -> Temp
 
     if (iter == temporal_images.end()) {
         auto result = TemporalImage{};
-        result.task_resource.id() = device.create_image(info);
-        result.task_resource = daxa::TaskImage(daxa::TaskImageInfo{.initial_images = {.images = std::array{result.task_resource.id()}}, .name = id});
+        auto image_id = device.create_image(info);
+        result.task_resource = daxa::ExternalTaskImage(daxa::ExternalTaskImageInfo{.image = image_id, .name = id});
         auto emplace_result = temporal_images.emplace(id, result);
         iter = emplace_result.first;
     } else {

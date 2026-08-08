@@ -74,7 +74,7 @@ void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) 
 
         bool createInstancesBuffer = instancesSize > 0;
         auto instances_buffer = daxa::BufferId{};
-        if (!self->buffers.task_tlas_instances.is_valid())
+        if (self->buffers.task_tlas_instances.is_valid())
             instances_buffer = self->buffers.task_tlas_instances.id();
         if (device.is_id_valid(instances_buffer)) {
             if (device.buffer_info(instances_buffer).value().size >= instancesSize)
@@ -132,64 +132,57 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
     task_graph.register_blas(self->buffers.voxel_object_blases);
     task_graph.register_buffer(self->buffers.voxel_object_bricks);
 
-    task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, self->buffers.task_tlas_instances),
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, self->buffers.brick_primitive_pointers.task_resource),
-        },
-        .task = [self](const daxa::TaskInterface &ti) {
-            auto tlasInstanceN = self->drawn_voxel_objects.size();
-            auto staging_allocation = ti.allocator->allocate(sizeof(daxa_BlasInstanceData) * tlasInstanceN);
-            if (tlasInstanceN == 0)
-                return;
+    task_graph.add_task(
+        daxa::InlineTask::Transfer("update tlas instances")
+            .writes(self->buffers.task_tlas_instances, self->buffers.brick_primitive_pointers.task_resource)
+            .executes([self](daxa::TaskInterface ti) {
+                auto tlasInstanceN = self->drawn_voxel_objects.size();
+                auto staging_allocation = ti.allocator->allocate(sizeof(daxa_BlasInstanceData) * tlasInstanceN);
+                if (tlasInstanceN == 0)
+                    return;
 
-            memcpy(staging_allocation->host_address, self->drawn_voxel_objects_blas_instances.data(), staging_allocation->size);
-            // TODO: Think more about updating the tlas. Shouldn't need to update every single object, only ones that changed
-            // NOTE: Don't forget about deletion of objects, this should mark the re-allocated object as a dirty tlas!
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = ti.get(self->buffers.task_tlas_instances).id,
-                .size = staging_allocation->size,
-            });
+                memcpy(staging_allocation->host_address, self->drawn_voxel_objects_blas_instances.data(), staging_allocation->size);
+                // TODO: Think more about updating the tlas. Shouldn't need to update every single object, only ones that changed
+                // NOTE: Don't forget about deletion of objects, this should mark the re-allocated object as a dirty tlas!
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = ti.allocator->buffer(),
+                    .dst_buffer = ti.get(self->buffers.task_tlas_instances).id,
+                    .size = staging_allocation->size,
+                });
 
-            staging_allocation = ti.allocator->allocate(sizeof(daxa::DeviceAddress) * tlasInstanceN);
-            memcpy(staging_allocation->host_address, self->drawn_voxel_objects.data(), staging_allocation->size);
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = ti.get(self->buffers.brick_primitive_pointers.task_resource).id,
-                .size = staging_allocation->size,
-            });
-        },
-        .name = "update tlas instances",
-    });
+                staging_allocation = ti.allocator->allocate(sizeof(daxa::DeviceAddress) * tlasInstanceN);
+                memcpy(staging_allocation->host_address, self->drawn_voxel_objects.data(), staging_allocation->size);
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = ti.allocator->buffer(),
+                    .dst_buffer = ti.get(self->buffers.brick_primitive_pointers.task_resource).id,
+                    .size = staging_allocation->size,
+                });
+            }));
 
-    task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBlasAccess::BUILD_READ, self->buffers.voxel_object_blases),
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, self->buffers.task_tlas_instances),
-            daxa::inl_attachment(daxa::TaskTlasAccess::BUILD_WRITE, self->buffers.task_tlas),
-        },
-        .task = [self](const daxa::TaskInterface &ti) {
-            auto tlasInstanceN = self->drawn_voxel_objects.size();
-            auto tlasInstancesBuffer = ti.get(self->buffers.task_tlas_instances).ids[0];
-            auto tlasInstanceInfo = std::array{
-                daxa::TlasInstanceInfo{
-                    .data = tlasInstanceN == 0 ? daxa::DeviceAddress{} : ti.device.device_address(tlasInstancesBuffer).value(),
-                    .count = static_cast<uint32_t>(tlasInstanceN),
-                    .is_data_array_of_pointers = false, // Buffer contains flat array of instances, not an array of pointers to instances.
-                    .flags = daxa::GeometryFlagBits::OPAQUE,
-                },
-            };
-            auto tlasBuildInfo = daxa::TlasBuildInfo{
-                .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
-                .dst_tlas = self->buffers.tlas,
-                .instances = tlasInstanceInfo,
-                .scratch_data = ti.device.device_address(self->buffers.tlas_scratch_buffer).value(),
-            };
-            ti.recorder.build_acceleration_structures({
-                .tlas_build_infos = std::array{tlasBuildInfo},
-            });
-        },
-        .name = "tlas build",
-    });
+    task_graph.add_task(
+        daxa::InlineTask::Transfer("tlas build")
+            .acceleration_structure_build.reads(self->buffers.voxel_object_blases)
+            .transfer.reads(self->buffers.task_tlas_instances)
+            .acceleration_structure_build.writes(self->buffers.task_tlas)
+            .executes([self](daxa::TaskInterface ti) {
+                auto tlasInstanceN = self->drawn_voxel_objects.size();
+                auto tlasInstancesBuffer = ti.get(self->buffers.task_tlas_instances).id;
+                auto tlasInstanceInfo = std::array{
+                    daxa::TlasInstanceInfo{
+                        .data = tlasInstanceN == 0 ? daxa::DeviceAddress{} : ti.device.device_address(tlasInstancesBuffer).value(),
+                        .count = static_cast<uint32_t>(tlasInstanceN),
+                        .is_data_array_of_pointers = false, // Buffer contains flat array of instances, not an array of pointers to instances.
+                        .flags = daxa::GeometryFlagBits::OPAQUE,
+                    },
+                };
+                auto tlasBuildInfo = daxa::TlasBuildInfo{
+                    .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
+                    .dst_tlas = self->buffers.tlas,
+                    .instances = tlasInstanceInfo,
+                    .scratch_data = ti.device.device_address(self->buffers.tlas_scratch_buffer).value(),
+                };
+                ti.recorder.build_acceleration_structures({
+                    .tlas_build_infos = std::array{tlasBuildInfo},
+                });
+            }));
 }

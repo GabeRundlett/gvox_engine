@@ -103,17 +103,17 @@ struct FireParticles {
         gpu_context.add(ComputeTask<FireParticleSimCompute::Info, FireParticleSimComputePush, NoTaskInfo>{
             .source = daxa::ShaderFile{"voxels/particles/fire_particle/sim.comp.glsl"},
             .extra_defines = {daxa::ShaderDefine{.name = "FIRE_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.geometry_pointers, voxel_world_buffers.blas_geom_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.attribute_pointers, voxel_world_buffers.blas_attr_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.blas_transforms, voxel_world_buffers.blas_transforms.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.tlas, voxel_world_buffers.task_tlas}},
+            .views = FireParticleSimCompute::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .geometry_pointers = voxel_world_buffers.blas_geom_pointers.task_resource.view(),
+                .attribute_pointers = voxel_world_buffers.blas_attr_pointers.task_resource.view(),
+                .blas_transforms = voxel_world_buffers.blas_transforms.task_resource.view(),
+                .tlas = voxel_world_buffers.task_tlas.view(),
                 SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(FireParticleSimCompute, FireParticleAllocator, fire_particle_allocator),
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.cube_rendered_particle_verts, cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.shadow_cube_rendered_particle_verts, shadow_cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSimCompute::AT.splat_rendered_particle_verts, splat_rendered_particle_verts.task_resource}},
+                .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
+                .shadow_cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
+                .splat_rendered_particle_verts = splat_rendered_particle_verts.task_resource.view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, FireParticleSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
@@ -142,19 +142,19 @@ struct FireParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "FIRE_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.cube_rendered_particle_verts, cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.indices, cube_index_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.fire_particles, fire_particle_allocator.element_buffer.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.velocity_image_id, velocity_image}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.vs_normal_image_id, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
+            .views = FireParticleCubeParticleRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
+                .indices = cube_index_buffer,
+                .fire_particles = fire_particle_allocator.element_buffer.task_resource.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .velocity_image_id = velocity_image,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.current().view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, FireParticleCubeParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(FireParticleCubeParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(FireParticleCubeParticleRaster::AT.g_buffer_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(FireParticleCubeParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -167,11 +167,11 @@ struct FireParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.set_index_buffer({
-                    .id = ti.get(FireParticleCubeParticleRaster::AT.indices).ids[0],
+                    .buffer = ti.get(FireParticleCubeParticleRaster::AT.indices).id,
                     .index_type = daxa::IndexType::uint16,
                 });
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(FireParticleCubeParticleRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(FireParticleCubeParticleRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, fire_particle) + offsetof(ParticleDrawParams, cube_draw_params),
                     .is_indexed = true,
                 });
@@ -192,16 +192,16 @@ struct FireParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "FIRE_PARTICLE", .value = "1"}, daxa::ShaderDefine{.name = "SHADOW_MAP", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.cube_rendered_particle_verts, shadow_cube_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.fire_particles, fire_particle_allocator.element_buffer.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.indices, cube_index_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleCubeParticleShadowRaster::AT.depth_image_id, shadow_depth}},
+            .views = FireParticleCubeParticleShadowRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
+                .fire_particles = fire_particle_allocator.element_buffer.task_resource.view(),
+                .indices = cube_index_buffer,
+                .depth_image_id = shadow_depth,
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, FireParticleCubeParticleShadowRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(FireParticleCubeParticleShadowRaster::AT.depth_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(FireParticleCubeParticleShadowRaster::AT.depth_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(FireParticleCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
@@ -209,11 +209,11 @@ struct FireParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.set_index_buffer({
-                    .id = ti.get(FireParticleCubeParticleShadowRaster::AT.indices).ids[0],
+                    .buffer = ti.get(FireParticleCubeParticleShadowRaster::AT.indices).id,
                     .index_type = daxa::IndexType::uint16,
                 });
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(FireParticleCubeParticleShadowRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(FireParticleCubeParticleShadowRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, fire_particle) + offsetof(ParticleDrawParams, shadow_cube_draw_params),
                     .is_indexed = true,
                 });
@@ -241,18 +241,18 @@ struct FireParticles {
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
             .extra_defines = {daxa::ShaderDefine{.name = "FIRE_PARTICLE", .value = "1"}},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.gpu_input, gpu_context.task_input_buffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.particles_state, particles_state}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.splat_rendered_particle_verts, splat_rendered_particle_verts.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.fire_particles, fire_particle_allocator.element_buffer.task_resource}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.velocity_image_id, velocity_image}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.vs_normal_image_id, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{FireParticleSplatParticleRaster::AT.depth_image_id, gbuffer_depth.depth.current()}},
+            .views = FireParticleSplatParticleRaster::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                .particles_state = particles_state,
+                .splat_rendered_particle_verts = splat_rendered_particle_verts.task_resource.view(),
+                .fire_particles = fire_particle_allocator.element_buffer.task_resource.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .velocity_image_id = velocity_image,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = gbuffer_depth.depth.current().view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, FireParticleSplatParticleRasterPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(FireParticleSplatParticleRaster::AT.g_buffer_image_id).ids[0]).value();
+                auto const image_info = ti.device.image_info(ti.get(FireParticleSplatParticleRaster::AT.g_buffer_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .color_attachments = {
                         {.image_view = ti.get(FireParticleSplatParticleRaster::AT.g_buffer_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD},
@@ -265,7 +265,7 @@ struct FireParticles {
                 renderpass_recorder.set_pipeline(pipeline);
                 set_push_constant(ti, renderpass_recorder, push);
                 renderpass_recorder.draw_indirect({
-                    .draw_command_buffer = ti.get(FireParticleSplatParticleRaster::AT.particles_state).ids[0],
+                    .draw_command_buffer = ti.get(FireParticleSplatParticleRaster::AT.particles_state).id,
                     .indirect_buffer_offset = offsetof(VoxelParticlesState, fire_particle) + offsetof(ParticleDrawParams, splat_draw_params),
                     .is_indexed = false,
                 });

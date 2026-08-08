@@ -31,8 +31,38 @@ struct AsyncManagedPipeline {
 };
 
 using AsyncManagedComputePipeline = AsyncManagedPipeline<daxa::ComputePipeline>;
-using AsyncManagedRayTracingPipeline = AsyncManagedPipeline<daxa::RayTracingPipeline>;
 using AsyncManagedRasterPipeline = AsyncManagedPipeline<daxa::RasterPipeline>;
+
+// Ray tracing pipelines additionally own a lazily-created default shader binding table,
+// since daxa::RayTracingPipelineInfo no longer carries one (create_default_sbt() must be
+// called explicitly, and the returned buffer must be kept alive for as long as it's used).
+template <>
+struct AsyncManagedPipeline<daxa::RayTracingPipeline> {
+    using PipelineT = daxa::RayTracingPipeline;
+    std::shared_ptr<PipelineT> pipeline;
+    std::shared_ptr<std::promise<std::shared_ptr<PipelineT>>> pipeline_promise;
+    std::future<std::shared_ptr<PipelineT>> pipeline_future;
+    daxa::Optional<daxa::RayTracingPipeline::SbtPair> sbt_storage{};
+
+    auto is_valid() -> bool {
+        if (pipeline_future.valid()) {
+            pipeline_future.wait();
+            pipeline = pipeline_future.get();
+        }
+        return pipeline && pipeline->is_valid();
+    }
+    auto get() -> PipelineT & {
+        return *pipeline;
+    }
+    auto sbt() -> daxa::RayTracingPipeline::SbtPair const & {
+        if (!sbt_storage.has_value()) {
+            sbt_storage = pipeline->create_default_sbt();
+        }
+        return sbt_storage.value();
+    }
+};
+
+using AsyncManagedRayTracingPipeline = AsyncManagedPipeline<daxa::RayTracingPipeline>;
 
 struct AsyncPipelineManager {
     std::array<daxa::PipelineManager, 8> pipeline_managers;
@@ -88,10 +118,12 @@ struct AsyncPipelineManager {
                 auto compile_result = pipeline_manager.add_compute_pipeline2(state.info_copy);
                 if (compile_result.is_err()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 if (!compile_result.value()->is_valid()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 state.pipeline_promise->set_value(compile_result.value());
@@ -121,10 +153,12 @@ struct AsyncPipelineManager {
                 auto compile_result = pipeline_manager.add_ray_tracing_pipeline2(state.info_copy);
                 if (compile_result.is_err()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 if (!compile_result.value()->is_valid()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 state.pipeline_promise->set_value(compile_result.value());
@@ -155,10 +189,12 @@ struct AsyncPipelineManager {
                 auto compile_result = pipeline_manager.add_raster_pipeline2(state.info_copy);
                 if (compile_result.is_err()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 if (!compile_result.value()->is_valid()) {
                     // debug_utils::add_log(g_console, compile_result.message().c_str());
+                    debug_utils::Console::add_log(compile_result.message());
                     return;
                 }
                 state.pipeline_promise->set_value(compile_result.value());

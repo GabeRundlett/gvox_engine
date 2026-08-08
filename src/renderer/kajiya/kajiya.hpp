@@ -104,12 +104,12 @@ struct KajiyaRenderer {
             rtr = rtr_.filter(gpu_context, gbuffer_depth, reprojection_map, rtr_renderer.spatial_resolve_offsets_buf);
             rtdgi = rtdgi_irradiance;
         } else {
-            rtr = gpu_context.frame_task_graph.create_transient_image({
+            rtr = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "rtr",
             });
-            rtdgi = gpu_context.frame_task_graph.create_transient_image({
+            rtdgi = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
                 .name = "rtdgi",

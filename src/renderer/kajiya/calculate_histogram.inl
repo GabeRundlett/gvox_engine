@@ -26,38 +26,35 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
     auto input_mip_level = std::max(mip_count, 7u) - 7;
 
     auto hist_size = static_cast<uint32_t>(sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT);
-    auto tmp_histogram = gpu_context.frame_task_graph.create_transient_buffer({
+    auto tmp_histogram = gpu_context.frame_task_graph.create_task_buffer({
         .size = sizeof(uint32_t) * LUMINANCE_HISTOGRAM_BIN_COUNT,
         .name = "tmp_histogram",
     });
 
-    gpu_context.frame_task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, tmp_histogram),
-        },
-        .task = [=](daxa::TaskInterface const &ti) {
-            ti.recorder.clear_buffer({
-                .buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).ids[0],
-                .offset = 0,
-                .size = hist_size,
-                .clear_value = 0,
-            });
-        },
-        .name = "clear histogram",
-    });
+    gpu_context.frame_task_graph.add_task(
+        daxa::InlineTask::Transfer("clear histogram")
+            .writes(tmp_histogram)
+            .executes([=](daxa::TaskInterface const &ti) {
+                ti.recorder.clear_buffer({
+                    .buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).id,
+                    .offset = 0,
+                    .size = hist_size,
+                    .clear_value = 0,
+                });
+            }));
 
     struct CalculateHistogramTaskInfo {
         daxa_u32 input_mip_level;
     };
     gpu_context.add(ComputeTask<CalculateHistogramCompute::Info, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
         .source = daxa::ShaderFile{"kajiya/calculate_histogram.comp.glsl"},
-        .views = std::array{
-            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::AT.gpu_input, gpu_context.task_input_buffer}},
-            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::AT.input_tex, blur_pyramid.view({.base_mip_level = input_mip_level, .level_count = 1})}},
-            daxa::TaskViewVariant{std::pair{CalculateHistogramCompute::AT.output_buffer, tmp_histogram}},
+        .views = CalculateHistogramCompute::Views{
+            .gpu_input = gpu_context.task_input_buffer.view(),
+            .input_tex = blur_pyramid.mips(input_mip_level, 1),
+            .output_buffer = tmp_histogram,
         },
         .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, CalculateHistogramComputePush &push, CalculateHistogramTaskInfo const &info) {
-            auto const image_info = ti.device.image_info(ti.get(CalculateHistogramCompute::AT.input_tex).ids[0]).value();
+            auto const image_info = ti.device.image_info(ti.get(CalculateHistogramCompute::AT.input_tex).id).value();
             push.input_extent = {(image_info.size.x + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level, (image_info.size.y + ((1 << info.input_mip_level) - 1)) >> info.input_mip_level};
             ti.recorder.set_pipeline(pipeline);
             set_push_constant(ti, push);
@@ -69,21 +66,18 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
         },
     });
 
-    gpu_context.frame_task_graph.add_task({
-        .attachments = {
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_READ, tmp_histogram),
-            daxa::inl_attachment(daxa::TaskBufferAccess::TRANSFER_WRITE, dst_histogram),
-        },
-        .task = [=, &histogram_index](daxa::TaskInterface const &ti) {
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).ids[0],
-                .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{1}).ids[0],
-                .dst_offset = histogram_index * hist_size,
-                .size = hist_size,
-            });
-        },
-        .name = "copy histogram",
-    });
+    gpu_context.frame_task_graph.add_task(
+        daxa::InlineTask::Transfer("copy histogram")
+            .reads(tmp_histogram)
+            .writes(dst_histogram)
+            .executes([=, &histogram_index](daxa::TaskInterface const &ti) {
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = ti.get(daxa::TaskBufferAttachmentIndex{0}).id,
+                    .dst_buffer = ti.get(daxa::TaskBufferAttachmentIndex{1}).id,
+                    .dst_offset = histogram_index * hist_size,
+                    .size = hist_size,
+                });
+            }));
 }
 
 #endif

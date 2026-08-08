@@ -113,7 +113,7 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
 
     auto transmittance_lut = self.sky.transmittance_lut.task_resource.view();
     auto sky_lut = self.sky.sky_lut.task_resource.view();
-    auto ibl_cube = self.sky.ibl_cube.task_resource.view().view({.base_array_layer = 0, .layer_count = 6});
+    auto ibl_cube = self.sky.ibl_cube.task_resource.view().layers(0, 6);
     auto ae_lut = self.sky.aerial_perspective_lut.task_resource.view();
     gpu_context.frame_task_graph.register_image(self.sky.transmittance_lut.task_resource);
     gpu_context.frame_task_graph.register_image(self.sky.sky_lut.task_resource);
@@ -146,35 +146,30 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
         switch (taa_method) {
         default: [[fallthrough]];
         case 0: {
-            auto output_image = gpu_context.frame_task_graph.create_transient_image({
+            auto output_image = gpu_context.frame_task_graph.create_task_image({
                 .format = daxa::Format::R16G16B16A16_SFLOAT,
                 .size = {gpu_context.output_resolution.x, gpu_context.output_resolution.y, 1},
                 .name = "output_image",
             });
 
-            gpu_context.frame_task_graph.add_task({
-                .attachments = {
-                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_READ, daxa::ImageViewType::REGULAR_2D, debug_out_tex),
-                    daxa::inl_attachment(daxa::TaskImageAccess::TRANSFER_WRITE, daxa::ImageViewType::REGULAR_2D, output_image),
-                },
-                .task = [=](daxa::TaskInterface const &ti) {
-                    auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).ids[0];
-                    auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).ids[0];
-                    auto image_a_info = ti.device.image_info(image_a).value();
-                    auto image_b_info = ti.device.image_info(image_b).value();
+            gpu_context.frame_task_graph.add_task(
+                daxa::InlineTask::Transfer("upscale_output_image")
+                    .transfer.reads(daxa::ImageViewType::REGULAR_2D, debug_out_tex)
+                    .transfer.writes(daxa::ImageViewType::REGULAR_2D, output_image)
+                    .executes([=](daxa::TaskInterface ti) {
+                        auto image_a = ti.get(daxa::TaskImageAttachmentIndex{0}).id;
+                        auto image_b = ti.get(daxa::TaskImageAttachmentIndex{1}).id;
+                        auto image_a_info = ti.device.image_info(image_a).value();
+                        auto image_b_info = ti.device.image_info(image_b).value();
 
-                    ti.recorder.blit_image_to_image({
-                        .src_image = image_a,
-                        .src_image_layout = ti.get(daxa::TaskImageAttachmentIndex{0}).layout,
-                        .dst_image = image_b,
-                        .dst_image_layout = ti.get(daxa::TaskImageAttachmentIndex{1}).layout,
-                        .src_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_a_info.size.x), static_cast<int32_t>(image_a_info.size.y), static_cast<int32_t>(image_a_info.size.z)}}},
-                        .dst_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_b_info.size.x), static_cast<int32_t>(image_b_info.size.y), static_cast<int32_t>(image_b_info.size.z)}}},
-                        .filter = daxa::Filter::LINEAR,
-                    });
-                },
-                .name = "upscale_output_image",
-            });
+                        ti.recorder.blit_image_to_image({
+                            .src_image = image_a,
+                            .dst_image = image_b,
+                            .src_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_a_info.size.x), static_cast<int32_t>(image_a_info.size.y), static_cast<int32_t>(image_a_info.size.z)}}},
+                            .dst_offsets = {{{0, 0, 0}, {static_cast<int32_t>(image_b_info.size.x), static_cast<int32_t>(image_b_info.size.y), static_cast<int32_t>(image_b_info.size.z)}}},
+                            .filter = daxa::Filter::LINEAR,
+                        });
+                    }));
 
             return output_image;
         }

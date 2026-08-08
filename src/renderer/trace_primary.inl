@@ -44,12 +44,12 @@ struct GbufferRenderer {
 
     auto render(GpuContext &gpu_context, VoxelWorldBuffers &voxel_buffers)
         -> std::pair<GbufferDepth &, daxa::TaskImageView> {
-        gbuffer_depth.gbuffer = gpu_context.frame_task_graph.create_transient_image({
+        gbuffer_depth.gbuffer = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R32G32B32A32_UINT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "gbuffer",
         });
-        gbuffer_depth.geometric_normal = gpu_context.frame_task_graph.create_transient_image({
+        gbuffer_depth.geometric_normal = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::A2B10G10R10_UNORM_PACK32,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "normal",
@@ -71,13 +71,13 @@ struct GbufferRenderer {
         gpu_context.frame_task_graph.register_image(depth_image);
         gpu_context.frame_task_graph.register_image(prev_depth_image);
 
-        auto velocity_image = gpu_context.frame_task_graph.create_transient_image({
+        auto velocity_image = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "velocity_image",
         });
 
-        auto temp_depth_image = gpu_context.frame_task_graph.create_transient_image({
+        auto temp_depth_image = gpu_context.frame_task_graph.create_task_image({
             .format = daxa::Format::R32_SFLOAT,
             .size = {gpu_context.render_resolution.x, gpu_context.render_resolution.y, 1},
             .name = "temp_depth_image",
@@ -85,23 +85,23 @@ struct GbufferRenderer {
 
         gpu_context.add(RayTracingTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo>{
             .source = daxa::ShaderFile{"trace_primary.rt.glsl"},
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.gpu_input, gpu_context.task_input_buffer}},
-                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.chunk_primitive_pointers, voxel_buffers.chunk_primitive_pointers.task_resource}},
-                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.attribute_pointers, voxel_buffers.blas_attr_pointers.task_resource}},
-                // daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.blas_transforms, voxel_buffers.blas_transforms.task_resource}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.chunk_primitive_pointers, voxel_buffers.brick_primitive_pointers.task_resource}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.tlas, voxel_buffers.task_tlas}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.g_buffer_image_id, gbuffer_depth.gbuffer}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.velocity_image_id, velocity_image}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.vs_normal_image_id, gbuffer_depth.geometric_normal}},
-                daxa::TaskViewVariant{std::pair{TracePrimaryRt::AT.depth_image_id, temp_depth_image}},
+            .views = TracePrimaryRt::Views{
+                .gpu_input = gpu_context.task_input_buffer.view(),
+                // .chunk_primitive_pointers = voxel_buffers.chunk_primitive_pointers.task_resource.view(),
+                // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
+                // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
+                .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                .tlas = voxel_buffers.task_tlas.view(),
+                .g_buffer_image_id = gbuffer_depth.gbuffer,
+                .velocity_image_id = velocity_image,
+                .vs_normal_image_id = gbuffer_depth.geometric_normal,
+                .depth_image_id = temp_depth_image,
             },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, TracePrimaryRtPush &push, NoTaskInfo const &) {
-                auto const image_info = ti.device.image_info(ti.get(TracePrimaryRt::AT.g_buffer_image_id).ids[0]).value();
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, daxa::RayTracingShaderBindingTable const &shader_binding_table, TracePrimaryRtPush &push, NoTaskInfo const &) {
+                auto const image_info = ti.device.image_info(ti.get(TracePrimaryRt::AT.g_buffer_image_id).id).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
-                ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1});
+                ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1, .shader_binding_table = shader_binding_table});
             },
         });
 
@@ -113,12 +113,12 @@ struct GbufferRenderer {
                 .enable_depth_write = true,
                 .depth_test_compare_op = daxa::CompareOp::ALWAYS,
             },
-            .views = std::array{
-                daxa::TaskViewVariant{std::pair{R32D32Blit::AT.input_tex, temp_depth_image}},
-                daxa::TaskViewVariant{std::pair{R32D32Blit::AT.output_tex, depth_image}},
+            .views = R32D32Blit::Views{
+                .input_tex = temp_depth_image,
+                .output_tex = depth_image.view(),
             },
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, R32D32BlitPush &push, NoTaskInfo const &) {
-                auto render_image = ti.get(R32D32Blit::AT.output_tex).ids[0];
+                auto render_image = ti.get(R32D32Blit::AT.output_tex).id;
                 auto const image_info = ti.device.image_info(render_image).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
                     .depth_attachment = {{.image_view = ti.get(R32D32Blit::AT.output_tex).view_ids[0], .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array{0.0f, 0.0f, 0.0f, 0.0f}}},

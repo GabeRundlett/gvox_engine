@@ -17,6 +17,7 @@ add_executable(${PROJECT_NAME}
     "src/utilities/math.cpp"
     "src/utilities/debug.cpp"
     "src/utilities/gpu_context.cpp"
+    "src/utilities/thread_pool.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/fsr.cpp"
     "src/renderer/kajiya/ircache.cpp"
@@ -26,6 +27,8 @@ add_executable(${PROJECT_NAME}
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 # include("${CMAKE_CURRENT_LIST_DIR}/cmake/ispc.cmake")
+
+find_package(imgui CONFIG REQUIRED)
 
 set(DAXA_USE_VCPKG false)
 set(DAXA_ENABLE_UTILS_IMGUI true)
@@ -52,7 +55,7 @@ find_package(fsr2 CONFIG REQUIRED)
 add_subdirectory("deps/blue-noise-sampler")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    # GPUOpen::VulkanMemoryAllocator
+    GPUOpen::VulkanMemoryAllocator
     daxa::daxa
     gvox::gvox
     fmt::fmt
