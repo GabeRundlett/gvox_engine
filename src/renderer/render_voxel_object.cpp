@@ -15,10 +15,10 @@ struct RenderVoxelObject {
     daxa::BufferId bricks_data_buffer{};
     uint32_t brick_count;
 
-    daxa::DeviceAddress chunk_aabb_device_address;
-    daxa::DeviceAddress chunk_shading_device_address;
-    daxa::DeviceAddress chunk_primitives_device_address;
-    daxa::DeviceAddress chunk_flags_device_address;
+    daxa::DeviceAddress brick_aabb_device_address;
+    daxa::DeviceAddress brick_shading_device_address;
+    daxa::DeviceAddress brick_primitives_device_address;
+    daxa::DeviceAddress brick_flags_device_address;
     daxa::DeviceAddress blas_device_address;
 
     RenderScene *scene;
@@ -63,7 +63,7 @@ namespace {
     auto get_bricks_buffer_info(int brick_count) -> BricksBufferInfo {
         BricksBufferInfo result;
 
-        result.mPrimitivesSize = sizeof(ChunkPrimitive) * brick_count;
+        result.mPrimitivesSize = sizeof(BrickPrimitive) * brick_count;
         result.mShadingSize = sizeof(VoxelShadingAttribBrick) * brick_count;
         result.mAabbSize = sizeof(Aabb) * brick_count;
         result.mFlagsSize = sizeof(uint32_t) * brick_count;
@@ -158,16 +158,16 @@ namespace {
 
         auto bufferInfo = daxa::BufferInfo{
             .size = alloc_info.mTotalSize,
-            .name = "mPerChunkDataBuffer",
+            .name = "mPerBrickDataBuffer",
         };
         if (brick_count != 0) {
             self->bricks_data_buffer = device.create_buffer(bufferInfo);
 
             const auto *deviceAddress = (const uint8_t *)device.device_address(self->bricks_data_buffer).value();
-            self->chunk_primitives_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mPrimitivesOffset);
-            self->chunk_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
-            self->chunk_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
-            self->chunk_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
+            self->brick_primitives_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mPrimitivesOffset);
+            self->brick_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
+            self->brick_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
+            self->brick_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
 
             self->scene->buffers.voxel_object_bricks.set_buffer(self->bricks_data_buffer);
         }
@@ -198,7 +198,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
 
     auto tempTaskGraph = daxa::TaskGraph({
         .device = device,
-        .staging_memory_pool_size = 0,
+        .staging_memory_pool_size = 1u << 20,
         .name = "copy old shading data",
     });
     tempTaskGraph.register_blas(self->scene->buffers.voxel_object_blases);
@@ -221,18 +221,20 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                     continue;
 
                 Aabb &aabb = ((Aabb *)((uint8_t *)allocation->host_address + alloc_info.mAabbOffset))[brick_index];
-                ChunkPrimitive &primitive = ((ChunkPrimitive *)((uint8_t *)allocation->host_address + alloc_info.mPrimitivesOffset))[brick_index];
+                BrickPrimitive &primitive = ((BrickPrimitive *)((uint8_t *)allocation->host_address + alloc_info.mPrimitivesOffset))[brick_index];
+                VoxelShadingAttribBrick &render_brick = ((VoxelShadingAttribBrick *)((uint8_t *)allocation->host_address + alloc_info.mShadingOffset))[brick_index];
 
                 auto min = glm::ivec3(brick->voxel_min) + brick->brick_i * BRICK_SIZE;
-                auto max = glm::ivec3(brick->voxel_max) + brick->brick_i * BRICK_SIZE;
+                auto max = glm::ivec3(brick->voxel_max) + brick->brick_i * BRICK_SIZE + 1;
                 aabb.min = daxa_f32vec3(min.x, min.y, min.z);
                 aabb.max = daxa_f32vec3(max.x, max.y, max.z);
                 memcpy(primitive.bitmap, brick->bitmask, sizeof(primitive.bitmap));
                 primitive.flags = 0;
                 primitive.offset = daxa_i32vec3(min.x, min.y, min.z);
-                primitive.size_x = max.x - min.x + 1;
-                primitive.size_y = max.y - min.y + 1;
-                primitive.size_z = max.z - min.z + 1;
+                primitive.size_x = max.x - min.x;
+                primitive.size_y = max.y - min.y;
+                primitive.size_z = max.z - min.z;
+                memcpy(&render_brick, brick->render_attribs, sizeof(VoxelShadingAttribBrick));
 
                 ++brick_index;
             }
@@ -267,13 +269,13 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
             });
             }));
     tempTaskGraph.add_task(
-        daxa::InlineTask::Compute("build brick blas")
+        daxa::InlineTask::Transfer("build brick blas")
             .acceleration_structure_build.reads(self->scene->buffers.voxel_object_bricks)
             .acceleration_structure_build.writes(self->scene->buffers.voxel_object_blases)
             .executes([&](daxa::TaskInterface ti) {
             auto geometry = std::array{
                 daxa::BlasAabbGeometryInfo{
-                    .data = self->chunk_aabb_device_address,
+                    .data = self->brick_aabb_device_address,
                     .stride = sizeof(Aabb),
                     .count = self->brick_count,
                     .flags = daxa::GeometryFlagBits::OPAQUE,
@@ -295,16 +297,16 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
     tempTaskGraph.execute({});
 }
 
-void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale) {
+void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale, const glm::vec3& tint) {
     auto *self = object->render_voxel_object;
-    self->scene->drawn_voxel_objects.push_back(self->chunk_primitives_device_address);
+    self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject(self->brick_shading_device_address, self->brick_primitives_device_address, {tint.r, tint.g, tint.b}));
     self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
         .transform = {
             {scale, 0, 0, pos.x},
             {0, scale, 0, pos.y},
             {0, 0, scale, pos.z},
         },
-        .instance_custom_index = 0, // (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size(),
+        .instance_custom_index = (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size(),
         .mask = 0xff,
         .instance_shader_binding_table_record_offset = 0,
         .flags = {},

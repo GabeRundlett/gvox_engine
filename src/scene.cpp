@@ -1,43 +1,142 @@
 #include "scene.hpp"
+#include "application/input.inl"
 #include "renderer/render_scene.hpp"
 #include "renderer/render_voxel_object.hpp"
+#include "renderer/renderer.hpp"
 #include "voxels/voxel_object.hpp"
 #include <glm/geometric.hpp>
 #include "voxels/pack_unpack.inl"
 
-Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
-    VoxelObject *voxel_object = new VoxelObject();
+glm::vec3 hsv2rgb(glm::vec3 c) {
+    glm::vec4 k = glm::vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    glm::vec3 p = abs(glm::fract(glm::vec3(c.x, c.x, c.x) + glm::vec3(k.x, k.y, k.z)) * 6.0f - k.w);
+    return c.z * glm::mix(glm::vec3(k.x), glm::clamp(p - k.x, glm::vec3(0.0), glm::vec3(1.0)), glm::vec3(c.y));
+}
 
-    VoxelBrick *brick = new VoxelBrick();
-    brick->voxel_min = {0, 0, 0};
-    brick->voxel_max = {BRICK_SIZE - 1, BRICK_SIZE - 1, BRICK_SIZE - 1};
-    brick->render_attribs = new VoxelRenderBrick();
+vec3 uniform_sample_cone(vec2 urand, float cos_theta_max) {
+    float cos_theta = (1.0 - urand.x) + urand.x * cos_theta_max;
+    float sin_theta = sqrt(clamp(1.0 - cos_theta * cos_theta, 0.0, 1.0));
+    float phi = urand.y * (M_PI * 2.0);
+    return vec3(sin_theta * cos(phi), sin_theta * sin(phi), cos_theta);
+}
+// Building an Orthonormal Basis, Revisited
+// http://jcgt.org/published/0006/01/01/
+mat3 build_orthonormal_basis(vec3 n) {
+    vec3 b1;
+    vec3 b2;
 
-    for (int zi = brick->voxel_min.z; zi <= brick->voxel_max.z; ++zi) {
-        for (int yi = brick->voxel_min.y; yi <= brick->voxel_max.y; ++yi) {
-            for (int xi = brick->voxel_min.x; xi <= brick->voxel_max.x; ++xi) {
-                int i = xi + yi * BRICK_SIZE + zi * BRICK_SIZE * BRICK_SIZE;
-                uint64_t packed_attribs = 0;
-
-                glm::vec3 col = glm::vec3(xi, yi, zi) / glm::vec3(BRICK_SIZE);
-                glm::vec3 nrm = glm::normalize(glm::vec3(xi, yi, zi) - glm::vec3(4));
-                auto voxel = GpuVoxel{
-                    daxa_f32vec3(col.r, col.g, col.b),
-                    daxa_f32vec3(nrm.r, nrm.g, nrm.b),
-                    1.0,
-                    0u,
-                };
-                brick->render_attribs->packed_attribs[i] = pack_voxel(voxel).data;
-            }
-        }
-        brick->bitmask[zi] = 0xffff'ffff'ffff'ffffull;
+    if (n.z < 0.0) {
+        const float a = 1.0 / (1.0 - n.z);
+        const float b = n.x * n.y * a;
+        b1 = vec3(1.0 - n.x * n.x * a, -b, n.x);
+        b2 = vec3(b, n.y * n.y * a - 1.0, -n.y);
+    } else {
+        const float a = 1.0 / (1.0 + n.z);
+        const float b = -n.x * n.y * a;
+        b1 = vec3(1.0 - n.x * n.x * a, b, -n.x);
+        b2 = vec3(b, 1.0 - n.y * n.y * a, -n.y);
     }
 
-    render_scene = create_render_scene(gpu_context);
-    voxel_object->render_voxel_object = create_render_voxel_object(render_scene);
-    voxel_object->render_dirty = true;
+    return mat3(b1, b2, n);
+}
+uint good_rand_hash(uint x) {
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+uint good_rand_hash(uvec2 v) { return good_rand_hash(v.x ^ good_rand_hash(v.y)); }
+uint good_rand_hash(uvec3 v) {
+    return good_rand_hash(v.x ^ good_rand_hash(v.y) ^ good_rand_hash(v.z));
+}
 
-    voxel_objects.push_back(voxel_object);
+uint _rand_state;
+void rand_seed(uint seed) {
+    _rand_state = seed;
+}
+
+float rand_() {
+    // https://www.pcg-random.org/
+    _rand_state = _rand_state * 747796405u + 2891336453u;
+    uint result = ((_rand_state >> ((_rand_state >> 28u) + 4u)) ^ _rand_state) * 277803737u;
+    result = (result >> 22u) ^ result;
+    return result / 4294967295.0;
+}
+
+Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
+    render_scene = create_render_scene(gpu_context);
+
+    float radii[8] = {0.5, 0.60, 0.70, 0.80, 0.90, 0.67, 0.55, 0.45};
+
+    for (int frame_i = 0; frame_i < 8; ++frame_i) {
+        VoxelObject *voxel_object = new VoxelObject();
+
+        voxel_object->brick_min = {0, 0, 0};
+        voxel_object->brick_max = {7, 7, 7};
+
+        auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
+        voxel_object->brick_grid.resize(grid_size.x * grid_size.y * grid_size.z);
+        memset(voxel_object->brick_grid.data(), 0, voxel_object->brick_grid.size() * sizeof(VoxelBrick *));
+
+        for (int czi = voxel_object->brick_min.z; czi <= voxel_object->brick_max.z; ++czi) {
+            for (int cyi = voxel_object->brick_min.y; cyi <= voxel_object->brick_max.y; ++cyi) {
+                for (int cxi = voxel_object->brick_min.x; cxi <= voxel_object->brick_max.x; ++cxi) {
+                    glm::ivec3 brick_pos = {cxi, cyi, czi};
+
+                    VoxelBrick *brick = new VoxelBrick();
+                    brick->voxel_min = {BRICK_SIZE, BRICK_SIZE, BRICK_SIZE};
+                    brick->voxel_max = {0, 0, 0};
+                    brick->render_attribs = new VoxelShadingAttribBrick();
+                    brick->brick_i = brick_pos;
+
+                    for (int vzi = 0; vzi < BRICK_SIZE; ++vzi) {
+                        brick->bitmask[vzi] = 0;
+                        for (int vyi = 0; vyi < BRICK_SIZE; ++vyi) {
+                            for (int vxi = 0; vxi < BRICK_SIZE; ++vxi) {
+                                int i = vxi + vyi * BRICK_SIZE + vzi * BRICK_SIZE * BRICK_SIZE;
+                                glm::ivec3 voxel_pos = brick_pos * BRICK_SIZE + glm::ivec3(vxi, vyi, vzi);
+                                vec3 p = (glm::vec3(voxel_pos) + 0.5f) / glm::vec3(grid_size) / float(BRICK_SIZE) * 2.0f - 1.0f;
+                                glm::vec3 col = glm::vec3(1.0); // glm::vec3(vxi, vyi, vzi) / glm::vec3(BRICK_SIZE);
+                                glm::vec3 nrm = glm::normalize(p);
+
+                                rand_seed(good_rand_hash(floatBitsToUint(nrm)));
+                                const mat3 basis = build_orthonormal_basis(normalize(nrm));
+                                nrm = basis * uniform_sample_cone(vec2(rand_(), rand_()), cos(0.19 * 0.5));
+                                nrm = glm::normalize(nrm);
+
+                                auto voxel = GpuVoxel{
+                                    daxa_f32vec3(col.r, col.g, col.b),
+                                    daxa_f32vec3(nrm.r, nrm.g, nrm.b),
+                                    0.5f,
+                                    0u,
+                                };
+
+                                brick->render_attribs->voxels[i] = pack_voxel(voxel);
+                                if (dot(p, p) < radii[frame_i]) {
+                                    brick->bitmask[vzi] |= 1ull << i;
+                                    brick->voxel_min = glm::min(brick->voxel_min, glm::u8vec3(vxi, vyi, vzi));
+                                    brick->voxel_max = glm::max(brick->voxel_max, glm::u8vec3(vxi, vyi, vzi));
+                                }
+                            }
+                        }
+                    }
+
+                    if (brick->voxel_min.x > brick->voxel_max.x) {
+                        delete brick;
+                    } else {
+                        voxel_object->brick_grid[voxel_object->get_brick_index(brick_pos)] = brick;
+                    }
+                }
+            }
+        }
+
+        voxel_object->render_voxel_object = create_render_voxel_object(render_scene);
+        voxel_object->render_dirty = true;
+
+        voxel_objects.push_back(voxel_object);
+    }
 }
 
 Scene::~Scene() {
@@ -49,4 +148,36 @@ Scene::~Scene() {
     }
 
     destroy_render_scene(gpu_context, render_scene);
+}
+
+void Scene::update(Renderer& renderer, GpuInput &gpu_input) {
+    render_scene_begin(gpu_context, render_scene);
+    for (auto voxel_object : voxel_objects)
+        update_render_voxel_object(gpu_context, voxel_object);
+
+    srand(0);
+    for (int zi = 0; zi < 10; zi += 1)
+        for (int yi = 0; yi < 10; yi += 1)
+            for (int xi = 0; xi < 10; xi += 1) {
+                auto voxel_object = voxel_objects[int(gpu_input.time * 12 + rand()) % voxel_objects.size()];
+                auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
+                auto pos = glm::vec3(xi, yi, zi) * float(BRICK_SIZE) * VOXEL_SIZE * glm::vec3(grid_size);
+                auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));
+                // auto tint = glm::vec3(1);
+                draw_voxel_object(voxel_object, pos, VOXEL_SIZE, tint);
+
+                // Box box;
+                // box.p0_x = pos.x;
+                // box.p0_y = pos.y;
+                // box.p0_z = pos.z;
+                // box.p1_x = pos.x + VOXEL_SIZE * BRICK_SIZE * grid_size.x;
+                // box.p1_y = pos.y + VOXEL_SIZE * BRICK_SIZE * grid_size.y;
+                // box.p1_z = pos.z + VOXEL_SIZE * BRICK_SIZE * grid_size.z;
+                // box.r = 1.0f;
+                // box.g = 0.2f;
+                // box.b = 0.7f;
+                // renderer.submit_debug_box_lines(&box, 1);
+            }
+
+    render_scene_end(gpu_context, render_scene);
 }

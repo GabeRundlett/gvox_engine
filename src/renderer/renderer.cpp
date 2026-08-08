@@ -5,6 +5,7 @@
 #include <renderer/postprocessing.inl>
 #include <renderer/atmosphere/sky.inl>
 #include <renderer/fsr.inl>
+#include <renderer/debug_shapes.inl>
 
 #include <renderer/kajiya/kajiya.hpp>
 #include <glm/glm.hpp>
@@ -17,6 +18,7 @@ struct RendererImpl {
     GbufferRenderer gbuffer_renderer;
     KajiyaRenderer kajiya_renderer;
     std::unique_ptr<Fsr2Renderer> fsr2_renderer;
+    DebugShapeRenderer debug_shapes;
     SkyRenderer sky;
 
     std::array<daxa_f32vec2, 128> halton_offsets{};
@@ -57,6 +59,7 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
     auto &self = *impl;
 
     gpu_input.sky_settings = get_sky_settings(gpu_input.time);
+    update(&impl->debug_shapes);
 
     gpu_input.pre_exposure = self.kajiya_renderer.post_processor.exposure_state.pre_mult;
     gpu_input.pre_exposure_prev = self.kajiya_renderer.post_processor.exposure_state.pre_mult_prev;
@@ -181,6 +184,8 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
         }
     }();
 
+    draw_debug_shapes(gpu_context, gpu_context.frame_task_graph, antialiased_image, gbuffer_depth.depth.current(), &impl->debug_shapes);
+
     [[maybe_unused]] auto post_processed_image = self.kajiya_renderer.post_process(gpu_context, antialiased_image, gpu_context.output_resolution);
 
     debug_utils::DebugDisplay::add_pass({.name = "[final]"});
@@ -195,3 +200,16 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
 
     return antialiased_image;
 }
+
+void Renderer::submit_debug_lines(Line const *lines, int line_n) {
+    ::submit_debug_lines(&impl->debug_shapes, lines, line_n);
+}
+
+void Renderer::submit_debug_points(Point const *points, int point_n) {
+    ::submit_debug_points(&impl->debug_shapes, points, point_n);
+}
+
+void Renderer::submit_debug_box_lines(Box const *cubes, int cube_n) {
+    ::submit_debug_box_lines(&impl->debug_shapes, cubes, cube_n);
+}
+

@@ -8,6 +8,7 @@
 struct RayPayload {
     uint data0;
     uint data1;
+    float t;
 };
 
 struct Ray {
@@ -15,9 +16,42 @@ struct Ray {
     daxa_f32vec3 direction;
 };
 
-RayPayload pack_ray_payload(uint blas_id, uint brick_id, VoxelHit hit) {
-    return RayPayload(blas_id, (brick_id * (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE * 2)) |
-                                   ((hit.x << 0) | (uint(hit.y) << 8) | (uint(hit.z) << 16) | (uint(hit.nrm) << 24)));
+#include <voxels/pack_unpack.inl>
+
+RayPayload pack_ray_payload(uint blas_id, uint brick_id, float ray_t, VoxelHit hit) {
+    RayPayload result;
+    result.data0 = blas_id;
+    result.data1 = (brick_id << 11) | (hit.x << 0) | (uint(hit.y) << 3) | (uint(hit.z) << 6) | (uint(hit.nrm) << 9);
+    result.t = ray_t;
+    return result;
+}
+
+GpuVoxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests) {
+    uint blas_id = payload.data0;
+    uint brick_id = payload.data1 >> 11;
+
+    uvec3 voxel_i;
+    voxel_i.x = (payload.data1 >> 0) & 0x7;
+    voxel_i.y = (payload.data1 >> 3) & 0x7;
+    voxel_i.z = (payload.data1 >> 6) & 0x7;
+    uint nrm = (payload.data1 >> 9) & 0x3;
+
+    daxa_BufferPtr(GpuVoxelObject) voxel_object = advance(voxel_object_manifests, blas_id);
+    daxa_BufferPtr(VoxelShadingAttribBrick) shading_brick = advance(deref(voxel_object).brick_shading_attribs, brick_id);
+    uint voxel_index = voxel_i.x + voxel_i.y * BRICK_SIZE + voxel_i.z * BRICK_SIZE * BRICK_SIZE;
+    GpuPackedVoxel packed_voxel = deref(shading_brick).voxels[voxel_index];
+
+    GpuVoxel voxel = unpack_voxel(packed_voxel);
+    voxel.albedo *= deref(voxel_object).tint;
+
+    // switch (nrm)
+    // {
+    // case 0: voxel.normal = -sign(ray_d) * vec3(1, 0, 0); break;
+    // case 1: voxel.normal = -sign(ray_d) * vec3(0, 1, 0); break;
+    // case 2: voxel.normal = -sign(ray_d) * vec3(0, 0, 1); break;
+    // }
+
+    return voxel;
 }
 
 VoxelHit voxel_miss_hit_attrib() {
@@ -25,7 +59,7 @@ VoxelHit voxel_miss_hit_attrib() {
 }
 
 RayPayload miss_ray_payload() {
-    return pack_ray_payload(0, 0, voxel_miss_hit_attrib());
+    return RayPayload(0, 0, -1);
 }
 
 // Ray-AABB intersection
@@ -91,35 +125,6 @@ vec3 voxel_face_normal(vec3 center, Ray ray, in vec3 _invRayDir) {
     return sgn;
 }
 
-// PackedVoxel unpack_ray_payload(
-//     daxa_BufferPtr(daxa_BufferPtr(BlasGeom)) geometry_pointers,
-//     daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)) attribute_pointers,
-//     daxa_BufferPtr(VoxelBlasTransform) blas_transforms,
-//     RayPayload payload, Ray ray, out vec3 hit_pos, out vec3 hit_vel) {
-//     uint blas_id = payload.data0;
-//     uint brick_id = payload.data1 / (BLAS_BRICK_SIZE * BLAS_BRICK_SIZE * BLAS_BRICK_SIZE * 2);
-//     uint voxel_index = payload.data1 & (BLAS_BRICK_SIZE * BLAS_BRICK_SIZE * BLAS_BRICK_SIZE * 2 - 1);
-//     daxa_BufferPtr(VoxelBrickAttribs) brick_attribs = deref(advance(attribute_pointers, blas_id));
-//     daxa_BufferPtr(BlasGeom) blas_geoms = deref(advance(geometry_pointers, blas_id));
-//     {
-//         // mat3x4 m = deref(advance(blas_transforms, blas_id));
-//         // mat4 world_to_blas = mat4(m[0], m[1], m[2], vec4(0, 0, 0, 1));
-//         // mat4 blas_to_world = transpose(world_to_blas);
-//         hit_vel = deref(advance(blas_transforms, blas_id)).vel;
-//         vec3 v = deref(advance(blas_transforms, blas_id)).pos;
-//         Aabb aabb = deref(advance(blas_geoms, brick_id)).aabb;
-//         ivec3 mapPos = ivec3(voxel_index % BLAS_BRICK_SIZE, (voxel_index / BLAS_BRICK_SIZE) % BLAS_BRICK_SIZE, voxel_index / BLAS_BRICK_SIZE / BLAS_BRICK_SIZE);
-//         aabb.minimum = vec3(ivec3(floor(aabb.minimum * VOXEL_SCL)) & ~0x7) * VOXEL_SIZE;
-//         aabb.minimum += vec3(mapPos) * VOXEL_SIZE;
-//         aabb.maximum = aabb.minimum + VOXEL_SIZE;
-//         ray.origin -= v;
-//         hit_pos = ray.origin + ray.direction * hitAabb(aabb, ray);
-//         hit_pos += v;
-//         // hit_pos = (blas_to_world * vec4(hit_pos, 1)).xyz;
-//     }
-//     return deref(advance(brick_attribs, brick_id)).packed_voxels[voxel_index];
-// }
-
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION || DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_CLOSEST_HIT
 // hitAttributeEXT HitAttribute hit_attrib;
 #else
@@ -156,33 +161,32 @@ int RayAabbIntersectNormal(vec3 rayOrigin, vec3 rayDir, vec3 size) {
 }
 
 void main() {
-    // return;
-    daxa_BufferPtr(ChunkPrimitive) chunkPrimitivePtr = deref(advance(push.uses.chunk_primitive_pointers, gl_PrimitiveID));
-    const float scale = 1; // deref(chunkPrimitivePtr).scale;
-    const vec3 voxelOffset = vec3(deref(chunkPrimitivePtr).offset & CHUNK_MASK) * scale;
-    const vec3 chunkOffset = vec3(deref(chunkPrimitivePtr).offset & ~CHUNK_MASK) * scale;
-    vec3 size = vec3(float(deref(chunkPrimitivePtr).size_x), float(deref(chunkPrimitivePtr).size_y), float(deref(chunkPrimitivePtr).size_y)) * scale;
+    daxa_BufferPtr(GpuVoxelObject) voxelObject = advance(push.uses.voxel_object_manifests, gl_InstanceID);
+    daxa_BufferPtr(BrickPrimitive) brickPrimitivePtr = advance(deref(voxelObject).brick_primitives, gl_PrimitiveID);
+    const float scale = 1; // deref(brickPrimitivePtr).scale;
+    const vec3 voxelOffset = vec3(deref(brickPrimitivePtr).offset & BRICK_MASK) * scale;
+    const vec3 brickOffset = vec3(deref(brickPrimitivePtr).offset & ~BRICK_MASK) * scale;
+    vec3 size = vec3(float(deref(brickPrimitivePtr).size_x), float(deref(brickPrimitivePtr).size_y), float(deref(brickPrimitivePtr).size_z)) * scale;
 
-    vec3 localOrig = gl_ObjectRayOriginEXT - chunkOffset;
+    vec3 localOrig = gl_ObjectRayOriginEXT - brickOffset;
     vec3 localDir = gl_ObjectRayDirectionEXT;
 
     vec2 t = RayAabbIntersect(localOrig - voxelOffset, localDir, size);
     t.x = max(0.0, t.x);
 
     if (t.x < t.y) {
-        reportIntersectionEXT(t.x, 0);
-        // vec3 o = localOrig + localDir * t.x;
-        // ivec3 hitCoord;
-        // int nrm = RayAabbIntersectNormal(localOrig - voxelOffset, localDir, size);
-        // float hitDist = traceVoxelDataBitmap(chunkPrimitivePtr, o, localDir, hitCoord, nrm);
-        // if (hitDist >= 0.0) {
-        //     float dist = t.x + hitDist;
-        //     hit.x = uint8_t(hitCoord.x);
-        //     hit.y = uint8_t(hitCoord.y);
-        //     hit.z = uint8_t(hitCoord.z);
-        //     hit.nrm = uint8_t(nrm);
-        //     reportIntersectionEXT(dist, 0);
-        // }
+        vec3 o = localOrig + localDir * t.x;
+        ivec3 hitCoord;
+        int nrm = RayAabbIntersectNormal(localOrig - voxelOffset, localDir, size);
+        float hitDist = traceVoxelDataBitmap(brickPrimitivePtr, o, localDir, hitCoord, nrm);
+        if (hitDist >= 0.0) {
+            float dist = t.x + hitDist;
+            hit.x = uint8_t(hitCoord.x);
+            hit.y = uint8_t(hitCoord.y);
+            hit.z = uint8_t(hitCoord.z);
+            hit.nrm = uint8_t(nrm);
+            reportIntersectionEXT(dist, 0);
+        }
     }
 }
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_CLOSEST_HIT
@@ -190,7 +194,7 @@ hitAttributeEXT VoxelHit hit;
 
 layout(location = PAYLOAD_LOC) rayPayloadInEXT RayPayload prd;
 void main() {
-    prd = pack_ray_payload(gl_InstanceCustomIndexEXT, gl_PrimitiveID, hit);
+    prd = pack_ray_payload(gl_InstanceCustomIndexEXT, gl_PrimitiveID, gl_HitTEXT, hit);
 }
 #elif DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_MISS
 layout(location = PAYLOAD_LOC) rayPayloadInEXT RayPayload prd;
@@ -242,7 +246,7 @@ VoxelTraceResult voxel_trace(in VoxelRtTraceInfo info, in out vec3 ray_pos) {
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionGeneratedEXT) {
         uint instance_custom_index = rayQueryGetIntersectionInstanceCustomIndexEXT(ray_query, true);
         uint prim_index = rayQueryGetIntersectionPrimitiveIndexEXT(ray_query, true);
-        RayPayload prd = pack_ray_payload(instance_custom_index, prim_index, nearest_hit_attrib);
+        RayPayload prd = pack_ray_payload(instance_custom_index, prim_index, 0, nearest_hit_attrib);
         // result.voxel_data = unpack_ray_payload(info.ptrs.geometry_pointers, info.ptrs.attribute_pointers, info.ptrs.blas_transforms, prd, Ray(ray_pos, info.ray_dir), ray_pos, result.vel);
         // result.voxel_data = 0xffffffff;
         // Voxel voxel = unpack_voxel(result.voxel_data);

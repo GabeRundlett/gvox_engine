@@ -5,20 +5,12 @@
 
 // #include <voxels/particles/voxel_particles.inl>
 
-DAXA_DECL_RASTER_TASK_HEAD_BEGIN(R32D32Blit)
-DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, input_tex)
-DAXA_TH_IMAGE(DEPTH_ATTACHMENT, REGULAR_2D, output_tex)
-DAXA_DECL_TASK_HEAD_END
-struct R32D32BlitPush {
-    DAXA_TH_BLOB(R32D32Blit, uses)
-};
-
 DAXA_DECL_RAY_TRACING_TASK_HEAD_BEGIN(TracePrimaryRt)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuVoxelObject), voxel_object_manifests)
 DAXA_TH_TLAS_PTR(READ, tlas)
 DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE_INDEX(WRITE, REGULAR_2D, velocity_image_id)
@@ -87,10 +79,10 @@ struct GbufferRenderer {
             .source = daxa::ShaderFile{"trace_primary.rt.glsl"},
             .views = TracePrimaryRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
-                // .chunk_primitive_pointers = voxel_buffers.chunk_primitive_pointers.task_resource.view(),
+                // .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),
                 // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
                 // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
-                .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),
                 .tlas = voxel_buffers.task_tlas.view(),
                 .g_buffer_image_id = gbuffer_depth.gbuffer,
                 .velocity_image_id = velocity_image,
@@ -105,31 +97,7 @@ struct GbufferRenderer {
             },
         });
 
-        gpu_context.add(RasterTask<R32D32Blit::Info, R32D32BlitPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-            .frag_source = daxa::ShaderFile{"R32_D32_BLIT"},
-            .depth_test = daxa::DepthTestInfo{
-                .depth_attachment_format = daxa::Format::D32_SFLOAT,
-                .enable_depth_write = true,
-                .depth_test_compare_op = daxa::CompareOp::ALWAYS,
-            },
-            .views = R32D32Blit::Views{
-                .input_tex = temp_depth_image,
-                .output_tex = depth_image.view(),
-            },
-            .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, R32D32BlitPush &push, NoTaskInfo const &) {
-                auto render_image = ti.get(R32D32Blit::AT.output_tex).id;
-                auto const image_info = ti.device.image_info(render_image).value();
-                auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
-                    .depth_attachment = {{.image_view = ti.get(R32D32Blit::AT.output_tex).view_ids[0], .load_op = daxa::AttachmentLoadOp::CLEAR, .clear_value = std::array{0.0f, 0.0f, 0.0f, 0.0f}}},
-                    .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
-                });
-                renderpass_recorder.set_pipeline(pipeline);
-                set_push_constant(ti, renderpass_recorder, push);
-                renderpass_recorder.draw({.vertex_count = 3});
-                ti.recorder = std::move(renderpass_recorder).end_renderpass();
-            },
-        });
+        r32_d32_blit(gpu_context, temp_depth_image, depth_image.view());
 
         debug_utils::DebugDisplay::add_pass({.name = "gbuffer", .task_image_id = gbuffer_depth.gbuffer, .type = DEBUG_IMAGE_TYPE_GBUFFER});
         debug_utils::DebugDisplay::add_pass({.name = "temp_depth_image", .task_image_id = temp_depth_image, .type = DEBUG_IMAGE_TYPE_DEFAULT});

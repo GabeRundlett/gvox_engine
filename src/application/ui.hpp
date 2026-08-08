@@ -48,7 +48,7 @@ struct AppUi {
     bool should_recreate_voxel_buffers = true;
     bool autosave_override = false;
     bool should_upload_seed_data = true;
-    bool should_hotload_shaders = false;
+    bool should_hotload_shaders = true;
     bool should_regenerate_sky = true;
 
     bool should_record_task_graph = false;

@@ -14,7 +14,8 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
 
 struct RenderScene {
     VoxelWorldBuffers buffers;
-    std::vector<daxa::DeviceAddress> drawn_voxel_objects;
+    daxa::ExternalTaskBuffer task_voxel_object_slotmap;
+    std::vector<GpuVoxelObject> drawn_voxel_object_manifests;
     std::vector<daxa_BlasInstanceData> drawn_voxel_objects_blas_instances;
 };
 

@@ -8,7 +8,7 @@ DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuVoxelObject), voxel_object_manifests)
 DAXA_TH_TLAS_PTR(READ, tlas)
 DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_3D, blue_noise_vec2)
 DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, g_buffer_image_id)
@@ -46,7 +46,7 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
                 // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
                 // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
                 // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
-                .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),
                 .tlas = voxel_buffers.task_tlas.view(),
                 .blue_noise_vec2 = gpu_context.task_blue_noise_vec2_image.view(),
                 .g_buffer_image_id = gbuffer_depth.gbuffer,

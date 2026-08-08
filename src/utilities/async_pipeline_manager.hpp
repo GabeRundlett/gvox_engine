@@ -60,6 +60,11 @@ struct AsyncManagedPipeline<daxa::RayTracingPipeline> {
         }
         return sbt_storage.value();
     }
+    void recreate_sbt() {
+        if (sbt_storage.has_value()) {
+            sbt_storage = pipeline->create_default_sbt();
+        }
+    }
 };
 
 using AsyncManagedRayTracingPipeline = AsyncManagedPipeline<daxa::RayTracingPipeline>;
@@ -215,8 +220,11 @@ struct AsyncPipelineManager {
         pipeline_manager.remove_raster_pipeline(pipeline);
     }
     void add_virtual_file(daxa::VirtualFileInfo const &info) {
+        int index = 0;
         for (auto &pipeline_manager : pipeline_managers) {
+            auto lock = std::lock_guard{mutexes[index]};
             pipeline_manager.add_virtual_file(info);
+            ++index;
         }
     }
     void wait() {
@@ -234,6 +242,11 @@ struct AsyncPipelineManager {
         }
         for (auto const &result : results) {
             if (daxa::holds_alternative<daxa::PipelineReloadError>(result)) {
+                return result;
+            }
+        }
+        for (auto const &result : results) {
+            if (daxa::holds_alternative<daxa::PipelineReloadSuccess>(result)) {
                 return result;
             }
         }

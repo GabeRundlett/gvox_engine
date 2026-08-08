@@ -11,6 +11,7 @@ layout(location = PAYLOAD_LOC) rayPayloadEXT RayPayload prd;
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <utilities/gpu/normal.glsl>
+#include <voxels/pack_unpack.inl>
 
 void main() {
     const ivec2 index = ivec2(gl_LaunchIDEXT.xy);
@@ -42,17 +43,12 @@ void main() {
         return;
     }
 
-    vec3 world_pos = vec3(0);
+    vec3 world_pos = ray_o + prd.t * ray_d;
     vec3 vel_ws = vec3(0);
+    GpuVoxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
+    // voxel.albedo = vec3(0.01);
 
-    // uvec3 chunk_n = uvec3(CHUNK_NX, CHUNK_NY, CHUNK_NZ);
-    // PackedVoxel voxel_data = unpack_ray_payload(push.uses.geometry_pointers, push.uses.attribute_pointers, push.uses.blas_transforms, prd, Ray(ray_o, ray_d), world_pos, vel_ws);
-    // Voxel voxel = unpack_voxel(voxel_data);
-    GpuVoxel voxel;
-    voxel.albedo = vec3(0.5);
-    voxel.normal = vec3(0,0,1);
-    voxel.roughness = 1;
-    voxel.material_type = 1;
+    // voxel.roughness = 0.01;
 
 #if PER_VOXEL_NORMALS
     vec3 ws_nrm = voxel.normal;
@@ -73,7 +69,7 @@ void main() {
     vs_velocity = (prev_vs_pos.xyz / prev_vs_pos.w) - (vs_pos.xyz / vs_pos.w);
 
     uvec4 output_value = uvec4(0);
-    output_value.x = 0; // pack_voxel(voxel).data;
+    output_value.x = pack_voxel(voxel).data;
     output_value.y = nrm_to_u16(ws_nrm);
     output_value.z = floatBitsToUint(depth);
 

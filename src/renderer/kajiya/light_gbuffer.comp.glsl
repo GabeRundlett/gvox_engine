@@ -154,13 +154,21 @@ void main() {
         total_radiance += gi_irradiance * brdf.diffuse_brdf.albedo * brdf.energy_preservation.preintegrated_transmission_fraction;
     }
 
-    if (USE_RTR && LAYERED_BRDF_FORCE_DIFFUSE_ONLY == 0 && push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
+    if (USE_RTR && LAYERED_BRDF_FORCE_DIFFUSE_ONLY == 0) {
         vec3 rtr_radiance;
 
-        if (!RTR_RENDER_SCALED_BY_FG) {
-            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz * brdf.energy_preservation.preintegrated_reflection;
+        if (push.debug_shading_mode != SHADING_MODE_RTX_OFF) {
+            if (!RTR_RENDER_SCALED_BY_FG) {
+                rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz * brdf.energy_preservation.preintegrated_reflection;
+            } else {
+                rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz;
+            }
         } else {
-            rtr_radiance = texelFetch(daxa_texture2D(rtr_tex), ivec2(px), 0).xyz;
+            vec3 refl_dir = reflect(outgoing_ray.Direction, gbuffer.normal);
+            vec3 wi = refl_dir * tangent_to_world;
+
+            const BrdfValue brdf_value = evaluate(brdf.specular_brdf, wo, wi);
+            rtr_radiance = sample_environment_light(refl_dir) * brdf_value.value_over_pdf * brdf.energy_preservation.preintegrated_reflection;
         }
 
         if (USE_DIFFUSE_GI_FOR_ROUGH_SPEC) {

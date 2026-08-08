@@ -14,7 +14,8 @@ struct PingPongImage_impl {
         return gpu_context.find_or_add_temporal_image(info);
     }
     static void destroy(GpuContext &gpu_context, TemporalResourceType &rsrc_id) {
-        gpu_context.remove_temporal_image(rsrc_id.task_resource.id());
+        gpu_context.remove_temporal_image(std::string(rsrc_id.task_resource.info().name));
+        rsrc_id.task_resource.set_image({});
     }
     static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
         resource_a.task_resource.swap_images(resource_b.task_resource);
@@ -32,7 +33,8 @@ struct PingPongBuffer_impl {
         return gpu_context.find_or_add_temporal_buffer(info);
     }
     static void destroy(GpuContext &gpu_context, TemporalResourceType rsrc_id) {
-        gpu_context.remove_temporal_buffer(rsrc_id.task_resource.id());
+        gpu_context.remove_temporal_buffer(std::string(rsrc_id.task_resource.info().name));
+        rsrc_id.task_resource.set_buffer({});
     }
     static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
         resource_a.task_resource.swap_buffers(resource_b.task_resource);
@@ -64,10 +66,10 @@ struct PingPongResource {
         TemporalResourceType resource_b;
 
         ~Resources() {
-            if (resource_a.task_resource.is_valid() && !resource_a.task_resource.id().is_empty()) {
+            if (resource_a.task_resource.is_valid() && !resource_a.task_resource.id().is_empty())
                 Impl::destroy(*gpu_context, resource_a);
+            if (resource_b.task_resource.is_valid() && !resource_b.task_resource.id().is_empty())
                 Impl::destroy(*gpu_context, resource_b);
-            }
         }
     };
     Resources resources;

@@ -98,12 +98,12 @@ vec3 view_vec(Player &PLAYER) {
 void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
     const float mouse_sens = 1.0f;
 
-    if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
-        PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001f;
-    } else {
+    // if (INPUT.actions[GAME_ACTION_INTERACT1] != 0) {
+    //     PLAYER.roll += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001f;
+    // } else {
         PLAYER.yaw += INPUT.mouse.pos_delta.x * mouse_sens * INPUT.sensitivity * 0.001f;
         PLAYER.pitch -= INPUT.mouse.pos_delta.y * mouse_sens * INPUT.sensitivity * 0.001f;
-    }
+    // }
 
     const float MAX_ROT_EPS = 0.0001f;
     PLAYER.pitch = clamp(PLAYER.pitch, MAX_ROT_EPS, float(M_PI) - MAX_ROT_EPS);

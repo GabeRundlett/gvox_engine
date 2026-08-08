@@ -95,6 +95,7 @@ GbufferRaytrace with_cull_back_faces(inout GbufferRaytrace self, bool v) {
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN
 #include <utilities/gpu/normal.glsl>
+#include <voxels/pack_unpack.inl>
 
 GbufferPathVertex trace(GbufferRaytrace self) {
     const uint ray_flags = gl_RayFlagsNoneEXT;
@@ -109,29 +110,16 @@ GbufferPathVertex trace(GbufferRaytrace self) {
         self.ray.Origin, self.ray.TMin, self.ray.Direction, self.ray.TMax, PAYLOAD_LOC);
 
     if (prd.data1 != miss_ray_payload().data1) {
-        vec3 world_pos = vec3(0);
+        vec3 world_pos = self.ray.Origin + self.ray.Direction * prd.t;
         vec3 _unused_vel = vec3(0);
-        // PackedVoxel voxel_data = unpack_ray_payload(push.uses.geometry_pointers, push.uses.attribute_pointers, push.uses.blas_transforms, prd, Ray(self.ray.Origin, self.ray.Direction), world_pos, _unused_vel);
-        // Voxel voxel = unpack_voxel(voxel_data);
-        GpuVoxel voxel;
-        voxel.albedo = vec3(0.5);
-        voxel.normal = vec3(0,0,1);
-        voxel.roughness = 1;
-        voxel.material_type = 1;
-
-
-#if PER_VOXEL_NORMALS
-        vec3 ws_nrm = voxel.normal;
-#else
-        vec3 ws_nrm = voxel_face_normal((floor(world_pos * VOXEL_SCL + self.ray.Direction * 0.001) + 0.5) * VOXEL_SIZE, Ray(self.ray.Origin, self.ray.Direction), vec3(1.0) / self.ray.Direction);
-#endif
+        GpuVoxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
 
         GbufferPathVertex res;
         res.is_hit = true;
         res.position = world_pos;
         res.gbuffer_packed.data0 = uvec4(0);
-        res.gbuffer_packed.data0.x = voxel_data.data;
-        res.gbuffer_packed.data0.y = nrm_to_u16(ws_nrm);
+        res.gbuffer_packed.data0.x = pack_voxel(voxel).data;
+        res.gbuffer_packed.data0.y = nrm_to_u16(voxel.normal);
         res.ray_t = length(world_pos - self.ray.Origin);
         return res;
     } else {

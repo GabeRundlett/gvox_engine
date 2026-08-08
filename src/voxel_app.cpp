@@ -1,4 +1,5 @@
 #include "voxel_app.hpp"
+#include "daxa/utils/pipeline_manager.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "scene.hpp"
 
@@ -112,6 +113,11 @@ void VoxelApp::on_update() {
         if (auto *reload_err = daxa::get_if<daxa::PipelineReloadError>(&reload_result)) {
             debug_utils::Console::add_log(reload_err->message);
         }
+
+        if (!daxa::get_if<daxa::NoPipelineChanged>(&reload_result)) {
+            for (auto &[key, pipeline] : gpu_context.ray_tracing_pipelines)
+                pipeline->sbt_storage = pipeline->pipeline->create_default_sbt();
+        }
     }
 
     gpu_context.task_swapchain_image.set_image(gpu_context.swapchain_image);
@@ -159,12 +165,7 @@ void VoxelApp::on_update() {
     std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
     player_perframe(player_input, gpu_input.player);
 
-    render_scene_begin(gpu_context, scene->render_scene);
-    for (auto voxel_object : scene->voxel_objects) {
-        update_render_voxel_object(gpu_context, voxel_object);
-        draw_voxel_object(voxel_object, glm::vec3(0, 0, 0), 1);
-    }
-    render_scene_end(gpu_context, scene->render_scene);
+    scene->update(renderer, gpu_input);
 
     gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
     gpu_context.frame_task_graph.execute({});
@@ -289,6 +290,7 @@ void VoxelApp::run_startup() {
 
 void VoxelApp::record_tasks() {
     ui.should_record_task_graph = false;
+    gpu_context.task_states.clear();
     gpu_context.task_states.reserve(500);
 
     gpu_input.frame_dim.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
@@ -300,6 +302,7 @@ void VoxelApp::record_tasks() {
         .device = gpu_context.device,
         .swapchain = gpu_context.swapchain,
         .alias_transients = GVOX_ENGINE_INSTALL,
+        .staging_memory_pool_size = 1 << 20,
         .name = "frame_task_graph",
     });
     gpu_context.startup_task_graph = daxa::TaskGraph({
@@ -456,23 +459,23 @@ void VoxelApp::calc_vram_usage() {
     // buffer_size(voxel_world.buffers.blas_attr_pointers.task_resource.id());
     // buffer_size(voxel_world.buffers.blas_geom_pointers.task_resource.id());
     // buffer_size(voxel_world.buffers.blas_transforms.task_resource.id());
-    // buffer_size(voxel_world.buffers.voxel_chunks.task_resource.id());
+    // buffer_size(voxel_world.buffers.voxel_bricks.task_resource.id());
     // buffer_size(voxel_world.buffers.voxel_globals.task_resource.id());
-    // buffer_size(voxel_world.buffers.chunk_update_heap.task_resource.id());
-    // buffer_size(voxel_world.buffers.chunk_updates.task_resource.id());
+    // buffer_size(voxel_world.buffers.brick_update_heap.task_resource.id());
+    // buffer_size(voxel_world.buffers.brick_updates.task_resource.id());
     // auto total_tlas_size = buffer_size(voxel_world.buffers.tlas_buffer);
     // auto total_blas_size = size_t{};
     // auto total_attr_size = size_t{};
     // auto total_geom_size = size_t{};
     // auto total_non_empty_blas_count = size_t{};
     // auto total_geom_count = size_t{};
-    // for (auto const &blas_chunk : voxel_world.blas_chunks) {
-    //     total_blas_size += buffer_size(blas_chunk.blas_buffer, false);
-    //     total_attr_size += buffer_size(blas_chunk.attr_buffer, false);
-    //     total_geom_size += buffer_size(blas_chunk.geom_buffer, false);
-    //     if (!blas_chunk.blas_geoms.empty()) {
+    // for (auto const &blas_brick : voxel_world.blas_bricks) {
+    //     total_blas_size += buffer_size(blas_brick.blas_buffer, false);
+    //     total_attr_size += buffer_size(blas_brick.attr_buffer, false);
+    //     total_geom_size += buffer_size(blas_brick.geom_buffer, false);
+    //     if (!blas_brick.blas_geoms.empty()) {
     //         ++total_non_empty_blas_count;
-    //         total_geom_count += blas_chunk.blas_geoms.size();
+    //         total_geom_count += blas_brick.blas_geoms.size();
     //     }
     // }
     // debug_utils::DebugDisplay::set_debug_string("total_tlas_size", fmt::format("{:.3f} MB", static_cast<float>(total_tlas_size) / 1000000));

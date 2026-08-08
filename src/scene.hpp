@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-class VoxelObject;
+struct VoxelObject;
 
 struct Scene
 {
@@ -11,4 +11,6 @@ struct Scene
 
     Scene(struct GpuContext& gpu_context);
     ~Scene();
+
+    void update(struct Renderer& renderer, struct GpuInput& gpu_input);
 };

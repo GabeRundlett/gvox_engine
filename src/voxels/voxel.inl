@@ -23,24 +23,26 @@ struct GpuVoxel
     daxa_u32 material_type;
 };
 
-struct GpuVoxelPackedShadingAttrib {
-    uint64_t data;
+struct GpuPackedVoxel {
+    daxa_u32 data;
 };
 
 struct VoxelShadingAttribBrick {
-    GpuVoxelPackedShadingAttrib voxels[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE];
+    GpuPackedVoxel voxels[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE];
 };
 DAXA_DECL_BUFFER_PTR(VoxelShadingAttribBrick)
 
-DAXA_FWD_DECL_BUFFER_PTR(ChunkPrimitive)
+DAXA_FWD_DECL_BUFFER_PTR(BrickPrimitive)
 
 struct GpuVoxelObject {
     daxa_BufferPtr(VoxelShadingAttribBrick) brick_shading_attribs;
-    daxa_BufferPtr(ChunkPrimitive) brick_primitives;
+    daxa_BufferPtr(BrickPrimitive) brick_primitives;
+    daxa_f32vec3 tint;
+    // daxa_BufferPtr(Aabb) brick_aabbs;
 };
-DAXA_DECL_BUFFER_PTR(GpuVoxelObject)
+DAXA_DECL_BUFFER_PTR_ALIGN(GpuVoxelObject, 8)
 
-struct ChunkPrimitive {
+struct BrickPrimitive {
     daxa_i32vec3 offset;
     uint8_t size_x;
     uint8_t size_y;
@@ -51,13 +53,13 @@ struct ChunkPrimitive {
     // daxa_BufferPtr(GpuVoxelObject) voxel_object;
     uint8_t bitmap[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 8];
 };
-DAXA_DECL_BUFFER_PTR_ALIGN(ChunkPrimitive, 8)
+DAXA_DECL_BUFFER_PTR_ALIGN(BrickPrimitive, 8)
 
-DAXA_DECL_BUFFER_PTR_ALIGN(daxa_BufferPtr(ChunkPrimitive), 8)
+DAXA_DECL_BUFFER_PTR_ALIGN(daxa_BufferPtr(BrickPrimitive), 8)
 
 
 struct VoxelRtBufferPtrs {
-    daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)) chunk_primitive_pointers;
+    daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests;
     daxa_u64 tlas;
 };
 
@@ -67,7 +69,7 @@ struct VoxelRtBufferPtrs {
 // #include <utilities/allocator.inl>
 
 struct VoxelWorldBuffers {
-    TemporalBuffer brick_primitive_pointers;
+    TemporalBuffer voxel_object_manifests;
     daxa::ExternalTaskBuffer voxel_object_bricks;
     daxa::ExternalTaskBlas voxel_object_blases;
 
@@ -78,8 +80,8 @@ struct VoxelWorldBuffers {
     daxa::ExternalTaskTlas task_tlas;
     daxa::ExternalTaskBuffer task_tlas_instances;
 
-    // AllocatorBufferState<VoxelLeafChunkAllocator> voxel_leaf_chunk_malloc;
-    // AllocatorBufferState<VoxelParentChunkAllocator> voxel_parent_chunk_malloc;
+    // AllocatorBufferState<VoxelLeafBrickAllocator> voxel_leaf_brick_malloc;
+    // AllocatorBufferState<VoxelParentBrickAllocator> voxel_parent_brick_malloc;
 };
 
 #endif

@@ -20,7 +20,7 @@ DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuVoxelObject), voxel_object_manifests)
 DAXA_TH_TLAS_PTR(READ, tlas)
 IRCACHE_USE_BUFFERS(RAY_TRACING)
 DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, half_view_normal_tex)
@@ -45,7 +45,7 @@ DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(ChunkPrimitive)), chunk_primitive_pointers)
+DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuVoxelObject), voxel_object_manifests)
 DAXA_TH_TLAS_PTR(READ, tlas)
 IRCACHE_USE_BUFFERS(RAY_TRACING)
 DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, half_view_normal_tex)
@@ -519,7 +519,7 @@ struct RtdgiRenderer {
                     // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
                     // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
                     // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
-                    .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                    .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),
                     .tlas = voxel_buffers.task_tlas.view(),
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiValidateRt, ircache),
                     .half_view_normal_tex = half_view_normal_tex,
@@ -560,7 +560,7 @@ struct RtdgiRenderer {
                     // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
                     // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
                     // .blas_transforms = voxel_buffers.blas_transforms.task_resource.view(),
-                    .chunk_primitive_pointers = voxel_buffers.brick_primitive_pointers.task_resource.view(),
+                    .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),
                     .tlas = voxel_buffers.task_tlas.view(),
                     IRCACHE_BUFFER_USES_ASSIGN(RtdgiTraceRt, ircache),
                     .half_view_normal_tex = half_view_normal_tex,

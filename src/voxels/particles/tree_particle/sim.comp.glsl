@@ -33,7 +33,6 @@ void main() {
     rand_seed(particle_index);
 
     Voxel tree_particle_voxel = unpack_voxel(self.packed_voxel);
-    uvec3 chunk_n = uvec3(CHUNK_NX, CHUNK_NY, CHUNK_NZ);
     vec3 origin_ws = get_particle_worldspace_origin(gpu_input, self.origin);
 
     vec3 ray_pos = origin_ws + vec3(0, 0, VOXEL_SIZE);
