@@ -7,7 +7,6 @@
     "stb",
     "nlohmann-json",
     "minizip",
-    "assimp",
     "glm",
     "glfw3",
     {
