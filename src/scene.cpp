@@ -6,6 +6,7 @@
 #include "voxels/voxel_object.hpp"
 #include <glm/geometric.hpp>
 #include "voxels/pack_unpack.inl"
+#include "voxels/voxel_world.hpp"
 
 glm::vec3 hsv2rgb(glm::vec3 c) {
     glm::vec4 k = glm::vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -70,7 +71,7 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
 
     float radii[8] = {0.5, 0.60, 0.70, 0.80, 0.90, 0.67, 0.55, 0.45};
 
-    for (int frame_i = 0; frame_i < 8; ++frame_i) {
+    for (int frame_i = 0; frame_i < countof(ball_frames); ++frame_i) {
         VoxelObject *voxel_object = new VoxelObject();
 
         voxel_object->brick_min = {0, 0, 0};
@@ -106,7 +107,7 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
                                 nrm = basis * uniform_sample_cone(vec2(rand_(), rand_()), cos(0.19 * 0.5));
                                 nrm = glm::normalize(nrm);
 
-                                auto voxel = GpuVoxel{
+                                auto voxel = Voxel{
                                     daxa_f32vec3(col.r, col.g, col.b),
                                     daxa_f32vec3(nrm.r, nrm.g, nrm.b),
                                     0.5f,
@@ -135,8 +136,11 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
         voxel_object->render_voxel_object = create_render_voxel_object(render_scene);
         voxel_object->render_dirty = true;
 
+        ball_frames[frame_i] = voxel_object;
         voxel_objects.push_back(voxel_object);
     }
+
+    voxel_world = create_voxel_world(this);
 }
 
 Scene::~Scene() {
@@ -147,6 +151,7 @@ Scene::~Scene() {
         }
     }
 
+    destroy_voxel_world(voxel_world);
     destroy_render_scene(gpu_context, render_scene);
 }
 
@@ -155,11 +160,13 @@ void Scene::update(Renderer& renderer, GpuInput &gpu_input) {
     for (auto voxel_object : voxel_objects)
         update_render_voxel_object(gpu_context, voxel_object);
 
+    ::update(gpu_context, renderer, voxel_world);
+
     srand(0);
     for (int zi = 0; zi < 10; zi += 1)
         for (int yi = 0; yi < 10; yi += 1)
             for (int xi = 0; xi < 10; xi += 1) {
-                auto voxel_object = voxel_objects[int(gpu_input.time * 12 + rand()) % voxel_objects.size()];
+                auto voxel_object = ball_frames[int(gpu_input.time * 12 + rand()) % countof(ball_frames)];
                 auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
                 auto pos = glm::vec3(xi, yi, zi) * float(BRICK_SIZE) * VOXEL_SIZE * glm::vec3(grid_size);
                 auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));

@@ -82,20 +82,20 @@ vec3 unpack_octahedral_32(uint data) { return unmap_octahedral(unpack_snorm_2x16
 uint pack_rgb565(vec3 col) { return (PACK_UNORM(col.r, 5) << 0) | (PACK_UNORM(col.g, 6) << 5) | (PACK_UNORM(col.b, 5) << 11); }
 vec3 unpack_rgb565(uint data) { return vec3(UNPACK_UNORM(data >> 0, 5), UNPACK_UNORM(data >> 5, 6), UNPACK_UNORM(data >> 11, 5)); }
 
-GpuPackedVoxel pack_voxel(GpuVoxel v) {
-    return GpuPackedVoxel(
+PackedVoxel pack_voxel(Voxel v) {
+    return PackedVoxel(
         (pack_rgb565(sRGB_OETF(vec3(v.albedo.x, v.albedo.y, v.albedo.z)))) |
         (pack_octahedral_08(vec3(v.normal.x, v.normal.y, v.normal.z)) << 16) |
         (PACK_UNORM(sqrt(v.roughness), 4) << 24) |
         (v.material_type & 0xf) << 28);
 }
-GpuVoxel unpack_voxel(GpuPackedVoxel v) {
+Voxel unpack_voxel(PackedVoxel v) {
     vec3 col = sRGB_EOTF(unpack_rgb565(uint(v.data >> 0)));
     vec3 nrm = unpack_octahedral_08(uint(v.data >> 16));
     float roughness = UNPACK_UNORM((v.data >> 24) & 0xf, 4);
     roughness = roughness * roughness;
     uint material_type = uint(v.data >> 28) & 0xf;
-    return GpuVoxel(daxa_f32vec3(col.x, col.y, col.z), daxa_f32vec3(nrm.x, nrm.y, nrm.z), roughness, material_type);
+    return Voxel(daxa_f32vec3(col.x, col.y, col.z), daxa_f32vec3(nrm.x, nrm.y, nrm.z), roughness, material_type);
 }
 
 #undef SNORM_SCALE

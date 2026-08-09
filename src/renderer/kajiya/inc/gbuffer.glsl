@@ -21,7 +21,7 @@ GbufferDataPacked pack(GbufferData self) {
 
 GbufferData unpack(GbufferDataPacked self) {
     GbufferData res;
-    GpuVoxel voxel = unpack_voxel(GpuPackedVoxel(self.data0.x));
+    Voxel voxel = unpack_voxel(PackedVoxel(self.data0.x));
     res.emissive = voxel.albedo * float(voxel.material_type == 2) * (voxel.roughness + 0.01);
     res.normal = u16_to_nrm(self.data0.y);
     res.roughness = (voxel.material_type == 0 || voxel.material_type == 1) ? voxel.roughness : 1.0;

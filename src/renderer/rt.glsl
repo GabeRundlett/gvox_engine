@@ -26,7 +26,7 @@ RayPayload pack_ray_payload(uint blas_id, uint brick_id, float ray_t, VoxelHit h
     return result;
 }
 
-GpuVoxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests) {
+Voxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests) {
     uint blas_id = payload.data0;
     uint brick_id = payload.data1 >> 11;
 
@@ -39,9 +39,9 @@ GpuVoxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) v
     daxa_BufferPtr(GpuVoxelObject) voxel_object = advance(voxel_object_manifests, blas_id);
     daxa_BufferPtr(VoxelShadingAttribBrick) shading_brick = advance(deref(voxel_object).brick_shading_attribs, brick_id);
     uint voxel_index = voxel_i.x + voxel_i.y * BRICK_SIZE + voxel_i.z * BRICK_SIZE * BRICK_SIZE;
-    GpuPackedVoxel packed_voxel = deref(shading_brick).voxels[voxel_index];
+    PackedVoxel packed_voxel = deref(shading_brick).voxels[voxel_index];
 
-    GpuVoxel voxel = unpack_voxel(packed_voxel);
+    Voxel voxel = unpack_voxel(packed_voxel);
     voxel.albedo *= deref(voxel_object).tint;
 
     // switch (nrm)

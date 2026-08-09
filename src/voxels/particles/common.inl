@@ -10,7 +10,7 @@
 struct ParticleVertex {
     daxa_f32vec3 pos;
     daxa_f32vec3 prev_pos;
-    GpuPackedVoxel packed_voxel;
+    PackedVoxel packed_voxel;
 };
 
 struct PackedParticleVertex {

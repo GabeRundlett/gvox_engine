@@ -45,10 +45,10 @@ void main() {
 
     vec3 world_pos = ray_o + prd.t * ray_d;
     vec3 vel_ws = vec3(0);
-    GpuVoxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
-    // voxel.albedo = vec3(0.01);
-
-    // voxel.roughness = 0.01;
+    Voxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
+    // voxel.albedo = vec3(1);
+    // voxel.material_type = 1;
+    // voxel.roughness = 0.1;
 
 #if PER_VOXEL_NORMALS
     vec3 ws_nrm = voxel.normal;

@@ -9,6 +9,8 @@ add_executable(${PROJECT_NAME}
 
     "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
+    "src/voxels/voxel_world.cpp"
+    "src/voxels/generation/generation.cpp"
 
     "src/application/ui.cpp"
     "src/application/audio.cpp"

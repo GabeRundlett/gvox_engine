@@ -112,7 +112,7 @@ GbufferPathVertex trace(GbufferRaytrace self) {
     if (prd.data1 != miss_ray_payload().data1) {
         vec3 world_pos = self.ray.Origin + self.ray.Direction * prd.t;
         vec3 _unused_vel = vec3(0);
-        GpuVoxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
+        Voxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
 
         GbufferPathVertex res;
         res.is_hit = true;

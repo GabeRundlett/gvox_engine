@@ -15,20 +15,19 @@ struct Aabb {
     daxa_f32vec3 max;
 };
 
-struct GpuVoxel
-{
+struct Voxel {
     daxa_f32vec3 albedo;
     daxa_f32vec3 normal;
     float roughness;
     daxa_u32 material_type;
 };
 
-struct GpuPackedVoxel {
+struct PackedVoxel {
     daxa_u32 data;
 };
 
 struct VoxelShadingAttribBrick {
-    GpuPackedVoxel voxels[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE];
+    PackedVoxel voxels[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE];
 };
 DAXA_DECL_BUFFER_PTR(VoxelShadingAttribBrick)
 
@@ -57,7 +56,6 @@ DAXA_DECL_BUFFER_PTR_ALIGN(BrickPrimitive, 8)
 
 DAXA_DECL_BUFFER_PTR_ALIGN(daxa_BufferPtr(BrickPrimitive), 8)
 
-
 struct VoxelRtBufferPtrs {
     daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests;
     daxa_u64 tlas;
@@ -85,4 +83,3 @@ struct VoxelWorldBuffers {
 };
 
 #endif
-

@@ -12,7 +12,7 @@
 
 struct Flower {
     daxa_f32vec3 origin;
-    GpuPackedVoxel packed_voxel;
+    PackedVoxel packed_voxel;
     daxa_u32 type;
     daxa_u32 flags;
 };

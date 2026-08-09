@@ -9,12 +9,12 @@ struct VoxelBrick {
     glm::ivec3 brick_i;
     uint64_t bitmask[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 64];
     struct VoxelShadingAttribBrick *render_attribs;
+    uint32_t metadata;
 };
 
 struct VoxelObject {
     glm::ivec3 voxel_min, voxel_max;
     glm::ivec3 brick_min, brick_max;
-    float scale = 1.0f;
     std::vector<VoxelBrick *> brick_grid;
     struct RenderVoxelObject *render_voxel_object;
     bool render_dirty = true;

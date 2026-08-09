@@ -6,7 +6,7 @@
 
 struct GrassStrand {
     daxa_f32vec3 origin;
-    GpuPackedVoxel packed_voxel;
+    PackedVoxel packed_voxel;
     daxa_u32 flags;
 };
 DAXA_DECL_BUFFER_PTR(GrassStrand)
