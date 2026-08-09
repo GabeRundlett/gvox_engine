@@ -2,6 +2,7 @@
 
 #include <vector>
 struct VoxelObject;
+struct AnimationPlayground;
 
 struct Scene
 {
@@ -11,6 +12,8 @@ struct Scene
     struct VoxelWorld* voxel_world;
 
     VoxelObject *ball_frames[8];
+
+    AnimationPlayground *animation_playground = nullptr;
 
     Scene(struct GpuContext& gpu_context);
     ~Scene();

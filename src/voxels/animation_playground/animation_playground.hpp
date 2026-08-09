@@ -1,0 +1,48 @@
+#pragma once
+
+#include <utilities/gpu_context.hpp>
+#include <glm/vec3.hpp>
+#include <vector>
+
+struct VoxelObject;
+struct RenderScene;
+struct GpuInput;
+
+struct AnimationPlayground {
+    GpuContext &gpu_context;
+    RenderScene *render_scene;
+
+    AsyncManagedComputePipeline pipeline;
+
+    daxa::BufferId bricks_buffer{};
+    daxa::BufferId brick_attribs_buffer{};
+    daxa::BufferId bricks_readback_buffer{};
+    daxa::BufferId brick_attribs_readback_buffer{};
+
+    glm::ivec3 grid_dims_bricks{4, 4, 4};
+    int frame_count = 8;
+    bool dirty = true;
+    glm::vec3 playground_pos = glm::vec3{0.0f, 0.0f, 5.0f};
+
+    std::vector<VoxelObject *> frames;
+
+    bool playing = true;
+    float current_frame_f = 0.0f;
+    float playback_fps = 8.0f;
+
+    AnimationPlayground(GpuContext &gpu_context, RenderScene *render_scene);
+    AnimationPlayground(AnimationPlayground const &) = delete;
+    AnimationPlayground(AnimationPlayground &&) = delete;
+    auto operator=(AnimationPlayground const &) -> AnimationPlayground & = delete;
+    auto operator=(AnimationPlayground &&) -> AnimationPlayground & = delete;
+    ~AnimationPlayground();
+
+    // Dispatches the generate shader for all frames, reads the result back to the
+    // CPU, and rebuilds `frames` from it.
+    void regenerate(float time);
+
+    // Advances playback, draws the ImGui control panel, regenerates if `dirty`, and
+    // draws the current frame into the world.
+    void update(struct Renderer &renderer, GpuInput const &gpu_input);
+    void ui();
+};

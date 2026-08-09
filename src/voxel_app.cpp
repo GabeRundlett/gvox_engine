@@ -16,6 +16,7 @@ using namespace std::chrono_literals;
 
 #include <iostream>
 #include "renderer/render_scene.hpp"
+#include <voxels/animation_playground/animation_playground.hpp>
 
 constexpr auto round_frame_dim(daxa_u32vec2 size) {
     auto result = size;
@@ -60,6 +61,7 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
     });
 
     scene = new Scene(gpu_context);
+    ui.animation_playground = scene->animation_playground;
 
     record_tasks();
     gpu_context.pipeline_manager->wait();
@@ -117,6 +119,7 @@ void VoxelApp::on_update() {
         if (!daxa::get_if<daxa::NoPipelineChanged>(&reload_result)) {
             for (auto &[key, pipeline] : gpu_context.ray_tracing_pipelines)
                 pipeline->sbt_storage = pipeline->pipeline->create_default_sbt();
+            scene->animation_playground->dirty = true;
         }
     }
 

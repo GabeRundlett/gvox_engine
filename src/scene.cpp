@@ -7,6 +7,7 @@
 #include <glm/geometric.hpp>
 #include "voxels/pack_unpack.inl"
 #include "voxels/voxel_world.hpp"
+#include "voxels/animation_playground/animation_playground.hpp"
 
 glm::vec3 hsv2rgb(glm::vec3 c) {
     glm::vec4 k = glm::vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -15,9 +16,9 @@ glm::vec3 hsv2rgb(glm::vec3 c) {
 }
 
 vec3 uniform_sample_cone(vec2 urand, float cos_theta_max) {
-    float cos_theta = (1.0 - urand.x) + urand.x * cos_theta_max;
-    float sin_theta = sqrt(clamp(1.0 - cos_theta * cos_theta, 0.0, 1.0));
-    float phi = urand.y * (M_PI * 2.0);
+    float cos_theta = (1.0f - urand.x) + urand.x * cos_theta_max;
+    float sin_theta = sqrt(clamp(1.0f - cos_theta * cos_theta, 0.0f, 1.0f));
+    float phi = urand.y * (M_PI * 2.0f);
     return vec3(sin_theta * cos(phi), sin_theta * sin(phi), cos_theta);
 }
 // Building an Orthonormal Basis, Revisited
@@ -27,12 +28,12 @@ mat3 build_orthonormal_basis(vec3 n) {
     vec3 b2;
 
     if (n.z < 0.0) {
-        const float a = 1.0 / (1.0 - n.z);
+        const float a = 1.0f / (1.0f - n.z);
         const float b = n.x * n.y * a;
         b1 = vec3(1.0 - n.x * n.x * a, -b, n.x);
         b2 = vec3(b, n.y * n.y * a - 1.0, -n.y);
     } else {
-        const float a = 1.0 / (1.0 + n.z);
+        const float a = 1.0f / (1.0f + n.z);
         const float b = -n.x * n.y * a;
         b1 = vec3(1.0 - n.x * n.x * a, b, -n.x);
         b2 = vec3(b, 1.0 - n.y * n.y * a, -n.y);
@@ -69,7 +70,7 @@ float rand_() {
 Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
     render_scene = create_render_scene(gpu_context);
 
-    float radii[8] = {0.5, 0.60, 0.70, 0.80, 0.90, 0.67, 0.55, 0.45};
+    float radii[8] = {0.5f, 0.60f, 0.70f, 0.80f, 0.90f, 0.67f, 0.55f, 0.45f};
 
     for (int frame_i = 0; frame_i < countof(ball_frames); ++frame_i) {
         VoxelObject *voxel_object = new VoxelObject();
@@ -104,7 +105,7 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
 
                                 rand_seed(good_rand_hash(floatBitsToUint(nrm)));
                                 const mat3 basis = build_orthonormal_basis(normalize(nrm));
-                                nrm = basis * uniform_sample_cone(vec2(rand_(), rand_()), cos(0.19 * 0.5));
+                                nrm = basis * uniform_sample_cone(vec2(rand_(), rand_()), cos(0.19f * 0.5f));
                                 nrm = glm::normalize(nrm);
 
                                 auto voxel = Voxel{
@@ -141,9 +142,13 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
     }
 
     voxel_world = create_voxel_world(this);
+
+    animation_playground = new AnimationPlayground(gpu_context, render_scene);
 }
 
 Scene::~Scene() {
+    delete animation_playground;
+
     for (auto voxel_object : voxel_objects) {
         if (voxel_object) {
             destroy_render_voxel_object(gpu_context, voxel_object->render_voxel_object);
@@ -185,6 +190,8 @@ void Scene::update(Renderer& renderer, GpuInput &gpu_input) {
                 // box.b = 0.7f;
                 // renderer.submit_debug_box_lines(&box, 1);
             }
+
+    animation_playground->update(renderer, gpu_input);
 
     render_scene_end(gpu_context, render_scene);
 }

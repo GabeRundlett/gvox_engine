@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "voxels/animation_playground/animation_playground.hpp"
 
 #include <imgui_stdlib.h>
 #include <imgui_impl_glfw.h>
@@ -199,7 +200,7 @@ struct overloaded : Ts... {
     using Ts::operator()...;
 };
 
-template<class... Ts>
+template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace {
@@ -604,6 +605,9 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
     return static_cast<daxa_i32>(static_cast<daxa_i64>(a->size) - static_cast<daxa_i64>(b->size));
 }
 
+void AppUi::begin_frame() {
+}
+
 void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
     full_frametimes[frametime_rotation_index] = delta_time;
@@ -653,6 +657,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
         if (show_settings) {
             settings_ui();
         }
+
+        animation_playground->ui();
     }
 
     auto show_debug_info = AppSettings::get<settings::Checkbox>("UI", "show_debug_info").value;

@@ -46,11 +46,11 @@ enum GenerationStage {
 
 using Clock = std::chrono::steady_clock;
 
-constexpr int32_t CHUNK_NX = 1024 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NY = 1024 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NZ = 512 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NX = 256 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NY = 256 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NZ = 256 / CHUNK_SIZE_VOXELS;
 constexpr int32_t CHUNK_LEVELS = 1;
-constexpr int32_t MAX_CHUNKS_PER_FRAME = 64;
+constexpr int32_t MAX_CHUNKS_PER_FRAME = 4;
 
 struct Chunk {
     int generation_stage = 0;
@@ -237,9 +237,9 @@ exit_2:
                             auto voxel_object = self->scene->ball_frames[int(gpu_input.time * 12 + rand()) % glm::countof(self->scene->ball_frames)];
                             auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
                             auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
-                            auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));
+                            auto ball_tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));
                             // auto tint = glm::vec3(1);
-                            draw_voxel_object(voxel_object, ball_pos, VOXEL_SIZE, tint);
+                            draw_voxel_object(voxel_object, ball_pos, VOXEL_SIZE, ball_tint);
                         }
 
                         // box.r = 0.2f;
@@ -633,14 +633,13 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                                             (uint32_t *)render_attrib_brick->voxels, &noise_settings, RANDOM_VALUES.data());
                         has_render_attribs = true;
 
-                        if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.01 * (1 << level)) {
-                            float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
-                            if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
-                                chunk.surface_entity_candidates.push_back(brick->brick_i);
-                        }
+                        // if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.01 * (1 << level)) {
+                        //     float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
+                        //     if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
+                        //         chunk.surface_entity_candidates.push_back(brick->brick_i);
+                        // }
 
                         {
-
                             brick->voxel_min = {BRICK_SIZE, BRICK_SIZE, BRICK_SIZE};
                             brick->voxel_max = {0, 0, 0};
                             for (uint8_t z = 0; z < 8; z++) {

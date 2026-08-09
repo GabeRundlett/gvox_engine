@@ -29,6 +29,8 @@ struct AppUi {
     std::array<float, 200> cpu_frametimes = {};
     daxa_u64 frametime_rotation_index = 0;
 
+    struct AnimationPlayground* animation_playground;
+
     daxa_f32 debug_menu_size{};
 
     bool needs_saving = false;
@@ -58,6 +60,7 @@ struct AppUi {
     std::filesystem::path data_directory;
 
     void rescale_ui();
+    void begin_frame();
     void update(daxa_f32 delta_time, daxa_f32 cpu_delta_time);
 
     void toggle_pause();
