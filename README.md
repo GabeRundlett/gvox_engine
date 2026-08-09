@@ -19,8 +19,7 @@ To build GVOX Engine, you just need Git, CMake, and [the Vulkan SDK](https://vul
 For now, you must have the following things installed to build the repository
  * A C++ compiler
  * CMake (3.21 or higher)
- * Git
- * (optionally, as it'll be automatically downloaded if not installed) vcpkg (plus the VCPKG_ROOT environment variable)
+ * Git (dependencies are fetched automatically via CMake's FetchContent)
 
 Once you have these things installed, you should be able to build just by running these commands in the root directory of the repository
 
@@ -38,4 +37,4 @@ cmake --preset=gcc-x86_64-linux-gnu
 cmake --build --preset=gcc-x86_64-linux-gnu-debug
 ```
 
-The first command, on either platform, will configure the CMake project, and the second will build it in debug mode. If you'd like to build in release mode, you can change `debug` to `release`. The executable will be output into the `./.out/<preset-name>/Debug/` folder, along side all the necessary shared libraries. 
+The first command, on either platform, will configure the CMake project, and the second will build it in debug mode. If you'd like to build in release mode, you can change `debug` to `release`. The executable will be output into the `./build/<preset-name>/Debug/` folder, along side all the necessary shared libraries. 

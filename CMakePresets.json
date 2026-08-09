@@ -9,24 +9,12 @@
         {
             "name": "defaults",
             "hidden": true,
-            "binaryDir": "${sourceDir}/.out/${presetName}",
-            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "binaryDir": "${sourceDir}/build/${presetName}",
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
                 "ENABLE_STATIC_ANALYSIS": false,
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "GVOX_ENGINE_INSTALL": false,
-                "GVOX_ENGINE_USE_VCPKG": true
-            }
-        },
-        {
-            "name": "clangd-support",
-            "binaryDir": "${sourceDir}/build",
-            "inherits": [
-                "defaults"
-            ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+                "GVOX_ENGINE_INSTALL": false
             }
         },
         {
@@ -57,8 +45,7 @@
             "name": "vs-x86_64-windows-msvc",
             "generator": "Visual Studio 17 2022",
             "displayName": "Visual Studio x86_64 Windows (MSVC ABI)",
-            "inherits": [ "defaults-windows" ],
-            "toolchainFile": ""
+            "inherits": [ "defaults-windows" ]
         },
         {
             "name": "gcc-x86_64-linux-gnu",

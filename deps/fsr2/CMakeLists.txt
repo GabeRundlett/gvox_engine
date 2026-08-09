@@ -1,17 +1,19 @@
-vcpkg_from_git(
-    OUT_SOURCE_PATH SOURCE_PATH
-    URL https://github.com/GPUOpen-Effects/FidelityFX-FSR2
-    REF 1680d1edd5c034f88ebbbb793d8b88f8842cf804
-)
+cmake_minimum_required(VERSION 3.21)
 
-vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
-    FEATURES
-    directx12 WITH_DX12
-    vulkan WITH_VULKAN
-)
-set(FSR2_DEFINES)
+include(FetchContent)
 
-file(WRITE "${SOURCE_PATH}/src/ffx-fsr2-api/CMakeLists.txt" [==[
+FetchContent_Declare(
+    fsr2_src
+    GIT_REPOSITORY https://github.com/GPUOpen-Effects/FidelityFX-FSR2
+    GIT_TAG 1680d1edd5c034f88ebbbb793d8b88f8842cf804
+    SOURCE_SUBDIR "nonexistent-subdir"
+)
+FetchContent_MakeAvailable(fsr2_src)
+
+# FidelityFX-FSR2 doesn't ship a CMakeLists.txt for its API library, so we
+# write one into the fetched source tree ourselves (mirrors what the
+# project's old vcpkg overlay port used to do).
+file(WRITE "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/CMakeLists.txt" [==[
 cmake_minimum_required(VERSION 3.15)
 project(ffx_fsr2_api VERSION 2.2.0)
 set(CMAKE_DEBUG_POSTFIX d)
@@ -25,10 +27,6 @@ else()
     set(USE_DEPFILE FALSE)
 endif()
 
-if(CMAKE_GENERATOR STREQUAL "Visual Studio 16 2019")
-    set(FSR2_VS_VERSION 2019)
-endif()
-
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
     if(CMAKE_GENERATOR_PLATFORM STREQUAL "x64" OR CMAKE_EXE_LINKER_FLAGS STREQUAL "/machine:x64")
     else()
@@ -38,16 +36,12 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Z7")
 endif()
 
-
 # Write both debug and release versions of the static libs to the /lib folder as they are uniquely named
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_HOME_DIRECTORY}/bin/ffx_fsr2_api/)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_HOME_DIRECTORY}/bin/ffx_fsr2_api/)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_CURRENT_BINARY_DIR}/bin/ffx_fsr2_api/)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/bin/ffx_fsr2_api/)
 
 add_compile_definitions(_UNICODE)
 add_compile_definitions(UNICODE)
-#add_compile_definitions(FSR2_VERSION_MAJOR=0)
-#add_compile_definitions(FSR2_VERSION_MINOR=1)
-#add_compile_definitions(FSR2_VERSION_PATCH=0)
 
 if(FSR2_VS_VERSION STREQUAL 2015)
     message(NOTICE "Forcing the SDK path for VS 2015")
@@ -76,7 +70,7 @@ set(FFX_SC_PERMUTATION_ARGS
     -DFFX_FSR2_OPTION_JITTERED_MOTION_VECTORS={0,1}
     -DFFX_FSR2_OPTION_INVERTED_DEPTH={0,1}
     -DFFX_FSR2_OPTION_APPLY_SHARPENING={0,1})
- 
+
 file(GLOB SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -86,6 +80,10 @@ if (FSR2_BUILD_AS_DLL)
 else()
     add_library(ffx_fsr2_api      STATIC ${SOURCES})
 endif()
+
+# Public headers are included as <ffx-fsr2-api/ffx_fsr2.h>, i.e. relative to
+# the parent of this directory.
+target_include_directories(ffx_fsr2_api PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>)
 
 if(FFX_FSR2_API_DX12)
     message("Will build FSR2 library: DX12 backend")
@@ -99,62 +97,9 @@ endif()
 
 # api
 source_group("source"  FILES ${SOURCES})
-
-set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
-# Packaging
-include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
-file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-@PACKAGE_INIT@
-include(${CMAKE_CURRENT_LIST_DIR}/fsr2-targets.cmake)
-check_required_components(ffx_fsr2_api)
-]=])
-
-configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/fsr2-config.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/fsr2
-    NO_SET_AND_CHECK_MACRO)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/fsr2-config-version.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion)
-install(
-    FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/fsr2-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/fsr2-config-version.cmake
-    DESTINATION
-    ${CMAKE_INSTALL_DATADIR}/fsr2)
-install(TARGETS ffx_fsr2_api ffx_fsr2_api_vk EXPORT fsr2-targets)
-install(EXPORT fsr2-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/fsr2 NAMESPACE fsr2::)
-# TODO: Install only the files that are necessary:
-#   ffx_assert.h
-#   ffx_error.h
-#   ffx_util.h
-#   ffx_types.h
-#   ffx_fsr2.h
-#   ffx_fsr2_interface.h
-#   ffx_fsr2_common.h
-#   ffx_fsr2_resources.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR} TYPE INCLUDE FILES_MATCHING PATTERN "*.h")
 ]==])
 
-if(VCPKG_TARGET_IS_LINUX)
-    file(READ "${SOURCE_PATH}/src/ffx-fsr2-api/ffx_util.h" ffx_util)
-    string(APPEND ffx_util [=[
-#include <wchar.h>
-#include <locale>
-#define _countof(x) (sizeof(x) / sizeof(x[0]))
-#define wcscpy_s wcscpy
-]=])
-    file(WRITE "${SOURCE_PATH}/src/ffx-fsr2-api/ffx_util.h" "${ffx_util}")
-
-    file(READ "${SOURCE_PATH}/src/ffx-fsr2-api/ffx_types.h" ffx_types)
-    string(REGEX REPLACE "pragma once" "pragma once\n#include <stddef.h>" ffx_types "${ffx_types}")
-    string(REGEX REPLACE "__declspec.dllexport." " " ffx_types "${ffx_types}")
-    file(WRITE "${SOURCE_PATH}/src/ffx-fsr2-api/ffx_types.h" "${ffx_types}")
-endif()
-
-file(WRITE "${SOURCE_PATH}/src/ffx-fsr2-api/vk/CMakeLists.txt" [==[
+file(WRITE "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/vk/CMakeLists.txt" [==[
 if(NOT ${FFX_FSR2_API_VK})
     return()
 endif()
@@ -174,7 +119,7 @@ set(PASS_SHADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../shaders/ffx_fsr2_depth_clip_pass.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/../shaders/ffx_fsr2_lock_pass.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/../shaders/ffx_fsr2_reconstruct_previous_depth_pass.glsl
-    ${CMAKE_CURRENT_SOURCE_DIR}/../shaders/ffx_fsr2_rcas_pass.glsl)    
+    ${CMAKE_CURRENT_SOURCE_DIR}/../shaders/ffx_fsr2_rcas_pass.glsl)
 
 file(GLOB_RECURSE VK
     "${CMAKE_CURRENT_SOURCE_DIR}/../ffx_assert.cpp"
@@ -191,6 +136,9 @@ endif()
 find_package(Vulkan REQUIRED)
 target_link_libraries(ffx_fsr2_api_vk PUBLIC Vulkan::Vulkan)
 
+# Public headers are included as <ffx-fsr2-api/vk/ffx_fsr2_vk.h>, i.e.
+# relative to the parent of the ffx-fsr2-api directory.
+target_include_directories(ffx_fsr2_api_vk PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>)
 target_include_directories(ffx_fsr2_api_vk PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../shaders/vk>)
 target_include_directories(ffx_fsr2_api_vk PUBLIC ${Vulkan_INCLUDE_DIR})
 
@@ -209,7 +157,7 @@ else()
     add_custom_target(${FFX_SC_DEPENDENT_TARGET})
 endif()
 
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0") 
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
 cmake_policy(SET CMP0116 OLD)
 endif()
 get_filename_component(PASS_SHADER_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/../shaders/vk ABSOLUTE)
@@ -221,7 +169,7 @@ foreach(PASS_SHADER ${PASS_SHADERS})
     # combine base and permutation args
     if (${PASS_SHADER_FILENAME} STREQUAL "ffx_fsr2_compute_luminance_pyramid_pass")
         # skip 16-bit permutations for the compute luminance pyramid pass
-        set(FFX_SC_ARGS ${FFX_SC_BASE_ARGS} ${FFX_SC_VK_BASE_ARGS} ${FFX_SC_PERMUTATION_ARGS} -DFFX_HALF=0)  
+        set(FFX_SC_ARGS ${FFX_SC_BASE_ARGS} ${FFX_SC_VK_BASE_ARGS} ${FFX_SC_PERMUTATION_ARGS} -DFFX_HALF=0)
     else()
         set(FFX_SC_ARGS ${FFX_SC_BASE_ARGS} ${FFX_SC_VK_BASE_ARGS} ${FFX_SC_PERMUTATION_ARGS} -DFFX_HALF={0,1})
     endif()
@@ -254,28 +202,26 @@ source_group("shaders" FILES ${SHADERS})
 endif()
 ]==])
 
-if(WITH_DX12)
-    list(APPEND FSR2_DEFINES "-DFFX_FSR2_API_DX12=ON")
-    list(APPEND FSR2_DEFINES "-DFFX_FSR2_API_VK=OFF")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    file(READ "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/ffx_util.h" ffx_util)
+    string(APPEND ffx_util [=[
+#include <wchar.h>
+#include <locale>
+#define _countof(x) (sizeof(x) / sizeof(x[0]))
+#define wcscpy_s wcscpy
+]=])
+    file(WRITE "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/ffx_util.h" "${ffx_util}")
+
+    file(READ "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/ffx_types.h" ffx_types)
+    string(REGEX REPLACE "pragma once" "pragma once\n#include <stddef.h>" ffx_types "${ffx_types}")
+    string(REGEX REPLACE "__declspec.dllexport." " " ffx_types "${ffx_types}")
+    file(WRITE "${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api/ffx_types.h" "${ffx_types}")
 endif()
 
-if(WITH_VULKAN)
-    list(APPEND FSR2_DEFINES "-DFFX_FSR2_API_DX12=OFF")
-    list(APPEND FSR2_DEFINES "-DFFX_FSR2_API_VK=ON")
-endif()
+set(FFX_FSR2_API_DX12 OFF CACHE BOOL "" FORCE)
+set(FFX_FSR2_API_VK ON CACHE BOOL "" FORCE)
 
-vcpkg_configure_cmake(
-    SOURCE_PATH "${SOURCE_PATH}/src/ffx-fsr2-api"
-    PREFER_NINJA
-    OPTIONS ${FSR2_DEFINES}
-)
+add_subdirectory("${fsr2_src_SOURCE_DIR}/src/ffx-fsr2-api" "${CMAKE_CURRENT_BINARY_DIR}/ffx-fsr2-api")
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets()
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/ffx-fsr2-api/bin/ffx_fsr2_api")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/ffx-fsr2-api/bin")
-file(INSTALL "${SOURCE_PATH}/LICENSE.txt"
-    DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}"
-    RENAME copyright
-)
+add_library(fsr2::ffx_fsr2_api ALIAS ffx_fsr2_api)
+add_library(fsr2::ffx_fsr2_api_vk ALIAS ffx_fsr2_api_vk)

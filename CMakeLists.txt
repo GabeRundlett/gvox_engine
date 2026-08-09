@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-include("${CMAKE_CURRENT_LIST_DIR}/cmake/deps.cmake")
+project(gvox_engine VERSION 0.1.15)
 
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
     # Visual Studio doesn't support building ISPC...
@@ -12,7 +12,8 @@ if (USE_ISPC)
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/ispc.cmake")
 endif()
 
-project(gvox_engine VERSION 0.1.15)
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/deps.cmake")
+
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
     "src/voxel_app.cpp"
@@ -20,6 +21,7 @@ add_executable(${PROJECT_NAME}
     "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
     "src/voxels/voxel_world.cpp"
+    "src/voxels/animation_playground/animation_playground.cpp"
 
     "src/application/ui.cpp"
     "src/application/audio.cpp"
@@ -55,36 +57,9 @@ if (USE_ISPC)
 endif()
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    COMMAND "$<$<BOOL:$<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>>:${CMAKE_COMMAND};-E;copy;$<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>;$<TARGET_FILE_DIR:${PROJECT_NAME}>>"
     COMMAND_EXPAND_LISTS
 )
-
-
-find_package(imgui CONFIG REQUIRED)
-
-set(DAXA_USE_VCPKG false)
-set(DAXA_ENABLE_UTILS_IMGUI true)
-set(DAXA_ENABLE_UTILS_MEM true)
-set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG true)
-set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_SLANG false)
-set(DAXA_ENABLE_UTILS_TASK_GRAPH true)
-set(DAXA_ENABLE_UTILS_FSR3 false)
-set(DAXA_ENABLE_TESTS false)
-set(DAXA_ENABLE_TOOLS false)
-add_subdirectory(${PROJECT_SOURCE_DIR}/deps/Daxa)
-
-find_package(gvox CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(unofficial-minizip CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
-# find_package(soloud CONFIG REQUIRED)
-find_package(Vulkan REQUIRED)
-find_package(fsr2 CONFIG REQUIRED)
-# find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-
-add_subdirectory("deps/blue-noise-sampler")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     GPUOpen::VulkanMemoryAllocator
@@ -95,7 +70,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     unofficial::minizip::minizip
     glm::glm
-    # soloud
+    stb::stb
     fsr2::ffx_fsr2_api
     fsr2::ffx_fsr2_api_vk
     blue_noise_sampler::blue_noise_sampler
