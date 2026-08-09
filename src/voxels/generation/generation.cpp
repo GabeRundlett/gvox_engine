@@ -75,3 +75,17 @@ void generate_attributes_cpp(
         }
     }
 }
+
+float generate_upwards(
+    int brick_xi, int brick_yi, int brick_zi,
+    int chunk_xi, int chunk_yi, int chunk_zi,
+    int level_i,
+    NoiseSettings const *noise_settings, RandomCtx random_ctx) {
+
+    float x = (float(((0.5f + brick_xi) * BRICK_SIZE + chunk_xi * CHUNK_SIZE_VOXELS) * (1 << level_i)) + 0.5f) * VOXEL_SIZE;
+    float y = (float(((0.5f + brick_yi) * BRICK_SIZE + chunk_yi * CHUNK_SIZE_VOXELS) * (1 << level_i)) + 0.5f) * VOXEL_SIZE;
+    float z = (float(((0.5f + brick_zi) * BRICK_SIZE + chunk_zi * CHUNK_SIZE_VOXELS) * (1 << level_i)) + 0.5f) * VOXEL_SIZE;
+
+    DensityNrm val = voxel_value(random_ctx, noise_settings, glm::vec3(x, y, z));
+    return dot(val.nrm, glm::vec3(0, 0, 1));
+}

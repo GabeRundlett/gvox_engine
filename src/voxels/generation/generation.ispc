@@ -14,19 +14,19 @@ export void generate_bitmask(
     bool has_air_nz = false;
     bool has_air_pz = false;
 
-    foreach (word_i = 0 ... (VOXEL_BRICK_SIZE * VOXEL_BRICK_SIZE * VOXEL_BRICK_SIZE / 32)) {
+    foreach (word_i = 0 ... (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
         uint word_result = 0;
         #pragma unroll
         for (uniform uint in_word_i = 0; in_word_i < 32; ++in_word_i) {
             uint i = word_i * 32 + in_word_i;
-            int xi = i & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
-            int yi = (i >> VOXEL_BRICK_SIZE_LOG2) & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
-            int zi = (i >> (VOXEL_BRICK_SIZE_LOG2 * 2)) & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
+            int xi = i & ((1 << BRICK_SIZE_LOG2) - 1);
+            int yi = (i >> BRICK_SIZE_LOG2) & ((1 << BRICK_SIZE_LOG2) - 1);
+            int zi = (i >> (BRICK_SIZE_LOG2 * 2)) & ((1 << BRICK_SIZE_LOG2) - 1);
 
             vec3 pos;
-            pos.x = (xi + brick_xi * VOXEL_BRICK_SIZE + chunk_xi * VOXEL_CHUNK_SIZE) * (1 << level_i);
-            pos.y = (yi + brick_yi * VOXEL_BRICK_SIZE + chunk_yi * VOXEL_CHUNK_SIZE) * (1 << level_i);
-            pos.z = (zi + brick_zi * VOXEL_BRICK_SIZE + chunk_zi * VOXEL_CHUNK_SIZE) * (1 << level_i);
+            pos.x = (xi + brick_xi * BRICK_SIZE + chunk_xi * CHUNK_SIZE_VOXELS) * (1 << level_i);
+            pos.y = (yi + brick_yi * BRICK_SIZE + chunk_yi * CHUNK_SIZE_VOXELS) * (1 << level_i);
+            pos.z = (zi + brick_zi * BRICK_SIZE + chunk_zi * CHUNK_SIZE_VOXELS) * (1 << level_i);
 
             pos.x = (pos.x + 0.5f) * VOXEL_SIZE;
             pos.y = (pos.y + 0.5f) * VOXEL_SIZE;
@@ -38,11 +38,11 @@ export void generate_bitmask(
 
             has_voxel = has_voxel || (value != 0);
             has_air_nx = has_air_nx || (xi == 0 && value == 0);
-            has_air_px = has_air_px || (xi == (VOXEL_BRICK_SIZE - 1) && value == 0);
+            has_air_px = has_air_px || (xi == (BRICK_SIZE - 1) && value == 0);
             has_air_ny = has_air_ny || (yi == 0 && value == 0);
-            has_air_py = has_air_py || (yi == (VOXEL_BRICK_SIZE - 1) && value == 0);
+            has_air_py = has_air_py || (yi == (BRICK_SIZE - 1) && value == 0);
             has_air_nz = has_air_nz || (zi == 0 && value == 0);
-            has_air_pz = has_air_pz || (zi == (VOXEL_BRICK_SIZE - 1) && value == 0);
+            has_air_pz = has_air_pz || (zi == (BRICK_SIZE - 1) && value == 0);
         }
         bits[word_i] = word_result;
     }
@@ -80,17 +80,17 @@ export void generate_attributes(
     const uniform vec3 DIRT_COL = {112, 62, 30};
     const uniform vec3 STONE_COL = {140, 110, 100};
 
-    foreach (word_i = 0 ... (VOXEL_BRICK_SIZE * VOXEL_BRICK_SIZE * VOXEL_BRICK_SIZE / 32)) {
+    foreach (word_i = 0 ... (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
         for (uniform uint in_word_i = 0; in_word_i < 32; ++in_word_i) {
             uint voxel_index = word_i * 32 + in_word_i;
-            int xi = voxel_index & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
-            int yi = (voxel_index >> VOXEL_BRICK_SIZE_LOG2) & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
-            int zi = (voxel_index >> (VOXEL_BRICK_SIZE_LOG2 * 2)) & ((1 << VOXEL_BRICK_SIZE_LOG2) - 1);
+            int xi = voxel_index & ((1 << BRICK_SIZE_LOG2) - 1);
+            int yi = (voxel_index >> BRICK_SIZE_LOG2) & ((1 << BRICK_SIZE_LOG2) - 1);
+            int zi = (voxel_index >> (BRICK_SIZE_LOG2 * 2)) & ((1 << BRICK_SIZE_LOG2) - 1);
 
             vec3 pos;
-            pos.x = (xi + brick_xi * VOXEL_BRICK_SIZE + chunk_xi * VOXEL_CHUNK_SIZE) * (1 << level_i);
-            pos.y = (yi + brick_yi * VOXEL_BRICK_SIZE + chunk_yi * VOXEL_CHUNK_SIZE) * (1 << level_i);
-            pos.z = (zi + brick_zi * VOXEL_BRICK_SIZE + chunk_zi * VOXEL_CHUNK_SIZE) * (1 << level_i);
+            pos.x = (xi + brick_xi * BRICK_SIZE + chunk_xi * CHUNK_SIZE_VOXELS) * (1 << level_i);
+            pos.y = (yi + brick_yi * BRICK_SIZE + chunk_yi * CHUNK_SIZE_VOXELS) * (1 << level_i);
+            pos.z = (zi + brick_zi * BRICK_SIZE + chunk_zi * CHUNK_SIZE_VOXELS) * (1 << level_i);
 
             pos.x = (pos.x + 0.5f) * VOXEL_SIZE;
             pos.y = (pos.y + 0.5f) * VOXEL_SIZE;
@@ -99,14 +99,16 @@ export void generate_attributes(
             DensityNrm dn = voxel_value(random_ctx, noise_settings, pos);
             Voxel voxel;
             if (dot(dn.nrm, UP) > 0.25f && dn.val > -2.5f) {
-                voxel.col = GRASS_COL / 255.0f;
+                voxel.albedo = GRASS_COL / 255.0f;
             } else if (dot(dn.nrm, UP) > 0.0f && dn.val > -7.5f) {
-                voxel.col = DIRT_COL / 255.0f;
+                voxel.albedo = DIRT_COL / 255.0f;
             } else {
-                voxel.col = STONE_COL / 255.0f;
+                voxel.albedo = STONE_COL / 255.0f;
             }
             ivec3 o = {xi, yi, zi};
-            voxel.nrm = dither_nrm(random_ctx, dn.nrm, o);
+            voxel.normal = dither_nrm(random_ctx, dn.nrm, o);
+            voxel.roughness = 0.5;
+            voxel.material_type = 0;
             PackedVoxel packed_voxel = pack_voxel(voxel);
             packed_voxels[voxel_index] = packed_voxel.data;
             // densities[voxel_index] = dn.val;

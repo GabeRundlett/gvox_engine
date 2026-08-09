@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.21)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/deps.cmake")
 
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+    # Visual Studio doesn't support building ISPC...
+    set(USE_ISPC 0)
+else()
+    set(USE_ISPC 1)
+endif()
+if (USE_ISPC)
+    include("${CMAKE_CURRENT_LIST_DIR}/cmake/ispc.cmake")
+endif()
+
 project(gvox_engine VERSION 0.1.15)
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
@@ -10,7 +20,6 @@ add_executable(${PROJECT_NAME}
     "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
     "src/voxels/voxel_world.cpp"
-    "src/voxels/generation/generation.cpp"
 
     "src/application/ui.cpp"
     "src/application/audio.cpp"
@@ -25,10 +34,31 @@ add_executable(${PROJECT_NAME}
     "src/renderer/kajiya/ircache.cpp"
     "src/renderer/render_voxel_object.cpp"
     "src/renderer/render_scene.cpp"
-    # "src/voxels/worldgen.ispc"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-# include("${CMAKE_CURRENT_LIST_DIR}/cmake/ispc.cmake")
+
+add_library(${PROJECT_NAME}_generation
+    "src/voxels/generation/generation.cpp"
+)
+target_compile_features(${PROJECT_NAME}_generation PUBLIC cxx_std_20)
+
+target_link_libraries(${PROJECT_NAME}_generation PRIVATE
+    glm::glm
+)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ISPC=${USE_ISPC})
+if (USE_ISPC)
+    target_sources(${PROJECT_NAME}_generation PRIVATE
+        "src/voxels/generation/generation.ispc"
+    )
+    enable_ispc(${PROJECT_NAME}_generation)
+endif()
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    COMMAND_EXPAND_LISTS
+)
+
 
 find_package(imgui CONFIG REQUIRED)
 
@@ -69,6 +99,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     fsr2::ffx_fsr2_api
     fsr2::ffx_fsr2_api_vk
     blue_noise_sampler::blue_noise_sampler
+    ${PROJECT_NAME}_generation
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     "src"

@@ -45,3 +45,9 @@ static inline void generate_attributes(
     generate_attributes_cpp(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level_i, packed_voxels, noise_settings, random_ctx);
 #endif
 }
+
+float generate_upwards(
+    int brick_xi, int brick_yi, int brick_zi,
+    int chunk_xi, int chunk_yi, int chunk_zi,
+    int level_i,
+    NoiseSettings const *noise_settings, RandomCtx random_ctx);

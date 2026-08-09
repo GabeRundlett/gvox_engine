@@ -229,7 +229,11 @@ static float sRGB_OETF(float a) {
     return 1.055f * pow(a, .4166666666666667f) - .055f;
 }
 static vec3 sRGB_OETF(vec3 a) {
-    return vec3(sRGB_OETF(a.r), sRGB_OETF(a.g), sRGB_OETF(a.b));
+    vec3 result;
+    result.r = sRGB_OETF(a.r);
+    result.g = sRGB_OETF(a.g);
+    result.b = sRGB_OETF(a.b);
+    return result;
 }
 static float sRGB_EOTF(float a) {
     if (.04045f < a)
@@ -237,7 +241,11 @@ static float sRGB_EOTF(float a) {
     return a / 12.92f;
 }
 static vec3 sRGB_EOTF(vec3 a) {
-    return vec3(sRGB_EOTF(a.r), sRGB_EOTF(a.g), sRGB_EOTF(a.b));
+    vec3 result;
+    result.r = sRGB_EOTF(a.r);
+    result.g = sRGB_EOTF(a.g);
+    result.b = sRGB_EOTF(a.b);
+    return result;
 }
 
 static uint pack_snorm_2x04(vec2 v) { PACK_SNORM_X2(v, 4); }
@@ -268,19 +276,24 @@ struct PackedVoxel {
 };
 
 static PackedVoxel pack_voxel(Voxel v) {
-    return PackedVoxel(
-        (pack_rgb565(sRGB_OETF(vec3(v.albedo.x, v.albedo.y, v.albedo.z)))) |
-        (pack_octahedral_08(vec3(v.normal.x, v.normal.y, v.normal.z)) << 16) |
+    vec3 corrected = sRGB_OETF(v.albedo);
+    PackedVoxel result;
+    result.data =
+        (pack_rgb565(corrected)) |
+        (pack_octahedral_08(v.normal) << 16) |
         (PACK_UNORM(sqrt(v.roughness), 4) << 24) |
-        (v.material_type & 0xf) << 28);
+        (v.material_type & 0xf) << 28;
+    return result;
 }
 static Voxel unpack_voxel(PackedVoxel v) {
-    vec3 col = sRGB_EOTF(unpack_rgb565(uint(v.data >> 0)));
-    vec3 nrm = unpack_octahedral_08(uint(v.data >> 16));
-    float roughness = UNPACK_UNORM((v.data >> 24) & 0xf, 4);
-    roughness = roughness * roughness;
-    uint material_type = uint(v.data >> 28) & 0xf;
-    return Voxel(vec3(col.x, col.y, col.z), vec3(nrm.x, nrm.y, nrm.z), roughness, material_type);
+    Voxel result;
+    result.albedo = unpack_rgb565(v.data >> 0);
+    result.albedo = sRGB_EOTF(result.albedo);
+    result.normal = unpack_octahedral_08(v.data >> 16);
+    result.roughness = UNPACK_UNORM((v.data >> 24) & 0xf, 4);
+    result.roughness = result.roughness * result.roughness;
+    result.material_type = (v.data >> 28) & 0xf;
+    return result;
 }
 
 // static PackedVoxel pack_voxel(Voxel v) {
