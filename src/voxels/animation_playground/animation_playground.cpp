@@ -5,11 +5,14 @@
 #include "renderer/render_scene.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "renderer/renderer.hpp"
+#include "voxels/voxel.inl"
 #include "voxels/voxel_object.hpp"
 
+#include <chrono>
 #include <imgui.h>
 #include <cstring>
 #include <array>
+#include <iostream>
 
 namespace {
     void destroy_frame(GpuContext &gpu_context, VoxelObject *frame) {
@@ -74,6 +77,9 @@ void AnimationPlayground::regenerate(float time) {
         return;
     }
 
+    using Clock = std::chrono::high_resolution_clock;
+    auto t0 = Clock::now();
+
     auto &device = gpu_context.device;
 
     auto const bricks_per_frame = static_cast<uint32_t>(grid_dims_bricks.x * grid_dims_bricks.y * grid_dims_bricks.z);
@@ -93,7 +99,7 @@ void AnimationPlayground::regenerate(float time) {
         auto task_bricks_readback_buffer = daxa::ExternalTaskBuffer({.buffer = bricks_readback_buffer, .name = "task_bricks_readback_buffer"});
         auto task_brick_attribs_readback_buffer = daxa::ExternalTaskBuffer({.buffer = brick_attribs_readback_buffer, .name = "task_brick_attribs_readback_buffer"});
 
-        auto task_graph = daxa::TaskGraph({.device = device, .name = "animation playground regenerate"});
+        auto task_graph = daxa::TaskGraph({.device = device, .staging_memory_pool_size = 0, .name = "animation playground regenerate"});
         task_graph.register_buffer(task_bricks_buffer);
         task_graph.register_buffer(task_brick_attribs_buffer);
         task_graph.register_buffer(task_bricks_readback_buffer);
@@ -152,6 +158,7 @@ void AnimationPlayground::regenerate(float time) {
     }
 
     device.wait_idle();
+    auto t1 = Clock::now();
 
     auto const *bricks_host = device.buffer_host_address_as<BrickPrimitive>(bricks_readback_buffer).value();
     auto const *attribs_host = device.buffer_host_address_as<VoxelShadingAttribBrick>(brick_attribs_readback_buffer).value();
@@ -161,6 +168,8 @@ void AnimationPlayground::regenerate(float time) {
     }
     frames.clear();
     frames.resize(static_cast<size_t>(frame_count), nullptr);
+
+    total_brick_count = 0;
 
     for (int frame_i = 0; frame_i < frame_count; ++frame_i) {
         auto *voxel_object = new VoxelObject();
@@ -187,6 +196,8 @@ void AnimationPlayground::regenerate(float time) {
                     if (!any_solid) {
                         continue;
                     }
+
+                    total_brick_count++;
 
                     auto *brick = new VoxelBrick();
                     brick->brick_i = brick_pos;
@@ -226,6 +237,12 @@ void AnimationPlayground::regenerate(float time) {
 
         frames[static_cast<size_t>(frame_i)] = voxel_object;
     }
+
+    auto t2 = Clock::now();
+
+    gen_time_ms = std::chrono::duration<float>(t1 - t0).count() * 1000.0f;
+    new_voxel_time_ms = std::chrono::duration<float>(t2 - t1).count() * 1000.0f;
+    total_time_ms = std::chrono::duration<float>(t2 - t0).count() * 1000.0f;
 }
 
 void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) {
@@ -238,11 +255,11 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
     }
 
     if (!frames.empty()) {
-        auto const current_frame_int = ((static_cast<int>(current_frame_f) % frame_count) + frame_count) % frame_count;
+        auto const current_frame_int = static_cast<int>(current_frame_f) % frames.size();
         auto voxel_object = frames[static_cast<size_t>(current_frame_int)];
 
         draw_voxel_object(voxel_object, playground_pos, VOXEL_SIZE, glm::vec3(1.0f));
-        auto const grid_size = voxel_object->brick_max - voxel_object->brick_min + glm::ivec3(1, 1, 1);
+        auto const grid_size = grid_dims_bricks;
 
         Box box;
         box.p0_x = playground_pos.x;
@@ -260,15 +277,11 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
 
 void AnimationPlayground::ui() {
     if (ImGui::Begin("Animation Playground")) {
-        if (ImGui::SliderInt("Frame Count", &frame_count, 1, 64)) {
-            dirty = true;
-        }
-        if (ImGui::SliderInt3("Grid Size (bricks)", &grid_dims_bricks.x, 1, 16)) {
-            dirty = true;
-        }
-        if (ImGui::DragFloat3("Position", &playground_pos.x)) {
-            dirty = true;
-        }
+        ImGui::SliderInt("Frame Count", &frame_count, 1, 64);
+        dirty |= ImGui::IsItemDeactivated();
+        ImGui::SliderInt3("Grid Size (bricks)", &grid_dims_bricks.x, 1, 32);
+        dirty |= ImGui::IsItemDeactivated();
+        ImGui::DragFloat3("Position", &playground_pos.x);
 
         ImGui::Checkbox("Playing", &playing);
         ImGui::SliderFloat("Speed (fps)", &playback_fps, 0.0f, 60.0f);
@@ -285,6 +298,14 @@ void AnimationPlayground::ui() {
         if (ImGui::Button("Regenerate")) {
             dirty = true;
         }
+
+        ImGui::SeparatorText("Time to generate");
+        ImGui::Text("%.2fms total", total_time_ms);
+        ImGui::Text("%.2fms GPU gen and readback", gen_time_ms);
+        ImGui::Text("%.2fms create new voxel objects", new_voxel_time_ms);
+        ImGui::SeparatorText("Memory");
+        ImGui::Text("%llu total bricks", total_brick_count);
+        ImGui::Text("%.2f MB", float(total_brick_count) * (sizeof(VoxelBrick) + sizeof(VoxelShadingAttribBrick) + sizeof(Aabb) + sizeof(uint32_t)) / 1000000);
     }
     ImGui::End();
 }

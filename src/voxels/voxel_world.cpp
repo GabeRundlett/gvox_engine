@@ -46,11 +46,11 @@ enum GenerationStage {
 
 using Clock = std::chrono::steady_clock;
 
-constexpr int32_t CHUNK_NX = 256 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NY = 256 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NZ = 256 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NX = 512 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NY = 512 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NZ = 512 / CHUNK_SIZE_VOXELS;
 constexpr int32_t CHUNK_LEVELS = 1;
-constexpr int32_t MAX_CHUNKS_PER_FRAME = 4;
+constexpr int32_t MAX_CHUNKS_PER_FRAME = 32;
 
 struct Chunk {
     int generation_stage = 0;

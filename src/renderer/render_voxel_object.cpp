@@ -198,7 +198,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
 
     auto tempTaskGraph = daxa::TaskGraph({
         .device = device,
-        .staging_memory_pool_size = 1u << 20,
+        .staging_memory_pool_size = 0,
         .name = "copy old shading data",
     });
     tempTaskGraph.register_blas(self->scene->buffers.voxel_object_blases);
@@ -207,89 +207,94 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
         daxa::InlineTask::Transfer("upload brick data")
             .writes(self->scene->buffers.voxel_object_bricks)
             .executes([&](daxa::TaskInterface ti) {
-            // upload all voxel data for now
-            auto alloc_info = get_bricks_buffer_info(self->brick_count);
+                // upload all voxel data for now
+                auto alloc_info = get_bricks_buffer_info(self->brick_count);
 
-            auto allocation = ti.allocator->allocate(alloc_info.mTotalSize);
-            assert(allocation.has_value());
+                auto staging_buffer = device.create_buffer({
+                    .size = alloc_info.mTotalSize,
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .name = "staging_mipmapping_gpu_input_buffer",
+                });
+                auto *host_address = device.buffer_host_address(staging_buffer).value();
+                ti.recorder.destroy_buffer_deferred(staging_buffer);
 
-            int brick_index = 0;
-            for (auto brick : src->brick_grid) {
-                if (brick == nullptr)
-                    continue;
-                if (brick->render_attribs == nullptr)
-                    continue;
+                int brick_index = 0;
+                for (auto brick : src->brick_grid) {
+                    if (brick == nullptr)
+                        continue;
+                    if (brick->render_attribs == nullptr)
+                        continue;
 
-                Aabb &aabb = ((Aabb *)((uint8_t *)allocation->host_address + alloc_info.mAabbOffset))[brick_index];
-                BrickPrimitive &primitive = ((BrickPrimitive *)((uint8_t *)allocation->host_address + alloc_info.mPrimitivesOffset))[brick_index];
-                VoxelShadingAttribBrick &render_brick = ((VoxelShadingAttribBrick *)((uint8_t *)allocation->host_address + alloc_info.mShadingOffset))[brick_index];
+                    Aabb &aabb = ((Aabb *)((uint8_t *)host_address + alloc_info.mAabbOffset))[brick_index];
+                    BrickPrimitive &primitive = ((BrickPrimitive *)((uint8_t *)host_address + alloc_info.mPrimitivesOffset))[brick_index];
+                    VoxelShadingAttribBrick &render_brick = ((VoxelShadingAttribBrick *)((uint8_t *)host_address + alloc_info.mShadingOffset))[brick_index];
 
-                auto min = glm::ivec3(brick->voxel_min) + brick->brick_i * BRICK_SIZE;
-                auto max = glm::ivec3(brick->voxel_max) + brick->brick_i * BRICK_SIZE + 1;
-                aabb.min = daxa_f32vec3(min.x, min.y, min.z);
-                aabb.max = daxa_f32vec3(max.x, max.y, max.z);
-                memcpy(primitive.bitmap, brick->bitmask, sizeof(primitive.bitmap));
-                primitive.flags = 0;
-                primitive.offset = daxa_i32vec3(min.x, min.y, min.z);
-                primitive.size_x = max.x - min.x;
-                primitive.size_y = max.y - min.y;
-                primitive.size_z = max.z - min.z;
-                memcpy(&render_brick, brick->render_attribs, sizeof(VoxelShadingAttribBrick));
+                    auto min = glm::ivec3(brick->voxel_min) + brick->brick_i * BRICK_SIZE;
+                    auto max = glm::ivec3(brick->voxel_max) + brick->brick_i * BRICK_SIZE + 1;
+                    aabb.min = daxa_f32vec3(min.x, min.y, min.z);
+                    aabb.max = daxa_f32vec3(max.x, max.y, max.z);
+                    memcpy(primitive.bitmap, brick->bitmask, sizeof(primitive.bitmap));
+                    primitive.flags = 0;
+                    primitive.offset = daxa_i32vec3(min.x, min.y, min.z);
+                    primitive.size_x = max.x - min.x;
+                    primitive.size_y = max.y - min.y;
+                    primitive.size_z = max.z - min.z;
+                    memcpy(&render_brick, brick->render_attribs, sizeof(VoxelShadingAttribBrick));
 
-                ++brick_index;
-            }
+                    ++brick_index;
+                }
 
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = self->bricks_data_buffer,
-                .src_offset = alloc_info.mPrimitivesOffset,
-                .dst_offset = alloc_info.mPrimitivesOffset,
-                .size = alloc_info.mPrimitivesSize,
-            });
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = self->bricks_data_buffer,
-                .src_offset = alloc_info.mShadingOffset,
-                .dst_offset = alloc_info.mShadingOffset,
-                .size = alloc_info.mShadingSize,
-            });
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = self->bricks_data_buffer,
-                .src_offset = alloc_info.mFlagsOffset,
-                .dst_offset = alloc_info.mFlagsOffset,
-                .size = alloc_info.mFlagsSize,
-            });
-            ti.recorder.copy_buffer_to_buffer({
-                .src_buffer = ti.allocator->buffer(),
-                .dst_buffer = self->bricks_data_buffer,
-                .src_offset = alloc_info.mAabbOffset,
-                .dst_offset = alloc_info.mAabbOffset,
-                .size = alloc_info.mAabbSize,
-            });
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = self->bricks_data_buffer,
+                    .src_offset = alloc_info.mPrimitivesOffset,
+                    .dst_offset = alloc_info.mPrimitivesOffset,
+                    .size = alloc_info.mPrimitivesSize,
+                });
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = self->bricks_data_buffer,
+                    .src_offset = alloc_info.mShadingOffset,
+                    .dst_offset = alloc_info.mShadingOffset,
+                    .size = alloc_info.mShadingSize,
+                });
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = self->bricks_data_buffer,
+                    .src_offset = alloc_info.mFlagsOffset,
+                    .dst_offset = alloc_info.mFlagsOffset,
+                    .size = alloc_info.mFlagsSize,
+                });
+                ti.recorder.copy_buffer_to_buffer({
+                    .src_buffer = staging_buffer,
+                    .dst_buffer = self->bricks_data_buffer,
+                    .src_offset = alloc_info.mAabbOffset,
+                    .dst_offset = alloc_info.mAabbOffset,
+                    .size = alloc_info.mAabbSize,
+                });
             }));
     tempTaskGraph.add_task(
         daxa::InlineTask::Transfer("build brick blas")
             .acceleration_structure_build.reads(self->scene->buffers.voxel_object_bricks)
             .acceleration_structure_build.writes(self->scene->buffers.voxel_object_blases)
             .executes([&](daxa::TaskInterface ti) {
-            auto geometry = std::array{
-                daxa::BlasAabbGeometryInfo{
-                    .data = self->brick_aabb_device_address,
-                    .stride = sizeof(Aabb),
-                    .count = self->brick_count,
-                    .flags = daxa::GeometryFlagBits::OPAQUE,
-                },
-            };
-            auto blasBuildInfo = daxa::BlasBuildInfo{
-                .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
-                .dst_blas = self->blas,
-                .geometries = geometry,
-                .scratch_data = ti.device.device_address(self->blas_scratch_buffer).value(),
-            };
-            ti.recorder.build_acceleration_structures({.blas_build_infos = std::span{&blasBuildInfo, 1}});
-            ti.recorder.destroy_buffer_deferred(self->blas_scratch_buffer);
-            self->blas_scratch_buffer = {};
+                auto geometry = std::array{
+                    daxa::BlasAabbGeometryInfo{
+                        .data = self->brick_aabb_device_address,
+                        .stride = sizeof(Aabb),
+                        .count = self->brick_count,
+                        .flags = daxa::GeometryFlagBits::OPAQUE,
+                    },
+                };
+                auto blasBuildInfo = daxa::BlasBuildInfo{
+                    .flags = daxa::AccelerationStructureBuildFlagBits::PREFER_FAST_TRACE,
+                    .dst_blas = self->blas,
+                    .geometries = geometry,
+                    .scratch_data = ti.device.device_address(self->blas_scratch_buffer).value(),
+                };
+                ti.recorder.build_acceleration_structures({.blas_build_infos = std::span{&blasBuildInfo, 1}});
+                ti.recorder.destroy_buffer_deferred(self->blas_scratch_buffer);
+                self->blas_scratch_buffer = {};
             }));
 
     tempTaskGraph.submit({});
@@ -297,7 +302,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
     tempTaskGraph.execute({});
 }
 
-void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale, const glm::vec3& tint) {
+void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale, const glm::vec3 &tint) {
     auto *self = object->render_voxel_object;
     self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject(self->brick_shading_device_address, self->brick_primitives_device_address, {tint.r, tint.g, tint.b}));
     self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
