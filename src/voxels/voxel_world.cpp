@@ -46,8 +46,8 @@ enum GenerationStage {
 
 using Clock = std::chrono::steady_clock;
 
-constexpr int32_t CHUNK_NX = 512 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NY = 512 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NX = 1024 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NY = 1024 / CHUNK_SIZE_VOXELS;
 constexpr int32_t CHUNK_NZ = 512 / CHUNK_SIZE_VOXELS;
 constexpr int32_t CHUNK_LEVELS = 1;
 constexpr int32_t MAX_CHUNKS_PER_FRAME = 32;
@@ -88,9 +88,9 @@ const auto RANDOM_VALUES = []() {
 NoiseSettings noise_settings{
     .persistence = 0.15f,
     .lacunarity = 4.5f,
-    .scale = 0.02f,
-    .amplitude = 40.0f,
-    .octaves = 5,
+    .scale = 0.02f / 4.5f,
+    .amplitude = 40.0f / 0.15f,
+    .octaves = 6,
 };
 
 // auto get_brick_metadata(std::unique_ptr<Chunk> &chunk, auto brick_index) -> BrickMetadata & {
@@ -192,6 +192,24 @@ exit_1:
                     auto &chunk = self->chunks[chunk_index];
                     if (chunk.generation_stage != 2)
                         continue;
+                    if (chunk_xi != CHUNK_NX - 1)
+                        if (self->chunks[get_chunk_index(chunk_xi + 1, chunk_yi, chunk_zi, level_i)].generation_stage < 1)
+                            continue;
+                    if (chunk_xi != -CHUNK_NX)
+                        if (self->chunks[get_chunk_index(chunk_xi - 1, chunk_yi, chunk_zi, level_i)].generation_stage < 1)
+                            continue;
+                    if (chunk_yi != CHUNK_NY - 1)
+                        if (self->chunks[get_chunk_index(chunk_xi, chunk_yi + 1, chunk_zi, level_i)].generation_stage < 1)
+                            continue;
+                    if (chunk_yi != -CHUNK_NY)
+                        if (self->chunks[get_chunk_index(chunk_xi, chunk_yi - 1, chunk_zi, level_i)].generation_stage < 1)
+                            continue;
+                    if (chunk_zi != CHUNK_NZ - 1)
+                        if (self->chunks[get_chunk_index(chunk_xi, chunk_yi, chunk_zi + 1, level_i)].generation_stage < 1)
+                            continue;
+                    if (chunk_zi != -CHUNK_NZ)
+                        if (self->chunks[get_chunk_index(chunk_xi, chunk_yi, chunk_zi - 1, level_i)].generation_stage < 1)
+                            continue;
 
                     auto *user_ptr = new GenChunkArgs{self, chunk_xi, chunk_yi, chunk_zi, level_i};
                     auto task = thread_pool::create_task([](void *user_ptr) { auto const &args = *(GenChunkArgs*)user_ptr; generate_chunk2(args.self, args.chunk_xi, args.chunk_yi, args.chunk_zi, args.level); }, user_ptr);
@@ -362,17 +380,17 @@ void generate_all_chunks(VoxelWorld *self) {
 }
 
 int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
-    if (level > 0 &&
-        chunk_xi >= -CHUNK_NX / 2 && chunk_xi < CHUNK_NX / 2 &&
-        chunk_yi >= -CHUNK_NY / 2 && chunk_yi < CHUNK_NY / 2 &&
-        chunk_zi >= -CHUNK_NZ / 2 && chunk_zi < CHUNK_NZ / 2) {
-        return 0;
-    }
-
     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level);
     auto &chunk = self->chunks[chunk_index];
 
     chunk.generation_stage = 1;
+    if (level > 0 &&
+        chunk_xi >= -CHUNK_NX / 2 && chunk_xi < CHUNK_NX / 2 &&
+        chunk_yi >= -CHUNK_NY / 2 && chunk_yi < CHUNK_NY / 2 &&
+        chunk_zi >= -CHUNK_NZ / 2 && chunk_zi < CHUNK_NZ / 2) {
+        // Skip generating chunks that overlap the lower LOD level
+        return chunk.generation_stage;
+    }
 
     {
         auto p0 = glm::vec3{
@@ -633,11 +651,11 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                                             (uint32_t *)render_attrib_brick->voxels, &noise_settings, RANDOM_VALUES.data());
                         has_render_attribs = true;
 
-                        // if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.01 * (1 << level)) {
-                        //     float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
-                        //     if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
-                        //         chunk.surface_entity_candidates.push_back(brick->brick_i);
-                        // }
+                        if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.01 * (1 << level)) {
+                            float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
+                            if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
+                                chunk.surface_entity_candidates.push_back(brick->brick_i);
+                        }
 
                         {
                             brick->voxel_min = {BRICK_SIZE, BRICK_SIZE, BRICK_SIZE};

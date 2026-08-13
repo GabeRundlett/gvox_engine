@@ -138,7 +138,7 @@ SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float at
     float light_view_angle;
     /* Nonuniform mapping near the horizon to avoid artefacts */
     if (inside_atmosphere) {
-        float beta = asin(atmosphere_bottom / view_height);
+        float beta = asin(clamp(atmosphere_bottom / view_height, -1, 1));
         float zenith_horizon_angle = M_PI - beta;
         if (uv.y < 0.5) {
             float coord = 1.0 - (1.0 - 2.0 * uv.y) * (1.0 - 2.0 * uv.y);
@@ -148,7 +148,7 @@ SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float at
             view_zenith_angle = zenith_horizon_angle + beta * coord;
         }
     } else {
-        float beta = asin(atmosphere_top / view_height);
+        float beta = asin(clamp(atmosphere_top / view_height, -1, 1));
         float zenith_horizon_angle = M_PI - beta;
         float coord = uv.y * uv.y;
         view_zenith_angle = zenith_horizon_angle + beta * coord;
@@ -170,7 +170,7 @@ vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, Sk
     vec2 uv;
 
     if (inside_atmosphere) {
-        float beta = asin(atmosphere_bottom / view_height);
+        float beta = asin(clamp(atmosphere_bottom / view_height, -1, 1));
         float zenith_horizon_angle = M_PI - beta;
         if (!intersects_ground) {
             float coord = params.view_zenith_angle / zenith_horizon_angle;
@@ -182,7 +182,7 @@ vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, Sk
             uv.y = coord;
         }
     } else {
-        float beta = asin(atmosphere_top / view_height);
+        float beta = asin(clamp(atmosphere_top / view_height, -1, 1));
         float zenith_horizon_angle = M_PI - beta;
         float coord = (params.view_zenith_angle - zenith_horizon_angle) / beta;
         coord = safe_sqrt(coord);

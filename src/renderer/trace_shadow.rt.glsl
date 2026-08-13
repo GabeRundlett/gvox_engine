@@ -36,6 +36,9 @@ void main() {
 
     vec3 ray_dir = sample_sun_direction(push.uses.gpu_input, blue_noise, true);
 
+    // vec3 ws_abs = abs(ray_pos);
+    // float level = floor(log2(max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, 512 * VOXEL_SIZE / 2)) / (512 * VOXEL_SIZE / 2)));
+
     uint hit = 0;
     if (depth != 0.0 && dot(nrm, ray_dir) > 0) {
         const uint ray_flags = gl_RayFlagsNoneEXT;
@@ -43,7 +46,7 @@ void main() {
         const uint sbt_record_offset = 0;
         const uint sbt_record_stride = 0;
         const uint miss_index = 0;
-        const float t_min = 0.0001;
+        const float t_min = 0.0001; // VOXEL_SIZE * pow(2, level) * 1.5;
         const float t_max = 10000.0;
 
         traceRayEXT(

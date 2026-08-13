@@ -50,6 +50,10 @@ void main() {
     // voxel.material_type = 1;
     // voxel.roughness = 0.1;
 
+    // vec3 ws_abs = abs(world_pos);
+    // float level = floor(log2(max(max(ws_abs.x, ws_abs.y), max(ws_abs.z, 256 * VOXEL_SIZE)) / (256 * VOXEL_SIZE)));
+    // voxel.albedo = clamp(level / 4, 0, 1).xxx;
+
 #if PER_VOXEL_NORMALS
     vec3 ws_nrm = voxel.normal;
 #else

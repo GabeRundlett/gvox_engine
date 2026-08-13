@@ -37,7 +37,7 @@ void agxLook(inout vec3 color) {
     const vec3 slope = vec3(1.0);
     const vec3 power = vec3(1.0);
     const float saturation = 1.0;
-    float luma = luminance(color);
+    float luma = max(luminance(color), 0);
     color = pow(color * slope, power);
     color = max(luma + saturation * (color - luma), vec3(0.0));
 }

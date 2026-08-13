@@ -27,7 +27,7 @@ vec2 hash2(vec2 p) {
 
 vec3 toSpherical(vec3 p) {
     float r = length(p);
-    float t = acos(p.z / r);
+    float t = acos(clamp(p.z / r, -1, 1));
     float ph = atan(p.y, p.x);
     return vec3(r, t, ph);
 }

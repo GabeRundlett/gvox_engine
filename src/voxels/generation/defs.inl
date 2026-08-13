@@ -2,7 +2,7 @@
 
 #include "../defs.inl"
 
-#define CHUNK_SIZE_VOXELS 64
+#define CHUNK_SIZE_VOXELS 128
 #define CHUNK_SIZE_BRICKS (CHUNK_SIZE_VOXELS / BRICK_SIZE)
 
 #define RANDOM_BUFFER_SIZE_LOG2 8
