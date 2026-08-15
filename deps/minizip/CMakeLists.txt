@@ -10,6 +10,7 @@ if(NOT TARGET zlibstatic)
         GIT_TAG v1.3.1
     )
     FetchContent_MakeAvailable(zlib)
+    target_compile_options(zlibstatic PRIVATE -Wno-deprecated-declarations)
 endif()
 
 add_library(minizip STATIC
@@ -20,6 +21,8 @@ add_library(minizip STATIC
 target_compile_definitions(minizip PRIVATE NOCRYPT NOUNCRYPT)
 target_include_directories(minizip PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_include_directories(minizip SYSTEM PUBLIC
     "${zlib_SOURCE_DIR}"
     "${zlib_BINARY_DIR}"
 )

@@ -352,7 +352,7 @@ void VoxelApp::record_tasks() {
     gpu_context.frame_task_graph.add_task(
         daxa::InlineTask::Transfer("GpuInputUploadTransferTask")
             .writes(gpu_context.task_input_buffer.view())
-            .executes([=](daxa::TaskInterface ti) {
+            .executes([this](daxa::TaskInterface ti) {
                 auto staging_input_buffer = ti.device.create_buffer({
                     .size = sizeof(GpuInput),
                     .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
