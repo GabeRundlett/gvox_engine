@@ -12,7 +12,7 @@ struct R32D32BlitPush {
 
 #if defined(__cplusplus)
 
-#include <utilities/gpu_context.hpp>
+#include <renderer/gpu_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 
 namespace {

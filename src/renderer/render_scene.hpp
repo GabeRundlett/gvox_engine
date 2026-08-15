@@ -9,7 +9,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
 
 #if RENDERER_INTERNAL
 
-#include <utilities/gpu_context.hpp>
+#include <renderer/gpu_context.hpp>
 #include <voxels/voxel.inl>
 #include <base/vec.hpp>
 

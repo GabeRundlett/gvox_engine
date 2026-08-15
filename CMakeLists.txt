@@ -37,10 +37,12 @@ add_executable(${PROJECT_NAME}
     "src/application/audio.cpp"
     "src/application/settings.cpp"
     "src/application/player.cpp"
+
     "src/utilities/math.cpp"
     "src/utilities/debug.cpp"
-    "src/utilities/gpu_context.cpp"
     "src/utilities/thread_pool.cpp"
+
+    "src/renderer/gpu_context.cpp"
     "src/renderer/renderer.cpp"
     "src/renderer/pipeline_manager.cpp"
     "src/renderer/fsr.cpp"

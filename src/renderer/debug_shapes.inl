@@ -29,7 +29,7 @@ struct DebugPointsPush {
 #if defined(__cplusplus)
 
 #include <renderer/renderer.hpp>
-#include <utilities/gpu_context.hpp>
+#include <renderer/gpu_context.hpp>
 #include <base/vec.hpp>
 
 struct DebugShapeRenderer {

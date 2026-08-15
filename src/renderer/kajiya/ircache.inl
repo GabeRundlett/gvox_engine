@@ -232,7 +232,7 @@ struct SumUpIrradianceComputePush {
 #if defined(__cplusplus)
 
 #include <glm/glm.hpp>
-#include <utilities/ping_pong_resource.hpp>
+#include <renderer/ping_pong_resource.hpp>
 
 struct IrcacheIrradiancePendingSummation {
     daxa::TaskBufferView indirect_args_buf;

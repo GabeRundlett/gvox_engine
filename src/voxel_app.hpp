@@ -10,7 +10,7 @@
 // #include <voxels/voxel_world.inl>
 #include <daxa/utils/imgui.hpp>
 
-#include <utilities/gpu_context.hpp>
+#include <renderer/gpu_context.hpp>
 
 #include <chrono>
 

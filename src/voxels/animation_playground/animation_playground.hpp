@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utilities/gpu_context.hpp>
+#include <renderer/gpu_context.hpp>
 #include <glm/vec3.hpp>
 #include <base/vec.hpp>
 
