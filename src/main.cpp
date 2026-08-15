@@ -1,5 +1,6 @@
 #include "voxel_app.hpp"
 #include <filesystem>
+#include <base/profiler.hpp>
 
 #include <utilities/debug.hpp>
 
@@ -20,6 +21,8 @@ void search_for_path_to_fix_working_directory(std::span<std::filesystem::path co
 }
 
 auto main() -> int {
+    profiler_init();
+
     search_for_path_to_fix_working_directory(std::array{
         std::filesystem::path{"assets"},
     });
@@ -31,4 +34,6 @@ auto main() -> int {
 
     auto app = VoxelApp{};
     app.run();
+
+    profiler_shutdown();
 }

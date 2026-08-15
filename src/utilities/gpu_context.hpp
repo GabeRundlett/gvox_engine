@@ -6,6 +6,7 @@
 #include <base/hash_map.hpp>
 #include <base/str.hpp>
 #include <base/vec.hpp>
+#include <base/profiler.hpp>
 #include "gpu_task.hpp"
 #include <any>
 
@@ -121,6 +122,8 @@ struct GpuContext {
     // stable pointer the task will dereference.
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
     auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, Str const &shader_id) -> PipelineT * {
+        PROFILE_FUNC();
+
         auto push_constant_size = static_cast<uint32_t>(::push_constant_size<PushT>());
         if constexpr (std::is_same_v<PipelineT, daxa::ComputePipeline>) {
             if (auto **existing = compute_pipelines.get(shader_id)) {

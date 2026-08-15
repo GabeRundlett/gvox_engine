@@ -10,25 +10,34 @@
 #include <stb_image.h>
 
 #include <base/format.hpp>
+#include <base/profiler.hpp>
 
 #include <random>
 
 GpuContext::GpuContext() {
-    daxa_instance = daxa::create_instance({});
-    auto required_implicit =
-        daxa::ImplicitFeatureFlagBits::RAY_TRACING_PIPELINE |
-        daxa::ImplicitFeatureFlagBits::SHADER_CLOCK |
-        daxa::ImplicitFeatureFlagBits::SHADER_ATOMIC_INT64 |
-        daxa::ImplicitFeatureFlagBits::SHADER_INT8 |
-        daxa::ImplicitFeatureFlagBits::SHADER_INT16 |
-        daxa::ImplicitFeatureFlagBits::SWAPCHAIN;
+    PROFILE_FUNC();
 
-    auto device_info = daxa::DeviceInfo2{};
-    device_info.name = "gvox_engine";
-    device_info.max_allowed_buffers = 150'000;
-    device_info.explicit_features = daxa::ExplicitFeatureFlagBits::ROBUSTNESS_2;
-    device_info = daxa_instance.choose_device(required_implicit, device_info);
-    device = daxa_instance.create_device_2(device_info);
+    {
+        PROFILE_SCOPE("daxa::create_instance");
+        daxa_instance = daxa::create_instance({});
+    }
+    {
+        PROFILE_SCOPE("daxa_instance.create_device_2");
+        auto required_implicit =
+            daxa::ImplicitFeatureFlagBits::RAY_TRACING_PIPELINE |
+            daxa::ImplicitFeatureFlagBits::SHADER_CLOCK |
+            daxa::ImplicitFeatureFlagBits::SHADER_ATOMIC_INT64 |
+            daxa::ImplicitFeatureFlagBits::SHADER_INT8 |
+            daxa::ImplicitFeatureFlagBits::SHADER_INT16 |
+            daxa::ImplicitFeatureFlagBits::SWAPCHAIN;
+
+        auto device_info = daxa::DeviceInfo2{};
+        device_info.name = "gvox_engine";
+        device_info.max_allowed_buffers = 150'000;
+        device_info.explicit_features = daxa::ExplicitFeatureFlagBits::ROBUSTNESS_2;
+        device_info = daxa_instance.choose_device(required_implicit, device_info);
+        device = daxa_instance.create_device_2(device_info);
+    }
 
     // IMPORTANT: these must be the very first sampler / image resources created
     // on this device, in exactly this order. src/renderer/globals.glsl hard-codes
@@ -113,6 +122,8 @@ GpuContext::GpuContext() {
     task_blue_noise_vec2_image.set_image(blue_noise_vec2_image);
 
     {
+        PROFILE_SCOPE("load and upload blue noise");
+
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
             .name = "temp_task_graph",
@@ -178,6 +189,7 @@ GpuContext::GpuContext() {
     }
 
     {
+        PROFILE_SCOPE("load and upload debug image");
         daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
             .device = device,
             .name = "temp_task_graph",
@@ -379,6 +391,7 @@ GpuContext::~GpuContext() {
 }
 
 void GpuContext::create_swapchain(daxa::SwapchainInfo const &info) {
+    PROFILE_FUNC();
     swapchain = device.create_swapchain(info);
 }
 
@@ -400,6 +413,8 @@ void GpuContext::use_resources() {
 }
 
 void GpuContext::update_seeded_value_noise(uint64_t seed) {
+    PROFILE_FUNC();
+
     daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
         .device = device,
         .name = "temp_task_graph",

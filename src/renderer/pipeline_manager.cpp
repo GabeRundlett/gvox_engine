@@ -5,6 +5,7 @@
 #include <base/hash_map.hpp>
 #include <base/log.hpp>
 #include <base/path.hpp>
+#include <base/profiler.hpp>
 #include <utilities/thread_pool.hpp>
 
 #include <atomic>
@@ -283,6 +284,7 @@ static void save_spirv_cache(ShaderCompileInfoAndResult &info_and_result, uint64
 }
 
 static auto load_spirv_cache(ShaderCompileInfoAndResult &info_and_result, uint64_t hash) -> bool {
+    PROFILE_FUNC();
     auto &info = info_and_result.info;
     auto &result = info_and_result.spirv_binary;
     auto &result_deps = info_and_result.dependency_info;
@@ -420,6 +422,7 @@ static void process_include(ShaderDependencyInfo *deps, Str const &resolved_path
 }
 
 static void compile_shader(ShaderCompileInfoAndResult &info_and_result, uint64_t hash, bool &out_had_error, PipelineManager *self) {
+    PROFILE_FUNC();
     if (load_spirv_cache(info_and_result, hash)) {
         self->last_cache_hits.fetch_add(1);
         return;
@@ -663,6 +666,7 @@ struct CreateAllState {
 };
 
 static void create_compute_pipeline(PipelineManager *self, daxa::Device &device, ComputePipelineCompileInfo &info) {
+    PROFILE_FUNC();
     auto ok = true;
     auto hash = hash_shader_info(ShaderCompileInfo{info.source_path, info.entry_point, info.defines}, SHADER_STAGE_COMPUTE);
     auto shader_info = shader_info_from_hash(self, hash, ok);
@@ -681,6 +685,7 @@ static void create_compute_pipeline(PipelineManager *self, daxa::Device &device,
 }
 
 static void create_raster_pipeline(PipelineManager *self, daxa::Device &device, RasterPipelineCompileInfo &info) {
+    PROFILE_FUNC();
     auto ok = true;
     auto mesh_info = daxa::Optional<daxa::ShaderInfo>{};
     if (!info.mesh_info.source_path.empty()) {
@@ -711,6 +716,7 @@ static void create_raster_pipeline(PipelineManager *self, daxa::Device &device, 
 }
 
 static void create_ray_tracing_pipeline(PipelineManager *self, daxa::Device &device, RayTracingPipelineCompileInfo &info) {
+    PROFILE_FUNC();
     auto ok = true;
     auto ray_gen = all_shader_infos(self, info.ray_gen_infos, SHADER_STAGE_RAY_GEN, ok);
     auto intersect = all_shader_infos(self, info.intersection_infos, SHADER_STAGE_INTERSECT, ok);
@@ -737,6 +743,7 @@ static void create_ray_tracing_pipeline(PipelineManager *self, daxa::Device &dev
 }
 
 void create_all_pipelines(PipelineManager *self, daxa::Device &device) {
+    PROFILE_FUNC();
     // NOTE: pipeline creation is not parallelised (unlike the shader compiles
     // above, which dominate). daxa::Device::create_*_pipeline is internally
     // synchronized, but keeping this serial keeps error reporting readable.

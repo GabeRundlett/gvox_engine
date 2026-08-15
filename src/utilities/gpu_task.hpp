@@ -28,6 +28,7 @@ struct Task : TaskHeadT {
     PipelineT *pipeline{};
     daxa::TaskGraph *task_graph_ptr = nullptr;
     static void callback(daxa::TaskInterface const &ti, Task task) {
+        PROFILE_SCOPE(TaskHeadT::NAME);
         auto push = PushT{};
         if (task.pipeline == nullptr || !task.pipeline->is_valid()) {
             return;
@@ -77,6 +78,7 @@ struct Task<TaskHeadT, PushT, InfoT, RayTracingPipelineAndSbt> : TaskHeadT {
     RayTracingPipelineAndSbt *pipeline{};
     daxa::TaskGraph *task_graph_ptr = nullptr;
     static void callback(daxa::TaskInterface const &ti, Task task) {
+        PROFILE_SCOPE(TaskHeadT::NAME);
         auto push = PushT{};
         if (task.pipeline == nullptr || !task.pipeline->is_valid()) {
             return;
@@ -103,6 +105,7 @@ struct Task<TaskHeadT, PushT, InfoT, daxa::RasterPipeline> : TaskHeadT {
     daxa::RasterPipeline *pipeline{};
     daxa::TaskGraph *task_graph_ptr = nullptr;
     static void callback(daxa::TaskInterface const &ti, Task task) {
+        PROFILE_SCOPE(TaskHeadT::NAME);
         auto push = PushT{};
         if (task.pipeline == nullptr || !task.pipeline->is_valid()) {
             return;

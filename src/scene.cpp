@@ -8,6 +8,7 @@
 #include "voxels/pack_unpack.inl"
 #include "voxels/voxel_world.hpp"
 #include "voxels/animation_playground/animation_playground.hpp"
+#include <base/profiler.hpp>
 
 glm::vec3 hsv2rgb(glm::vec3 c) {
     glm::vec4 k = glm::vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -68,6 +69,8 @@ float rand_() {
 }
 
 Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
+    PROFILE_FUNC();
+
     render_scene = create_render_scene(gpu_context);
 
     float radii[8] = {0.5f, 0.60f, 0.70f, 0.80f, 0.90f, 0.67f, 0.55f, 0.45f};
@@ -159,7 +162,7 @@ Scene::~Scene() {
     destroy_render_scene(gpu_context, render_scene);
 }
 
-void Scene::update(Renderer& renderer, GpuInput &gpu_input) {
+void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
     render_scene_begin(gpu_context, render_scene);
     for (auto voxel_object : voxel_objects)
         update_render_voxel_object(gpu_context, voxel_object);

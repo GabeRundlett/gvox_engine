@@ -4,6 +4,7 @@
 #include <application/ui.hpp>
 #include <application/audio.hpp>
 #include <application/player.hpp>
+#include <application/profiler_ui.hpp>
 
 #include <renderer/renderer.hpp>
 // #include <voxels/voxel_world.inl>
@@ -19,6 +20,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     Clock::time_point prev_time;
     Clock::time_point prev_phys_update_time = Clock::now();
 
+    ProfilerUi profiler_ui;
     GpuContext gpu_context;
 
     AppUi ui;

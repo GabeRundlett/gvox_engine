@@ -1,4 +1,5 @@
 #include "voxel_app.hpp"
+#include "base/profiler.hpp"
 #include "renderer/pipeline_manager.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "scene.hpp"
@@ -28,6 +29,8 @@ constexpr auto round_frame_dim(daxa_u32vec2 size) {
 }
 
 VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw_window_ptr)} {
+    PROFILE_FUNC();
+
     gpu_context.create_swapchain({
         .native_window_info = AppWindow::get_native_window_info(),
         .surface_format = gpu_context.device.choose_swapchain_surface_format({
@@ -62,9 +65,9 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
 
     scene = new Scene(gpu_context);
     ui.animation_playground = scene->animation_playground;
+    ui.profiler_ui = &profiler_ui;
 
     record_tasks();
-    debug_utils::Console::add_log(format("startup: %f s\n", double(std::chrono::duration<float>(Clock::now() - start).count())).data);
 }
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();
@@ -97,11 +100,16 @@ void VoxelApp::run() {
 }
 
 void VoxelApp::on_update() {
-    auto now = Clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
+    profiler_ui.paused = ui.show_profiler_view;
+    profiler_ui.update();
+    PROFILE_FUNC();
 
-    gpu_context.swapchain_image = gpu_context.swapchain.acquire_next_image();
+    {
+        PROFILE_SCOPE("acquire_next_image");
+        gpu_context.swapchain_image = gpu_context.swapchain.acquire_next_image();
+    }
 
-    auto t0 = Clock::now();
     gpu_input.time = std::chrono::duration<daxa_f32>(now - start).count();
     gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
@@ -163,19 +171,24 @@ void VoxelApp::on_update() {
         calc_vram_usage();
     }
 
-    player_input.frame_dim = gpu_input.frame_dim;
-    player_input.halton_jitter = gpu_input.halton_jitter;
-    player_input.delta_time = gpu_input.delta_time;
-    player_input.sensitivity = ui.settings.mouse_sensitivity;
-    player_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
-    player_input.mouse = gpu_input.mouse;
-    std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
-    player_perframe(player_input, gpu_input.player);
+    if (!ui.show_profiler_view) {
+        player_input.frame_dim = gpu_input.frame_dim;
+        player_input.halton_jitter = gpu_input.halton_jitter;
+        player_input.delta_time = gpu_input.delta_time;
+        player_input.sensitivity = ui.settings.mouse_sensitivity;
+        player_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
+        player_input.mouse = gpu_input.mouse;
+        std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
+        player_perframe(player_input, gpu_input.player);
 
-    scene->update(renderer, gpu_input);
+        scene->update(renderer, gpu_input);
+    }
 
-    gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
-    gpu_context.frame_task_graph.execute({});
+    {
+        PROFILE_SCOPE("frame_task_graph.execute()");
+        gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
+        gpu_context.frame_task_graph.execute({});
+    }
 
     gpu_input.resize_factor = 1.0f;
 
@@ -184,8 +197,7 @@ void VoxelApp::on_update() {
 
     renderer.end_frame(gpu_context.device, gpu_input.delta_time);
 
-    auto t1 = Clock::now();
-    ui.update(gpu_input.delta_time, std::chrono::duration<daxa_f32>(t1 - t0).count());
+    ui.update();
 
     ++gpu_input.frame_index;
     gpu_context.device.collect_garbage();
@@ -243,6 +255,11 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
         ui.toggle_debug();
     }
 
+    if (key_id == GLFW_KEY_F7 && action == GLFW_PRESS) {
+        ui.toggle_profiler_view();
+        set_mouse_capture(!ui.paused);
+    }
+
     if (ui.paused) {
         if (key_id == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS) {
             ui.toggle_console();
@@ -265,24 +282,28 @@ void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
     auto new_render_res_scl = AppSettings::get<settings::SliderFloat>("Graphics", "Render Res Scale").value;
     auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != new_render_res_scl;
     if (!minimized && resized) {
-        gpu_context.swapchain.resize();
-        window_size.x = gpu_context.swapchain.get_surface_extent().x;
-        window_size.y = gpu_context.swapchain.get_surface_extent().y;
-        render_res_scl = new_render_res_scl;
         {
-            // resize render images
-            // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
-            // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
-            gpu_context.device.wait_idle();
-            needs_vram_calc = true;
+            PROFILE_SCOPE("resize");
+            gpu_context.swapchain.resize();
+            window_size.x = gpu_context.swapchain.get_surface_extent().x;
+            window_size.y = gpu_context.swapchain.get_surface_extent().y;
+            render_res_scl = new_render_res_scl;
+            {
+                // resize render images
+                // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
+                // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
+                gpu_context.device.wait_idle();
+                needs_vram_calc = true;
+            }
+            record_tasks();
+            gpu_input.resize_factor = 0.0f;
         }
-        record_tasks();
-        gpu_input.resize_factor = 0.0f;
         on_update();
     }
 }
 void VoxelApp::on_drop(char const *const *filepaths, int filepath_count) {
-    if (filepath_count <= 0) return;
+    if (filepath_count <= 0)
+        return;
     ui.gvox_model_path = filepaths[0];
     ui.should_upload_gvox_model = true;
 }
@@ -297,6 +318,7 @@ void VoxelApp::run_startup() {
 #define GVOX_ENGINE_INSTALL false
 
 void VoxelApp::record_tasks() {
+    PROFILE_FUNC();
     ui.should_record_task_graph = false;
     gpu_context.task_states.clear();
     gpu_context.task_states.reserve(500);

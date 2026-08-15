@@ -2,6 +2,7 @@
 
 #include <bit>
 #include <base/format.hpp>
+#include <base/profiler.hpp>
 
 #include <application/settings.hpp>
 #include <utilities/debug.hpp>
@@ -18,6 +19,7 @@ void player_fix_chunk_offset(Player &PLAYER) {
 }
 
 void player_startup(Player &PLAYER) {
+    PROFILE_FUNC();
     // if (((PLAYER.flags >> 0) & 0x1) != 0) {
     //     return;
     // }

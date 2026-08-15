@@ -7,6 +7,8 @@
 #define RENDERER_INTERNAL 1
 #include "render_scene.hpp"
 
+#include <base/profiler.hpp>
+
 struct RenderVoxelObject {
     daxa::BlasId blas{};
     daxa::BufferId blas_buffer{};
@@ -85,6 +87,7 @@ namespace {
     static daxa::AccelerationStructureBuildSizesInfo cachedBlasBuildSizeInfo;
 
     inline void CreateBlas(daxa::Device &device, RenderVoxelObject *self, std::string name) {
+        PROFILE_FUNC();
         uint32_t aabbCount = self->brick_count;
 
         if (device.is_id_valid(self->blas))
@@ -141,6 +144,7 @@ namespace {
     }
 
     void resize_buffers(GpuContext &gpu_context, RenderVoxelObject *self) {
+        PROFILE_FUNC();
         auto &device = gpu_context.device;
         auto brick_count = self->brick_count;
 
@@ -176,6 +180,7 @@ namespace {
 } // namespace
 
 void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src) {
+    PROFILE_FUNC();
     auto self = src->render_voxel_object;
     if (!src->render_dirty)
         return;

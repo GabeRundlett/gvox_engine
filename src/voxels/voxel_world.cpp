@@ -11,7 +11,7 @@
 #include <utilities/thread_pool.hpp>
 // #include <utilities/ispc_instrument.hpp>
 #include <utilities/debug.hpp>
-
+#include <base/profiler.hpp>
 
 #include <array>
 #include <vector>
@@ -45,9 +45,9 @@ enum GenerationStage {
 
 using Clock = std::chrono::steady_clock;
 
-constexpr int32_t CHUNK_NX = 1024 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NY = 1024 / CHUNK_SIZE_VOXELS;
-constexpr int32_t CHUNK_NZ = 512 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NX = 256 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NY = 256 / CHUNK_SIZE_VOXELS;
+constexpr int32_t CHUNK_NZ = 256 / CHUNK_SIZE_VOXELS;
 constexpr int32_t CHUNK_LEVELS = 1;
 constexpr int32_t MAX_CHUNKS_PER_FRAME = 32;
 
@@ -144,6 +144,7 @@ static glm::vec3 hsv2rgb(glm::vec3 c) {
 }
 
 void update(struct GpuContext &gpu_context, Renderer &renderer, GpuInput &gpu_input, VoxelWorld *self) {
+    PROFILE_FUNC();
     std::vector<std::pair<thread_pool::Task, void *>> tasks;
     tasks.reserve(MAX_CHUNKS_PER_FRAME);
 
@@ -379,6 +380,7 @@ void generate_all_chunks(VoxelWorld *self) {
 }
 
 int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
+    PROFILE_FUNC();
     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level);
     auto &chunk = self->chunks[chunk_index];
 
@@ -415,6 +417,7 @@ int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi
 }
 
 void generate_chunk(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
+    PROFILE_FUNC();
     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level);
     auto &chunk = self->chunks[chunk_index];
 
@@ -469,6 +472,7 @@ void generate_chunk(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_
 // };
 
 void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level, bool update) {
+    PROFILE_FUNC();
     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level);
     auto &chunk = self->chunks[chunk_index];
     if (chunk.voxel_object == nullptr) {

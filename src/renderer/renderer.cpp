@@ -14,6 +14,8 @@
 #define RENDERER_INTERNAL 1
 #include "render_scene.hpp"
 
+#include <base/profiler.hpp>
+
 struct RendererImpl {
     GbufferRenderer gbuffer_renderer;
     KajiyaRenderer kajiya_renderer;
@@ -58,6 +60,7 @@ Renderer::Renderer() : impl{new RendererImpl()} {
 Renderer::~Renderer() { delete impl; }
 
 void Renderer::begin_frame(GpuInput &gpu_input) {
+    PROFILE_FUNC();
     auto &self = *impl;
 
     gpu_input.sky_settings = get_sky_settings(gpu_input.time);
@@ -99,6 +102,7 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
 }
 
 void Renderer::end_frame(daxa::Device &device, float dt) {
+    PROFILE_FUNC();
     auto &self = *impl;
     self.gbuffer_renderer.next_frame();
     auto auto_exposure_settings = AutoExposureSettings{
@@ -111,6 +115,7 @@ void Renderer::end_frame(daxa::Device &device, float dt) {
 }
 
 auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView {
+    PROFILE_FUNC();
     auto &self = *impl;
     auto &voxel_buffers = scene->buffers;
 

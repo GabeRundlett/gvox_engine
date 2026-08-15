@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME}
     "src/base/file.cpp"
     "src/base/path.cpp"
     "src/base/log.cpp"
+    "src/base/profiler.cpp"
 
     "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
@@ -32,6 +33,7 @@ add_executable(${PROJECT_NAME}
     "src/voxels/animation_playground/animation_playground.cpp"
 
     "src/application/ui.cpp"
+    "src/application/profiler_ui.cpp"
     "src/application/audio.cpp"
     "src/application/settings.cpp"
     "src/application/player.cpp"

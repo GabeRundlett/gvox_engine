@@ -2,6 +2,7 @@
 
 struct GLFWwindow;
 struct ImFont;
+struct ProfilerUi;
 
 #include "settings.hpp"
 #include <imgui.h>
@@ -21,11 +22,8 @@ struct AppUi {
     ImFont *mono_font = nullptr;
     ImFont *menu_font = nullptr;
 
-    float full_frametimes[200] = {};
-    float cpu_frametimes[200] = {};
-    daxa_u64 frametime_rotation_index = 0;
-
-    struct AnimationPlayground* animation_playground;
+    struct AnimationPlayground *animation_playground;
+    ProfilerUi *profiler_ui = nullptr;
 
     daxa_f32 debug_menu_size{};
 
@@ -40,6 +38,7 @@ struct AppUi {
     bool limbo_is_button = false;
 
     bool paused = true;
+    bool show_profiler_view = false;
     bool show_settings = false;
     bool show_imgui_demo_window = false;
     bool should_run_startup = true;
@@ -56,11 +55,12 @@ struct AppUi {
 
     void rescale_ui();
     void begin_frame();
-    void update(daxa_f32 delta_time, daxa_f32 cpu_delta_time);
+    void update();
 
     void toggle_pause();
     void toggle_debug();
     void toggle_console();
+    void toggle_profiler_view();
 
   private:
     void settings_ui();

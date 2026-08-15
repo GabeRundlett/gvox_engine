@@ -1,6 +1,7 @@
 #include "voxel_object.hpp"
 #include <glm/common.hpp>
 #include <glm/vector_relational.hpp>
+#include <base/profiler.hpp>
 
 VoxelObject::~VoxelObject() {
     for (auto *brick : brick_grid)
@@ -20,6 +21,8 @@ void VoxelObject::init(const glm::ivec3 &new_voxel_min, const glm::ivec3 &new_vo
 }
 
 void VoxelObject::resize(const glm::ivec3 &new_voxel_min, const glm::ivec3 &new_voxel_max) {
+    PROFILE_FUNC();
+
     auto new_brick_min = get_brick_coord(new_voxel_min);
     auto new_brick_max = get_brick_coord(new_voxel_max);
 

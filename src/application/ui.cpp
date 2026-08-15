@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "profiler_ui.hpp"
 #include "voxels/animation_playground/animation_playground.hpp"
 
 #include <imgui_stdlib.h>
@@ -621,16 +622,16 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
 void AppUi::begin_frame() {
 }
 
-void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
-    cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
-    full_frametimes[frametime_rotation_index] = delta_time;
-    frametime_rotation_index = (frametime_rotation_index + 1) % (sizeof(full_frametimes) / sizeof(full_frametimes[0]));
-
+void AppUi::update() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::PushFont(menu_font);
 
-    if (paused) {
+    if (paused && show_profiler_view) {
+        if (profiler_ui != nullptr) {
+            profiler_ui->ui_fullscreen();
+        }
+    } else if (paused) {
         ImGuiDockNodeFlags const dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -676,37 +677,16 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
 
     auto show_debug_info = AppSettings::get<settings::Checkbox>("UI", "show_debug_info").value;
 
-    if (show_debug_info) {
+    if (show_debug_info && !show_profiler_view) {
         ImGui::PushFont(mono_font);
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
         auto pos = viewport->WorkPos;
         pos.x += viewport->WorkSize.x - debug_menu_size;
         ImGui::SetNextWindowPos(pos);
         ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
-        auto frametime_graph = [](auto &frametimes, uint64_t frametime_rot_index) {
-            constexpr int frametime_count = static_cast<int>(sizeof(frametimes) / sizeof(frametimes[0]));
-            float average = 0.0f;
-            float min_frametime = frametimes[0];
-            float max_frametime = frametimes[0];
-            for (auto frametime : frametimes) {
-                average += frametime;
-                min_frametime = frametime < min_frametime ? frametime : min_frametime;
-                max_frametime = frametime > max_frametime ? frametime : max_frametime;
-            }
-            average /= static_cast<float>(frametime_count);
-            auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
-            auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
-            auto fmt_str = format("avg %.2f ms (%.2f fps)", double(average * 1000), double(1.0f / average));
-            ImGui::PlotLines("", static_cast<float const *>(frametimes), frametime_count, static_cast<int>(frametime_rot_index), fmt_str.data, frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
-            ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
-        };
-        if (ImGui::TreeNode("Full frame-time")) {
-            frametime_graph(full_frametimes, frametime_rotation_index);
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("CPU-only frame-time")) {
-            frametime_graph(cpu_frametimes, frametime_rotation_index);
-            ImGui::TreePop();
+
+        if (profiler_ui != nullptr) {
+            profiler_ui->ui_timeline();
         }
         for (auto const &slot : debug_utils::DebugDisplay::s_instance->debug_strings) {
             ImGui::Text("%s: %s", slot.key.c_str(), slot.value.c_str());
@@ -784,7 +764,10 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
 }
 
 void AppUi::toggle_pause() {
-    if (show_settings) {
+    if (show_profiler_view) {
+        show_profiler_view = false;
+        paused = false;
+    } else if (show_settings) {
         show_settings = false;
     } else {
         paused = !paused;
@@ -801,4 +784,9 @@ void AppUi::toggle_console() {
     auto show_console = AppSettings::get<settings::Checkbox>("UI", "show_console").value;
     AppSettings::set("UI", "show_console", settings::Checkbox{.value = !show_console});
     needs_saving = true;
+}
+
+void AppUi::toggle_profiler_view() {
+    show_profiler_view = !show_profiler_view;
+    paused = show_profiler_view;
 }
