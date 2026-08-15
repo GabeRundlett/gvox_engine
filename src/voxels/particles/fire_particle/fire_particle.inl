@@ -101,7 +101,7 @@ struct FireParticles {
         gpu_context.frame_task_graph.register_buffer(splat_rendered_particle_verts.task_resource);
 
         gpu_context.add(ComputeTask<FireParticleSimCompute::Info, FireParticleSimComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"voxels/particles/fire_particle/sim.comp.glsl"},
+            .source = "voxels/particles/fire_particle/sim.comp.glsl",
             .extra_defines = {daxa::ShaderDefine{.name = "FIRE_PARTICLE", .value = "1"}},
             .views = FireParticleSimCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
@@ -125,8 +125,8 @@ struct FireParticles {
 
     void render_cubes(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state, daxa::TaskBufferView cube_index_buffer) {
         gpu_context.add(RasterTask<FireParticleCubeParticleRaster::Info, FireParticleCubeParticleRasterPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
-            .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
+            .vert_source = "voxels/particles/cube.raster.glsl",
+            .frag_source = "voxels/particles/cube.raster.glsl",
             .color_attachments = {
                 {.format = daxa::Format::R32G32B32A32_UINT},
                 {.format = daxa::Format::R16G16B16A16_SFLOAT},
@@ -180,8 +180,8 @@ struct FireParticles {
         });
 
         gpu_context.add(RasterTask<FireParticleCubeParticleShadowRaster::Info, FireParticleCubeParticleShadowRasterPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
-            .frag_source = daxa::ShaderFile{"voxels/particles/cube.raster.glsl"},
+            .vert_source = "voxels/particles/cube.raster.glsl",
+            .frag_source = "voxels/particles/cube.raster.glsl",
             .depth_test = daxa::DepthTestInfo{
                 .depth_attachment_format = daxa::Format::D32_SFLOAT,
                 .enable_depth_write = true,
@@ -224,8 +224,8 @@ struct FireParticles {
 
     void render_splats(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state) {
         gpu_context.add(RasterTask<FireParticleSplatParticleRaster::Info, FireParticleSplatParticleRasterPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
-            .frag_source = daxa::ShaderFile{"voxels/particles/splat.raster.glsl"},
+            .vert_source = "voxels/particles/splat.raster.glsl",
+            .frag_source = "voxels/particles/splat.raster.glsl",
             .color_attachments = {
                 {.format = daxa::Format::R32G32B32A32_UINT},
                 {.format = daxa::Format::R16G16B16A16_SFLOAT},

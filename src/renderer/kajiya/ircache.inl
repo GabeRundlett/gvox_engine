@@ -231,7 +231,6 @@ struct SumUpIrradianceComputePush {
 
 #if defined(__cplusplus)
 
-#include <array>
 #include <glm/glm.hpp>
 #include <utilities/ping_pong_resource.hpp>
 
@@ -268,8 +267,8 @@ struct IrcacheRenderState {
 struct IrcacheRenderer {
     bool initialized = false;
     glm::vec3 grid_center{};
-    std::array<glm::ivec3, IRCACHE_CASCADE_COUNT> cur_scroll{};
-    std::array<glm::ivec3, IRCACHE_CASCADE_COUNT> prev_scroll{};
+    glm::ivec3 cur_scroll[IRCACHE_CASCADE_COUNT]{};
+    glm::ivec3 prev_scroll[IRCACHE_CASCADE_COUNT]{};
     size_t parity = 0;
     bool enable_scroll = true;
 

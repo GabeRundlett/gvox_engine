@@ -1,14 +1,15 @@
 #pragma once
 
-#include <map>
-#include <filesystem>
 #include <variant>
 
+#include <base/hash_map.hpp>
+#include <base/str.hpp>
+#include <base/vec.hpp>
 #include <GLFW/glfw3.h>
 #include "settings.inl"
 
-using SettingCategoryId = std::string;
-using SettingId = std::string;
+using SettingCategoryId = Str;
+using SettingId = Str;
 
 namespace settings {
     struct InputFloat {
@@ -40,7 +41,7 @@ using SettingValue = std::variant<
 struct SettingConfig {
     bool task_graph_depends = false;
     // NOTE(grundlett): This is weird. Where should this go?
-    std::vector<std::string> options;
+    Vec<Str> options;
 };
 
 struct SettingEntry {
@@ -60,15 +61,15 @@ struct SettingInfo {
 
 struct AppSettings {
     // TODO: remove these explicit settings in favor of settings registry
-    std::map<daxa_i32, daxa_i32> keybinds;
-    std::map<daxa_i32, daxa_i32> mouse_button_binds;
+    HashMap<daxa_i32, daxa_i32> keybinds;
+    HashMap<daxa_i32, daxa_i32> mouse_button_binds;
 
     daxa_f32 mouse_sensitivity;
-    std::string world_seed_str;
+    Str world_seed_str;
 
     static inline AppSettings *s_instance = nullptr;
 
-    std::map<SettingCategoryId, std::map<SettingId, SettingEntry>> categories;
+    HashMap<SettingCategoryId, HashMap<SettingId, SettingEntry>> categories;
 
     AppSettings();
     ~AppSettings();
@@ -94,8 +95,8 @@ struct AppSettings {
         return std::get<T>(get(category_id, id).data);
     }
 
-    void save(std::filesystem::path const &filepath);
-    void load(std::filesystem::path const &filepath);
+    void save(char const *filepath);
+    void load(char const *filepath);
     void clear();
     void reset_default();
 };

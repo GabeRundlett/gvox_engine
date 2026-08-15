@@ -12,7 +12,6 @@
 // #include <utilities/ispc_instrument.hpp>
 #include <utilities/debug.hpp>
 
-#include <fmt/format.h>
 
 #include <array>
 #include <vector>

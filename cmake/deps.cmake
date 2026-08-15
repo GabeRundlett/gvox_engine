@@ -24,7 +24,7 @@ FetchContent_MakeAvailable(glfw)
 set(DAXA_USE_VCPKG false)
 set(DAXA_ENABLE_UTILS_IMGUI true)
 set(DAXA_ENABLE_UTILS_MEM true)
-set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG true)
+set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG false)
 set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_SLANG false)
 set(DAXA_ENABLE_UTILS_TASK_GRAPH true)
 set(DAXA_ENABLE_UTILS_FSR3 false)
@@ -39,13 +39,6 @@ if(TARGET lib_imgui)
     target_sources(lib_imgui PRIVATE "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
     target_include_directories(lib_imgui PUBLIC "${imgui_SOURCE_DIR}/misc/cpp")
 endif()
-
-FetchContent_Declare(
-    fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt
-    GIT_TAG 11.0.2
-)
-FetchContent_MakeAvailable(fmt)
 
 FetchContent_Declare(
     glm

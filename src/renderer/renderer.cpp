@@ -17,14 +17,16 @@
 struct RendererImpl {
     GbufferRenderer gbuffer_renderer;
     KajiyaRenderer kajiya_renderer;
-    std::unique_ptr<Fsr2Renderer> fsr2_renderer;
+    Fsr2Renderer *fsr2_renderer = nullptr;
     DebugShapeRenderer debug_shapes;
     SkyRenderer sky;
 
-    std::array<daxa_f32vec2, 128> halton_offsets{};
+    daxa_f32vec2 halton_offsets[128]{};
+
+    ~RendererImpl() { delete fsr2_renderer; }
 };
 
-Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
+Renderer::Renderer() : impl{new RendererImpl()} {
     auto &self = *impl;
 
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.4f, .min = 0.0f, .max = 1.0f}});
@@ -49,11 +51,11 @@ Renderer::Renderer() : impl{std::make_unique<RendererImpl>()} {
         return val;
     };
 
-    for (daxa_u32 i = 0; i < self.halton_offsets.size(); ++i) {
+    for (daxa_u32 i = 0; i < glm::countof(self.halton_offsets); ++i) {
         self.halton_offsets[i] = daxa_f32vec2{radical_inverse(i, 2) - 0.5f, radical_inverse(i, 3) - 0.5f};
     }
 }
-Renderer::~Renderer() = default;
+Renderer::~Renderer() { delete impl; }
 
 void Renderer::begin_frame(GpuInput &gpu_input) {
     auto &self = *impl;
@@ -79,7 +81,7 @@ void Renderer::begin_frame(GpuInput &gpu_input) {
     switch (taa_method) {
     case 0: break;
     case 1:
-        gpu_input.halton_jitter = self.halton_offsets[gpu_input.frame_index % self.halton_offsets.size()];
+        gpu_input.halton_jitter = self.halton_offsets[gpu_input.frame_index % glm::countof(self.halton_offsets)];
         break;
     case 2:
         if (self.fsr2_renderer) {
@@ -179,7 +181,8 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
         case 1:
             return self.kajiya_renderer.upscale(gpu_context, debug_out_tex, gbuffer_depth.depth.current(), reprojection_map);
         case 2:
-            self.fsr2_renderer = std::make_unique<Fsr2Renderer>(gpu_context.device, Fsr2Info{.render_resolution = gpu_context.render_resolution, .display_resolution = gpu_context.output_resolution});
+            delete self.fsr2_renderer;
+            self.fsr2_renderer = new Fsr2Renderer(gpu_context.device, Fsr2Info{.render_resolution = gpu_context.render_resolution, .display_resolution = gpu_context.output_resolution});
             return self.fsr2_renderer->upscale(gpu_context, gbuffer_depth, debug_out_tex, reprojection_map);
         }
     }();

@@ -52,7 +52,7 @@ struct VoxelApp : AppWindow<VoxelApp> {
     void on_mouse_button(daxa_i32 button_id, daxa_i32 action);
     void on_key(daxa_i32 key_id, daxa_i32 action);
     void on_resize(daxa_u32 sx, daxa_u32 sy);
-    void on_drop(std::span<char const *> filepaths);
+    void on_drop(char const *const *filepaths, int filepath_count);
 
     void run_startup();
     void record_tasks();

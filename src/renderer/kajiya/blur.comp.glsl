@@ -69,7 +69,7 @@ void main() {
 
 #if RevBlurComputeShader
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(RevBlurComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

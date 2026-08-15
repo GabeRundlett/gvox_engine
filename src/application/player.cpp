@@ -1,7 +1,7 @@
 #include "player.hpp"
 
 #include <bit>
-#include <fmt/format.h>
+#include <base/format.hpp>
 
 #include <application/settings.hpp>
 #include <utilities/debug.hpp>
@@ -334,10 +334,10 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         std::bit_cast<glm::mat4>(PLAYER.cam.view_to_world) *
         std::bit_cast<glm::mat4>(PLAYER.cam.clip_to_view));
 
-    debug_utils::DebugDisplay::set_debug_string("Player Pos", fmt::format("{:.3f}, {:.3f}, {:.3f}", PLAYER.pos.x, PLAYER.pos.y, PLAYER.pos.z));
-    debug_utils::DebugDisplay::set_debug_string("Player Pos (camera)", fmt::format("{:.3f}, {:.3f}, {:.3f}", cam_pos.x, cam_pos.y, cam_pos.z));
-    debug_utils::DebugDisplay::set_debug_string("Player Pos (voxel)", fmt::format("{:.3f}, {:.3f}, {:.3f}", PLAYER.pos.x * VOXEL_SCL, PLAYER.pos.y * VOXEL_SCL, PLAYER.pos.z * VOXEL_SCL));
-    debug_utils::DebugDisplay::set_debug_string("Player Rot (Y/P/R)", fmt::format("{:.3f}, {:.3f}, {:.3f}", PLAYER.yaw, PLAYER.pitch, PLAYER.roll));
-    debug_utils::DebugDisplay::set_debug_string("Player Unit Offset", fmt::format("{}, {}, {}", PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z));
-    debug_utils::DebugDisplay::set_debug_string("Player Vel (m/s)", fmt::format("{:.3f}, {:.3f}, {:.3f}", vel.x, vel.y, vel.z));
+    debug_utils::DebugDisplay::set_debug_string("Player Pos", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x), double(PLAYER.pos.y), double(PLAYER.pos.z)).data);
+    debug_utils::DebugDisplay::set_debug_string("Player Pos (camera)", format("%.3f, %.3f, %.3f", double(cam_pos.x), double(cam_pos.y), double(cam_pos.z)).data);
+    debug_utils::DebugDisplay::set_debug_string("Player Pos (voxel)", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x * VOXEL_SCL), double(PLAYER.pos.y * VOXEL_SCL), double(PLAYER.pos.z * VOXEL_SCL)).data);
+    debug_utils::DebugDisplay::set_debug_string("Player Rot (Y/P/R)", format("%.3f, %.3f, %.3f", double(PLAYER.yaw), double(PLAYER.pitch), double(PLAYER.roll)).data);
+    debug_utils::DebugDisplay::set_debug_string("Player Unit Offset", format("%d, %d, %d", PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z).data);
+    debug_utils::DebugDisplay::set_debug_string("Player Vel (m/s)", format("%.3f, %.3f, %.3f", double(vel.x), double(vel.y), double(vel.z)).data);
 }

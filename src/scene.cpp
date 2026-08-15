@@ -80,7 +80,6 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
 
         auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
         voxel_object->brick_grid.resize(grid_size.x * grid_size.y * grid_size.z);
-        memset(voxel_object->brick_grid.data(), 0, voxel_object->brick_grid.size() * sizeof(VoxelBrick *));
 
         for (int czi = voxel_object->brick_min.z; czi <= voxel_object->brick_max.z; ++czi) {
             for (int cyi = voxel_object->brick_min.y; cyi <= voxel_object->brick_max.y; ++cyi) {

@@ -30,11 +30,12 @@ struct DebugPointsPush {
 
 #include <renderer/renderer.hpp>
 #include <utilities/gpu_context.hpp>
+#include <base/vec.hpp>
 
 struct DebugShapeRenderer {
     bool const *draw_from_observer;
-    std::vector<Line> lines = {};
-    std::vector<Point> points = {};
+    Vec<Line> lines = {};
+    Vec<Point> points = {};
 };
 
 inline void update(DebugShapeRenderer *self) {
@@ -43,14 +44,14 @@ inline void update(DebugShapeRenderer *self) {
 }
 
 inline void submit_debug_lines(DebugShapeRenderer *self, Line const *lines, int line_n) {
-    self->lines.reserve(self->lines.size() + line_n);
+    self->lines.reserve(self->lines.size + line_n);
     for (int i = 0; i < line_n; ++i) {
         self->lines.push_back(lines[i]);
     }
 }
 
 inline void submit_debug_points(DebugShapeRenderer *self, Point const *points, int point_n) {
-    self->points.reserve(self->points.size() + point_n);
+    self->points.reserve(self->points.size + point_n);
     for (int i = 0; i < point_n; ++i) {
         self->points.push_back(points[i]);
     }
@@ -103,7 +104,7 @@ inline void submit_debug_box_lines(DebugShapeRenderer *self, Box const *cubes, i
             // clang-format on
         };
 
-        submit_debug_lines(self, lines.data(), lines.size());
+        submit_debug_lines(self, lines.data(), static_cast<int>(lines.size()));
     }
 }
 
@@ -115,8 +116,8 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
     //     .name = "depth_target",
     // });
     // gpu_context.add(RasterTask<R32D32Blit::Info, R32D32BlitPush, NoTaskInfo>{
-    //     .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-    //     .frag_source = daxa::ShaderFile{"R32_D32_BLIT"},
+    //     .vert_source = "full_screen_triangle.vert.glsl",
+    //     .frag_source = "r32_d32_blit.frag.glsl",
     //     .depth_test = daxa::DepthTestInfo{
     //         .depth_attachment_format = daxa::Format::D32_SFLOAT,
     //         .enable_depth_write = true,
@@ -142,8 +143,8 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
     // });
 
     gpu_context.add(RasterTask<DebugLines::Info, DebugLinesPush, DebugShapeRenderer const *>{
-        .vert_source = daxa::ShaderFile{"debug_shapes.glsl"},
-        .frag_source = daxa::ShaderFile{"debug_shapes.glsl"},
+        .vert_source = "debug_shapes.glsl",
+        .frag_source = "debug_shapes.glsl",
         .color_attachments = {{.format = daxa::Format::R16G16B16A16_SFLOAT}},
         .depth_test = daxa::DepthTestInfo{.depth_attachment_format = daxa::Format::D32_SFLOAT, .depth_test_compare_op = daxa::CompareOp::GREATER},
         .raster = {.primitive_topology = daxa::PrimitiveTopology::LINE_LIST},
@@ -175,7 +176,7 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
             });
             render_recorder.set_pipeline(pipeline);
 
-            auto size = state->lines.size() * sizeof(Line);
+            auto size = static_cast<size_t>(state->lines.size) * sizeof(Line);
             auto lines_buffer = ti.device.create_buffer({
                 .size = size,
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_SEQUENTIAL_WRITE,
@@ -183,12 +184,12 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
             });
             auto alloc_host_address = ti.device.buffer_host_address(lines_buffer).value();
             auto alloc_device_address = ti.device.buffer_device_address(lines_buffer).value();
-            memcpy(alloc_host_address, state->lines.data(), size);
+            memcpy(alloc_host_address, state->lines.data, size);
             push.vertex_data = alloc_device_address;
             push.flags = 0; // *state->draw_from_observer;
 
             set_push_constant(ti, render_recorder, push);
-            render_recorder.draw({.vertex_count = uint32_t(2 * state->lines.size())});
+            render_recorder.draw({.vertex_count = uint32_t(2 * state->lines.size)});
             ti.recorder = std::move(render_recorder).end_renderpass();
             ti.recorder.destroy_buffer_deferred(lines_buffer);
         },
@@ -197,8 +198,8 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
     });
 
     gpu_context.add(RasterTask<DebugPoints::Info, DebugPointsPush, DebugShapeRenderer const *>{
-        .vert_source = daxa::ShaderFile{"debug_shapes.glsl"},
-        .frag_source = daxa::ShaderFile{"debug_shapes.glsl"},
+        .vert_source = "debug_shapes.glsl",
+        .frag_source = "debug_shapes.glsl",
         .color_attachments = {{.format = daxa::Format::R16G16B16A16_SFLOAT}},
         .depth_test = daxa::DepthTestInfo{.depth_attachment_format = daxa::Format::D32_SFLOAT, .depth_test_compare_op = daxa::CompareOp::GREATER},
         .raster = {.primitive_topology = daxa::PrimitiveTopology::TRIANGLE_LIST},
@@ -229,7 +230,7 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
             });
             render_recorder.set_pipeline(pipeline);
 
-            auto size = state->points.size() * sizeof(Point);
+            auto size = static_cast<size_t>(state->points.size) * sizeof(Point);
             auto points_buffer = ti.device.create_buffer({
                 .size = size,
                 .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_SEQUENTIAL_WRITE,
@@ -237,12 +238,12 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
             });
             auto alloc_host_address = ti.device.buffer_host_address(points_buffer).value();
             auto alloc_device_address = ti.device.buffer_device_address(points_buffer).value();
-            memcpy(alloc_host_address, state->points.data(), size);
+            memcpy(alloc_host_address, state->points.data, size);
             push.vertex_data = alloc_device_address;
             push.flags = 0; // *state->draw_from_observer;
 
             set_push_constant(ti, render_recorder, push);
-            render_recorder.draw({.vertex_count = uint32_t(6 * state->points.size())});
+            render_recorder.draw({.vertex_count = uint32_t(6 * state->points.size)});
             ti.recorder = std::move(render_recorder).end_renderpass();
             ti.recorder.destroy_buffer_deferred(points_buffer);
         },

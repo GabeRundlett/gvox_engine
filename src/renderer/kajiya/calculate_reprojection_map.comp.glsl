@@ -2,7 +2,7 @@
 #include <renderer/kajiya/inc/camera.glsl>
 #include <renderer/kajiya/inc/bilinear.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
-#include <g_samplers>
+#include <renderer/globals.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(CalculateReprojectionMapComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

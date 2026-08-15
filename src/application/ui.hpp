@@ -6,10 +6,6 @@ struct ImFont;
 #include "settings.hpp"
 #include <imgui.h>
 #include <chrono>
-#include <filesystem>
-#include <thread>
-#include <mutex>
-#include <fmt/format.h>
 
 #define INVALID_GAME_ACTION (-1)
 
@@ -25,8 +21,8 @@ struct AppUi {
     ImFont *mono_font = nullptr;
     ImFont *menu_font = nullptr;
 
-    std::array<float, 200> full_frametimes = {};
-    std::array<float, 200> cpu_frametimes = {};
+    float full_frametimes[200] = {};
+    float cpu_frametimes[200] = {};
     daxa_u64 frametime_rotation_index = 0;
 
     struct AnimationPlayground* animation_playground;
@@ -50,14 +46,13 @@ struct AppUi {
     bool should_recreate_voxel_buffers = true;
     bool autosave_override = false;
     bool should_upload_seed_data = true;
-    bool should_hotload_shaders = true;
     bool should_regenerate_sky = true;
 
     bool should_record_task_graph = false;
 
     bool should_upload_gvox_model = false;
-    std::filesystem::path gvox_model_path;
-    std::filesystem::path data_directory;
+    Str gvox_model_path;
+    Str data_directory;
 
     void rescale_ui();
     void begin_frame();

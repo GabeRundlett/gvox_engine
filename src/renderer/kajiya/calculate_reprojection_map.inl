@@ -25,7 +25,7 @@ inline auto calculate_reprojection_map(GpuContext &gpu_context, GbufferDepth con
         .name = "reprojection_image",
     });
     gpu_context.add(ComputeTask<CalculateReprojectionMapCompute::Info, CalculateReprojectionMapComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/calculate_reprojection_map.comp.glsl"},
+        .source = "kajiya/calculate_reprojection_map.comp.glsl",
         .views = CalculateReprojectionMapCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             .vs_normal_image_id = gbuffer_depth.geometric_normal,

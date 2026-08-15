@@ -3,8 +3,7 @@
 #include <daxa/utils/task_graph.inl>
 #include <voxels/defs.inl>
 
-#ifdef __cplusplus
-#else
+#ifndef __cplusplus
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_EXT_scalar_block_layout : require

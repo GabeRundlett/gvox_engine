@@ -2,6 +2,7 @@
 
 #include <daxa/daxa.hpp>
 #include "gpu_context.hpp"
+#include <base/str.hpp>
 
 struct PingPongImage_impl {
     using ResourceType = daxa::ImageId;
@@ -14,7 +15,8 @@ struct PingPongImage_impl {
         return gpu_context.find_or_add_temporal_image(info);
     }
     static void destroy(GpuContext &gpu_context, TemporalResourceType &rsrc_id) {
-        gpu_context.remove_temporal_image(std::string(rsrc_id.task_resource.info().name));
+        auto name_view = rsrc_id.task_resource.info().name;
+        gpu_context.remove_temporal_image(Str{name_view.data(), static_cast<int>(name_view.size())}.c_str());
         rsrc_id.task_resource.set_image({});
     }
     static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
@@ -33,7 +35,8 @@ struct PingPongBuffer_impl {
         return gpu_context.find_or_add_temporal_buffer(info);
     }
     static void destroy(GpuContext &gpu_context, TemporalResourceType rsrc_id) {
-        gpu_context.remove_temporal_buffer(std::string(rsrc_id.task_resource.info().name));
+        auto name_view = rsrc_id.task_resource.info().name;
+        gpu_context.remove_temporal_buffer(Str{name_view.data(), static_cast<int>(name_view.size())}.c_str());
         rsrc_id.task_resource.set_buffer({});
     }
     static void swap(TemporalResourceType &resource_a, TemporalResourceType &resource_b) {
@@ -89,8 +92,8 @@ struct PingPongResource {
         if (!resources.resource_a.task_resource.is_valid() || resources.resource_a.task_resource.id().is_empty()) {
             auto info_a = a_info;
             auto info_b = a_info;
-            info_a.name = std::string(info_a.name.view()) + "_a";
-            info_b.name = std::string(info_b.name.view()) + "_b";
+            info_a.name = (Str{info_a.name.c_str()} + "_a").c_str();
+            info_b.name = (Str{info_b.name.c_str()} + "_b").c_str();
             resources.resource_a = Impl::create(*resources.gpu_context, info_a);
             resources.resource_b = Impl::create(*resources.gpu_context, info_b);
         }

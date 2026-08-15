@@ -32,8 +32,8 @@ struct DebugImageRasterPush {
 
 inline void tonemap_raster(GpuContext &gpu_context, daxa::TaskImageView antialiased_image, daxa::TaskImageView output_image, daxa::Format output_format) {
     gpu_context.add(RasterTask<PostprocessingRaster::Info, PostprocessingRasterPush, NoTaskInfo>{
-        .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-        .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
+        .vert_source = "full_screen_triangle.vert.glsl",
+        .frag_source = "postprocessing.raster.glsl",
         .color_attachments = {{
             .format = output_format,
         }},
@@ -63,8 +63,8 @@ inline void debug_pass(GpuContext &gpu_context, debug_utils::Pass const &pass, d
     };
 
     gpu_context.add(RasterTask<DebugImageRaster::Info, DebugImageRasterPush, DebugImageRasterTaskInfo>{
-        .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-        .frag_source = daxa::ShaderFile{"postprocessing.raster.glsl"},
+        .vert_source = "full_screen_triangle.vert.glsl",
+        .frag_source = "postprocessing.raster.glsl",
         .color_attachments = {{
             .format = output_format,
         }},

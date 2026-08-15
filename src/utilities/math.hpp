@@ -1,12 +1,11 @@
 #pragma once
 
-#include <array>
 #include <renderer/kajiya/inc/math_const.glsl>
 #include <glm/glm.hpp>
 #include <daxa/daxa.hpp>
 
 constexpr auto ceil_log2(uint32_t x) -> uint32_t {
-    constexpr auto const t = std::array<uint32_t, 5>{
+    constexpr uint32_t t[5] = {
         0xFFFF0000u,
         0x0000FF00u,
         0x000000F0u,

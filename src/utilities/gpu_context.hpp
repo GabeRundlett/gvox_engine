@@ -2,7 +2,10 @@
 
 #include <daxa/daxa.hpp>
 #include <daxa/utils/task_graph.hpp>
-#include "async_pipeline_manager.hpp"
+#include <renderer/pipeline_manager.hpp>
+#include <base/hash_map.hpp>
+#include <base/str.hpp>
+#include <base/vec.hpp>
 #include "gpu_task.hpp"
 #include <any>
 
@@ -21,8 +24,8 @@ struct TemporalImage {
     operator daxa::TaskImageView() { return task_resource; }
 };
 
-using TemporalBuffers = std::unordered_map<std::string, TemporalBuffer>;
-using TemporalImages = std::unordered_map<std::string, TemporalImage>;
+using TemporalBuffers = HashMap<Str, TemporalBuffer>;
+using TemporalImages = HashMap<Str, TemporalImage>;
 
 struct GpuContext {
     daxa::Instance daxa_instance;
@@ -55,7 +58,7 @@ struct GpuContext {
 
     daxa::ExternalTaskBuffer task_input_buffer{{.name = "task_input_buffer"}};
 
-    std::shared_ptr<AsyncPipelineManager> pipeline_manager;
+    PipelineManager *pipeline_manager = nullptr;
     TemporalBuffers temporal_buffers;
     TemporalImages temporal_images;
 
@@ -74,125 +77,27 @@ struct GpuContext {
 
     auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer;
     auto find_or_add_temporal_image(daxa::ImageInfo const &info) -> TemporalImage;
-    void remove_temporal_buffer(std::string const &id);
-    void remove_temporal_image(std::string const &id);
+    void remove_temporal_buffer(char const *id);
+    void remove_temporal_image(char const *id);
     void remove_temporal_buffer(daxa::BufferId id);
     void remove_temporal_image(daxa::ImageId id);
 
-    std::unordered_map<std::string, std::shared_ptr<AsyncManagedComputePipeline>> compute_pipelines;
-    std::unordered_map<std::string, std::shared_ptr<AsyncManagedRayTracingPipeline>> ray_tracing_pipelines;
-    std::unordered_map<std::string, std::shared_ptr<AsyncManagedRasterPipeline>> raster_pipelines;
+    // Pipelines are individually heap-allocated (never stored by value in a
+    // container) so their addresses stay stable: recorded task-graph closures
+    // hold raw pointers to them, and hot-reload overwrites them in place.
+    // Owned here; freed in ~GpuContext.
+    HashMap<Str, daxa::ComputePipeline *> compute_pipelines;
+    HashMap<Str, RayTracingPipelineAndSbt *> ray_tracing_pipelines;
+    HashMap<Str, daxa::RasterPipeline *> raster_pipelines;
 
-    std::vector<std::any> task_states;
+    Vec<std::any> task_states;
 
+    // Builds the key that identifies a unique pipeline variant: task name plus
+    // every define, subgroup size and recursion depth that affects compilation.
     template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
-    auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, std::string const &shader_id) {
-        auto push_constant_size = static_cast<uint32_t>(::push_constant_size<PushT>());
-        if constexpr (std::is_same_v<PipelineT, AsyncManagedComputePipeline>) {
-            auto pipe_iter = compute_pipelines.find(shader_id);
-            if (pipe_iter == compute_pipelines.end()) {
-                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
-                auto emplace_result = compute_pipelines.emplace(
-                    shader_id,
-                    std::make_shared<AsyncManagedComputePipeline>(pipeline_manager->add_compute_pipeline({
-                        .source = task.source,
-                        .defines = task.extra_defines,
-                        .required_subgroup_size = task.required_subgroup_size,
-                        .push_constant_size = push_constant_size,
-                        .name = std::string{TaskHeadT::NAME},
-                    })));
-                pipe_iter = emplace_result.first;
-            }
-            return pipe_iter;
-        } else if constexpr (std::is_same_v<PipelineT, AsyncManagedRayTracingPipeline>) {
-            auto pipe_iter = ray_tracing_pipelines.find(shader_id);
-            if (pipe_iter == ray_tracing_pipelines.end()) {
-                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
-                auto emplace_result = ray_tracing_pipelines.emplace(
-                    shader_id,
-                    std::make_shared<AsyncManagedRayTracingPipeline>(pipeline_manager->add_ray_tracing_pipeline({
-                        .ray_gen_infos = {daxa::ShaderCompileInfo2{
-                            .source = task.source,
-                            .defines = task.extra_defines,
-                        }},
-                        .intersection_infos = {daxa::ShaderCompileInfo2{
-                            .source = task.source,
-                            .defines = task.extra_defines,
-                        }},
-                        .closest_hit_infos = {daxa::ShaderCompileInfo2{
-                            .source = task.source,
-                            .defines = task.extra_defines,
-                        }},
-                        .miss_hit_infos = {daxa::ShaderCompileInfo2{
-                            .source = task.source,
-                            .defines = task.extra_defines,
-                        }},
-                        // Groups are in order of their shader indices.
-                        // NOTE: The order of the groups is important! raygen, miss, hit, callable
-                        .shader_groups_infos = {
-                            daxa::RayTracingShaderGroupInfo{
-                                .type = daxa::ShaderGroup::GENERAL,
-                                .general_shader_index = 0,
-                            },
-                            daxa::RayTracingShaderGroupInfo{
-                                .type = daxa::ShaderGroup::GENERAL,
-                                .general_shader_index = 3,
-                            },
-                            daxa::RayTracingShaderGroupInfo{
-                                .type = daxa::ShaderGroup::PROCEDURAL_HIT_GROUP,
-                                .closest_hit_shader_index = 2,
-                                .intersection_shader_index = 1,
-                            },
-                        },
-                        .max_ray_recursion_depth = task.max_ray_recursion_depth,
-                        .push_constant_size = push_constant_size,
-                        .name = std::string{TaskHeadT::NAME},
-                    })));
-                pipe_iter = emplace_result.first;
-            }
-            return pipe_iter;
-        } else if constexpr (std::is_same_v<PipelineT, AsyncManagedRasterPipeline>) {
-            auto pipe_iter = raster_pipelines.find(shader_id);
-            // TODO: if we found a pipeline, but it has differing info such as attachments or raster info,
-            // we should destroy that old one and create a new one.
-            if (pipe_iter == raster_pipelines.end()) {
-                task.extra_defines.push_back({std::string{TaskHeadT::NAME} + "Shader", "1"});
-                auto emplace_result = raster_pipelines.emplace(
-                    shader_id,
-                    std::make_shared<AsyncManagedRasterPipeline>(pipeline_manager->add_raster_pipeline({
-                        // .mesh_shader_info = daxa::holds_alternative<daxa::Monostate>(task.mesh_source)
-                        //                         ? daxa::Optional<daxa::ShaderCompileInfo2>{}
-                        //                         : daxa::Optional<daxa::ShaderCompileInfo2>{daxa::ShaderCompileInfo2{
-                        //                               .source = task.mesh_source,
-                        //                               .defines = task.extra_defines,
-                        //                               .required_subgroup_size = task.required_subgroup_size,
-                        //                           }},
-                        .vertex_shader_info = daxa::holds_alternative<daxa::Monostate>(task.vert_source)
-                                                  ? daxa::Optional<daxa::ShaderCompileInfo2>{}
-                                                  : daxa::Optional<daxa::ShaderCompileInfo2>{daxa::ShaderCompileInfo2{
-                                                        .source = task.vert_source,
-                                                        .defines = task.extra_defines,
-                                                    }},
-                        .fragment_shader_info = daxa::ShaderCompileInfo2{
-                            .source = task.frag_source,
-                            .defines = task.extra_defines,
-                        },
-                        .color_attachments = task.color_attachments,
-                        .depth_test = task.depth_test,
-                        .raster = task.raster,
-                        .push_constant_size = push_constant_size,
-                        .name = std::string{TaskHeadT::NAME},
-                    })));
-                pipe_iter = emplace_result.first;
-            }
-            return pipe_iter;
-        }
-    }
-
-    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
-    void add(Task<TaskHeadT, PushT, InfoT, PipelineT> &&task) {
+    static auto make_shader_id(Task<TaskHeadT, PushT, InfoT, PipelineT> const &task) -> Str {
         using MetaTaskT = Task<TaskHeadT, PushT, InfoT, PipelineT>;
-        auto shader_id = std::string{TaskHeadT::NAME};
+        auto shader_id = Str{TaskHeadT::NAME};
         for (auto const &define : task.extra_defines) {
             shader_id.append(define.name);
             shader_id.append(define.value);
@@ -200,15 +105,105 @@ struct GpuContext {
         shader_id.append("_");
         if constexpr (requires(MetaTaskT t) { t.required_subgroup_size; }) {
             if (task.required_subgroup_size.has_value()) {
-                shader_id.append(std::to_string(*task.required_subgroup_size));
+                shader_id.append(static_cast<unsigned long long>(*task.required_subgroup_size));
             }
         }
         shader_id.append("_");
         if constexpr (requires(MetaTaskT t) { t.max_ray_recursion_depth; }) {
-            shader_id.append(std::to_string(task.max_ray_recursion_depth));
+            shader_id.append(static_cast<unsigned long long>(task.max_ray_recursion_depth));
         }
-        auto pipe_iter = find_or_add_pipeline<TaskHeadT, PushT, InfoT, PipelineT>(task, shader_id);
-        task.pipeline = pipe_iter->second;
+        return shader_id;
+    }
+
+    // Registers the pipeline for this task with the pipeline manager (no
+    // compilation happens here -- that's compile_all_shaders/create_all_pipelines,
+    // called once after the whole task graph has been recorded) and returns the
+    // stable pointer the task will dereference.
+    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+    auto find_or_add_pipeline(Task<TaskHeadT, PushT, InfoT, PipelineT> &task, Str const &shader_id) -> PipelineT * {
+        auto push_constant_size = static_cast<uint32_t>(::push_constant_size<PushT>());
+        if constexpr (std::is_same_v<PipelineT, daxa::ComputePipeline>) {
+            if (auto **existing = compute_pipelines.get(shader_id)) {
+                return *existing;
+            }
+            task.extra_defines.push_back({Str{TaskHeadT::NAME} + "Shader", "1"});
+            auto *pipeline = new daxa::ComputePipeline{};
+            compute_pipelines.set(shader_id, pipeline);
+            register_pipeline(
+                pipeline_manager,
+                ComputePipelineCompileInfo{
+                    .out_pipeline = pipeline,
+                    .source_path = task.source,
+                    .defines = task.extra_defines,
+                    .required_subgroup_size = task.required_subgroup_size.has_value() ? static_cast<int>(*task.required_subgroup_size) : -1,
+                    .push_constant_size = push_constant_size,
+                    .name = Str{TaskHeadT::NAME},
+                });
+            return pipeline;
+        } else if constexpr (std::is_same_v<PipelineT, RayTracingPipelineAndSbt>) {
+            if (auto **existing = ray_tracing_pipelines.get(shader_id)) {
+                return *existing;
+            }
+            task.extra_defines.push_back({Str{TaskHeadT::NAME} + "Shader", "1"});
+            auto *pipeline = new RayTracingPipelineAndSbt{};
+            ray_tracing_pipelines.set(shader_id, pipeline);
+
+            auto stage_info = ShaderCompileInfo{.source_path = task.source, .defines = task.extra_defines};
+            auto rt_info = RayTracingPipelineCompileInfo{.out_pipeline = &pipeline->pipeline};
+            rt_info.ray_gen_infos.push_back(stage_info);
+            rt_info.intersection_infos.push_back(stage_info);
+            rt_info.closest_hit_infos.push_back(stage_info);
+            rt_info.miss_hit_infos.push_back(stage_info);
+            // Groups are in order of their shader indices.
+            // NOTE: The order of the groups is important! raygen, miss, hit, callable
+            rt_info.shader_groups_infos.push_back(daxa::RayTracingShaderGroupInfo{
+                .type = daxa::ShaderGroup::GENERAL,
+                .general_shader_index = 0,
+            });
+            rt_info.shader_groups_infos.push_back(daxa::RayTracingShaderGroupInfo{
+                .type = daxa::ShaderGroup::GENERAL,
+                .general_shader_index = 3,
+            });
+            rt_info.shader_groups_infos.push_back(daxa::RayTracingShaderGroupInfo{
+                .type = daxa::ShaderGroup::PROCEDURAL_HIT_GROUP,
+                .closest_hit_shader_index = 2,
+                .intersection_shader_index = 1,
+            });
+            rt_info.max_ray_recursion_depth = task.max_ray_recursion_depth;
+            rt_info.push_constant_size = push_constant_size;
+            rt_info.name = Str{TaskHeadT::NAME};
+            register_pipeline(pipeline_manager, rt_info);
+            return pipeline;
+        } else if constexpr (std::is_same_v<PipelineT, daxa::RasterPipeline>) {
+            // TODO: if we found a pipeline, but it has differing info such as attachments or raster info,
+            // we should destroy that old one and create a new one.
+            if (auto **existing = raster_pipelines.get(shader_id)) {
+                return *existing;
+            }
+            task.extra_defines.push_back({Str{TaskHeadT::NAME} + "Shader", "1"});
+            auto *pipeline = new daxa::RasterPipeline{};
+            raster_pipelines.set(shader_id, pipeline);
+
+            auto raster_info = RasterPipelineCompileInfo{.out_pipeline = pipeline};
+            if (task.vert_source != nullptr) {
+                raster_info.vert_info = ShaderCompileInfo{.source_path = task.vert_source, .defines = task.extra_defines};
+            }
+            raster_info.frag_info = ShaderCompileInfo{.source_path = task.frag_source, .defines = task.extra_defines};
+            raster_info.color_attachments = task.color_attachments;
+            raster_info.depth_test = task.depth_test;
+            raster_info.raster = task.raster;
+            raster_info.push_constant_size = push_constant_size;
+            raster_info.name = Str{TaskHeadT::NAME};
+            register_pipeline(pipeline_manager, raster_info);
+            return pipeline;
+        }
+    }
+
+    template <typename TaskHeadT, typename PushT, typename InfoT, typename PipelineT>
+    void add(Task<TaskHeadT, PushT, InfoT, PipelineT> &&task) {
+        using MetaTaskT = Task<TaskHeadT, PushT, InfoT, PipelineT>;
+        auto shader_id = make_shader_id(task);
+        task.pipeline = find_or_add_pipeline<TaskHeadT, PushT, InfoT, PipelineT>(task, shader_id);
         task_states.push_back(std::make_any<MetaTaskT>(task));
         auto *task_ptr = std::any_cast<MetaTaskT>(&task_states.back());
         if (task.task_graph_ptr == nullptr) {

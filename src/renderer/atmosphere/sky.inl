@@ -55,11 +55,11 @@ struct ConvolveCubeComputePush {
 #include <cmath>
 
 inline void add_sky_settings() {
-    auto add_DensityProfileLayer = [](std::string_view name, DensityProfileLayer const &factory_default) {
-        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
-        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", std::string{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
+    auto add_DensityProfileLayer = [](char const *name, DensityProfileLayer const &factory_default) {
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", Str{name} + "_const_term", {.value = factory_default.const_term, .min = 0.0f, .max = 5.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", Str{name} + "_exp_term", {.value = factory_default.exp_term, .min = -1.0f, .max = 1.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", Str{name} + "_layer_width", {.value = factory_default.layer_width, .min = 0.1f, .max = 50.0f}});
+        AppSettings::add<settings::SliderFloat>({"Atmosphere Advanced", Str{name} + "_lin_term", {.value = factory_default.lin_term, .min = -0.5f, .max = 0.5f}});
     };
 
     auto mie_scale_height = 1.2000000476837158f;
@@ -138,12 +138,12 @@ inline auto get_sky_settings(float time) -> SkySettings {
     auto radians = [](float x) -> float {
         return x * std::numbers::pi_v<float> / 180.0f;
     };
-    auto get_DensityProfileLayer = [](std::string_view name) -> DensityProfileLayer {
+    auto get_DensityProfileLayer = [](char const *name) -> DensityProfileLayer {
         return DensityProfileLayer{
-            .const_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_const_term").value,
-            .exp_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_exp_term").value,
-            .layer_width = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_layer_width").value,
-            .lin_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", std::string{name} + "_lin_term").value,
+            .const_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", Str{name} + "_const_term").value,
+            .exp_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", Str{name} + "_exp_term").value,
+            .layer_width = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", Str{name} + "_layer_width").value,
+            .lin_term = AppSettings::get<settings::SliderFloat>("Atmosphere Advanced", Str{name} + "_lin_term").value,
         };
     };
 
@@ -197,7 +197,7 @@ struct SkyRenderer {
             .name = "multiscattering_lut",
         });
         gpu_context.add(ComputeTask<SkyTransmittanceCompute::Info, SkyTransmittanceComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .source = "atmosphere/sky.comp.glsl",
             .views = SkyTransmittanceCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .transmittance_lut = transmittance_lut.task_resource.view(),
@@ -210,7 +210,7 @@ struct SkyRenderer {
             .task_graph_ptr = &sky_render_task_graph,
         });
         gpu_context.add(ComputeTask<SkyMultiscatteringCompute::Info, SkyMultiscatteringComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .source = "atmosphere/sky.comp.glsl",
             .views = SkyMultiscatteringCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .transmittance_lut = transmittance_lut.task_resource.view(),
@@ -224,7 +224,7 @@ struct SkyRenderer {
             .task_graph_ptr = &sky_render_task_graph,
         });
         gpu_context.add(ComputeTask<SkySkyCompute::Info, SkySkyComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .source = "atmosphere/sky.comp.glsl",
             .views = SkySkyCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .transmittance_lut = transmittance_lut.task_resource.view(),
@@ -239,7 +239,7 @@ struct SkyRenderer {
             .task_graph_ptr = &sky_render_task_graph,
         });
         gpu_context.add(ComputeTask<SkyAeCompute::Info, SkyAeComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"atmosphere/sky.comp.glsl"},
+            .source = "atmosphere/sky.comp.glsl",
             .views = SkyAeCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .transmittance_lut = transmittance_lut.task_resource.view(),
@@ -265,7 +265,7 @@ struct SkyRenderer {
         auto ibl_cube_view = ibl_cube.task_resource.view().layers(0, 6);
 
         gpu_context.add(ComputeTask<ConvolveCubeCompute::Info, ConvolveCubeComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"atmosphere/convolve_cube.comp.glsl"},
+            .source = "atmosphere/convolve_cube.comp.glsl",
             .views = ConvolveCubeCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .sky_lut = sky_lut.task_resource.view(),

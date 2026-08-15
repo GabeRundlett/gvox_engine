@@ -89,7 +89,7 @@ struct SsaoRenderer {
         });
 
         gpu_context.add(ComputeTask<SsaoCompute::Info, SsaoComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
+            .source = "kajiya/ssao.comp.glsl",
             .views = SsaoCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .vs_normal_image_id = scaled_view_normal_image,
@@ -105,7 +105,7 @@ struct SsaoRenderer {
             },
         });
         gpu_context.add(ComputeTask<SsaoSpatialFilterCompute::Info, SsaoSpatialFilterComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
+            .source = "kajiya/ssao.comp.glsl",
             .views = SsaoSpatialFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .vs_normal_image_id = scaled_view_normal_image,
@@ -122,7 +122,7 @@ struct SsaoRenderer {
             },
         });
         gpu_context.add(ComputeTask<SsaoUpscaleCompute::Info, SsaoUpscaleComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
+            .source = "kajiya/ssao.comp.glsl",
             .views = SsaoUpscaleCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .g_buffer_image_id = gbuffer_depth.gbuffer,
@@ -139,7 +139,7 @@ struct SsaoRenderer {
             },
         });
         gpu_context.add(ComputeTask<SsaoTemporalFilterCompute::Info, SsaoTemporalFilterComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/ssao.comp.glsl"},
+            .source = "kajiya/ssao.comp.glsl",
             .views = SsaoTemporalFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .reprojection_image_id = reprojection_map,

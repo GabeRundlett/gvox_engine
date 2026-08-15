@@ -11,8 +11,6 @@
 #include <chrono>
 #include <imgui.h>
 #include <cstring>
-#include <array>
-#include <iostream>
 
 namespace {
     void destroy_frame(GpuContext &gpu_context, VoxelObject *frame) {
@@ -41,11 +39,17 @@ namespace {
 
 AnimationPlayground::AnimationPlayground(GpuContext &gpu_context, RenderScene *render_scene)
     : gpu_context(gpu_context), render_scene(render_scene) {
-    pipeline = gpu_context.pipeline_manager->add_compute_pipeline({
-        .source = daxa::ShaderFile{"voxels/animation_playground/generate.comp.glsl"},
-        .push_constant_size = sizeof(AnimationPlaygroundGenPush),
-        .name = "AnimationPlaygroundGenerate",
-    });
+    // Registered here, compiled later in bulk (see record_tasks -> compile_all_shaders).
+    // `pipeline` is a stable member address, so the closure below stays valid
+    // across hot-reloads.
+    register_pipeline(
+        gpu_context.pipeline_manager,
+        ComputePipelineCompileInfo{
+            .out_pipeline = &pipeline,
+            .source_path = "voxels/animation_playground/generate.comp.glsl",
+            .push_constant_size = sizeof(AnimationPlaygroundGenPush),
+            .name = "AnimationPlaygroundGenerate",
+        });
 }
 
 AnimationPlayground::~AnimationPlayground() {
@@ -124,7 +128,7 @@ void AnimationPlayground::regenerate(float time) {
                 .writes(task_bricks_buffer)
                 .writes(task_brick_attribs_buffer)
                 .executes([&pipeline_ref, push, grid_dims_bricks = grid_dims_bricks, dispatch_z](daxa::TaskInterface ti) {
-                    ti.recorder.set_pipeline(pipeline_ref.get());
+                    ti.recorder.set_pipeline(pipeline_ref);
                     ti.recorder.push_constant(push);
                     ti.recorder.dispatch({
                         static_cast<daxa_u32>(grid_dims_bricks.x),
@@ -167,7 +171,7 @@ void AnimationPlayground::regenerate(float time) {
         destroy_frame(gpu_context, frame);
     }
     frames.clear();
-    frames.resize(static_cast<size_t>(frame_count), nullptr);
+    frames.resize(frame_count, nullptr);
 
     total_brick_count = 0;
 
@@ -177,8 +181,7 @@ void AnimationPlayground::regenerate(float time) {
         voxel_object->brick_max = grid_dims_bricks - glm::ivec3(1, 1, 1);
 
         auto const grid_size = voxel_object->brick_max - voxel_object->brick_min + glm::ivec3(1, 1, 1);
-        voxel_object->brick_grid.resize(static_cast<size_t>(grid_size.x) * static_cast<size_t>(grid_size.y) * static_cast<size_t>(grid_size.z));
-        std::memset(voxel_object->brick_grid.data(), 0, voxel_object->brick_grid.size() * sizeof(VoxelBrick *));
+        voxel_object->brick_grid.resize(grid_size.x * grid_size.y * grid_size.z);
 
         for (int bz = 0; bz < grid_dims_bricks.z; ++bz) {
             for (int by = 0; by < grid_dims_bricks.y; ++by) {
@@ -226,7 +229,7 @@ void AnimationPlayground::regenerate(float time) {
                     brick->render_attribs = new VoxelShadingAttribBrick();
                     std::memcpy(brick->render_attribs, &attribs_host[brick_index], sizeof(VoxelShadingAttribBrick));
 
-                    voxel_object->brick_grid[static_cast<size_t>(voxel_object->get_brick_index(brick_pos))] = brick;
+                    voxel_object->brick_grid[voxel_object->get_brick_index(brick_pos)] = brick;
                 }
             }
         }
@@ -235,7 +238,7 @@ void AnimationPlayground::regenerate(float time) {
         voxel_object->render_dirty = true;
         update_render_voxel_object(gpu_context, voxel_object);
 
-        frames[static_cast<size_t>(frame_i)] = voxel_object;
+        frames[frame_i] = voxel_object;
     }
 
     auto t2 = Clock::now();
@@ -255,8 +258,8 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
     }
 
     if (!frames.empty()) {
-        auto const current_frame_int = static_cast<int>(current_frame_f) % frames.size();
-        auto voxel_object = frames[static_cast<size_t>(current_frame_int)];
+        auto const current_frame_int = static_cast<int>(current_frame_f) % frames.size;
+        auto voxel_object = frames[current_frame_int];
 
         draw_voxel_object(voxel_object, playground_pos, VOXEL_SIZE, glm::vec3(1.0f));
         auto const grid_size = grid_dims_bricks;

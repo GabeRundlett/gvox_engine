@@ -2,7 +2,7 @@
 
 #include <renderer/atmosphere/sky_utils.glsl>
 #include <renderer/atmosphere/atmosphere.glsl>
-#include <g_samplers>
+#include <renderer/globals.glsl>
 
 #if SkyTransmittanceComputeShader
 

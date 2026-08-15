@@ -37,7 +37,7 @@ void render_scene_begin(struct GpuContext &gpu_context, struct RenderScene *self
 }
 
 void render_scene_end(struct GpuContext &gpu_context, struct RenderScene *self) {
-    uint32_t new_tlas_instance_count = self->drawn_voxel_object_manifests.size();
+    uint32_t new_tlas_instance_count = self->drawn_voxel_object_manifests.size;
     if (new_tlas_instance_count != self->buffers.tlas_instance_count) {
         self->buffers.tlas_instance_count = new_tlas_instance_count;
         auto &device = gpu_context.device;
@@ -139,12 +139,12 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
         daxa::InlineTask::Transfer("update tlas instances")
             .writes(self->buffers.task_tlas_instances, self->buffers.voxel_object_manifests.task_resource)
             .executes([self](daxa::TaskInterface ti) {
-                auto tlasInstanceN = self->drawn_voxel_object_manifests.size();
+                auto tlasInstanceN = self->drawn_voxel_object_manifests.size;
                 auto staging_allocation = ti.allocator->allocate(sizeof(daxa_BlasInstanceData) * tlasInstanceN);
                 if (tlasInstanceN == 0)
                     return;
 
-                memcpy(staging_allocation->host_address, self->drawn_voxel_objects_blas_instances.data(), staging_allocation->size);
+                memcpy(staging_allocation->host_address, self->drawn_voxel_objects_blas_instances.data, staging_allocation->size);
                 // TODO: Think more about updating the tlas. Shouldn't need to update every single object, only ones that changed
                 // NOTE: Don't forget about deletion of objects, this should mark the re-allocated object as a dirty tlas!
                 ti.recorder.copy_buffer_to_buffer({
@@ -155,7 +155,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
                 });
 
                 staging_allocation = ti.allocator->allocate(sizeof(GpuVoxelObject) * tlasInstanceN);
-                memcpy(staging_allocation->host_address, self->drawn_voxel_object_manifests.data(), staging_allocation->size);
+                memcpy(staging_allocation->host_address, self->drawn_voxel_object_manifests.data, staging_allocation->size);
                 ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = ti.allocator->buffer(),
                     .dst_buffer = self->buffers.voxel_object_manifests.task_resource.id(),
@@ -170,7 +170,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
             .transfer.reads(self->buffers.task_tlas_instances)
             .acceleration_structure_build.writes(self->buffers.task_tlas)
             .executes([self](daxa::TaskInterface ti) {
-                auto tlasInstanceN = self->drawn_voxel_object_manifests.size();
+                auto tlasInstanceN = self->drawn_voxel_object_manifests.size;
                 auto tlasInstancesBuffer = ti.get(self->buffers.task_tlas_instances).id;
                 auto tlasInstanceInfo = std::array{
                     daxa::TlasInstanceInfo{

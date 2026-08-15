@@ -2,7 +2,7 @@
 
 #include <utilities/gpu_context.hpp>
 #include <glm/vec3.hpp>
-#include <vector>
+#include <base/vec.hpp>
 
 struct VoxelObject;
 struct RenderScene;
@@ -12,7 +12,7 @@ struct AnimationPlayground {
     GpuContext &gpu_context;
     RenderScene *render_scene;
 
-    AsyncManagedComputePipeline pipeline;
+    daxa::ComputePipeline pipeline;
 
     daxa::BufferId bricks_buffer{};
     daxa::BufferId brick_attribs_buffer{};
@@ -30,7 +30,7 @@ struct AnimationPlayground {
 
     glm::vec3 playground_pos = glm::vec3{0.0f, 0.0f, 0.0f};
 
-    std::vector<VoxelObject *> frames;
+    Vec<VoxelObject *> frames;
 
     bool playing = true;
     float current_frame_f = 0.0f;

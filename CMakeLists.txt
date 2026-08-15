@@ -14,9 +14,17 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/deps.cmake")
 
+# add_subdirectory("src/renderer/shader_compiler/src")
+
 add_executable(${PROJECT_NAME}
     "src/main.cpp"
     "src/voxel_app.cpp"
+
+    "src/base/str.cpp"
+    "src/base/format.cpp"
+    "src/base/file.cpp"
+    "src/base/path.cpp"
+    "src/base/log.cpp"
 
     "src/scene.cpp"
     "src/voxels/voxel_object.cpp"
@@ -32,12 +40,23 @@ add_executable(${PROJECT_NAME}
     "src/utilities/gpu_context.cpp"
     "src/utilities/thread_pool.cpp"
     "src/renderer/renderer.cpp"
+    "src/renderer/pipeline_manager.cpp"
     "src/renderer/fsr.cpp"
     "src/renderer/kajiya/ircache.cpp"
     "src/renderer/render_voxel_object.cpp"
     "src/renderer/render_scene.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+target_precompile_headers(${PROJECT_NAME} PRIVATE
+    <filesystem>
+    <chrono>
+    <vector>
+    <string>
+    <memory>
+    <unordered_map>
+    <daxa/daxa.hpp>
+    <voxels/voxel.inl>
+)
 
 add_library(${PROJECT_NAME}_generation
     "src/voxels/generation/generation.cpp"
@@ -65,7 +84,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     GPUOpen::VulkanMemoryAllocator
     daxa::daxa
     gvox::gvox
-    fmt::fmt
     glfw
     nlohmann_json::nlohmann_json
     unofficial::minizip::minizip

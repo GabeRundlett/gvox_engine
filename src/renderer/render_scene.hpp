@@ -11,12 +11,13 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
 
 #include <utilities/gpu_context.hpp>
 #include <voxels/voxel.inl>
+#include <base/vec.hpp>
 
 struct RenderScene {
     VoxelWorldBuffers buffers;
     daxa::ExternalTaskBuffer task_voxel_object_slotmap;
-    std::vector<GpuVoxelObject> drawn_voxel_object_manifests;
-    std::vector<daxa_BlasInstanceData> drawn_voxel_objects_blas_instances;
+    Vec<GpuVoxelObject> drawn_voxel_object_manifests;
+    Vec<daxa_BlasInstanceData> drawn_voxel_objects_blas_instances;
 };
 
 #endif

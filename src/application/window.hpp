@@ -17,8 +17,6 @@ using namespace daxa::types;
 #include <stb_image.h>
 #include <cassert>
 
-#include <span>
-
 template <typename App>
 struct AppWindow {
     GLFWwindow *glfw_window_ptr;
@@ -65,7 +63,7 @@ struct AppWindow {
             glfw_window_ptr,
             [](GLFWwindow *window_ptr, int path_count, char const *paths[]) {
                 auto &app = *reinterpret_cast<App *>(glfwGetWindowUserPointer(window_ptr));
-                app.on_drop(std::span<char const *>{paths, static_cast<size_t>(path_count)});
+                app.on_drop(paths, path_count);
             });
 
         GLFWimage images[1];
@@ -76,8 +74,14 @@ struct AppWindow {
         assert(temp_data != nullptr && "Failed to load image");
         images[0].pixels = temp_data;
         assert(images[0].pixels != nullptr && "Failed to load image");
-        for (auto &pix : std::span(reinterpret_cast<std::array<uint8_t, 4> *>(images[0].pixels), static_cast<size_t>(images[0].width) * static_cast<size_t>(images[0].height))) {
-            std::swap(pix[0], pix[2]);
+        {
+            auto pixel_count = static_cast<size_t>(images[0].width) * static_cast<size_t>(images[0].height);
+            auto *pixels = images[0].pixels;
+            for (size_t i = 0; i < pixel_count; ++i) {
+                auto tmp = pixels[i * 4 + 0];
+                pixels[i * 4 + 0] = pixels[i * 4 + 2];
+                pixels[i * 4 + 2] = tmp;
+            }
         }
         glfwSetWindowIcon(glfw_window_ptr, 1, images);
         stbi_image_free(temp_data);

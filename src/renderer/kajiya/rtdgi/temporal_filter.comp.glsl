@@ -2,7 +2,7 @@
 
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
-#include <g_samplers>
+#include <renderer/globals.glsl>
 #include <renderer/kajiya/inc/color.glsl>
 // #include <utilities/gpu/uv.glsl>
 // #include <renderer/kajiya/inc/frame_constants.glsl>

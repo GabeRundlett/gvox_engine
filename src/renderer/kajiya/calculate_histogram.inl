@@ -47,7 +47,7 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
         daxa_u32 input_mip_level;
     };
     gpu_context.add(ComputeTask<CalculateHistogramCompute::Info, CalculateHistogramComputePush, CalculateHistogramTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/calculate_histogram.comp.glsl"},
+        .source = "kajiya/calculate_histogram.comp.glsl",
         .views = CalculateHistogramCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             .input_tex = blur_pyramid.mips(input_mip_level, 1),

@@ -96,7 +96,7 @@ struct VoxelParticles {
         gpu_context.frame_task_graph.register_buffer(cube_index_buffer.task_resource);
 
         gpu_context.add(ComputeTask<VoxelParticlePerframeCompute::Info, VoxelParticlePerframeComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"voxels/particles/perframe.comp.glsl"},
+            .source = "voxels/particles/perframe.comp.glsl",
             .views = VoxelParticlePerframeCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = global_state.task_resource.view(),

@@ -5,6 +5,7 @@
 
 #if defined(__cplusplus)
 #include <ffx-fsr2-api/ffx_fsr2.h>
+#include <base/vec.hpp>
 
 struct Fsr2Info {
     daxa_u32vec2 render_resolution = {};
@@ -35,7 +36,7 @@ struct Fsr2Renderer {
 
     FfxFsr2Context fsr_context = {};
     FfxFsr2ContextDescription context_description = {};
-    std::vector<std::byte> scratch_buffer = {};
+    Vec<uint8_t> scratch_buffer = {};
 
     Fsr2Renderer() = delete;
     Fsr2Renderer(Fsr2Renderer &&other) = delete;

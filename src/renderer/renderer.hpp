@@ -1,7 +1,6 @@
 #pragma once
 
 #include <application/input.inl>
-#include <memory>
 // #include <voxels/voxel.inl>
 // #include <voxels/particles/voxel_particles.inl>
 
@@ -24,10 +23,14 @@ struct Box {
 };
 
 struct Renderer {
-    std::unique_ptr<RendererImpl> impl;
+    RendererImpl *impl = nullptr;
 
     Renderer();
     ~Renderer();
+    Renderer(Renderer const &) = delete;
+    Renderer(Renderer &&) = delete;
+    auto operator=(Renderer const &) -> Renderer & = delete;
+    auto operator=(Renderer &&) -> Renderer & = delete;
 
     void begin_frame(GpuInput &gpu_input);
     void end_frame(daxa::Device &device, float dt);

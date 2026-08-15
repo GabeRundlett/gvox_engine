@@ -174,7 +174,7 @@ struct TaaRenderer {
         };
 
         gpu_context.add(ComputeTask<TaaReprojectCompute::Info, TaaReprojectComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa/reproject_history.comp.glsl"},
+            .source = "kajiya/taa/reproject_history.comp.glsl",
             .views = TaaReprojectCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -213,7 +213,7 @@ struct TaaRenderer {
         });
 
         gpu_context.add(ComputeTask<TaaFilterInputCompute::Info, TaaFilterInputComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa/filter_input.comp.glsl"},
+            .source = "kajiya/taa/filter_input.comp.glsl",
             .views = TaaFilterInputCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -247,7 +247,7 @@ struct TaaRenderer {
         });
 
         gpu_context.add(ComputeTask<TaaFilterHistoryCompute::Info, TaaFilterHistoryComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa/filter_history.comp.glsl"},
+            .source = "kajiya/taa/filter_history.comp.glsl",
             .views = TaaFilterHistoryCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -278,7 +278,7 @@ struct TaaRenderer {
                 .name = "input_prob_img",
             });
             gpu_context.add(ComputeTask<TaaInputProbCompute::Info, TaaInputProbComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa/input_prob.comp.glsl"},
+                .source = "kajiya/taa/input_prob.comp.glsl",
                 .views = TaaInputProbCompute::Views{
                     .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -317,7 +317,7 @@ struct TaaRenderer {
             });
 
             gpu_context.add(ComputeTask<TaaProbFilterCompute::Info, TaaProbFilterComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa/filter_prob.comp.glsl"},
+                .source = "kajiya/taa/filter_prob.comp.glsl",
                 .views = TaaProbFilterCompute::Views{
                     .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -348,7 +348,7 @@ struct TaaRenderer {
             });
 
             gpu_context.add(ComputeTask<TaaProbFilter2Compute::Info, TaaProbFilter2ComputePush, TaaTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/taa/filter_prob2.comp.glsl"},
+                .source = "kajiya/taa/filter_prob2.comp.glsl",
                 .views = TaaProbFilter2Compute::Views{
                     .gpu_input = gpu_context.task_input_buffer.view(),
 
@@ -382,7 +382,7 @@ struct TaaRenderer {
         });
 
         gpu_context.add(ComputeTask<TaaCompute::Info, TaaComputePush, TaaTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/taa/taa.comp.glsl"},
+            .source = "kajiya/taa/taa.comp.glsl",
             .views = TaaCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
 

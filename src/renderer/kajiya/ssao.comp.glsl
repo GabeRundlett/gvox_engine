@@ -386,7 +386,7 @@ void main() {
 #endif
 #if SsaoTemporalFilterComputeShader
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(SsaoTemporalFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

@@ -1,6 +1,6 @@
 #include "debug.hpp"
-#include <fmt/format.h>
-#include <iostream>
+#include <base/format.hpp>
+#include <base/log.hpp>
 
 debug_utils::Console::Console() {
     s_instance = this;
@@ -20,17 +20,17 @@ debug_utils::Console::~Console() {
 
 void debug_utils::Console::clear_log() {
     auto &self = *s_instance;
-    auto lock = std::lock_guard{*self.items_mtx};
+    auto lock = std::lock_guard{self.items_mtx};
     self.items.clear();
 }
 
-void debug_utils::Console::add_log(std::string const &str) {
+void debug_utils::Console::add_log(char const *str) {
     auto &self = *s_instance;
     {
-        auto lock = std::lock_guard{*self.items_mtx};
-        self.items.push_back(str);
+        auto lock = std::lock_guard{self.items_mtx};
+        self.items.push_back(Str(str));
     }
-    std::cout << str << std::endl;
+    log_info("%s\n", str);
 }
 
 static auto Stricmp(const char *s1, const char *s2) -> int {
@@ -110,7 +110,7 @@ void debug_utils::Console::draw(const char *title, bool *p_open) {
         ImGui::LogToClipboard();
     }
     {
-        auto lock = std::lock_guard{*self.items_mtx};
+        auto lock = std::lock_guard{self.items_mtx};
         for (auto const &item : self.items) {
             if (!self.filter.PassFilter(item.c_str())) {
                 continue;
@@ -168,17 +168,17 @@ void debug_utils::Console::draw(const char *title, bool *p_open) {
 
 void debug_utils::Console::exec_command(const char *command_line) {
     auto &self = *s_instance;
-    add_log(fmt::format("# {}\n", command_line));
+    add_log(format("# %s\n", command_line).data);
     self.history_pos = -1;
-    for (daxa_i32 i = static_cast<daxa_i32>(self.history.size()) - 1; i >= 0; i--) {
-        if (Stricmp(self.history[static_cast<size_t>(i)], command_line) == 0) {
-            free(self.history[static_cast<size_t>(i)]);
-            self.history.erase(self.history.begin() + i);
+    for (daxa_i32 i = self.history.size - 1; i >= 0; i--) {
+        if (Stricmp(self.history[i], command_line) == 0) {
+            free(self.history[i]);
+            self.history.erase(i);
             break;
         }
     }
     self.history.push_back(Strdup(command_line));
-    add_log(fmt::format("Unknown command: '{}'\n", command_line));
+    add_log(format("Unknown command: '%s'\n", command_line).data);
     self.scroll_to_bottom = true;
 }
 
@@ -202,7 +202,7 @@ auto debug_utils::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int
             }
         }
         if (candidates.empty()) {
-            add_log(fmt::format("No match for \"{}\"!\n", /* (int)(word_end - word_start), */ word_start));
+            add_log(format("No match for \"%s\"!\n", /* (int)(word_end - word_start), */ word_start).data);
         } else if (candidates.size() == 1) {
             data->DeleteChars(static_cast<daxa_i32>(word_start - data->Buf), static_cast<daxa_i32>(word_end - word_start));
             data->InsertChars(data->CursorPos, candidates[0]);
@@ -230,7 +230,7 @@ auto debug_utils::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int
             }
             add_log("Possible matches:\n");
             for (auto &candidate : candidates) {
-                add_log(fmt::format("- {}\n", candidate));
+                add_log(format("- %s\n", candidate).data);
             }
         }
         break;
@@ -239,19 +239,19 @@ auto debug_utils::Console::on_text_edit(ImGuiInputTextCallbackData *data) -> int
         const int prev_history_pos = self.history_pos;
         if (data->EventKey == ImGuiKey_UpArrow) {
             if (self.history_pos == -1) {
-                self.history_pos = static_cast<daxa_i32>(self.history.size()) - 1;
+                self.history_pos = self.history.size - 1;
             } else if (self.history_pos > 0) {
                 self.history_pos--;
             }
         } else if (data->EventKey == ImGuiKey_DownArrow) {
             if (self.history_pos != -1) {
-                if (static_cast<size_t>(++self.history_pos) >= self.history.size()) {
+                if (++self.history_pos >= self.history.size) {
                     self.history_pos = -1;
                 }
             }
         }
         if (prev_history_pos != self.history_pos) {
-            const char *history_str = (self.history_pos >= 0) ? self.history[static_cast<size_t>(self.history_pos)] : "";
+            const char *history_str = (self.history_pos >= 0) ? self.history[self.history_pos] : "";
             data->DeleteChars(0, data->BufTextLen);
             data->InsertChars(0, history_str);
         }
@@ -288,7 +288,7 @@ void debug_utils::DebugDisplay::add_pass(Pass const &info) {
     self.passes.push_back(new_info);
 }
 
-void debug_utils::DebugDisplay::set_debug_string(std::string const &id, std::string const &value) {
+void debug_utils::DebugDisplay::set_debug_string(char const *id, char const *value) {
     auto &self = *s_instance;
-    self.debug_strings[id] = value;
+    self.debug_strings.set(Str(id), Str(value));
 }

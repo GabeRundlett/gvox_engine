@@ -1,6 +1,6 @@
 #include <renderer/kajiya/taa.inl>
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 #include <renderer/kajiya/inc/color.glsl>
 #include <renderer/kajiya/inc/image.glsl>

@@ -61,8 +61,8 @@ namespace {
 
     void r32_d32_blit(GpuContext& gpu_context, daxa::TaskImageView src, daxa::TaskImageView dst) {
         gpu_context.add(RasterTask<R32D32Blit::Info, R32D32BlitPush, NoTaskInfo>{
-            .vert_source = daxa::ShaderFile{"FULL_SCREEN_TRIANGLE_VERTEX_SHADER"},
-            .frag_source = daxa::ShaderFile{"R32_D32_BLIT"},
+            .vert_source = "full_screen_triangle.vert.glsl",
+            .frag_source = "r32_d32_blit.frag.glsl",
             .depth_test = daxa::DepthTestInfo{
                 .depth_attachment_format = daxa::Format::D32_SFLOAT,
                 .enable_depth_write = true,

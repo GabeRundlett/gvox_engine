@@ -1,6 +1,6 @@
 #include <renderer/kajiya/rtdgi.inl>
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 #include <renderer/kajiya/inc/color.glsl>
 // #include <utilities/gpu/uv.glsl>
 #include <renderer/kajiya/inc/bilinear.glsl>

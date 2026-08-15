@@ -10,4 +10,9 @@ namespace thread_pool {
 
     void async_dispatch(Task task);
     void wait(Task task);
+
+    // Runs func(user_ptr, i) for i in [0, count), spread across the pool, and
+    // blocks until all have finished. The calling thread participates.
+    using IndexedFunc = void(void *, int);
+    void parallel_for(int count, IndexedFunc *func, void *user_ptr);
 } // namespace thread_pool

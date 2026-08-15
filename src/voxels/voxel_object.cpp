@@ -14,7 +14,6 @@ void VoxelObject::init(const glm::ivec3 &new_voxel_min, const glm::ivec3 &new_vo
 
     if (glm::any(glm::lessThanEqual(brick_min, brick_max))) {
         brick_grid.resize((brick_max.x - brick_min.x + 1) * (brick_max.y - brick_min.y + 1) * (brick_max.z - brick_min.z + 1));
-        memset(brick_grid.data(), 0, brick_grid.size() * sizeof(VoxelBrick *));
     } else {
         brick_grid.clear();
     }

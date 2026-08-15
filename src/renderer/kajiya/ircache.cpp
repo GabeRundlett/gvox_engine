@@ -1,5 +1,4 @@
 #include "ircache.inl"
-#include <fmt/format.h>
 
 #include <application/settings.hpp>
 
@@ -10,7 +9,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
     });
 
     gpu_context.add(ComputeTask<IrcachePrepareTraceDispatchCompute::Info, IrcachePrepareTraceDispatchComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/prepare_trace_dispatch_args.comp.glsl"},
+        .source = "kajiya/ircache/prepare_trace_dispatch_args.comp.glsl",
         .views = IrcachePrepareTraceDispatchCompute::Views{
             .ircache_meta_buf = this->ircache_meta_buf.view(),
             .dispatch_args = indirect_args_buf,
@@ -23,7 +22,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
     });
 
     gpu_context.add(ComputeTask<IrcacheResetCompute::Info, IrcacheResetComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/reset_entry.comp.glsl"},
+        .source = "kajiya/ircache/reset_entry.comp.glsl",
         .views = IrcacheResetCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             .ircache_life_buf = this->ircache_life_buf.view(),
@@ -44,7 +43,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
     });
 
     gpu_context.add(RayTracingTask<IrcacheTraceAccessRt::Info, IrcacheTraceAccessRtPush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/trace_accessibility.rt.glsl"},
+        .source = "kajiya/ircache/trace_accessibility.rt.glsl",
         .views = IrcacheTraceAccessRt::Views{
             // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
             // .attribute_pointers = voxel_buffers.blas_attr_pointers.task_resource.view(),
@@ -70,7 +69,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
     });
 
     gpu_context.add(RayTracingTask<IrcacheValidateRt::Info, IrcacheValidateRtPush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/ircache_validate.rt.glsl"},
+        .source = "kajiya/ircache/ircache_validate.rt.glsl",
         .views = IrcacheValidateRt::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
@@ -103,7 +102,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
     });
 
     gpu_context.add(RayTracingTask<TraceIrradianceRt::Info, TraceIrradianceRtPush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/trace_irradiance.rt.glsl"},
+        .source = "kajiya/ircache/trace_irradiance.rt.glsl",
         .views = TraceIrradianceRt::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
@@ -140,7 +139,7 @@ auto IrcacheRenderState::trace_irradiance(GpuContext &gpu_context, VoxelWorldBuf
 
 void IrcacheRenderState::sum_up_irradiance_for_sampling(GpuContext &gpu_context, IrcacheIrradiancePendingSummation pending) {
     gpu_context.add(ComputeTask<SumUpIrradianceCompute::Info, SumUpIrradianceComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/sum_up_irradiance.comp.glsl"},
+        .source = "kajiya/ircache/sum_up_irradiance.comp.glsl",
         .views = SumUpIrradianceCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             .ircache_life_buf = this->ircache_life_buf.view(),
@@ -282,7 +281,7 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
         temp_task_graph.register_buffer(state.ircache_life_buf);
 
         gpu_context.add(ComputeTask<ClearIrcachePoolCompute::Info, ClearIrcachePoolComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/ircache/clear_ircache_pool.comp.glsl"},
+            .source = "kajiya/ircache/clear_ircache_pool.comp.glsl",
             .views = ClearIrcachePoolCompute::Views{
                 .ircache_pool_buf = state.ircache_pool_buf.view(),
                 .ircache_life_buf = state.ircache_life_buf.view(),
@@ -303,7 +302,7 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
     }
 
     gpu_context.add(ComputeTask<IrcacheScrollCascadesCompute::Info, IrcacheScrollCascadesComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/scroll_cascades.comp.glsl"},
+        .source = "kajiya/ircache/scroll_cascades.comp.glsl",
         .views = IrcacheScrollCascadesCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
             .ircache_grid_meta_buf = state.ircache_grid_meta_buf.view(),
@@ -329,7 +328,7 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
     });
 
     gpu_context.add(ComputeTask<IrcachePrepareAgeDispatchCompute::Info, IrcachePrepareAgeDispatchComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/prepare_age_dispatch_args.comp.glsl"},
+        .source = "kajiya/ircache/prepare_age_dispatch_args.comp.glsl",
         .views = IrcachePrepareAgeDispatchCompute::Views{
             .ircache_meta_buf = state.ircache_meta_buf.view(),
             .dispatch_args = indirect_args_buf,
@@ -346,7 +345,7 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
         .name = "ircache.entry_occupancy_buf",
     });
     gpu_context.add(ComputeTask<AgeIrcacheEntriesCompute::Info, AgeIrcacheEntriesComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/age_ircache_entries.comp.glsl"},
+        .source = "kajiya/ircache/age_ircache_entries.comp.glsl",
         .views = AgeIrcacheEntriesCompute::Views{
             .ircache_meta_buf = state.ircache_meta_buf.view(),
             .ircache_grid_meta_buf = state.ircache_grid_meta_buf.view(),
@@ -373,7 +372,7 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
     inclusive_prefix_scan_u32_1m(gpu_context, entry_occupancy_buf);
 
     gpu_context.add(ComputeTask<IrcacheCompactEntriesCompute::Info, IrcacheCompactEntriesComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/ircache/ircache_compact_entries.comp.glsl"},
+        .source = "kajiya/ircache/ircache_compact_entries.comp.glsl",
         .views = IrcacheCompactEntriesCompute::Views{
             .ircache_meta_buf = state.ircache_meta_buf.view(),
             .ircache_life_buf = state.ircache_life_buf.view(),

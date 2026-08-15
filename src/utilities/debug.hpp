@@ -1,36 +1,38 @@
 #pragma once
 
 #include <mutex>
-#include <map>
 
+#include <base/vec.hpp>
+#include <base/str.hpp>
+#include <base/hash_map.hpp>
 #include <application/settings.inl>
 #include <imgui.h>
 
 namespace debug_utils {
     struct Console {
         char input_buffer[256]{};
-        std::vector<std::string> items;
-        std::vector<const char *> commands;
-        std::vector<char *> history;
+        Vec<Str> items;
+        Vec<const char *> commands;
+        Vec<char *> history;
         int history_pos{-1};
         ImGuiTextFilter filter;
         bool auto_scroll{true};
         bool scroll_to_bottom{false};
-        std::shared_ptr<std::mutex> items_mtx = std::make_shared<std::mutex>();
+        std::mutex items_mtx = std::mutex();
         inline static Console *s_instance = nullptr;
 
         Console();
         ~Console();
 
         static void clear_log();
-        static void add_log(std::string const &str);
+        static void add_log(char const *str);
         static void draw(const char *title, bool *p_open);
         static void exec_command(const char *command_line);
         static int on_text_edit(ImGuiInputTextCallbackData *data);
     };
 
     struct Pass {
-        std::string name;
+        Str name;
         daxa::TaskImageView task_image_id;
         daxa_u32 type;
         DebugImageSettings settings = {.flags = 0, .brightness = 1.0f};
@@ -38,17 +40,17 @@ namespace debug_utils {
 
     struct DebugDisplay {
         struct GpuResourceInfo {
-            std::string type;
-            std::string name;
+            Str type;
+            Str name;
             size_t size;
         };
-        std::vector<GpuResourceInfo> gpu_resource_infos;
-        std::vector<Pass> prev_passes{};
-        std::vector<Pass> passes{};
+        Vec<GpuResourceInfo> gpu_resource_infos;
+        Vec<Pass> prev_passes{};
+        Vec<Pass> passes{};
         uint32_t selected_pass{};
-        std::string selected_pass_name{};
+        Str selected_pass_name{};
 
-        std::map<std::string, std::string> debug_strings{};
+        HashMap<Str, Str> debug_strings{};
 
         inline static DebugDisplay *s_instance = nullptr;
 
@@ -58,6 +60,6 @@ namespace debug_utils {
         static void begin_passes();
         static void add_pass(Pass const &info);
 
-        static void set_debug_string(std::string const &id, std::string const &value);
+        static void set_debug_string(char const *id, char const *value);
     };
 } // namespace debug_utils

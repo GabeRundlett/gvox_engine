@@ -3,11 +3,20 @@
 
 #include <imgui_stdlib.h>
 #include <imgui_impl_glfw.h>
-#include <fmt/format.h>
+#include <base/format.hpp>
+#include <base/path.hpp>
 #include <utilities/debug.hpp>
 
-#include <vector>
-#include <iostream>
+namespace {
+    auto join_path(char const *dir, char const *file) -> Str {
+        auto result = Str{dir};
+        result.append("/");
+        result.append(file);
+        return result;
+    }
+} // namespace
+
+#include <cstring>
 
 using namespace std::literals;
 
@@ -163,15 +172,16 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
     style.TabRounding = 4.0f;
     style.FramePadding = {4.0f, 3.0f};
 
-    if (!std::filesystem::exists(data_directory)) {
-        std::filesystem::create_directory(data_directory);
+    if (!path_exists(data_directory.c_str())) {
+        path_create_directory(data_directory.c_str());
     }
 
-    if (std::filesystem::exists(data_directory / "user_settings.json")) {
-        settings.load(data_directory / "user_settings.json");
+    auto settings_path = join_path(data_directory.c_str(), "user_settings.json");
+    if (path_exists(settings_path.c_str())) {
+        settings.load(settings_path.c_str());
     } else {
         settings.reset_default();
-        settings.save(data_directory / "user_settings.json");
+        settings.save(settings_path.c_str());
     }
 
     rescale_ui();
@@ -182,7 +192,7 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
 AppUi::~AppUi() {
     auto autosave = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
     if ((autosave || autosave_override) && needs_saving) {
-        settings.save(data_directory / "user_settings.json");
+        settings.save(join_path(data_directory.c_str(), "user_settings.json").c_str());
     }
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -253,13 +263,13 @@ namespace {
                 },
                 [&](settings::ComboBox &data) {
                     auto &item_current_idx = data.value;
-                    if (item_current_idx >= entry.config.options.size()) {
+                    if (item_current_idx >= entry.config.options.size) {
                         // ???
                         item_current_idx = 0;
                         changed = true;
                     }
                     if (ImGui::BeginCombo(id.c_str(), entry.config.options[item_current_idx].c_str())) {
-                        for (int32_t option_i = 0; option_i < entry.config.options.size(); ++option_i) {
+                        for (int32_t option_i = 0; option_i < entry.config.options.size; ++option_i) {
                             auto const &option_str = entry.config.options[option_i];
                             const bool is_selected = (item_current_idx == option_i);
                             if (ImGui::Selectable(option_str.c_str(), is_selected)) {
@@ -299,32 +309,32 @@ void AppUi::settings_ui() {
     if (ImGui::BeginTabBar("##settings_tabs")) {
         if (ImGui::BeginTabItem("App")) {
             auto &settings = *AppSettings::s_instance;
-            for (auto &[cat_id, category] : settings.categories) {
-                auto category_open = ImGui::TreeNode(cat_id.c_str());
+            for (auto &cat_slot : settings.categories) {
+                auto category_open = ImGui::TreeNode(cat_slot.key.c_str());
                 if (ImGui::BeginPopupContextItem()) {
-                    ImGui::Text("%s", cat_id.c_str());
+                    ImGui::Text("%s", cat_slot.key.c_str());
                     if (ImGui::Button("Save Defaults")) {
-                        for (auto &[id, entry] : category) {
-                            entry.user_default = entry.data;
+                        for (auto &entry_slot : cat_slot.value) {
+                            entry_slot.value.user_default = entry_slot.value.data;
                             needs_saving = true;
                         }
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Reset")) {
-                        for (auto &[id, entry] : category) {
-                            entry.data = entry.user_default;
+                        for (auto &entry_slot : cat_slot.value) {
+                            entry_slot.value.data = entry_slot.value.user_default;
                             needs_saving = true;
-                            if (entry.config.task_graph_depends) {
+                            if (entry_slot.value.config.task_graph_depends) {
                                 should_record_task_graph = true;
                             }
                         }
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Factory Reset")) {
-                        for (auto &[id, entry] : category) {
-                            entry.data = entry.factory_default;
+                        for (auto &entry_slot : cat_slot.value) {
+                            entry_slot.value.data = entry_slot.value.factory_default;
                             needs_saving = true;
-                            if (entry.config.task_graph_depends) {
+                            if (entry_slot.value.config.task_graph_depends) {
                                 should_record_task_graph = true;
                             }
                         }
@@ -332,10 +342,10 @@ void AppUi::settings_ui() {
                     ImGui::EndPopup();
                 }
                 if (category_open) {
-                    for (auto &[id, entry] : category) {
-                        if (settings_entry_ui(id, entry)) {
+                    for (auto &entry_slot : cat_slot.value) {
+                        if (settings_entry_ui(entry_slot.key, entry_slot.value)) {
                             needs_saving = true;
-                            if (entry.config.task_graph_depends) {
+                            if (entry_slot.value.config.task_graph_depends) {
                                 should_record_task_graph = true;
                             }
                         }
@@ -345,7 +355,11 @@ void AppUi::settings_ui() {
             }
 
             if (ImGui::TreeNode("Brush")) {
-                if (ImGui::InputText("World Seed", &settings.world_seed_str)) {
+                static char world_seed_buf[256];
+                std::strncpy(world_seed_buf, settings.world_seed_str.c_str(), sizeof(world_seed_buf) - 1);
+                world_seed_buf[sizeof(world_seed_buf) - 1] = '\0';
+                if (ImGui::InputText("World Seed", world_seed_buf, sizeof(world_seed_buf))) {
+                    settings.world_seed_str = world_seed_buf;
                     should_upload_seed_data = true;
                 }
                 ImGui::TreePop();
@@ -369,7 +383,6 @@ void AppUi::settings_ui() {
             //         debug_utils::Console::add_log(fmt::format("[error]: {}", NFD_GetError()));
             //     }
             // }
-            ImGui::Checkbox("Hot-load Shaders", &should_hotload_shaders);
             ImGui::Checkbox("Show ImGui Demo Window", &show_imgui_demo_window);
             ImGui::EndTabItem();
         }
@@ -397,21 +410,21 @@ void AppUi::settings_ui() {
     if (!autosave) {
         ImGui::SameLine();
         if (ImGui::Button("Save")) {
-            settings.save(data_directory / "user_settings.json");
+            settings.save(join_path(data_directory.c_str(), "user_settings.json").c_str());
         }
         ImGui::SameLine();
         if (ImGui::Button("Load")) {
-            settings.load(data_directory / "user_settings.json");
+            settings.load(join_path(data_directory.c_str(), "user_settings.json").c_str());
             needs_saving = true;
         }
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         settings.reset_default();
-        for (auto &[cat_id, category] : settings.categories) {
-            for (auto &[id, entry] : category) {
-                entry.data = entry.user_default;
-                if (entry.config.task_graph_depends) {
+        for (auto &cat_slot : settings.categories) {
+            for (auto &entry_slot : cat_slot.value) {
+                entry_slot.value.data = entry_slot.value.user_default;
+                if (entry_slot.value.config.task_graph_depends) {
                     should_record_task_graph = true;
                 }
             }
@@ -448,13 +461,13 @@ void AppUi::settings_controls_ui() {
                     ImGui::Button("<press any key>", ImVec2(-FLT_MIN, 0.0f));
                     if (ImGui::IsKeyDown(ImGuiKey_Escape)) {
                         if (limbo_is_button) {
-                            settings.mouse_button_binds.erase(limbo_key_index);
+                            settings.mouse_button_binds.remove(limbo_key_index);
                         } else {
-                            settings.keybinds.erase(limbo_key_index);
+                            settings.keybinds.remove(limbo_key_index);
                         }
                         limbo_action_index = INVALID_GAME_ACTION;
                     } else {
-                        auto resolve_action = [this](daxa_i32 key_i, std::map<daxa_i32, daxa_i32> &bindings, bool contains_override) {
+                        auto resolve_action = [this](daxa_i32 key_i, HashMap<daxa_i32, daxa_i32> &bindings, bool contains_override) {
                             // set new key
                             new_key_id = key_i;
                             if (bindings.contains(key_i)) {
@@ -462,20 +475,20 @@ void AppUi::settings_controls_ui() {
                                     // new key to set, but already in bindings
                                     switch (conflict_resolution_mode) {
                                     case 0: {
-                                        auto prev_action = bindings[key_i];
-                                        bindings[key_i] = limbo_action_index;
+                                        auto prev_action = *bindings.get(key_i);
+                                        bindings.set(key_i, limbo_action_index);
                                         if (limbo_is_button) {
-                                            settings.mouse_button_binds[limbo_key_index] = prev_action;
+                                            settings.mouse_button_binds.set(limbo_key_index, prev_action);
                                         } else {
-                                            settings.keybinds[limbo_key_index] = prev_action;
+                                            settings.keybinds.set(limbo_key_index, prev_action);
                                         }
                                     } break;
                                     case 1: {
-                                        bindings[key_i] = limbo_action_index;
+                                        bindings.set(key_i, limbo_action_index);
                                         if (limbo_is_button) {
-                                            settings.mouse_button_binds.erase(limbo_key_index);
+                                            settings.mouse_button_binds.remove(limbo_key_index);
                                         } else {
-                                            settings.keybinds.erase(limbo_key_index);
+                                            settings.keybinds.remove(limbo_key_index);
                                         }
                                     } break;
                                     case 2: // cancel
@@ -487,11 +500,11 @@ void AppUi::settings_controls_ui() {
                                 }
                             } else {
                                 if (limbo_is_button) {
-                                    settings.mouse_button_binds.erase(limbo_key_index);
+                                    settings.mouse_button_binds.remove(limbo_key_index);
                                 } else {
-                                    settings.keybinds.erase(limbo_key_index);
+                                    settings.keybinds.remove(limbo_key_index);
                                 }
-                                bindings[key_i] = limbo_action_index;
+                                bindings.set(key_i, limbo_action_index);
                                 needs_saving = true;
                             }
                             limbo_action_index = INVALID_GAME_ACTION;
@@ -518,31 +531,31 @@ void AppUi::settings_controls_ui() {
                     auto temp_limbo_key_index = GLFW_KEY_LAST + 1;
                     auto temp_limbo_is_button = false;
                     if (key_name == nullptr) {
-                        auto action_key_iter = std::find_if(
-                            settings.keybinds.begin(),
-                            settings.keybinds.end(),
-                            [i](const auto &mo) { return mo.second == static_cast<daxa_i32>(i); });
-                        if (action_key_iter != settings.keybinds.end()) {
-                            key_name = get_key_string(action_key_iter->first);
-                            temp_limbo_key_index = action_key_iter->first;
-                            temp_limbo_is_button = false;
+                        for (auto const &slot : settings.keybinds) {
+                            if (slot.value == static_cast<daxa_i32>(i)) {
+                                key_name = get_key_string(slot.key);
+                                temp_limbo_key_index = slot.key;
+                                temp_limbo_is_button = false;
+                                break;
+                            }
                         }
                     }
                     if (key_name == nullptr) {
-                        auto action_button_iter = std::find_if(
-                            settings.mouse_button_binds.begin(),
-                            settings.mouse_button_binds.end(),
-                            [i](const auto &mo) { return mo.second == static_cast<daxa_i32>(i); });
-                        if (action_button_iter != settings.mouse_button_binds.end()) {
-                            key_name = get_button_string(action_button_iter->first);
-                            temp_limbo_key_index = action_button_iter->first;
-                            temp_limbo_is_button = true;
+                        for (auto const &slot : settings.mouse_button_binds) {
+                            if (slot.value == static_cast<daxa_i32>(i)) {
+                                key_name = get_button_string(slot.key);
+                                temp_limbo_key_index = slot.key;
+                                temp_limbo_is_button = true;
+                                break;
+                            }
                         }
                     }
                     if (key_name == nullptr) {
                         key_name = "Un-set";
                     }
-                    auto key_str = std::string{key_name} + "##" + std::to_string(i);
+                    auto key_str = Str{key_name};
+                    key_str.append("##");
+                    key_str.append(static_cast<unsigned long long>(i));
                     if (ImGui::Button(key_str.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
                         if (limbo_action_index == INVALID_GAME_ACTION) {
                             limbo_action_index = static_cast<daxa_i32>(i);
@@ -559,7 +572,7 @@ void AppUi::settings_controls_ui() {
 
 void AppUi::settings_passes_ui() {
     auto &self = *debug_utils::DebugDisplay::s_instance;
-    for (uint32_t pass_i = 0; pass_i < self.passes.size(); ++pass_i) {
+    for (uint32_t pass_i = 0; pass_i < static_cast<uint32_t>(self.passes.size); ++pass_i) {
         if (self.selected_pass == pass_i) {
         }
         auto &pass = self.passes[pass_i];
@@ -611,7 +624,7 @@ void AppUi::begin_frame() {
 void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     cpu_frametimes[frametime_rotation_index] = cpu_delta_time;
     full_frametimes[frametime_rotation_index] = delta_time;
-    frametime_rotation_index = (frametime_rotation_index + 1) % full_frametimes.size();
+    frametime_rotation_index = (frametime_rotation_index + 1) % (sizeof(full_frametimes) / sizeof(full_frametimes[0]));
 
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -671,19 +684,20 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
         ImGui::SetNextWindowPos(pos);
         ImGui::Begin("Debug Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration);
         auto frametime_graph = [](auto &frametimes, uint64_t frametime_rot_index) {
+            constexpr int frametime_count = static_cast<int>(sizeof(frametimes) / sizeof(frametimes[0]));
             float average = 0.0f;
+            float min_frametime = frametimes[0];
+            float max_frametime = frametimes[0];
             for (auto frametime : frametimes) {
                 average += frametime;
+                min_frametime = frametime < min_frametime ? frametime : min_frametime;
+                max_frametime = frametime > max_frametime ? frametime : max_frametime;
             }
-            average /= static_cast<float>(frametimes.size());
-            auto fmt_str = std::string();
-            auto [min_frametime_iter, max_frametime_iter] = std::minmax_element(frametimes.begin(), frametimes.end());
-            auto min_frametime = *min_frametime_iter;
-            auto max_frametime = *max_frametime_iter;
+            average /= static_cast<float>(frametime_count);
             auto frametime_plot_min = floor(min_frametime * 100.0f) * 0.01f;
             auto frametime_plot_max = ceil(max_frametime * 100.0f) * 0.01f;
-            fmt::format_to(std::back_inserter(fmt_str), "avg {:.2f} ms ({:.2f} fps)", average * 1000, 1.0f / average);
-            ImGui::PlotLines("", frametimes.data(), static_cast<int>(frametimes.size()), static_cast<int>(frametime_rot_index), fmt_str.c_str(), frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
+            auto fmt_str = format("avg %.2f ms (%.2f fps)", double(average * 1000), double(1.0f / average));
+            ImGui::PlotLines("", static_cast<float const *>(frametimes), frametime_count, static_cast<int>(frametime_rot_index), fmt_str.data, frametime_plot_min, frametime_plot_max, ImVec2(0, 120.0f));
             ImGui::Text("min: %.2f ms, max: %.2f ms", static_cast<double>(min_frametime) * 1000, static_cast<double>(max_frametime) * 1000);
         };
         if (ImGui::TreeNode("Full frame-time")) {
@@ -694,8 +708,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
             frametime_graph(cpu_frametimes, frametime_rotation_index);
             ImGui::TreePop();
         }
-        for (auto const &[id, value] : debug_utils::DebugDisplay::s_instance->debug_strings) {
-            ImGui::Text("%s: %s", id.c_str(), value.c_str());
+        for (auto const &slot : debug_utils::DebugDisplay::s_instance->debug_strings) {
+            ImGui::Text("%s: %s", slot.key.c_str(), slot.value.c_str());
         }
         if (ImGui::TreeNode("GPU Resources")) {
             static ImGuiTableFlags const flags =
@@ -721,8 +735,8 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
                     if (sorts_specs->SpecsDirty) {
                         current_gpu_resource_info_sort_specs = sorts_specs;
-                        if (debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size() > 1) {
-                            qsort(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.data(), debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size(), sizeof(debug_utils::DebugDisplay::s_instance->gpu_resource_infos[0]), compare_gpu_resource_infos);
+                        if (debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size > 1) {
+                            qsort(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.data, static_cast<size_t>(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size), sizeof(debug_utils::DebugDisplay::s_instance->gpu_resource_infos[0]), compare_gpu_resource_infos);
                         }
                         current_gpu_resource_info_sort_specs = nullptr;
                         sorts_specs->SpecsDirty = false;
@@ -730,10 +744,10 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
                 }
 
                 ImGuiListClipper clipper;
-                clipper.Begin(static_cast<daxa_i32>(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size()));
+                clipper.Begin(debug_utils::DebugDisplay::s_instance->gpu_resource_infos.size);
                 while (clipper.Step()) {
                     for (int row_i = clipper.DisplayStart; row_i < clipper.DisplayEnd; row_i++) {
-                        auto const &res_info = debug_utils::DebugDisplay::s_instance->gpu_resource_infos[static_cast<size_t>(row_i)];
+                        auto const &res_info = debug_utils::DebugDisplay::s_instance->gpu_resource_infos[row_i];
                         ImGui::PushID(&res_info);
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();
@@ -763,7 +777,7 @@ void AppUi::update(daxa_f32 delta_time, daxa_f32 cpu_delta_time) {
     using namespace std::chrono_literals;
     auto autosave = AppSettings::get<settings::Checkbox>("UI", "autosave").value;
     if ((autosave || autosave_override) && needs_saving && now - last_save_time > 0.1s) {
-        settings.save(data_directory / "user_settings.json");
+        settings.save(join_path(data_directory.c_str(), "user_settings.json").c_str());
         needs_saving = false;
         autosave_override = false;
     }

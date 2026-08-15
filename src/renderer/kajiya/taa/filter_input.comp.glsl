@@ -1,6 +1,6 @@
 #include <renderer/kajiya/taa.inl>
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/color.glsl>
 #include "taa_common.glsl"

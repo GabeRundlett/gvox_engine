@@ -71,7 +71,7 @@ struct ShadowDenoiser {
             daxa_u32vec2 bitpacked_shadow_mask_extent;
         };
         gpu_context.add(ComputeTask<ShadowBitPackCompute::Info, ShadowBitPackComputePush, ShadowBitPackComputeInfo>{
-            .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
+            .source = "kajiya/shadow_denoiser.comp.glsl",
             .views = ShadowBitPackCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tex = shadow_mask,
@@ -138,7 +138,7 @@ struct ShadowDenoiser {
         });
 
         gpu_context.add(ComputeTask<ShadowTemporalFilterCompute::Info, ShadowTemporalFilterComputePush, ShadowBitPackComputeInfo>{
-            .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
+            .source = "kajiya/shadow_denoiser.comp.glsl",
             .views = ShadowTemporalFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .shadow_mask_tex = shadow_mask,
@@ -186,7 +186,7 @@ struct ShadowDenoiser {
         };
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
-            .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
+            .source = "kajiya/shadow_denoiser.comp.glsl",
             .views = ShadowSpatialFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tex = spatial_input_image,
@@ -203,7 +203,7 @@ struct ShadowDenoiser {
         });
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
-            .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
+            .source = "kajiya/shadow_denoiser.comp.glsl",
             .views = ShadowSpatialFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tex = accum_image.view(),
@@ -220,7 +220,7 @@ struct ShadowDenoiser {
         });
 
         gpu_context.add(ComputeTask<ShadowSpatialFilterCompute::Info, ShadowSpatialFilterComputePush, ShadowSpatialFilterComputeInfo>{
-            .source = daxa::ShaderFile{"kajiya/shadow_denoiser.comp.glsl"},
+            .source = "kajiya/shadow_denoiser.comp.glsl",
             .views = ShadowSpatialFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tex = shadow_denoise_intermediary_1,

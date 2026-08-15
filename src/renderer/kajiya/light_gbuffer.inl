@@ -63,7 +63,7 @@ inline auto light_gbuffer(
     }
 
     gpu_context.add(ComputeTask<LightGbufferCompute::Info, LightGbufferComputePush, LightGbufferComputeTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/light_gbuffer.comp.glsl"},
+        .source = "kajiya/light_gbuffer.comp.glsl",
         .views = LightGbufferCompute::Views{
             // IRCACHE_BUFFER_USES_ASSIGN(LightGbufferCompute, ircache),
             .gpu_input = gpu_context.task_input_buffer.view(),

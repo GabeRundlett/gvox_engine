@@ -1,12 +1,19 @@
 #pragma once
 
-#include <numeric>
-#include <algorithm>
 #include <cmath>
-#include <fmt/format.h>
+#include <cstring>
 
 #include <renderer/kajiya/blur.inl>
 #include <renderer/kajiya/calculate_histogram.inl>
+
+namespace {
+    template <typename T>
+    constexpr auto pp_min(T a, T b) -> T { return a < b ? a : b; }
+    template <typename T>
+    constexpr auto pp_max(T a, T b) -> T { return a > b ? a : b; }
+    template <typename T>
+    constexpr auto pp_clamp(T v, T lo, T hi) -> T { return pp_max(lo, pp_min(v, hi)); }
+} // namespace
 
 struct ExposureState {
     float pre_mult = 1.0f;
@@ -28,7 +35,7 @@ struct DynamicExposureState {
     void update(float ev, float dt, float speed) {
         // dyn exposure update
         auto &self = *this;
-        ev = std::clamp<float>(ev, LUMINANCE_HISTOGRAM_MIN_LOG2, LUMINANCE_HISTOGRAM_MAX_LOG2);
+        ev = pp_clamp<float>(ev, LUMINANCE_HISTOGRAM_MIN_LOG2, LUMINANCE_HISTOGRAM_MAX_LOG2);
         dt = dt * speed; // std::exp2f(self.speed_log2);
         auto t_fast = 1.0f - std::exp(-1.0f * dt);
         self.ev_fast = (ev - self.ev_fast) * t_fast + self.ev_fast;
@@ -45,20 +52,28 @@ struct PostProcessor {
     ExposureState exposure_state{};
     DynamicExposureState dynamic_exposure{};
 
-    std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT> histogram{};
+    uint32_t histogram[LUMINANCE_HISTOGRAM_BIN_COUNT]{};
 
     void next_frame(daxa::Device &device, AutoExposureSettings const &auto_exposure_settings, float dt) {
+        struct HistogramBins {
+            uint32_t bins[LUMINANCE_HISTOGRAM_BIN_COUNT];
+        };
+
         ++histogram_buffer_index;
         histogram_buffer_index = (histogram_buffer_index + 0) % (FRAMES_IN_FLIGHT + 1);
         {
             auto readable_buffer_i = (histogram_buffer_index + 1) % (FRAMES_IN_FLIGHT + 1);
-            histogram = (*device.buffer_host_address_as<std::array<std::array<uint32_t, LUMINANCE_HISTOGRAM_BIN_COUNT>, FRAMES_IN_FLIGHT + 1>>(histogram_buffer.task_resource.id()).value())[readable_buffer_i];
+            auto &all_frames = *device.buffer_host_address_as<HistogramBins[FRAMES_IN_FLIGHT + 1]>(histogram_buffer.task_resource.id()).value();
+            std::memcpy(histogram, all_frames[readable_buffer_i].bins, sizeof(histogram));
 
             // operate on histogram
-            auto outlier_frac_lo = std::min<double>(auto_exposure_settings.histogram_clip_low, 1.0);
-            auto outlier_frac_hi = std::min<double>(auto_exposure_settings.histogram_clip_high, 1.0 - outlier_frac_lo);
+            auto outlier_frac_lo = pp_min<double>(auto_exposure_settings.histogram_clip_low, 1.0);
+            auto outlier_frac_hi = pp_min<double>(auto_exposure_settings.histogram_clip_high, 1.0 - outlier_frac_lo);
 
-            auto total_entry_count = std::accumulate(histogram.begin(), histogram.end(), 0);
+            auto total_entry_count = 0u;
+            for (auto const &count : histogram) {
+                total_entry_count += count;
+            }
             auto reject_lo_entry_count = static_cast<uint32_t>(total_entry_count * outlier_frac_lo);
             auto entry_count_to_use = static_cast<uint32_t>(total_entry_count * (1.0 - outlier_frac_lo - outlier_frac_hi));
 
@@ -72,9 +87,9 @@ struct PostProcessor {
             for (auto const &count : histogram) {
                 auto t = (double(bin_idx) + 0.5) / double(LUMINANCE_HISTOGRAM_BIN_COUNT);
 
-                auto count_to_use = std::min(std::max(count, left_to_reject) - left_to_reject, left_to_use);
-                left_to_reject = std::max(left_to_reject, count) - count;
-                left_to_use = std::max(left_to_use, count_to_use) - count_to_use;
+                auto count_to_use = pp_min(pp_max(count, left_to_reject) - left_to_reject, left_to_use);
+                left_to_reject = pp_max(left_to_reject, count) - count;
+                left_to_use = pp_max(left_to_use, count_to_use) - count_to_use;
 
                 sum += t * double(count_to_use);
                 used_count += count_to_use;
@@ -82,7 +97,7 @@ struct PostProcessor {
             }
             // debug_utils::Console::add_log(fmt::format("{}", used_count));
 
-            auto mean = sum / std::max(used_count, 1u);
+            auto mean = sum / pp_max(used_count, 1u);
             auto image_log2_lum = float(LUMINANCE_HISTOGRAM_MIN_LOG2 + mean * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2));
 
             dynamic_exposure.update(-image_log2_lum, dt, auto_exposure_settings.speed);

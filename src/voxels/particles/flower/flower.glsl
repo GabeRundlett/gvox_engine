@@ -1,8 +1,7 @@
 #pragma once
 
 #include <utilities/gpu/noise.glsl>
-#include <g_samplers>
-#include <g_value_noise>
+#include <renderer/globals.glsl>
 
 #include <voxels/particles/particle.glsl>
 

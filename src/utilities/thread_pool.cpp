@@ -198,3 +198,22 @@ void thread_pool::async_dispatch(Task task) {
 void thread_pool::wait(Task task) {
     s_instance.block_on(task->task);
 }
+
+struct IndexedTask : VirtualTask {
+    thread_pool::IndexedFunc *func;
+    void *user_ptr;
+    IndexedTask(thread_pool::IndexedFunc *func, void *user_ptr, uint32_t count) : func{func}, user_ptr{user_ptr} {
+        chunk_count = count;
+    }
+
+    virtual void callback(uint32_t chunk_index, uint32_t thread_index) override {
+        func(user_ptr, static_cast<int>(chunk_index));
+    }
+};
+
+void thread_pool::parallel_for(int count, IndexedFunc *func, void *user_ptr) {
+    if (count <= 0) {
+        return;
+    }
+    s_instance.blocking_dispatch(std::make_shared<IndexedTask>(func, user_ptr, static_cast<uint32_t>(count)));
+}

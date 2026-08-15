@@ -225,7 +225,7 @@ struct TracedRtr {
         daxa::TaskImageView reprojection_map,
         daxa::TaskBufferView spatial_resolve_offsets) -> daxa::TaskImageView {
         gpu_context.add(ComputeTask<RtrTemporalFilterCompute::Info, RtrTemporalFilterComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/rtr/temporal_filter.comp.glsl"},
+            .source = "kajiya/rtr/temporal_filter.comp.glsl",
             .views = RtrTemporalFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tex = this->resolved_tex,
@@ -255,7 +255,7 @@ struct TracedRtr {
         });
 
         gpu_context.add(ComputeTask<RtrSpatialFilterCompute::Info, RtrSpatialFilterComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/rtr/spatial_cleanup.comp.glsl"},
+            .source = "kajiya/rtr/spatial_cleanup.comp.glsl",
             .views = RtrSpatialFilterCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .spatial_resolve_offsets = spatial_resolve_offsets,
@@ -279,7 +279,7 @@ struct TracedRtr {
     }
 };
 
-inline auto temporal_storage_buffer(GpuContext &gpu_context, std::string_view name, size_t size) -> daxa::ExternalTaskBuffer {
+inline auto temporal_storage_buffer(GpuContext &gpu_context, char const *name, size_t size) -> daxa::ExternalTaskBuffer {
     auto result = gpu_context.find_or_add_temporal_buffer({
         .size = size,
         .name = name,
@@ -427,7 +427,7 @@ struct RtrRenderer {
         clear_task_images(gpu_context.device, std::array{rng_output_tex, rng_history_tex});
 
         gpu_context.add(RayTracingTask<RtrTraceRt::Info, RtrTraceRtPush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/rtr/trace_reflection.rt.glsl"},
+            .source = "kajiya/rtr/trace_reflection.rt.glsl",
             .views = RtrTraceRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
@@ -541,7 +541,7 @@ struct RtrRenderer {
             clear_task_images(gpu_context.device, std::array{ray_output_tex, ray_history_tex});
 
             gpu_context.add(RayTracingTask<RtrValidateRt::Info, RtrValidateRtPush, NoTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/rtr/reflection_validate.rt.glsl"},
+                .source = "kajiya/rtr/reflection_validate.rt.glsl",
                 .views = RtrValidateRt::Views{
                     .gpu_input = gpu_context.task_input_buffer.view(),
                     // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),
@@ -575,7 +575,7 @@ struct RtrRenderer {
             debug_utils::DebugDisplay::add_pass({.name = "rtr validate", .task_image_id = refl_restir_invalidity_tex, .type = DEBUG_IMAGE_TYPE_DEFAULT});
 
             gpu_context.add(ComputeTask<RtrRestirTemporalCompute::Info, RtrRestirTemporalComputePush, NoTaskInfo>{
-                .source = daxa::ShaderFile{"kajiya/rtr/rtr_restir_temporal.comp.glsl"},
+                .source = "kajiya/rtr/rtr_restir_temporal.comp.glsl",
                 .views = RtrRestirTemporalCompute::Views{
                     .gpu_input = gpu_context.task_input_buffer.view(),
                     .gbuffer_tex = gbuffer_depth.gbuffer,
@@ -655,7 +655,7 @@ struct RtrRenderer {
         });
 
         gpu_context.add(ComputeTask<RtrRestirResolveCompute::Info, RtrRestirResolveComputePush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/rtr/resolve.comp.glsl"},
+            .source = "kajiya/rtr/resolve.comp.glsl",
             .views = RtrRestirResolveCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .gbuffer_tex = gbuffer_depth.gbuffer,

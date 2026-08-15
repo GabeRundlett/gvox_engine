@@ -40,7 +40,7 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
 
     if (render_shadows) {
         gpu_context.add(RayTracingTask<TraceShadowRt::Info, TraceShadowRtPush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"trace_shadow.rt.glsl"},
+            .source = "trace_shadow.rt.glsl",
             .views = TraceShadowRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 // .geometry_pointers = voxel_buffers.blas_geom_pointers.task_resource.view(),

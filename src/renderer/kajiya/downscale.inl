@@ -24,7 +24,7 @@ inline auto extract_downscaled_depth(GpuContext &gpu_context, daxa::TaskImageVie
     });
 
     gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
+        .source = "kajiya/downscale.comp.glsl",
         .extra_defines = {{"DOWNSCALE_DEPTH", "1"}},
         .views = DownscaleCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
@@ -52,7 +52,7 @@ inline auto extract_downscaled_gbuffer_view_normal_rgba8(GpuContext &gpu_context
     });
 
     gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
+        .source = "kajiya/downscale.comp.glsl",
         .extra_defines = {{"DOWNSCALE_NRM", "1"}},
         .views = DownscaleCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),
@@ -80,7 +80,7 @@ inline auto extract_downscaled_ssao(GpuContext &gpu_context, daxa::TaskImageView
     });
 
     gpu_context.add(ComputeTask<DownscaleCompute::Info, DownscaleComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/downscale.comp.glsl"},
+        .source = "kajiya/downscale.comp.glsl",
         .extra_defines = {{"DOWNSCALE_SSAO", "1"}},
         .views = DownscaleCompute::Views{
             .gpu_input = gpu_context.task_input_buffer.view(),

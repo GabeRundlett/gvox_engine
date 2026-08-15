@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/vec3.hpp>
-#include <vector>
+#include <base/vec.hpp>
 #include <voxels/defs.inl>
 
 struct VoxelBrick {
@@ -15,7 +15,7 @@ struct VoxelBrick {
 struct VoxelObject {
     glm::ivec3 voxel_min, voxel_max;
     glm::ivec3 brick_min, brick_max;
-    std::vector<VoxelBrick *> brick_grid;
+    Vec<VoxelBrick *> brick_grid;
     struct RenderVoxelObject *render_voxel_object;
     bool render_dirty = true;
 

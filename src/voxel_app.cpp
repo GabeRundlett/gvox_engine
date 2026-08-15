@@ -1,9 +1,9 @@
 #include "voxel_app.hpp"
-#include "daxa/utils/pipeline_manager.hpp"
+#include "renderer/pipeline_manager.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "scene.hpp"
 
-#include <fmt/format.h>
+#include <base/format.hpp>
 
 #include <thread>
 #include <numbers>
@@ -64,8 +64,7 @@ VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw
     ui.animation_playground = scene->animation_playground;
 
     record_tasks();
-    gpu_context.pipeline_manager->wait();
-    debug_utils::Console::add_log(fmt::format("startup: {} s\n", std::chrono::duration<float>(Clock::now() - start).count()));
+    debug_utils::Console::add_log(format("startup: %f s\n", double(std::chrono::duration<float>(Clock::now() - start).count())).data);
 }
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();
@@ -110,15 +109,20 @@ void VoxelApp::on_update() {
 
     audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
-    if (ui.should_hotload_shaders) {
-        auto reload_result = gpu_context.pipeline_manager->reload_all();
-        if (auto *reload_err = daxa::get_if<daxa::PipelineReloadError>(&reload_result)) {
-            debug_utils::Console::add_log(reload_err->message);
+    // Hot-reload: the manager's watcher thread flags when any shader source (or
+    // any file it #includes) changed on disk; recompiling assigns new pipelines
+    // in place, so already-recorded task-graph closures pick them up as-is.
+    if (needs_hot_reload(gpu_context.pipeline_manager)) {
+        auto reload_result = try_hot_reload(gpu_context.pipeline_manager, gpu_context.device, false);
+        if (reload_result == RELOAD_ERROR) {
+            debug_utils::Console::add_log("shader hot-reload failed; see log for details");
         }
-
-        if (!daxa::get_if<daxa::NoPipelineChanged>(&reload_result)) {
-            for (auto &[key, pipeline] : gpu_context.ray_tracing_pipelines)
-                pipeline->sbt_storage = pipeline->pipeline->create_default_sbt();
+        if (reload_result != RELOAD_NO_CHANGE) {
+            // The SBT references the old pipeline's shader groups, so it has to
+            // be rebuilt against the freshly created ray tracing pipelines.
+            for (auto &slot : gpu_context.ray_tracing_pipelines) {
+                slot.value->recreate_sbt();
+            }
             scene->animation_playground->dirty = true;
         }
     }
@@ -129,7 +133,7 @@ void VoxelApp::on_update() {
     }
 
     if (ui.should_upload_seed_data) {
-        gpu_context.update_seeded_value_noise(std::hash<std::string>{}(ui.settings.world_seed_str));
+        gpu_context.update_seeded_value_noise(hash_key(ui.settings.world_seed_str));
         ui.should_upload_seed_data = false;
     }
 
@@ -216,8 +220,8 @@ void VoxelApp::on_mouse_button(daxa_i32 button_id, daxa_i32 action) {
         return;
     }
 
-    if (ui.settings.mouse_button_binds.contains(button_id)) {
-        gpu_input.actions[ui.settings.mouse_button_binds.at(button_id)] = static_cast<daxa_u32>(action);
+    if (auto *action_index = ui.settings.mouse_button_binds.get(button_id)) {
+        gpu_input.actions[*action_index] = static_cast<daxa_u32>(action);
     }
 }
 void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
@@ -251,8 +255,8 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     }
 
     if (!ui.paused) {
-        if (ui.settings.keybinds.contains(key_id)) {
-            gpu_input.actions[ui.settings.keybinds.at(key_id)] = static_cast<daxa_u32>(action);
+        if (auto *action_index = ui.settings.keybinds.get(key_id)) {
+            gpu_input.actions[*action_index] = static_cast<daxa_u32>(action);
         }
     }
 }
@@ -277,7 +281,8 @@ void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
         on_update();
     }
 }
-void VoxelApp::on_drop(std::span<char const *> filepaths) {
+void VoxelApp::on_drop(char const *const *filepaths, int filepath_count) {
+    if (filepath_count <= 0) return;
     ui.gvox_model_path = filepaths[0];
     ui.should_upload_gvox_model = true;
 }
@@ -363,6 +368,15 @@ void VoxelApp::record_tasks() {
     // gpu_context.startup_task_graph.submit({});
     // gpu_context.startup_task_graph.complete({});
 
+    // Recording the graph above only *registered* every pipeline; compile them
+    // all now, in parallel and in one batch, then create the pipeline objects.
+    // Everything is ready by the time the first frame executes, so tasks never
+    // have to skip themselves waiting on an in-flight compile.
+    Clock::time_point shader_start = Clock::now();
+    compile_all_shaders(gpu_context.pipeline_manager);
+    create_all_pipelines(gpu_context.pipeline_manager, gpu_context.device);
+    debug_utils::Console::add_log(format("compiling shaders: %f s\n", double(std::chrono::duration<float>(Clock::now() - shader_start).count())).data);
+
     needs_vram_calc = true;
 }
 
@@ -404,7 +418,7 @@ void VoxelApp::record_tasks() {
 // }
 
 void VoxelApp::calc_vram_usage() {
-    std::vector<debug_utils::DebugDisplay::GpuResourceInfo> &debug_gpu_resource_infos = debug_utils::DebugDisplay::s_instance->gpu_resource_infos;
+    Vec<debug_utils::DebugDisplay::GpuResourceInfo> &debug_gpu_resource_infos = debug_utils::DebugDisplay::s_instance->gpu_resource_infos;
 
     debug_gpu_resource_infos.clear();
 
@@ -451,11 +465,11 @@ void VoxelApp::calc_vram_usage() {
 
     buffer_size(gpu_context.input_buffer);
 
-    for (auto &[name, temporal_buffer] : gpu_context.temporal_buffers) {
-        buffer_size(temporal_buffer.task_resource.id());
+    for (auto &slot : gpu_context.temporal_buffers) {
+        buffer_size(slot.value.task_resource.id());
     }
-    for (auto &[name, temporal_image] : gpu_context.temporal_images) {
-        image_size(temporal_image.task_resource.id());
+    for (auto &slot : gpu_context.temporal_images) {
+        image_size(slot.value.task_resource.id());
     }
 
 #if defined(VOXELS_ORIGINAL_IMPL)
@@ -503,5 +517,5 @@ void VoxelApp::calc_vram_usage() {
 
     needs_vram_calc = false;
 
-    debug_utils::DebugDisplay::set_debug_string("Est. VRAM usage", fmt::format("{} MB", static_cast<float>(result_size) / 1000000));
+    debug_utils::DebugDisplay::set_debug_string("Est. VRAM usage", format("%.3f MB", double(static_cast<float>(result_size) / 1000000)).data);
 }

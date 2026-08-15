@@ -12,10 +12,10 @@ Fsr2Renderer::Fsr2Renderer(daxa::Device a_device, Fsr2Info a_info) : device{std:
     auto vk_physical_device = daxa_dvc_get_vk_physical_device(*reinterpret_cast<daxa_Device *>(&device));
 
     auto const scratch_buffer_size = ffxFsr2GetScratchMemorySizeVK(vk_physical_device);
-    scratch_buffer.resize(scratch_buffer_size);
+    scratch_buffer.resize(static_cast<int>(scratch_buffer_size));
 
     {
-        FfxErrorCode const err = ffxFsr2GetInterfaceVK(&context_description.callbacks, scratch_buffer.data(), scratch_buffer_size, vk_physical_device, vkGetDeviceProcAddr);
+        FfxErrorCode const err = ffxFsr2GetInterfaceVK(&context_description.callbacks, scratch_buffer.data, scratch_buffer_size, vk_physical_device, vkGetDeviceProcAddr);
         if (err != FFX_OK) {
             throw std::runtime_error("FSR2 Failed to create Vulkan interface");
         }

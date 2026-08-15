@@ -3,8 +3,7 @@
 #include <utilities/gpu/random.glsl>
 #include <utilities/gpu/noise.glsl>
 
-#include <g_samplers>
-#include <g_value_noise>
+#include <renderer/globals.glsl>
 
 bool mandelbulb(in vec3 c, in out vec3 color) {
     vec3 z = c;

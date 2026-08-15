@@ -76,7 +76,7 @@ struct GbufferRenderer {
         });
 
         gpu_context.add(RayTracingTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo>{
-            .source = daxa::ShaderFile{"trace_primary.rt.glsl"},
+            .source = "trace_primary.rt.glsl",
             .views = TracePrimaryRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 // .voxel_object_manifests = voxel_buffers.voxel_object_manifests.task_resource.view(),

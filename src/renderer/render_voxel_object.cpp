@@ -311,7 +311,7 @@ void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float s
             {0, scale, 0, pos.y},
             {0, 0, scale, pos.z},
         },
-        .instance_custom_index = (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size(),
+        .instance_custom_index = (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size,
         .mask = 0xff,
         .instance_shader_binding_table_record_offset = 0,
         .flags = {},

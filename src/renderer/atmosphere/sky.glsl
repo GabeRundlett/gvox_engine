@@ -5,7 +5,7 @@
 #include <renderer/atmosphere/stars.glsl>
 #include <renderer/atmosphere/sky_utils.glsl>
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 
 vec3 sun_radiance_impl(
     daxa_BufferPtr(GpuInput) gpu_input,

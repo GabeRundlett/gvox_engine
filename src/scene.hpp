@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vector>
+#include <base/vec.hpp>
 struct VoxelObject;
 struct AnimationPlayground;
 
 struct Scene
 {
-    std::vector<VoxelObject*> voxel_objects;
+    Vec<VoxelObject*> voxel_objects;
     struct RenderScene* render_scene;
     struct GpuContext& gpu_context;
     struct VoxelWorld* voxel_world;

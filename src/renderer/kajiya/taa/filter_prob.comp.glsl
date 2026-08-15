@@ -1,6 +1,6 @@
 #include <renderer/kajiya/taa.inl>
 
-#include <g_samplers>
+#include <renderer/globals.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(TaaProbFilterComputePush, push)

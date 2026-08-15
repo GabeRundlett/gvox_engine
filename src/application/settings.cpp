@@ -1,6 +1,6 @@
 #include "ui.hpp"
 #include <nlohmann/json.hpp>
-#include <fmt/format.h>
+#include <base/format.hpp>
 #include <fstream>
 #include <numbers>
 
@@ -14,16 +14,28 @@ AppSettings::~AppSettings() {
     s_instance = nullptr;
 }
 
+namespace {
+    template <typename K, typename V>
+    auto get_or_add(HashMap<K, V> &map, K const &key) -> V & {
+        auto *existing = map.get(key);
+        if (existing == nullptr) {
+            map.set(key, V{});
+            existing = map.get(key);
+        }
+        return *existing;
+    }
+} // namespace
+
 void AppSettings::add(SettingCategoryId const &category_id, SettingId const &id, SettingEntry const &entry) {
     // TODO: make threadsafe
     auto &self = *s_instance;
-    auto &category = self.categories[category_id];
-    auto entry_iter = category.find(id);
-    if (entry_iter == category.end()) {
-        category.insert({id, entry});
+    auto &category = get_or_add(self.categories, category_id);
+    auto *existing_entry = category.get(id);
+    if (existing_entry == nullptr) {
+        category.set(id, entry);
     } else {
-        entry_iter->second.factory_default = entry.factory_default;
-        entry_iter->second.config = entry.config;
+        existing_entry->factory_default = entry.factory_default;
+        existing_entry->config = entry.config;
     }
 }
 
@@ -31,10 +43,12 @@ auto AppSettings::get(SettingCategoryId const &category_id, SettingId const &id)
     // TODO: make threadsafe
     // TODO: make lookup faster
     auto &self = *s_instance;
-    auto &category = self.categories[category_id];
-    auto entry_iter = category.find(id);
-    if (entry_iter != category.end()) {
-        return entry_iter->second;
+    auto *category = self.categories.get(category_id);
+    if (category != nullptr) {
+        auto *entry = category->get(id);
+        if (entry != nullptr) {
+            return *entry;
+        }
     }
     return {};
 }
@@ -42,10 +56,12 @@ auto AppSettings::get(SettingCategoryId const &category_id, SettingId const &id)
 void AppSettings::set(SettingCategoryId const &category_id, SettingId const &id, SettingValue const &value) {
     // TODO: make threadsafe
     auto &self = *s_instance;
-    auto &category = self.categories[category_id];
-    auto entry_iter = category.find(id);
-    if (entry_iter != category.end()) {
-        entry_iter->second.data = value;
+    auto *category = self.categories.get(category_id);
+    if (category != nullptr) {
+        auto *entry = category->get(id);
+        if (entry != nullptr) {
+            entry->data = value;
+        }
     }
 }
 
@@ -127,36 +143,36 @@ void from_json(const nlohmann::json &j, SettingEntry &x) {
     from_json(j["user_default"], x.user_default);
 }
 
-void AppSettings::save(std::filesystem::path const &filepath) {
+void AppSettings::save(char const *filepath) {
     auto json = nlohmann::json{};
 
     json["_version"] = 1;
 
     auto &categories_json = json["categories"];
-    for (auto const &[cat_id, category] : categories) {
-        auto &category_json = categories_json[cat_id];
-        for (auto const &[entry_key, entry] : category) {
-            category_json[entry_key] = entry;
+    for (auto const &cat_slot : categories) {
+        auto &category_json = categories_json[cat_slot.key.c_str()];
+        for (auto const &entry_slot : cat_slot.value) {
+            category_json[entry_slot.key.c_str()] = entry_slot.value;
         }
     }
 
     json["mouse_sensitivity"] = mouse_sensitivity;
-    json["world_seed_str"] = world_seed_str;
+    json["world_seed_str"] = world_seed_str.c_str();
 
-    for (auto [key_i, action_i] : keybinds) {
-        auto str = fmt::format("key_{}", key_i);
-        json[str] = action_i;
+    for (auto const &slot : keybinds) {
+        auto str = format("key_%d", slot.key);
+        json[str.data] = slot.value;
     }
-    for (auto [mouse_button_i, action_i] : mouse_button_binds) {
-        auto str = fmt::format("mouse_button_{}", mouse_button_i);
-        json[str] = action_i;
+    for (auto const &slot : mouse_button_binds) {
+        auto str = format("mouse_button_%d", slot.key);
+        json[str.data] = slot.value;
     }
 
     auto f = std::ofstream(filepath);
     f << std::setw(4) << json;
 }
 
-void AppSettings::load(std::filesystem::path const &filepath) {
+void AppSettings::load(char const *filepath) {
     clear();
 
     auto json = nlohmann::json::parse(std::ifstream(filepath));
@@ -170,33 +186,34 @@ void AppSettings::load(std::filesystem::path const &filepath) {
     {
         auto categories_json = json["categories"];
         for (auto &[category_id, category_json] : categories_json.items()) {
-            auto &category = categories[category_id];
+            auto &category = get_or_add(categories, SettingCategoryId{category_id.c_str()});
             for (auto &[entry_id, entry_json] : category_json.items()) {
                 SettingEntry entry;
                 from_json(entry_json, entry);
-                category.insert({entry_id, entry});
+                category.set(SettingId{entry_id.c_str()}, entry);
             }
         }
     }
 
     grab_value("mouse_sensitivity", mouse_sensitivity);
-    grab_value("world_seed_str", world_seed_str);
-
-    auto load_brush_settings = [&grab_value](std::string const &brush_name, BrushSettings &brush_settings) {
-        grab_value(brush_name + ".flags", brush_settings.flags);
-        grab_value(brush_name + ".radius", brush_settings.radius);
-    };
+    {
+        auto seed_str = std::string{};
+        grab_value("world_seed_str", seed_str);
+        if (!seed_str.empty()) {
+            world_seed_str = seed_str.c_str();
+        }
+    }
 
     for (daxa_i32 key_i = 0; key_i < GLFW_KEY_LAST + 1; ++key_i) {
-        auto str = fmt::format("key_{}", key_i);
-        if (json.contains(str)) {
-            keybinds[key_i] = json[str];
+        auto str = format("key_%d", key_i);
+        if (json.contains(str.data)) {
+            keybinds.set(key_i, json[str.data]);
         }
     }
     for (daxa_i32 mouse_button_i = 0; mouse_button_i < GLFW_MOUSE_BUTTON_LAST + 1; ++mouse_button_i) {
-        auto str = fmt::format("mouse_button_{}", mouse_button_i);
-        if (json.contains(str)) {
-            mouse_button_binds[mouse_button_i] = json[str];
+        auto str = format("mouse_button_%d", mouse_button_i);
+        if (json.contains(str.data)) {
+            mouse_button_binds.set(mouse_button_i, json[str.data]);
         }
     }
 }
@@ -213,22 +230,22 @@ void AppSettings::reset_default() {
     clear();
 
     // clang-format off
-    keybinds[GLFW_KEY_W]             = GAME_ACTION_MOVE_FORWARD;
-    keybinds[GLFW_KEY_A]             = GAME_ACTION_MOVE_LEFT;
-    keybinds[GLFW_KEY_S]             = GAME_ACTION_MOVE_BACKWARD;
-    keybinds[GLFW_KEY_D]             = GAME_ACTION_MOVE_RIGHT;
-    keybinds[GLFW_KEY_R]             = GAME_ACTION_RELOAD;
-    keybinds[GLFW_KEY_F]             = GAME_ACTION_TOGGLE_FLY;
-    keybinds[GLFW_KEY_E]             = GAME_ACTION_INTERACT0;
-    keybinds[GLFW_KEY_Q]             = GAME_ACTION_INTERACT1;
-    keybinds[GLFW_KEY_SPACE]         = GAME_ACTION_JUMP;
-    keybinds[GLFW_KEY_LEFT_CONTROL]  = GAME_ACTION_CROUCH;
-    keybinds[GLFW_KEY_LEFT_SHIFT]    = GAME_ACTION_SPRINT;
-    keybinds[GLFW_KEY_LEFT_ALT]      = GAME_ACTION_WALK;
-    keybinds[GLFW_KEY_F5]            = GAME_ACTION_CYCLE_VIEW;
-    keybinds[GLFW_KEY_B]             = GAME_ACTION_TOGGLE_BRUSH;
+    keybinds.set(GLFW_KEY_W,            GAME_ACTION_MOVE_FORWARD);
+    keybinds.set(GLFW_KEY_A,            GAME_ACTION_MOVE_LEFT);
+    keybinds.set(GLFW_KEY_S,            GAME_ACTION_MOVE_BACKWARD);
+    keybinds.set(GLFW_KEY_D,            GAME_ACTION_MOVE_RIGHT);
+    keybinds.set(GLFW_KEY_R,            GAME_ACTION_RELOAD);
+    keybinds.set(GLFW_KEY_F,            GAME_ACTION_TOGGLE_FLY);
+    keybinds.set(GLFW_KEY_E,            GAME_ACTION_INTERACT0);
+    keybinds.set(GLFW_KEY_Q,            GAME_ACTION_INTERACT1);
+    keybinds.set(GLFW_KEY_SPACE,        GAME_ACTION_JUMP);
+    keybinds.set(GLFW_KEY_LEFT_CONTROL, GAME_ACTION_CROUCH);
+    keybinds.set(GLFW_KEY_LEFT_SHIFT,   GAME_ACTION_SPRINT);
+    keybinds.set(GLFW_KEY_LEFT_ALT,     GAME_ACTION_WALK);
+    keybinds.set(GLFW_KEY_F5,           GAME_ACTION_CYCLE_VIEW);
+    keybinds.set(GLFW_KEY_B,            GAME_ACTION_TOGGLE_BRUSH);
 
-    mouse_button_binds[GLFW_MOUSE_BUTTON_1] = GAME_ACTION_BRUSH_A;
-    mouse_button_binds[GLFW_MOUSE_BUTTON_2] = GAME_ACTION_BRUSH_B;
+    mouse_button_binds.set(GLFW_MOUSE_BUTTON_1, GAME_ACTION_BRUSH_A);
+    mouse_button_binds.set(GLFW_MOUSE_BUTTON_2, GAME_ACTION_BRUSH_B);
     // clang-format on
 }

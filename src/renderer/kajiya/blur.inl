@@ -47,7 +47,7 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         ti.recorder.dispatch({((image_info.size.x + downscale_factor - 1) / downscale_factor + 63) / 64, (image_info.size.y + downscale_factor - 1) / downscale_factor});
     };
     gpu_context.add(ComputeTask<BlurCompute::Info, BlurComputePush, BlurTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
+        .source = "kajiya/blur.comp.glsl",
         .views = BlurCompute::Views{
             .input_tex = input_image,
             .output_tex = output.mips(0, 1),
@@ -64,7 +64,7 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         auto src = output.mips(mip_i + 0, 1);
         auto dst = output.mips(mip_i + 1, 1);
         gpu_context.add(ComputeTask<BlurCompute::Info, BlurComputePush, BlurTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
+            .source = "kajiya/blur.comp.glsl",
             .views = BlurCompute::Views{
                 .input_tex = src,
                 .output_tex = dst,
@@ -106,7 +106,7 @@ inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_
             daxa_f32 self_weight;
         };
         gpu_context.add(ComputeTask<RevBlurCompute::Info, RevBlurComputePush, RevBlurTaskInfo>{
-            .source = daxa::ShaderFile{"kajiya/blur.comp.glsl"},
+            .source = "kajiya/blur.comp.glsl",
             .views = RevBlurCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .input_tail_tex = tail,

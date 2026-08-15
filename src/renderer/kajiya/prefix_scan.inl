@@ -36,7 +36,7 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
     });
 
     gpu_context.add(ComputeTask<PrefixScan1Compute::Info, PrefixScan1ComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
+        .source = "kajiya/prefix_scan.comp.glsl",
         .views = PrefixScan1Compute::Views{
             .inout_buf = input_buf,
         },
@@ -49,7 +49,7 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
     });
 
     gpu_context.add(ComputeTask<PrefixScan2Compute::Info, PrefixScan2ComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
+        .source = "kajiya/prefix_scan.comp.glsl",
         .views = PrefixScan2Compute::Views{
             .input_buf = input_buf,
             .output_buf = segment_sum_buf,
@@ -63,7 +63,7 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
     });
 
     gpu_context.add(ComputeTask<PrefixScanMergeCompute::Info, PrefixScanMergeComputePush, NoTaskInfo>{
-        .source = daxa::ShaderFile{"kajiya/prefix_scan.comp.glsl"},
+        .source = "kajiya/prefix_scan.comp.glsl",
         .views = PrefixScanMergeCompute::Views{
             .inout_buf = input_buf,
             .segment_sum_buf = segment_sum_buf,
