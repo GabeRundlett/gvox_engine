@@ -6,3 +6,4 @@ build
 imgui.ini
 *.dot
 data/user_settings.json
+.glsld

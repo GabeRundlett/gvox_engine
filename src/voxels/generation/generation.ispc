@@ -76,9 +76,9 @@ export void generate_attributes(
     uniform int level_i, uniform uint packed_voxels[], // uniform float densities[],
     uniform NoiseSettings const *uniform noise_settings, RandomCtx random_ctx) {
     const uniform vec3 UP = {0, 0, 1};
-    const uniform vec3 GRASS_COL = {12, 163, 7};
-    const uniform vec3 DIRT_COL = {112, 62, 30};
-    const uniform vec3 STONE_COL = {140, 110, 100};
+    const uniform vec3 GRASS_COL = {0.06, 0.18, 0.005};
+    const uniform vec3 DIRT_COL = {0.05, 0.02, 0.006};
+    const uniform vec3 STONE_COL = {0.08, 0.07, 0.05};
 
     foreach (word_i = 0 ... (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
         for (uniform uint in_word_i = 0; in_word_i < 32; ++in_word_i) {
@@ -99,15 +99,18 @@ export void generate_attributes(
             DensityNrm dn = voxel_value(random_ctx, noise_settings, pos);
             Voxel voxel;
             if (dot(dn.nrm, UP) > 0.25f && dn.val > -2.5f) {
-                voxel.albedo = GRASS_COL / 255.0f;
+                // voxel.albedo = hsv2rgb(vec3(0.18 + 0.005, 0.8, 0.4));
+                voxel.albedo = GRASS_COL;
+                voxel.roughness = 0.9;
             } else if (dot(dn.nrm, UP) > 0.0f && dn.val > -7.5f) {
-                voxel.albedo = DIRT_COL / 255.0f;
+                voxel.albedo = DIRT_COL;
+                voxel.roughness = 0.9;
             } else {
-                voxel.albedo = STONE_COL / 255.0f;
+                voxel.albedo = STONE_COL;
+                voxel.roughness = 0.9;
             }
             ivec3 o = {xi, yi, zi};
             voxel.normal = dither_nrm(random_ctx, dn.nrm, o);
-            voxel.roughness = 0.5;
             voxel.material_type = 0;
             PackedVoxel packed_voxel = pack_voxel(voxel);
             packed_voxels[voxel_index] = packed_voxel.data;

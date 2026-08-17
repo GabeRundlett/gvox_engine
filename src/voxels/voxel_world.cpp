@@ -1,4 +1,5 @@
 #include "voxel_world.hpp"
+#include "animation_playground/animation_playground.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "scene.hpp"
 #include "voxel_object.hpp"
@@ -143,24 +144,24 @@ static glm::vec3 hsv2rgb(glm::vec3 c) {
     return c.z * glm::mix(glm::vec3(k.x), glm::clamp(p - k.x, glm::vec3(0.0), glm::vec3(1.0)), glm::vec3(c.y));
 }
 
-void update(struct GpuContext &gpu_context, Renderer &renderer, GpuInput &gpu_input, VoxelWorld *self) {
+void update_voxel_world(struct GpuContext &gpu_context, Renderer &renderer, GpuInput &gpu_input, VoxelWorld *self) {
     PROFILE_FUNC();
     std::vector<std::pair<thread_pool::Task, void *>> tasks;
     tasks.reserve(MAX_CHUNKS_PER_FRAME);
 
     for (int32_t level_i = 0; level_i < CHUNK_LEVELS; ++level_i) {
+        PROFILE_SCOPE("find update chunks");
         for (int32_t chunk_zi = -CHUNK_NZ; chunk_zi < CHUNK_NZ; ++chunk_zi) {
             for (int32_t chunk_yi = -CHUNK_NY; chunk_yi < CHUNK_NY; ++chunk_yi) {
                 for (int32_t chunk_xi = -CHUNK_NX; chunk_xi < CHUNK_NX; ++chunk_xi) {
-                    auto *user_ptr = new GenChunkArgs{self, chunk_xi, chunk_yi, chunk_zi, level_i};
-                    auto const &args = *(GenChunkArgs *)user_ptr;
-
                     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level_i);
                     auto &chunk = self->chunks[chunk_index];
                     if (chunk.generation_stage != 0)
                         continue;
 
+                    auto args = GenChunkArgs{self, chunk_xi, chunk_yi, chunk_zi, level_i};
                     if (generate_chunk_precheck(args.self, args.chunk_xi, args.chunk_yi, args.chunk_zi, args.level) == 2) {
+                        auto *user_ptr = new GenChunkArgs(args);
                         auto task = thread_pool::create_task(
                             [](void *user_ptr) {
                                 auto const &args = *(GenChunkArgs *)user_ptr;
@@ -185,6 +186,7 @@ exit_1:
     tasks.clear();
 
     for (int32_t level_i = 0; level_i < CHUNK_LEVELS; ++level_i) {
+        PROFILE_SCOPE("find update chunks part 2");
         for (int32_t chunk_zi = -CHUNK_NZ; chunk_zi < CHUNK_NZ; ++chunk_zi) {
             for (int32_t chunk_yi = -CHUNK_NY; chunk_yi < CHUNK_NY; ++chunk_yi) {
                 for (int32_t chunk_xi = -CHUNK_NX; chunk_xi < CHUNK_NX; ++chunk_xi) {
@@ -249,15 +251,22 @@ exit_2:
                     if (chunk.voxel_object != nullptr && chunk.voxel_object->render_voxel_object != nullptr) {
                         glm::vec3 tint{1, 1, 1};
                         update_render_voxel_object(gpu_context, chunk.voxel_object);
-                        draw_voxel_object(chunk.voxel_object, pos, voxel_size, tint);
+                        draw_voxel_object(chunk.voxel_object, pos, {}, voxel_size, tint);
 
                         for (auto surface_ent : chunk.surface_entity_candidates) {
-                            auto voxel_object = self->scene->ball_frames[int(gpu_input.time * 12 + rand()) % glm::countof(self->scene->ball_frames)];
+                            auto &frames = self->scene->animation_playground->frames;
+                            if (frames.size == 0)
+                                break;
+
+                            auto const current_frame_int = static_cast<int>(gpu_input.time * self->scene->animation_playground->playback_fps + rand()) % frames.size;
+                            auto voxel_object = frames[current_frame_int];
+
                             auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
-                            auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
-                            auto ball_tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));
+                            auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size.x, grid_size.y, grid_size.z / 2) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
+                            // auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size;
+                            auto tint = hsv2rgb(glm::vec3(0.2, float(rand() % 100) / 100, 1));
                             // auto tint = glm::vec3(1);
-                            draw_voxel_object(voxel_object, ball_pos, VOXEL_SIZE, ball_tint);
+                            draw_voxel_object(voxel_object, ball_pos, {0, 0, float(rand() % 100) / 100}, VOXEL_SIZE, tint);
                         }
 
                         // box.r = 0.2f;
@@ -654,7 +663,7 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                                             (uint32_t *)render_attrib_brick->voxels, &noise_settings, RANDOM_VALUES.data());
                         has_render_attribs = true;
 
-                        if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.01 * (1 << level)) {
+                        if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.1 * (1 << level)) {
                             float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
                             if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
                                 chunk.surface_entity_candidates.push_back(brick->brick_i);

@@ -17,7 +17,7 @@
 struct VoxelApp : AppWindow<VoxelApp> {
     using Clock = std::chrono::high_resolution_clock;
     Clock::time_point start = Clock::now();
-    Clock::time_point prev_time;
+    Clock::time_point prev_time = Clock::now();
     Clock::time_point prev_phys_update_time = Clock::now();
 
     ProfilerUi profiler_ui;

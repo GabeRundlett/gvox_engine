@@ -32,8 +32,9 @@ auto main() -> int {
 
     auto settings = AppSettings{};
 
-    auto app = VoxelApp{};
-    app.run();
+    auto app = new VoxelApp{};
+    app->run();
+    delete app;
 
     profiler_shutdown();
 }

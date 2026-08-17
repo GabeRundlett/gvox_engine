@@ -14,6 +14,8 @@
 
 #include <random>
 
+static const uint32_t MAX_TIMELINE_QUERIES_PER_FRAME = 1000;
+
 GpuContext::GpuContext() {
     PROFILE_FUNC();
 
@@ -99,6 +101,10 @@ GpuContext::GpuContext() {
     // Shader #include roots live in the pipeline manager itself (SHADER_ROOTS
     // in pipeline_manager.cpp).
     pipeline_manager = create_pipeline_manager();
+
+    timeline_query_pool = device.create_timeline_query_pool(daxa::TimelineQueryPoolInfo{
+        .query_count = uint32_t(FRAMES_IN_FLIGHT * MAX_TIMELINE_QUERIES_PER_FRAME),
+    });
 
     // NOTE: the 4 samplers and value_noise_image/_view are created at the very
     // top of this constructor -- see the comment there and globals.glsl.
@@ -385,6 +391,8 @@ GpuContext::~GpuContext() {
     for (auto &slot : raster_pipelines) {
         delete slot.value;
     }
+    for (auto &[key, data, _] : dynamic_timestamp_name_storage)
+        free((void *)data);
 
     destroy_pipeline_manager(pipeline_manager);
     pipeline_manager = nullptr;
@@ -410,6 +418,100 @@ void GpuContext::use_resources() {
 
     use_shared_resources(frame_task_graph);
     use_shared_resources(startup_task_graph);
+}
+
+void GpuContext::update_timestamps() {
+    auto timelineQueryBeg = timeline_query_frame_offset * MAX_TIMELINE_QUERIES_PER_FRAME;
+    {
+        timeline_query_index_begin = timelineQueryBeg;
+        timeline_query_index = timelineQueryBeg;
+        timeline_query_results.clear();
+
+        timestamp_names = std::move(timestamp_names_storage[timeline_query_frame_offset]);
+        timestamp_names_storage[timeline_query_frame_offset].clear();
+    }
+    if (supports_timestamps())
+        timeline_query_results = timeline_query_pool.get_query_results(timelineQueryBeg, timeline_query_index_count[timeline_query_frame_offset]);
+}
+void GpuContext::finalize_timestamps() {
+    if (supports_timestamps()) {
+        uint32_t index_to_write = timeline_query_frame_offset;
+        timeline_query_index_count[index_to_write] = timeline_query_index - timeline_query_index_begin;
+        assert(timeline_query_index_count[index_to_write] <= MAX_TIMELINE_QUERIES_PER_FRAME);
+
+        // TODO(grundlett): Figure out why Win+D minimize will cause this to become out of sync
+        // T_ASSERT(mTimelineQueryIndexCount[indexToWrite] == 2 * mTimestampNamesStorage[indexToWrite].getCount());
+
+        timeline_query_frame_offset += 1;
+        timeline_query_frame_offset %= FRAMES_IN_FLIGHT;
+    }
+}
+void GpuContext::begin_task_timestamp(const daxa::TaskInterface &ti) {
+    if (!supports_timestamps())
+        return;
+
+    if (timeline_query_index == timeline_query_index_begin) {
+        ti.recorder.reset_timestamps({
+            .query_pool = timeline_query_pool,
+            .start_index = timeline_query_index_begin,
+            .count = MAX_TIMELINE_QUERIES_PER_FRAME,
+        });
+    }
+    timestamp_names_storage[timeline_query_frame_offset].push_back(ti.task_name.data());
+
+    ti.recorder.write_timestamp({
+        .query_pool = timeline_query_pool,
+        .pipeline_stage = daxa::PipelineStageFlagBits::TOP_OF_PIPE,
+        .query_index = timeline_query_index++,
+    });
+}
+void GpuContext::end_task_timestamp(const daxa::TaskInterface &ti) {
+    if (!supports_timestamps())
+        return;
+
+    ti.recorder.write_timestamp({
+        .query_pool = timeline_query_pool,
+        .pipeline_stage = daxa::PipelineStageFlagBits::BOTTOM_OF_PIPE,
+        .query_index = timeline_query_index++,
+    });
+}
+
+void GpuContext::get_timestamps(Vec<struct ProfileTimestamp> &out_timestamps) {
+    const auto &query_results = timeline_query_results;
+    auto result_count = std::min(int(query_results.size()) / 2, timestamp_names.size * 2);
+    if (result_count <= 0)
+        return;
+
+    auto t0 = query_results[0];
+    for (uint32_t i = 0; i < result_count; i += 2) {
+        auto t1 = query_results[i * 2 + 0];
+        auto valid0 = query_results[i * 2 + 1];
+
+        auto t2 = query_results[i * 2 + 2];
+        auto valid1 = query_results[i * 2 + 3];
+
+        auto &name_str = timestamp_names[i / 2];
+        if (!dynamic_timestamp_name_storage.contains(name_str)) {
+            char *data = (char *)malloc(name_str.length + 1);
+            memcpy((void *)data, (const void *)name_str.data, name_str.length + 1);
+            dynamic_timestamp_name_storage.set(name_str, data);
+        }
+
+        const char *name = *dynamic_timestamp_name_storage.get(name_str);
+
+        if (valid0 == 0 || valid1 == 0) {
+            if (i == 0)
+                return;
+            continue;
+        }
+        float timestamp_to_ms = float(device.properties().limits.timestamp_period) / 1'000'000.0f;
+        out_timestamps.push_back(ProfileTimestamp{
+            .name = name,
+            .start = static_cast<float>(t1 - t0) * timestamp_to_ms,
+            .end = static_cast<float>(t2 - t0) * timestamp_to_ms,
+            .children = {},
+        });
+    }
 }
 
 void GpuContext::update_seeded_value_noise(uint64_t seed) {

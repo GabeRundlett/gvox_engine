@@ -5,7 +5,7 @@
 
 struct ProfilerUi {
     static constexpr int FRAME_HISTORY_COUNT = 1000;
-    static constexpr int MAX_DISPLAYED_THREADS = 16;
+    static constexpr int MAX_DISPLAYED_THREADS = 17;
 
     ProfilerUi();
 
@@ -19,7 +19,7 @@ struct ProfilerUi {
     float zoom = 1.0f;
     bool is_panning_flamegraph = false;
 
-    void update();
+    void update(struct GpuContext &gpu_context);
     void ui_fullscreen();
     void ui_timeline();
 

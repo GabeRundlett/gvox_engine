@@ -623,6 +623,8 @@ void AppUi::begin_frame() {
 }
 
 void AppUi::update() {
+    PROFILE_FUNC();
+
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::PushFont(menu_font);

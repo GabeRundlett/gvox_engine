@@ -307,9 +307,11 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
     tempTaskGraph.execute({});
 }
 
-void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, float scale, const glm::vec3 &tint) {
+void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const glm::vec3 &angles, float scale, const glm::vec3 &tint) {
+    PROFILE_FUNC();
     auto *self = object->render_voxel_object;
     self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject(self->brick_shading_device_address, self->brick_primitives_device_address, {tint.r, tint.g, tint.b}));
+    // auto mat = glm::rotate(glm::mat4(scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, 1), angles.z, glm::vec3(0, 0, 1));
     self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
         .transform = {
             {scale, 0, 0, pos.x},

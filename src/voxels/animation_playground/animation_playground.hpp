@@ -23,9 +23,6 @@ struct AnimationPlayground {
     int frame_count = 8;
     bool dirty = true;
 
-    float gen_time_ms = 0;
-    float new_voxel_time_ms = 0;
-    float total_time_ms = 0;
     size_t total_brick_count = 0;
 
     glm::vec3 playground_pos = glm::vec3{0.0f, 0.0f, 0.0f};

@@ -167,7 +167,7 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
     for (auto voxel_object : voxel_objects)
         update_render_voxel_object(gpu_context, voxel_object);
 
-    ::update(gpu_context, renderer, gpu_input, voxel_world);
+    update_voxel_world(gpu_context, renderer, gpu_input, voxel_world);
 
     srand(0);
     for (int zi = 0; zi < 1; zi += 1)
@@ -176,9 +176,9 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
                 auto voxel_object = ball_frames[int(gpu_input.time * 12 + rand()) % countof(ball_frames)];
                 auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
                 auto pos = glm::vec3(xi, yi, zi) * float(BRICK_SIZE) * VOXEL_SIZE * glm::vec3(grid_size);
-                auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9 + float(rand() % 100) / 1000, 0.9));
+                auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9f + float(rand() % 100) / 1000, 0.9));
                 // auto tint = glm::vec3(1);
-                draw_voxel_object(voxel_object, pos - 1000.0f, VOXEL_SIZE, tint);
+                draw_voxel_object(voxel_object, pos - 1000.0f, {}, VOXEL_SIZE, tint);
 
                 // Box box;
                 // box.p0_x = pos.x;

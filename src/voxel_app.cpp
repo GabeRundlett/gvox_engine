@@ -102,7 +102,7 @@ void VoxelApp::run() {
 void VoxelApp::on_update() {
     auto now = std::chrono::high_resolution_clock::now();
     profiler_ui.paused = ui.show_profiler_view;
-    profiler_ui.update();
+    profiler_ui.update(gpu_context);
     PROFILE_FUNC();
 
     {
@@ -161,6 +161,7 @@ void VoxelApp::on_update() {
     gpu_input.flags &= ~GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
 
     renderer.begin_frame(gpu_input);
+    gpu_context.update_timestamps();
 
     if (now - prev_phys_update_time > std::chrono::duration<float>(GAME_PHYS_UPDATE_DT)) {
         gpu_input.flags |= GAME_FLAG_BITS_NEEDS_PHYS_UPDATE;
@@ -196,11 +197,15 @@ void VoxelApp::on_update() {
     gpu_input.mouse.scroll_delta = {0.0f, 0.0f};
 
     renderer.end_frame(gpu_context.device, gpu_input.delta_time);
+    gpu_context.finalize_timestamps();
 
     ui.update();
 
     ++gpu_input.frame_index;
-    gpu_context.device.collect_garbage();
+    {
+        PROFILE_SCOPE("daxa collect garbage");
+        gpu_context.device.collect_garbage();
+    }
 }
 void VoxelApp::on_mouse_move(daxa_f32 x, daxa_f32 y) {
     daxa_f32vec2 const center = {static_cast<daxa_f32>(window_size.x / 2), static_cast<daxa_f32>(window_size.y / 2)};
@@ -333,6 +338,8 @@ void VoxelApp::record_tasks() {
         .swapchain = gpu_context.swapchain,
         .alias_transients = GVOX_ENGINE_INSTALL,
         .staging_memory_pool_size = 1 << 20,
+        .pre_task_callback = [this](daxa::TaskInterface ti) { gpu_context.begin_task_timestamp(ti); },
+        .post_task_callback = [this](daxa::TaskInterface ti) { gpu_context.end_task_timestamp(ti); },
         .name = "frame_task_graph",
     });
     gpu_context.startup_task_graph = daxa::TaskGraph({

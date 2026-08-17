@@ -220,4 +220,3 @@ void Renderer::submit_debug_points(Point const *points, int point_n) {
 void Renderer::submit_debug_box_lines(Box const *cubes, int cube_n) {
     ::submit_debug_box_lines(&impl->debug_shapes, cubes, cube_n);
 }
-
