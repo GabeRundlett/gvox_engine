@@ -3,47 +3,61 @@
 
 #include "trace_primary.inl"
 DAXA_DECL_PUSH_CONSTANT(TracePrimaryRtPush, push)
+
+#define TRACE 1
 #include <renderer/rt.glsl>
 
+#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN || GL_COMPUTE_SHADER
+
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN
-
 layout(location = PAYLOAD_LOC) rayPayloadEXT RayPayload prd;
+#else
+RayPayload prd;
+#endif
 
+#include <renderer/kajiya/inc/rt.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 #include <utilities/gpu/normal.glsl>
 #include <voxels/pack_unpack.inl>
 
-void main() {
-    const ivec2 index = ivec2(gl_LaunchIDEXT.xy);
+#if GL_COMPUTE_SHADER
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+#endif
 
+void main() {
+#if GL_RAY_GENERATION_SHADER_EXT
+	uvec2 index = gl_LaunchIDEXT.xy;
     vec4 output_tex_size = vec4(deref(push.uses.gpu_input).frame_dim, 0, 0);
+#else
+	uvec2 index = gl_GlobalInvocationID.xy;
+    vec4 output_tex_size = vec4(deref(push.uses.gpu_input).frame_dim, 0, 0);
+	if (index.x >= output_tex_size.x || index.y >= output_tex_size.y)
+		return;
+#endif
+
     output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;
-    vec2 uv = get_uv(gl_LaunchIDEXT.xy, output_tex_size);
+    vec2 uv = get_uv(index, output_tex_size);
 
     ViewRayContext vrc = vrc_from_uv(push.uses.gpu_input, uv);
-    vec3 ray_d = ray_dir_ws(vrc);
-    vec3 ray_o = ray_origin_ws(vrc);
 
-    const uint ray_flags = gl_RayFlagsNoneEXT;
-    const uint cull_mask = 0xFF & ~(0x01 & ~(deref(push.uses.gpu_input).player.flags & 1));
-    const uint sbt_record_offset = 0;
-    const uint sbt_record_stride = 0;
-    const uint miss_index = 0;
-    const float t_min = 0.0001;
-    const float t_max = 10000.0;
+    RayDesc outgoing_ray;
+    outgoing_ray.Direction = ray_dir_ws(vrc);
+    outgoing_ray.Origin = ray_origin_ws(vrc);
+    outgoing_ray.TMin = 0;
+    outgoing_ray.TMax = 10000.0;
 
-    traceRayEXT(
-        accelerationStructureEXT(push.uses.tlas),
-        ray_flags, cull_mask, sbt_record_offset, sbt_record_stride, miss_index,
-        ray_o, t_min, ray_d, t_max, PAYLOAD_LOC);
+    GbufferRaytrace primary_hit_ = GbufferRaytrace_with_ray(outgoing_ray);
+    primary_hit_ = with_cull_back_faces(primary_hit_, false);
+    primary_hit_ = with_path_length(primary_hit_, 0);
+    const GbufferPathVertex primary_hit = trace(primary_hit_);
 
-    if (prd.data1 == miss_ray_payload().data1) {
-        imageStore(daxa_image2D(push.uses.depth_image_id), ivec2(gl_LaunchIDEXT.xy), vec4(0));
-        imageStore(daxa_uimage2D(push.uses.g_buffer_image_id), ivec2(gl_LaunchIDEXT.xy), uvec4(0));
+    if (!primary_hit.is_hit) {
+        imageStore(daxa_image2D(push.uses.depth_image_id), ivec2(index), vec4(0));
+        imageStore(daxa_uimage2D(push.uses.g_buffer_image_id), ivec2(index), uvec4(0));
         return;
     }
 
-    vec3 world_pos = ray_o + prd.t * ray_d;
+    vec3 world_pos = outgoing_ray.Origin + prd.t * outgoing_ray.Direction;
     vec3 vel_ws = vec3(0);
     Voxel voxel = unpack_ray_payload(prd, push.uses.voxel_object_manifests);
     // voxel.albedo = vec3(1);
@@ -57,7 +71,7 @@ void main() {
 #if PER_VOXEL_NORMALS
     vec3 ws_nrm = voxel.normal;
 #else
-    vec3 ws_nrm = voxel_face_normal((floor(world_pos * VOXEL_SCL + ray_d * 0.0001) + 0.5) * VOXEL_SIZE, Ray(ray_o, ray_d), vec3(1.0) / ray_d);
+    vec3 ws_nrm = voxel_face_normal((floor(world_pos * VOXEL_SCL + outgoing_ray.Direction * 0.0001) + 0.5) * VOXEL_SIZE, Ray(outgoing_ray.Origin, outgoing_ray.Direction), vec3(1.0) / outgoing_ray.Direction);
 #endif
 
     vec3 vs_nrm = (deref(push.uses.gpu_input).player.cam.world_to_view * vec4(ws_nrm, 0)).xyz;
@@ -79,9 +93,9 @@ void main() {
 
     vs_nrm *= -sign(dot(ray_dir_vs(vrc), vs_nrm));
 
-    imageStore(daxa_uimage2D(push.uses.g_buffer_image_id), ivec2(gl_LaunchIDEXT.xy), output_value);
-    imageStore(daxa_image2D(push.uses.velocity_image_id), ivec2(gl_LaunchIDEXT.xy), vec4(vs_velocity, 0));
-    imageStore(daxa_image2D(push.uses.vs_normal_image_id), ivec2(gl_LaunchIDEXT.xy), vec4(vs_nrm * 0.5 + 0.5, 0));
-    imageStore(daxa_image2D(push.uses.depth_image_id), ivec2(gl_LaunchIDEXT.xy), vec4(depth, 0, 0, 0));
+    imageStore(daxa_uimage2D(push.uses.g_buffer_image_id), ivec2(index), output_value);
+    imageStore(daxa_image2D(push.uses.velocity_image_id), ivec2(index), vec4(vs_velocity, 0));
+    imageStore(daxa_image2D(push.uses.vs_normal_image_id), ivec2(index), vec4(vs_nrm * 0.5 + 0.5, 0));
+    imageStore(daxa_image2D(push.uses.depth_image_id), ivec2(index), vec4(depth, 0, 0, 0));
 }
 #endif

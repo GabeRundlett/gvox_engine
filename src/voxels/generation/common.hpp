@@ -643,3 +643,9 @@ static inline vec3 dither_nrm(RandomCtx random_ctx, vec3 nrm, ivec3 pos) {
     vec3 p = uniform_sample_cone(urand, cos(0.0123));
     return basis * p;
 }
+
+const uniform vec3 UP = {0, 0, 1};
+const uniform vec3 GRASS_COL = {0.03, 0.08, 0.004};
+const uniform vec3 DIRT_COL = {0.34 * 0.34, 0.30 * 0.30, 0.14 * 0.14};
+const uniform vec3 STONE_COL = {0.33 * 0.33, 0.30 * 0.30, 0.21 * 0.21};
+const uniform vec3 GRAVEL_COL = {0.24 * 0.24, 0.18 * 0.18, 0.10 * 0.10};

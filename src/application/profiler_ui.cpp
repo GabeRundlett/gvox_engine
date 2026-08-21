@@ -123,6 +123,8 @@ void ProfilerUi::ui_timeline() {
     // Frame-time overview strip: one bar per recorded frame, click a bar to
     // pin the flame-graph below to that frame.
     auto const overview_size = ImVec2(ImGui::GetContentRegionAvail().x, OVERVIEW_HEIGHT);
+    if (overview_size.x <= 0 || overview_size.y <= 0)
+        return;
     ImGui::InvisibleButton("##profiler_overview", overview_size);
     auto const overview_min = ImGui::GetItemRectMin();
     auto const overview_max = ImGui::GetItemRectMax();

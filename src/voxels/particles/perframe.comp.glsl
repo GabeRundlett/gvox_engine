@@ -21,16 +21,6 @@ SIMPLE_STATIC_ALLOCATOR_BUFFERS_PUSH_USES(FireParticleAllocator, fire_particle_a
 #define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
-#define UserAllocatorType TreeParticleAllocator
-#define UserIndexType uint
-#define UserMaxElementCount MAX_TREE_PARTICLES
-#include <utilities/allocator.glsl>
-
-#define UserAllocatorType FireParticleAllocator
-#define UserIndexType uint
-#define UserMaxElementCount MAX_FIRE_PARTICLES
-#include <utilities/allocator.glsl>
-
 void reset_draw_params(in out IndirectDrawIndexedParams params) {
     params.index_count = 8;
     params.instance_count = 0;
@@ -54,11 +44,6 @@ void main() {
     deref(particles_state).place_bounds_min = uvec3(1000000);
     deref(particles_state).place_bounds_max = uvec3(0);
 
-    // sim particle
-    reset_draw_params(deref(particles_state).sim_particle.cube_draw_params);
-    reset_draw_params(deref(particles_state).sim_particle.shadow_cube_draw_params);
-    reset_draw_params(deref(particles_state).sim_particle.splat_draw_params);
-
     // grass
     reset_draw_params(deref(particles_state).grass.cube_draw_params);
     reset_draw_params(deref(particles_state).grass.shadow_cube_draw_params);
@@ -70,16 +55,4 @@ void main() {
     reset_draw_params(deref(particles_state).flower.shadow_cube_draw_params);
     reset_draw_params(deref(particles_state).flower.splat_draw_params);
     FlowerAllocator_perframe(flower_allocator);
-
-    // tree_particle
-    reset_draw_params(deref(particles_state).tree_particle.cube_draw_params);
-    reset_draw_params(deref(particles_state).tree_particle.shadow_cube_draw_params);
-    reset_draw_params(deref(particles_state).tree_particle.splat_draw_params);
-    TreeParticleAllocator_perframe(tree_particle_allocator);
-
-    // fire_particle
-    reset_draw_params(deref(particles_state).fire_particle.cube_draw_params);
-    reset_draw_params(deref(particles_state).fire_particle.shadow_cube_draw_params);
-    reset_draw_params(deref(particles_state).fire_particle.splat_draw_params);
-    FireParticleAllocator_perframe(fire_particle_allocator);
 }

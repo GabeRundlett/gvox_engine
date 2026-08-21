@@ -42,29 +42,13 @@ const bool USE_SCREEN_GI_REPROJECTION = true;
 #include <renderer/atmosphere/sky.glsl>
 #include <renderer/kajiya/inc/ray_cone.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
+#include <renderer/kajiya/inc/rt.glsl>
 
 struct RtrTraceResult {
     vec3 total_radiance;
     float hit_t;
     vec3 hit_normal_vs;
 };
-
-bool rt_is_shadowed(RayDesc ray) {
-    ShadowRayPayload shadow_payload = ShadowRayPayload_new_hit();
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN
-    const uint ray_flags = gl_RayFlagsNoneEXT;
-    const uint cull_mask = 0xFF;
-    const uint sbt_record_offset = 0;
-    const uint sbt_record_stride = 0;
-    const uint miss_index = 0;
-    traceRayEXT(
-        accelerationStructureEXT(push.uses.tlas),
-        ray_flags, cull_mask, sbt_record_offset, sbt_record_stride, miss_index,
-        ray.Origin, ray.TMin, ray.Direction, ray.TMax, PAYLOAD_LOC);
-    shadow_payload.is_shadowed = prd.data1 != miss_ray_payload().data1;
-#endif
-    return shadow_payload.is_shadowed;
-}
 
 RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uint rng, RayDesc outgoing_ray) {
 #if USE_AGGRESSIVE_SECONDARY_ROUGHNESS_BIAS

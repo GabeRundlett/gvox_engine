@@ -40,3 +40,25 @@ glm::mat4 rotation_matrix(float yaw, float pitch, float roll);
 glm::mat4 inv_rotation_matrix(float yaw, float pitch, float roll);
 glm::mat4 translation_matrix(daxa_f32vec3 pos);
 daxa_f32vec3 apply_inv_rotation(daxa_f32vec3 pt, daxa_f32vec3 ypr);
+
+inline constexpr auto round_up_div(auto x, auto y) {
+    return (x + y - 1) / y;
+}
+
+inline constexpr auto find_msb(uint32_t v) -> uint32_t {
+    uint32_t index = 0;
+    while (v != 0) {
+        v = v >> 1;
+        index = index + 1;
+    }
+    return index;
+}
+inline constexpr auto find_next_lower_po2(uint32_t v) -> uint32_t {
+    auto const msb = find_msb(v);
+    return 1u << ((msb == 0 ? 1 : msb) - 1);
+}
+
+inline auto get_aligned(daxa_u64 operand, daxa_u64 granularity) -> daxa_u64 {
+    return ((operand + (granularity - 1)) & ~(granularity - 1));
+}
+

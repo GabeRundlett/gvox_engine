@@ -40,14 +40,14 @@ static inline void generate_bitmask(
 static inline void generate_attributes(
     int brick_xi, int brick_yi, int brick_zi,
     int chunk_xi, int chunk_yi, int chunk_zi,
-    int level_i, unsigned int packed_voxels[], // float densities[],
+    int level_i, unsigned int packed_voxels[], unsigned int foliage_bits[],
     NoiseSettings const *noise_settings, RandomCtx random_ctx) {
     PROFILE_FUNC();
 
 #if USE_ISPC
-    ispc::generate_attributes(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level_i, packed_voxels, reinterpret_cast<ispc::NoiseSettings const *>(noise_settings), random_ctx);
+    ispc::generate_attributes(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level_i, packed_voxels, foliage_bits, reinterpret_cast<ispc::NoiseSettings const *>(noise_settings), random_ctx);
 #else
-    generate_attributes_cpp(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level_i, packed_voxels, noise_settings, random_ctx);
+    generate_attributes_cpp(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level_i, packed_voxels, foliage_bits, noise_settings, random_ctx);
 #endif
 }
 

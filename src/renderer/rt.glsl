@@ -125,17 +125,6 @@ vec3 voxel_face_normal(vec3 center, Ray ray, in vec3 _invRayDir) {
     return sgn;
 }
 
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION || DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_CLOSEST_HIT
-// hitAttributeEXT HitAttribute hit_attrib;
-#else
-#extension GL_EXT_ray_query : enable
-rayQueryEXT ray_query;
-// HitAttribute hit_attrib;
-#endif
-
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION
-hitAttributeEXT VoxelHit hit;
-
 vec2 RayAabbIntersect(vec3 rayOrigin, vec3 rayDir, vec3 size) {
     vec3 tMin = -rayOrigin / rayDir;
     vec3 tMax = (size - rayOrigin) / rayDir;
@@ -159,6 +148,15 @@ int RayAabbIntersectNormal(vec3 rayOrigin, vec3 rayDir, vec3 size) {
     else
         return 2;
 }
+
+#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION || DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_CLOSEST_HIT
+#else
+#extension GL_EXT_ray_query : enable
+rayQueryEXT ray_query;
+#endif
+
+#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_INTERSECTION
+hitAttributeEXT VoxelHit hit;
 
 void main() {
     daxa_BufferPtr(GpuVoxelObject) voxelObject = advance(push.uses.voxel_object_manifests, gl_InstanceID);

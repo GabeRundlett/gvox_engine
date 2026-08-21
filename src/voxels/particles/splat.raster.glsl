@@ -9,24 +9,12 @@ daxa_BufferPtr(GrassStrand) grass_strands = push.uses.grass_strands;
 #elif defined(FLOWER)
 DAXA_DECL_PUSH_CONSTANT(FlowerSplatParticleRasterPush, push)
 daxa_BufferPtr(Flower) flowers = push.uses.flowers;
-#elif defined(SIM_PARTICLE)
-DAXA_DECL_PUSH_CONSTANT(SimParticleSplatParticleRasterPush, push)
-daxa_BufferPtr(SimulatedVoxelParticle) simulated_voxel_particles = push.uses.simulated_voxel_particles;
-#elif defined(TREE_PARTICLE)
-DAXA_DECL_PUSH_CONSTANT(TreeParticleSplatParticleRasterPush, push)
-daxa_BufferPtr(TreeParticle) tree_particles = push.uses.tree_particles;
-#elif defined(FIRE_PARTICLE)
-DAXA_DECL_PUSH_CONSTANT(FireParticleSplatParticleRasterPush, push)
-daxa_BufferPtr(FireParticle) fire_particles = push.uses.fire_particles;
 #endif
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_BufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses.splat_rendered_particle_verts;
 
 #include "grass/grass.glsl"
 #include "flower/flower.glsl"
-#include "sim_particle/sim_particle.glsl"
-#include "tree_particle/tree_particle.glsl"
-#include "fire_particle/fire_particle.glsl"
 
 #if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_VERTEX
 
@@ -44,12 +32,6 @@ void main() {
     ParticleVertex vert = get_grass_vertex(gpu_input, grass_strands, packed_vertex);
 #elif defined(FLOWER)
     ParticleVertex vert = get_flower_vertex(gpu_input, flowers, packed_vertex);
-#elif defined(SIM_PARTICLE)
-    ParticleVertex vert = get_sim_particle_vertex(gpu_input, simulated_voxel_particles, packed_vertex);
-#elif defined(TREE_PARTICLE)
-    ParticleVertex vert = get_tree_particle_vertex(gpu_input, tree_particles, packed_vertex);
-#elif defined(FIRE_PARTICLE)
-    ParticleVertex vert = get_fire_particle_vertex(gpu_input, fire_particles, packed_vertex);
 #endif
 
     float voxel_radius = VOXEL_SIZE * 0.5;
@@ -70,7 +52,6 @@ void main() {
 
     vec4 vs_pos2 = deref(gpu_input).player.cam.world_to_view * vec4(center_ws, 1);
     vec4 cs_pos = deref(gpu_input).player.cam.view_to_sample * vs_pos2;
-    cs_pos.y *= -1;
 
     gl_Position = cs_pos;
     gl_PointSize = ps_size;

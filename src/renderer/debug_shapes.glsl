@@ -23,7 +23,6 @@ void main() {
     vec3 vertex_col = deref(advance(push.vertex_data, shape_index * 3 + 2));
 
     gl_Position = world_to_clip * vec4(vertex_pos, 1);
-    gl_Position.y *= -1;
     f_col = vertex_col;
 }
 

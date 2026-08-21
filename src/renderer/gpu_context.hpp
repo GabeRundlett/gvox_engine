@@ -8,6 +8,7 @@
 #include <base/vec.hpp>
 #include <base/profiler.hpp>
 #include "gpu_task.hpp"
+#include "particles/render_foliage.hpp"
 #include <any>
 
 struct TemporalBuffer {
@@ -43,8 +44,6 @@ struct GpuContext {
     daxa::ImageId test_texture;
     daxa::ImageId test_texture2;
 
-    daxa::BufferId input_buffer;
-
     daxa::SamplerId sampler_nnc;
     daxa::SamplerId sampler_lnc;
     daxa::SamplerId sampler_llc;
@@ -67,7 +66,10 @@ struct GpuContext {
     daxa::TaskGraph frame_task_graph;
     daxa_u32vec2 render_resolution;
     daxa_u32vec2 output_resolution;
-    
+    daxa_u32vec2 next_lower_po2_render_size;
+
+    RenderFoliageBricks foliage_bricks;
+
     daxa::TimelineQueryPool timeline_query_pool;
     uint32_t timeline_query_frame_offset = 0;
     uint32_t timeline_query_index = 0;
@@ -75,7 +77,7 @@ struct GpuContext {
     uint32_t timeline_query_index_count[FRAMES_IN_FLIGHT] = {};
     Vec<Str> timestamp_names_storage[FRAMES_IN_FLIGHT] = {};
     Vec<Str> timestamp_names;
-    HashMap<Str, const char*> dynamic_timestamp_name_storage;
+    HashMap<Str, const char *> dynamic_timestamp_name_storage;
     std::vector<daxa_u64> timeline_query_results;
 
     GpuContext();
@@ -87,8 +89,8 @@ struct GpuContext {
     void finalize_timestamps();
     bool supports_timestamps() const { return device.properties().limits.timestamp_period > 0 && device.properties().limits.timestamp_compute_and_graphics != 0; }
     void get_timestamps(Vec<struct ProfileTimestamp> &out_timestamps);
-    void begin_task_timestamp(const daxa::TaskInterface& ti);
-    void end_task_timestamp(const daxa::TaskInterface& ti);
+    void begin_task_timestamp(const daxa::TaskInterface &ti);
+    void end_task_timestamp(const daxa::TaskInterface &ti);
 
     void use_resources();
     void update_seeded_value_noise(uint64_t seed);

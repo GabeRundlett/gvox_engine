@@ -23,45 +23,26 @@ void main() {
 
     ivec3 grid_voxel_dims = push.grid_dims_bricks * BRICK_SIZE;
     vec3 grid_center = vec3(grid_voxel_dims) * 0.5;
-    float max_radius = float(min(min(grid_voxel_dims.x, grid_voxel_dims.y), grid_voxel_dims.z)) * 0.5;
 
     uvec3 local_voxel = gl_LocalInvocationID.xyz;
     uint voxel_index = local_voxel.x + local_voxel.y * BRICK_SIZE + local_voxel.z * BRICK_SIZE * BRICK_SIZE;
     uvec3 voxel_i = brick_i * BRICK_SIZE + local_voxel;
+    // Centered on x/y, resting on the floor of the grid (z=0).
     vec3 p = vec3(voxel_i) + 0.5 - vec3(grid_center.xy, 0);
 
-    // float radius = max_radius * (0.5 + 0.4 * sin(float(frame_index) * 0.8));
-    // bool solid = length(p) < radius;
-    bool solid = false;
+    // Animation phase as a fraction of one full loop (0 at frame 0, wrapping
+    // back to 0 at frame_count). sd_fern builds its sway purely from this
+    // fraction (whole cycles per loop), so frame_count-1 -> 0 is a seamless cut.
+    float loop_t = float(frame_index) / float(push.frame_count);
+    // Fixed shape seed: only the animation phase (loop_t) should change the
+    // result frame-to-frame, not the branch layout.
+    vec3 shape_seed = vec3(17.0, 3.0, 41.0);
 
-    vec3 nrm = normalize(p + vec3(1.0e-5, 0.0, 0.0));
-    // vec3 col = nrm * 0.5 + 0.5;
-    vec3 col = vec3(1, 0, 0);
-    voxel_pos = p;
-
-    vec3 tree_pos = vec3(0);
-    float space_scl = 1.0 / 13.0;
-    TreeSDFNrm tree = sd_maple_tree((voxel_pos - tree_pos) * space_scl, tree_pos, float(frame_index));
-    tree.wood /= space_scl;
-    tree.leaves /= space_scl;
-
-    Voxel voxel = Voxel(col, nrm, 0.6, 0u);
-    float leaf_rand = good_rand(voxel_pos);
-
-    if (tree.wood < 0) {
-        voxel.material_type = 1;
-        voxel.albedo = vec3(.22, .13, .05);
-        voxel.roughness = 0.99;
-        voxel.normal = vec3(0, 0, 1);
-        solid = true;
-    } else if (tree.leaves * 5.0 + leaf_rand * 15.0 < 0) {
-        voxel.material_type = 1;
-        // voxel.albedo = vec3(.28, .8, .15) * 0.5;
-        voxel.albedo = hsv2rgb(vec3(0.0 + good_rand(tree_pos) * 0.05, 0.9, 0.9));
-        voxel.roughness = 0.95;
-        voxel.normal = tree.leaves_nrm;
-        solid = true;
-    }
+    voxel_pos = p * 0.4;
+    Voxel voxel = Voxel(vec3(0), vec3(0, 0, 1), 0.9, 0u);
+    brush_fern(voxel, shape_seed, loop_t);
+    bool solid = voxel.material_type != 0u;
+    voxel.material_type = 0;
 
     deref(attribs_ptr).voxels[voxel_index] = pack_voxel(voxel);
     shared_solid[voxel_index] = solid;

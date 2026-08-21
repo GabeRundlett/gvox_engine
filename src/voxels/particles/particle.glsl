@@ -13,7 +13,7 @@
 
 vec3 get_particle_pos(vec3 pos) {
     // return pos;
-    return floor(pos * VOXEL_SCL) * VOXEL_SIZE;
+    return (round(pos * VOXEL_SCL) - 0.5) * VOXEL_SIZE;
 }
 
 vec3 get_particle_worldspace_origin(daxa_BufferPtr(GpuInput) gpu_input, vec3 pos) {
@@ -83,12 +83,6 @@ void particle_render(
 #define PARTICLE_RENDER_PARAMS deref(particles_state).grass
 #elif defined(FLOWER)
 #define PARTICLE_RENDER_PARAMS deref(particles_state).flower
-#elif defined(SIM_PARTICLE)
-#define PARTICLE_RENDER_PARAMS deref(particles_state).sim_particle
-#elif defined(TREE_PARTICLE)
-#define PARTICLE_RENDER_PARAMS deref(particles_state).tree_particle
-#elif defined(FIRE_PARTICLE)
-#define PARTICLE_RENDER_PARAMS deref(particles_state).fire_particle
 #endif
     if (should_splat) {
         // TODO: Stochastic pruning?

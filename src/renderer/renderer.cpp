@@ -1,3 +1,4 @@
+#include "gen_hiz.inl"
 #include <renderer/renderer.hpp>
 
 #include <renderer/trace_primary.inl>
@@ -13,6 +14,7 @@
 
 #define RENDERER_INTERNAL 1
 #include "render_scene.hpp"
+#include "particles/render_foliage.hpp"
 
 #include <base/profiler.hpp>
 
@@ -136,7 +138,11 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers);
-    auto particles_shadow_depth_image = daxa::NullTaskImage; // particles.render(gpu_context, gbuffer_depth, velocity_image);
+    
+    auto hiz = task_gen_hiz_single_pass(gpu_context, gpu_context.frame_task_graph, gbuffer_depth.depth.current().view());
+    record_render_foliage_bricks(gpu_context, gpu_context.frame_task_graph, hiz, scene);
+
+    auto particles_shadow_depth_image = render_foliage_grass(gpu_context, gbuffer_depth, velocity_image);
 
     auto shadow_mask = trace_shadows(gpu_context, gbuffer_depth, voxel_buffers, particles_shadow_depth_image);
 

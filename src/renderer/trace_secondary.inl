@@ -3,7 +3,11 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
+#if USE_RAY_QUERY
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(TraceShadowRt)
+#else
 DAXA_DECL_RAY_TRACING_TASK_HEAD_BEGIN(TraceShadowRt)
+#endif
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
@@ -39,7 +43,11 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
     auto render_shadows = AppSettings::get<settings::Checkbox>("Graphics", "Render Shadows").value;
 
     if (render_shadows) {
+#if USE_RAY_QUERY
+        gpu_context.add(ComputeTask<TraceShadowRt::Info, TraceShadowRtPush, NoTaskInfo>{
+#else
         gpu_context.add(RayTracingTask<TraceShadowRt::Info, TraceShadowRtPush, NoTaskInfo>{
+#endif
             .source = "trace_shadow.rt.glsl",
             .views = TraceShadowRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
@@ -54,11 +62,19 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
                 .particles_shadow_depth_tex = particles_shadow_depth_image,
                 .shadow_mask = shadow_mask,
             },
+#if USE_RAY_QUERY
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TraceShadowRtPush &push, NoTaskInfo const &) {
+#else
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, daxa::RayTracingShaderBindingTable const &shader_binding_table, TraceShadowRtPush &push, NoTaskInfo const &) {
+#endif
                 auto const image_info = ti.device.image_info(ti.get(TraceShadowRt::AT.g_buffer_image_id).id).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
+#if USE_RAY_QUERY
+                ti.recorder.dispatch({.x = round_up_div(image_info.size.x, 8), .y = round_up_div(image_info.size.y, 4), .z = 1});
+#else
                 ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1, .shader_binding_table = shader_binding_table});
+#endif
             },
         });
     } else {

@@ -2,6 +2,7 @@
 #include "voxels/voxel.inl"
 #define RENDERER_INTERNAL 1
 #include "render_scene.hpp"
+#include "particles/render_foliage.hpp"
 
 struct RenderScene *create_render_scene(struct GpuContext &gpu_context) {
     RenderScene *result = new RenderScene();
@@ -125,7 +126,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
 
     self->buffers.voxel_object_manifests = gpu_context.find_or_add_temporal_buffer({
         .size = sizeof(daxa::DeviceAddress) * MAX_VOXEL_OBJECTS,
-        .name = "blas_attr_pointers",
+        .name = "voxel_object_manifests",
     });
 
     task_graph.register_buffer(self->buffers.voxel_object_manifests.task_resource);
@@ -164,7 +165,7 @@ void record_render_scene(struct GpuContext &gpu_context, struct RenderScene *sel
                 });
             }));
 
-    task_graph.add_task( 
+    task_graph.add_task(
         daxa::InlineTask::Transfer("tlas build")
             .acceleration_structure_build.reads(self->buffers.voxel_object_blases)
             .transfer.reads(self->buffers.task_tlas_instances)

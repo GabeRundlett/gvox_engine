@@ -102,7 +102,7 @@ void ThreadPool::worker(std::shared_ptr<ThreadPool::SharedData> shared_data, uin
 ThreadPool::ThreadPool(std::optional<uint32_t> thread_count) {
     uint32_t const real_thread_count = thread_count.value_or(std::thread::hardware_concurrency());
     shared_data = std::make_shared<SharedData>();
-    for (uint32_t thread_index = 0; thread_index < real_thread_count; thread_index++) {
+    for (uint32_t thread_index = 0; thread_index < real_thread_count - 1; thread_index++) {
         worker_threads.push_back({
             std::thread([=, this]() { ThreadPool::worker(shared_data, thread_index); }),
         });

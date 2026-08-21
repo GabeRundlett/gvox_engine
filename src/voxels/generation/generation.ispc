@@ -14,9 +14,9 @@ export void generate_bitmask(
     bool has_air_nz = false;
     bool has_air_pz = false;
 
-    foreach (word_i = 0 ... (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
+    foreach (word_i = 0 ...(BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
         uint word_result = 0;
-        #pragma unroll
+#pragma unroll
         for (uniform uint in_word_i = 0; in_word_i < 32; ++in_word_i) {
             uint i = word_i * 32 + in_word_i;
             int xi = i & ((1 << BRICK_SIZE_LOG2) - 1);
@@ -48,39 +48,36 @@ export void generate_bitmask(
     }
 
     if (packmask(has_voxel) != 0) {
-        *metadata |= (1 << 12);
+        *metadata |= (1 << 22);
     }
     if (packmask(has_air_nx) != 0) {
-        *metadata |= (1 << 6);
+        *metadata |= (1 << 16);
     }
     if (packmask(has_air_px) != 0) {
-        *metadata |= (1 << 9);
+        *metadata |= (1 << 19);
     }
     if (packmask(has_air_ny) != 0) {
-        *metadata |= (1 << 7);
+        *metadata |= (1 << 17);
     }
     if (packmask(has_air_py) != 0) {
-        *metadata |= (1 << 10);
+        *metadata |= (1 << 20);
     }
     if (packmask(has_air_nz) != 0) {
-        *metadata |= (1 << 8);
+        *metadata |= (1 << 18);
     }
     if (packmask(has_air_pz) != 0) {
-        *metadata |= (1 << 11);
+        *metadata |= (1 << 21);
     }
 }
 
 export void generate_attributes(
     uniform int brick_xi, uniform int brick_yi, uniform int brick_zi,
     uniform int chunk_xi, uniform int chunk_yi, uniform int chunk_zi,
-    uniform int level_i, uniform uint packed_voxels[], // uniform float densities[],
+    uniform int level_i, uniform uint packed_voxels[], uniform uint foliage_bits[],
     uniform NoiseSettings const *uniform noise_settings, RandomCtx random_ctx) {
-    const uniform vec3 UP = {0, 0, 1};
-    const uniform vec3 GRASS_COL = {0.06, 0.18, 0.005};
-    const uniform vec3 DIRT_COL = {0.05, 0.02, 0.006};
-    const uniform vec3 STONE_COL = {0.08, 0.07, 0.05};
 
-    foreach (word_i = 0 ... (BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
+    foreach (word_i = 0 ...(BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 32)) {
+        uint foliage_word_result = 0;
         for (uniform uint in_word_i = 0; in_word_i < 32; ++in_word_i) {
             uint voxel_index = word_i * 32 + in_word_i;
             int xi = voxel_index & ((1 << BRICK_SIZE_LOG2) - 1);
@@ -96,19 +93,49 @@ export void generate_attributes(
             pos.y = (pos.y + 0.5f) * VOXEL_SIZE;
             pos.z = (pos.z + 0.5f) * VOXEL_SIZE;
 
+            vec3 above_pos = pos;
+            above_pos.z += VOXEL_SIZE;
             DensityNrm dn = voxel_value(random_ctx, noise_settings, pos);
+            DensityNrm dn_above = voxel_value(random_ctx, noise_settings, above_pos);
+            uint self_is_solid = dn.val < 0.0f;
+            uint above_is_solid = dn_above.val < 0.0f;
+
             Voxel voxel;
-            if (dot(dn.nrm, UP) > 0.25f && dn.val > -2.5f) {
+            float upwards = dot(dn.nrm, UP);
+            float r = random_ctx[voxel_index] / 255.0f;
+
+            if (dot(dn.nrm, UP) > 0.65f && dn.val > -2.5f) {
                 // voxel.albedo = hsv2rgb(vec3(0.18 + 0.005, 0.8, 0.4));
                 voxel.albedo = GRASS_COL;
                 voxel.roughness = 0.9;
-            } else if (dot(dn.nrm, UP) > 0.0f && dn.val > -7.5f) {
+                uint value = above_is_solid == 0 && self_is_solid != 0 && dot(dn.nrm, UP) > 0.65f && r > 0.25f;
+                foliage_word_result |= value << in_word_i;
+            } else if (dn.val > -0.15 && upwards > 0.40) {
+                voxel.albedo = GRAVEL_COL;
+                if (r < 0.5) {
+                    voxel.albedo.r *= 0.5;
+                    voxel.albedo.g *= 0.5;
+                    voxel.albedo.b *= 0.5;
+                    voxel.roughness = 1;
+                } else if (r < 0.52) {
+                    voxel.albedo.r *= 1.5;
+                    voxel.albedo.g *= 1.5;
+                    voxel.albedo.b *= 1.5;
+                    voxel.roughness = 1;
+                }
+            } else if (dn.val < -0.01 && dn.val > -0.07 && upwards > 0.2) {
                 voxel.albedo = DIRT_COL;
-                voxel.roughness = 0.9;
+                if (r < 0.5) {
+                    voxel.albedo.r *= 0.75;
+                    voxel.albedo.g *= 0.75;
+                    voxel.albedo.b *= 0.75;
+                }
+                voxel.roughness = 1;
             } else {
                 voxel.albedo = STONE_COL;
-                voxel.roughness = 0.9;
+                voxel.roughness = 1;
             }
+
             ivec3 o = {xi, yi, zi};
             voxel.normal = dither_nrm(random_ctx, dn.nrm, o);
             voxel.material_type = 0;
@@ -116,5 +143,6 @@ export void generate_attributes(
             packed_voxels[voxel_index] = packed_voxel.data;
             // densities[voxel_index] = dn.val;
         }
+        foliage_bits[word_i] = foliage_word_result;
     }
 }

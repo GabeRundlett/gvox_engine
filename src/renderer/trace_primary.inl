@@ -5,7 +5,11 @@
 
 // #include <voxels/particles/voxel_particles.inl>
 
+#if USE_RAY_QUERY
+DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(TracePrimaryRt)
+#else
 DAXA_DECL_RAY_TRACING_TASK_HEAD_BEGIN(TracePrimaryRt)
+#endif
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
 // DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
@@ -75,7 +79,11 @@ struct GbufferRenderer {
             .name = "temp_depth_image",
         });
 
-        gpu_context.add(RayTracingTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo>{
+#if USE_RAY_QUERY
+        gpu_context.add(ComputeTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo>{
+#else
+        gpu_context.add(RayTracingTask<TracePrimaryRt::Info, TracePrimaryRtPush, NoTaskInfo> {
+#endif
             .source = "trace_primary.rt.glsl",
             .views = TracePrimaryRt::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
@@ -89,11 +97,19 @@ struct GbufferRenderer {
                 .vs_normal_image_id = gbuffer_depth.geometric_normal,
                 .depth_image_id = temp_depth_image,
             },
+#if USE_RAY_QUERY
+            .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, TracePrimaryRtPush &push, NoTaskInfo const &) {
+#else
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RayTracingPipeline &pipeline, daxa::RayTracingShaderBindingTable const &shader_binding_table, TracePrimaryRtPush &push, NoTaskInfo const &) {
+#endif
                 auto const image_info = ti.device.image_info(ti.get(TracePrimaryRt::AT.g_buffer_image_id).id).value();
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
+#if USE_RAY_QUERY
+                ti.recorder.dispatch({.x = round_up_div(image_info.size.x, 8), .y = round_up_div(image_info.size.y, 4), .z = 1});
+#else
                 ti.recorder.trace_rays({.width = image_info.size.x, .height = image_info.size.y, .depth = 1, .shader_binding_table = shader_binding_table});
+#endif
             },
         });
 

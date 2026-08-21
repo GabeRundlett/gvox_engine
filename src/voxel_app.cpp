@@ -337,7 +337,7 @@ void VoxelApp::record_tasks() {
         .device = gpu_context.device,
         .swapchain = gpu_context.swapchain,
         .alias_transients = GVOX_ENGINE_INSTALL,
-        .staging_memory_pool_size = 1 << 20,
+        .staging_memory_pool_size = 1 << 26,
         .pre_task_callback = [this](daxa::TaskInterface ti) { gpu_context.begin_task_timestamp(ti); },
         .post_task_callback = [this](daxa::TaskInterface ti) { gpu_context.end_task_timestamp(ti); },
         .name = "frame_task_graph",
@@ -350,6 +350,8 @@ void VoxelApp::record_tasks() {
     gpu_context.use_resources();
     gpu_context.render_resolution = gpu_input.rounded_frame_dim;
     gpu_context.output_resolution = gpu_input.output_resolution;
+    gpu_input.next_lower_po2_render_size = daxa_u32vec2{find_next_lower_po2(gpu_context.render_resolution.x), find_next_lower_po2(gpu_context.render_resolution.y)};
+    gpu_context.next_lower_po2_render_size = gpu_input.next_lower_po2_render_size;
 
     // voxel_world.record_startup(gpu_context);
     // particles.record_startup(gpu_context);
@@ -492,7 +494,7 @@ void VoxelApp::calc_vram_usage() {
         return buffer_info.size;
     };
 
-    buffer_size(gpu_context.input_buffer);
+    buffer_size(gpu_context.task_input_buffer.id());
 
     for (auto &slot : gpu_context.temporal_buffers) {
         buffer_size(slot.value.task_resource.id());

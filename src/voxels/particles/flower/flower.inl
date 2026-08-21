@@ -24,10 +24,6 @@ DECL_SIMPLE_STATIC_ALLOCATOR(FlowerAllocator, Flower, MAX_FLOWERS, daxa_u32)
 DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(FlowerSimCompute)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(BlasGeom)), geometry_pointers)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(daxa_BufferPtr(VoxelBrickAttribs)), attribute_pointers)
-DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(VoxelBlasTransform), blas_transforms)
-DAXA_TH_TLAS_PTR(READ, tlas)
 SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, FlowerAllocator)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
@@ -40,11 +36,11 @@ struct FlowerSimComputePush {
 
 DAXA_DECL_RASTER_TASK_HEAD_BEGIN(FlowerCubeParticleRaster)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
-DAXA_TH_BUFFER(INDEX_READ, indices)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_BUFFER(INDEX_INPUT_READ, indices)
+DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -56,11 +52,11 @@ struct FlowerCubeParticleRasterPush {
 
 DAXA_DECL_RASTER_TASK_HEAD_BEGIN(FlowerCubeParticleShadowRaster)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
-DAXA_TH_BUFFER(INDEX_READ, indices)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_BUFFER(INDEX_INPUT_READ, indices)
+DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct FlowerCubeParticleShadowRasterPush {
@@ -69,10 +65,10 @@ struct FlowerCubeParticleShadowRasterPush {
 
 DAXA_DECL_RASTER_TASK_HEAD_BEGIN(FlowerSplatParticleRaster)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
-DAXA_TH_BUFFER_PTR(DRAW_INDIRECT_INFO_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
+DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
-DAXA_TH_IMAGE(VERTEX_SHADER_SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -94,7 +90,7 @@ struct Flowers {
         flower_allocator.init(gpu_context);
     }
 
-    void simulate(GpuContext &gpu_context, VoxelWorldBuffers &voxel_world_buffers, daxa::TaskBufferView particles_state) {
+    void simulate(GpuContext &gpu_context, daxa::TaskBufferView particles_state) {
         cube_rendered_particle_verts = gpu_context.find_or_add_temporal_buffer({
             .size = sizeof(PackedParticleVertex) * std::max<daxa_u32>(MAX_FLOWERS * CONSERVATIVE_PARTICLE_PER_FLOWER, 1),
             .name = "flower.cube_rendered_particle_verts",
@@ -114,14 +110,10 @@ struct Flowers {
 
         gpu_context.add(ComputeTask<FlowerSimCompute::Info, FlowerSimComputePush, NoTaskInfo>{
             .source = "voxels/particles/flower/sim.comp.glsl",
-            .extra_defines = {daxa::ShaderDefine{.name = "FLOWER", .value = "1"}},
+            .extra_defines = {ShaderDefine{.name = "FLOWER", .value = "1"}},
             .views = FlowerSimCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,
-                .geometry_pointers = voxel_world_buffers.blas_geom_pointers.task_resource.view(),
-                .attribute_pointers = voxel_world_buffers.blas_attr_pointers.task_resource.view(),
-                .blas_transforms = voxel_world_buffers.blas_transforms.task_resource.view(),
-                .tlas = voxel_world_buffers.task_tlas.view(),
                 SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(FlowerSimCompute, FlowerAllocator, flower_allocator),
                 .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
                 .shadow_cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
@@ -154,7 +146,7 @@ struct Flowers {
                 .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_FAN,
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
-            .extra_defines = {daxa::ShaderDefine{.name = "FLOWER", .value = "1"}},
+            .extra_defines = {ShaderDefine{.name = "FLOWER", .value = "1"}},
             .views = FlowerCubeParticleRaster::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,
@@ -205,7 +197,7 @@ struct Flowers {
                 .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_FAN,
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
-            .extra_defines = {daxa::ShaderDefine{.name = "FLOWER", .value = "1"}, daxa::ShaderDefine{.name = "SHADOW_MAP", .value = "1"}},
+            .extra_defines = {ShaderDefine{.name = "FLOWER", .value = "1"}, ShaderDefine{.name = "SHADOW_MAP", .value = "1"}},
             .views = FlowerCubeParticleShadowRaster::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,
@@ -255,7 +247,7 @@ struct Flowers {
                 .primitive_topology = daxa::PrimitiveTopology::POINT_LIST,
                 .face_culling = daxa::FaceCullFlagBits::NONE,
             },
-            .extra_defines = {daxa::ShaderDefine{.name = "FLOWER", .value = "1"}},
+            .extra_defines = {ShaderDefine{.name = "FLOWER", .value = "1"}},
             .views = FlowerSplatParticleRaster::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,

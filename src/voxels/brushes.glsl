@@ -527,6 +527,149 @@ void brush_spruce_tree_big(in out Voxel voxel) {
     }
 }
 
+// A sample of the closest fern surface found so far: distance, analytic
+// normal (from the capsule that produced it), and material properties.
+struct FernSample {
+    float dist;
+    vec3 nrm;
+    vec3 albedo;
+    float roughness;
+};
+
+// Analytic gradient of sd_capsule: the direction from the capsule's medial
+// axis to the query point. Using this (rather than GENERATE_NORMAL, which is
+// just a flat placeholder) gives every stem/rib/leaflet a proper rounded
+// per-voxel normal.
+vec3 sd_capsule_normal(in vec3 p, in vec3 a, in vec3 b) {
+    vec3 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return normalize(pa - ba * h);
+}
+
+void fern_add_capsule(in out FernSample val, in vec3 p, in vec3 a, in vec3 b, in float r, in vec3 albedo, in float roughness) {
+    float d = sd_capsule(p, a, b, r);
+    if (d < val.dist) {
+        val.dist = d;
+        val.nrm = sd_capsule_normal(p, a, b);
+        val.albedo = albedo;
+        val.roughness = roughness;
+    }
+}
+
+// Procedural waving fern: a curved central stem with alternating fronds
+// branching off of it, each frond itself a curved midrib carrying pairs of
+// small leaflets (pinnae). Everything is built out of capsules so normals
+// can be computed analytically. `time` drives a wind sway that increases
+// with height/distance-from-stem, so tips move more than roots.
+//
+// `loop_t` is the animation phase as a fraction of one full loop (0..1, and
+// loop_t=0 must look identical to loop_t=1 for the bake to cycle cleanly).
+// To guarantee that, every sway term is built from sin/cos of
+// 2*PI*N*loop_t + (a loop_t-independent phase offset) for some integer N
+// (whole sway cycles per loop) -- never from a continuous, unbounded time
+// value, which would only line back up at the seam by coincidence.
+FernSample sd_fern(in vec3 p, in vec3 seed, in float loop_t) {
+    FernSample val;
+    val.dist = 1e5;
+    val.nrm = GENERATE_NORMAL;
+    val.albedo = vec3(0.10, 0.35, 0.08);
+    val.roughness = 0.9;
+
+    vec3 stem_col = vec3(0.04, 0.2, 0.02);
+
+    const uint STEM_SEGMENTS = 20;
+    const float stem_height = 7.0;
+    const float seg_len = stem_height / float(STEM_SEGMENTS);
+
+    float phase = 2.0 * M_PI * loop_t;
+
+    vec3 bp0 = vec3(0);
+    vec3 dir = vec3(0, 0, 1);
+
+    const float thickness = 14;
+
+    for (uint i = 0; i < STEM_SEGMENTS; ++i) {
+        float t = float(i) / float(STEM_SEGMENTS - 1);
+
+        // Wind sway: bigger amplitude and lower apparent "stiffness" toward the tip.
+        // One full sway cycle per loop (integer N=1), so it seams cleanly.
+        float sway = sin(phase + t * 2.2) * 0.038 * t * t;
+        float sway_perp = cos(phase + t * 1.7) * 0.032 * t * t;
+        vec3 seg_dir = normalize(dir + vec3(sway, sway_perp, 0.0));
+        vec3 bp1 = bp0 + seg_dir * seg_len;
+
+        float stem_r = mix(0.08, 0.03, t) * thickness;
+        fern_add_capsule(val, p, bp0, bp1, stem_r, stem_col, 0.85);
+
+        // Branch off a frond partway up the stem, alternating left/right.
+        if (i >= 1 && i + 1 < STEM_SEGMENTS) {
+            float side = ((i & 1u) == 0u) ? 1.0 : -1.0;
+            float rand_a = good_rand(seed + float(i) * 3.1);
+            float rand_b = i * M_PI * 2; // good_rand(seed + float(i) * 7.3 + 1.0);
+
+            // Fronds are longest in the middle of the stem, short near the base and tip.
+            float frond_len = mix(3.5, 8.5, sin(t * M_PI)) * (0.85 + 0.3 * rand_a);
+            float base_angle = 0.85 + rand_b * 10.35;
+            float droop = 0.35 + 0.35 * t;
+
+            vec3 rib_dir = normalize(vec3(cos(base_angle) * side, sin(base_angle) * side, 0.35));
+            vec3 rp0 = bp1;
+
+            const uint RIB_SEGMENTS = 8;
+            float rib_seg_len = frond_len / float(RIB_SEGMENTS);
+
+            for (uint j = 0; j < RIB_SEGMENTS; ++j) {
+                float jt = float(j) / float(RIB_SEGMENTS - 1);
+
+                // The frond sways too, with extra phase offset per-branch and per-segment
+                // (all loop_t-independent, so still N=1 per loop) so fronds don't all
+                // move in lockstep.
+                float frond_sway = sin(phase + t * 4.0 + jt * 1.6 + rand_a * 6.0) * (0.15 + 0.35 * jt) * side * 0.3;
+                float frond_sway_z = cos(phase + t * 3.0 + jt * 1.2 + rand_b * 6.0) * 0.03 * jt;
+
+                rib_dir = normalize(rib_dir + vec3(frond_sway * 0.25, frond_sway * 0.15, -droop / float(RIB_SEGMENTS) + frond_sway_z));
+                vec3 rp1 = rp0 + rib_dir * rib_seg_len;
+
+                float rib_r = mix(0.05, 0.008, jt) * thickness;
+                fern_add_capsule(val, p, rp0, rp1, rib_r, stem_col * 0.9, 0.85);
+
+                // Leaflets (pinnae): a symmetric pair sprouting off this rib segment,
+                // shrinking toward the frond tip.
+                vec3 up_ish = abs(rib_dir.z) < 0.95 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+                vec3 perp = normalize(cross(rib_dir, up_ish));
+                float leaflet_len = mix(1.0, 0.12, jt) * (0.6 + 0.4 * (1.0 - abs(t - 0.5) * 2.0)) * 2.4;
+
+                for (float sgn = -1.0; sgn <= 1.0; sgn += 2.0) {
+                    vec3 lp0 = mix(rp0, rp1, 0.5);
+                    vec3 leaflet_dir = normalize(perp * sgn + vec3(0, 0, -0.25) + rib_dir * 0.25);
+                    vec3 lp1 = lp0 + leaflet_dir * leaflet_len;
+
+                    float leaf_rand = good_rand(seed + float(i * 13u + j * 7u) + sgn * 1.7) * 0.5 + 0.5;
+                    vec3 leaf_col = vec3(0.01, 0.1, 0.01) * leaf_rand; // mix(vec3(0.02, 0.2, 0.02), vec3(0.10, 0.45, 0.10), leaf_rand);
+                    fern_add_capsule(val, p, lp0, lp1, mix(0.045, 0.022, jt) * thickness, leaf_col, 0.9);
+                }
+
+                rp0 = rp1;
+            }
+        }
+
+        bp0 = bp1;
+        dir = seg_dir;
+    }
+
+    return val;
+}
+
+void brush_fern(in out Voxel voxel, in vec3 seed, in float loop_t) {
+    FernSample fern = sd_fern(voxel_pos, seed, loop_t);
+    if (fern.dist < 0.0) {
+        voxel.material_type = 1;
+        voxel.albedo = fern.albedo;
+        voxel.roughness = fern.roughness;
+        voxel.normal = normalize(fern.nrm + vec3(0,0,1));
+    }
+}
+
 void brushgen_b(in out Voxel voxel) {
     // brush_grass_ball(voxel);
     // brush_flowers(voxel);

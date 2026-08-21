@@ -12,23 +12,6 @@
 
 #include <voxels/voxel.glsl>
 
-bool rt_is_shadowed(RayDesc ray) {
-    ShadowRayPayload shadow_payload = ShadowRayPayload_new_hit();
-#if DAXA_SHADER_STAGE == DAXA_SHADER_STAGE_RAYGEN
-    const uint ray_flags = gl_RayFlagsNoneEXT;
-    const uint cull_mask = 0xFF;
-    const uint sbt_record_offset = 0;
-    const uint sbt_record_stride = 0;
-    const uint miss_index = 0;
-    traceRayEXT(
-        accelerationStructureEXT(push.uses.tlas),
-        ray_flags, cull_mask, sbt_record_offset, sbt_record_stride, miss_index,
-        ray.Origin, ray.TMin, ray.Direction, ray.TMax, PAYLOAD_LOC);
-    shadow_payload.is_shadowed = prd.data1 != miss_ray_payload().data1;
-#endif
-    return shadow_payload.is_shadowed;
-}
-
 // Rough-smooth-rough specular paths are a major source of fireflies.
 // Enabling this option will bias roughness of path vertices following
 // reflections off rough interfaces.

@@ -26,7 +26,9 @@ GpuContext::GpuContext() {
     {
         PROFILE_SCOPE("daxa_instance.create_device_2");
         auto required_implicit =
+#if !USE_RAY_QUERY
             daxa::ImplicitFeatureFlagBits::RAY_TRACING_PIPELINE |
+#endif
             daxa::ImplicitFeatureFlagBits::SHADER_CLOCK |
             daxa::ImplicitFeatureFlagBits::SHADER_ATOMIC_INT64 |
             daxa::ImplicitFeatureFlagBits::SHADER_INT8 |
@@ -116,7 +118,7 @@ GpuContext::GpuContext() {
         .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::TRANSFER_DST | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
         .name = "blue_noise_vec2_image",
     });
-    input_buffer = device.create_buffer({
+    auto input_buffer = device.create_buffer({
         .size = sizeof(GpuInput),
         .name = "input_buffer",
     });
@@ -126,6 +128,8 @@ GpuContext::GpuContext() {
     task_value_noise_image_view = task_value_noise_image.view().layers(0, 256);
 
     task_blue_noise_vec2_image.set_image(blue_noise_vec2_image);
+
+    init_render_foliage_bricks(*this);
 
     {
         PROFILE_SCOPE("load and upload blue noise");
@@ -365,7 +369,8 @@ GpuContext::~GpuContext() {
     if (!test_texture2.is_empty()) {
         device.destroy_image(test_texture2);
     }
-    device.destroy_buffer(input_buffer);
+    device.destroy_buffer(task_input_buffer.id());
+    deinit_render_foliage_bricks(*this);
     device.destroy_sampler(sampler_nnc);
     device.destroy_sampler(sampler_lnc);
     device.destroy_sampler(sampler_llc);

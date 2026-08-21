@@ -245,7 +245,7 @@ static auto load_shader_source(char const *path, Str &out) -> bool {
 static auto spv_path(uint64_t hash) -> Str {
     auto p = Str("build/spv/");
     p.append(hash);
-    p += ".spv";
+    p += ".spirv";
     return p;
 }
 static auto spvc_path(uint64_t hash) -> Str {

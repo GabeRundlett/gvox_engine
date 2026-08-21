@@ -4,9 +4,11 @@
 #include <base/profiler.hpp>
 
 VoxelObject::~VoxelObject() {
-    for (auto *brick : brick_grid)
-        if (brick != nullptr)
+    for (auto *brick : brick_grid) {
+        if (brick != nullptr) {
             delete brick;
+        }
+    }
 }
 
 void VoxelObject::init(const glm::ivec3 &new_voxel_min, const glm::ivec3 &new_voxel_max) {

@@ -69,6 +69,8 @@ struct SkySettings {
 
 #define DEBUG_IMAGE_FLAGS_GAMMA_CORRECT_INDEX 0
 
+#define USE_RAY_QUERY 1
+
 struct DebugImageSettings {
     daxa_u32 flags;
     daxa_f32 brightness;

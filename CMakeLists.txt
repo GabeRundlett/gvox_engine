@@ -49,6 +49,7 @@ add_executable(${PROJECT_NAME}
     "src/renderer/kajiya/ircache.cpp"
     "src/renderer/render_voxel_object.cpp"
     "src/renderer/render_scene.cpp"
+    "src/renderer/particles/render_foliage.cpp"
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_precompile_headers(${PROJECT_NAME} PRIVATE

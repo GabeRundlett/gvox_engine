@@ -42,13 +42,13 @@ ParticleVertex process_dandelion(daxa_BufferPtr(GpuInput) gpu_input, Flower self
         Voxel voxel = unpack_voxel(self.packed_voxel);
         if (i <= height) {
             // stem
-            voxel.color *= (i + 1) * 0.25;
+            voxel.albedo *= (i + 1) * 0.25;
             voxel.normal = vec3(0, 0, 1);
         } else {
             // pedals
             int xi = int((i - height - 1) % 3) - 1;
             int yi = int((i - height - 1) / 3) - 1;
-            voxel.color = vec3(1, 0.9, 0.05);
+            voxel.albedo = vec3(1, 0.9, 0.05);
             voxel.normal = normalize(vec3(xi, yi, 2));
         }
         result.packed_voxel = pack_voxel(voxel);
@@ -99,17 +99,17 @@ ParticleVertex process_dandelion_white(daxa_BufferPtr(GpuInput) gpu_input, Flowe
         Voxel voxel = unpack_voxel(self.packed_voxel);
         if (i <= height) {
             // stem
-            voxel.color *= (i + 1) * 0.25;
+            voxel.albedo *= (i + 1) * 0.25;
         } else if (i <= height + 27) {
             // pedals
             int xi = int((i - height - 1) % 3) - 1;
             int yi = int(((i - height - 1) / 3) % 3) - 1;
             int zi = int((i - height - 1) / 9) + 2;
-            voxel.color = vec3(1, 1, 1) / 50 * float(i);
+            voxel.albedo = vec3(1, 1, 1) / 50 * float(i);
             voxel.normal = normalize(vec3(xi, yi, zi));
         } else {
             // flakes
-            voxel.color = vec3(1, 1, 1);
+            voxel.albedo = vec3(1, 1, 1);
             voxel.normal = vec3(0, 0, 1);
         }
         result.packed_voxel = pack_voxel(voxel);
@@ -152,14 +152,14 @@ ParticleVertex process_tulip(daxa_BufferPtr(GpuInput) gpu_input, Flower self, ui
         Voxel voxel = unpack_voxel(self.packed_voxel);
         if (i <= height) {
             // stem
-            voxel.color *= (i + 1) * 0.25;
+            voxel.albedo *= (i + 1) * 0.25;
             voxel.normal = vec3(0, 0, 1);
         } else {
             // pedals
             int xi = int((i - height - 1) % 3) - 1;
             int yi = int(((i - height - 1) / 3) % 3) - 1;
             int zi = int((i - height - 1) / 9) + 1; // bias normal up
-            voxel.color = vec3(1, 0.05, 0.05);
+            voxel.albedo = vec3(1, 0.05, 0.05);
             voxel.normal = normalize(vec3(xi, yi, zi));
         }
         result.packed_voxel = pack_voxel(voxel);
@@ -202,14 +202,14 @@ ParticleVertex process_lavender(daxa_BufferPtr(GpuInput) gpu_input, Flower self,
         Voxel voxel = unpack_voxel(self.packed_voxel);
         if (i <= height) {
             // stem
-            voxel.color *= (i + 1) * 0.25;
+            voxel.albedo *= (i + 1) * 0.25;
             voxel.normal = vec3(0, 0, 1);
         } else {
             // pedals
             int xi = int((i - height - 1) % 3) - 1;
             int yi = int(((i - height - 1) / 3) % 3) - 1;
             int zi = int((i - height - 1) / 9) + 2;
-            voxel.color = vec3(0.2, 0.05, 1);
+            voxel.albedo = vec3(0.2, 0.05, 1);
             voxel.normal = normalize(vec3(xi, yi, zi));
         }
         result.packed_voxel = pack_voxel(voxel);

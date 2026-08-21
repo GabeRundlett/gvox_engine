@@ -1,9 +1,11 @@
 #include "voxel_world.hpp"
 #include "animation_playground/animation_playground.hpp"
 #include "renderer/render_voxel_object.hpp"
+#include "renderer/particles/render_foliage.hpp"
 #include "scene.hpp"
 #include "voxel_object.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
@@ -23,20 +25,26 @@
 #include "voxels/voxel.inl"
 
 struct BrickMetadata {
-    uint32_t exposed_nx : 1 {};
-    uint32_t exposed_ny : 1 {};
-    uint32_t exposed_nz : 1 {};
-    uint32_t exposed_px : 1 {};
-    uint32_t exposed_py : 1 {};
-    uint32_t exposed_pz : 1 {};
-    uint32_t has_air_nx : 1 {};
-    uint32_t has_air_ny : 1 {};
-    uint32_t has_air_nz : 1 {};
-    uint32_t has_air_px : 1 {};
-    uint32_t has_air_py : 1 {};
-    uint32_t has_air_pz : 1 {};
-    uint32_t has_voxel : 1 {};
+    uint16_t exposed_nx : 1 {};
+    uint16_t exposed_ny : 1 {};
+    uint16_t exposed_nz : 1 {};
+    uint16_t exposed_px : 1 {};
+    uint16_t exposed_py : 1 {};
+    uint16_t exposed_pz : 1 {};
+
+    // NOTE!!! exposed_... are all written concurrently in phase2 chunk generation, but has_air_... and has_voxel are read.
+    // If they are all in the same uint32_t, then the code will just be bitwise ops on the same single object. This is a sneaky race
+    uint16_t : 0; // So, we force these fields into a new 'object' with this, but keep the uint32_t footprint
+
+    uint16_t has_air_nx : 1 {};
+    uint16_t has_air_ny : 1 {};
+    uint16_t has_air_nz : 1 {};
+    uint16_t has_air_px : 1 {};
+    uint16_t has_air_py : 1 {};
+    uint16_t has_air_pz : 1 {};
+    uint16_t has_voxel : 1 {};
 };
+static_assert(sizeof(BrickMetadata) == sizeof(uint32_t));
 
 enum GenerationStage {
     NOT_GENERATED,
@@ -55,12 +63,22 @@ constexpr int32_t MAX_CHUNKS_PER_FRAME = 32;
 struct Chunk {
     int generation_stage = 0;
     VoxelObject *voxel_object;
-    std::vector<glm::ivec3> surface_entity_candidates;
-    // glm::ivec3 pos;
+    Vec<glm::ivec3> surface_entity_candidates;
+};
+
+struct GenChunkArgs {
+    VoxelWorld *self;
+    int32_t chunk_xi;
+    int32_t chunk_yi;
+    int32_t chunk_zi;
+    int32_t level;
+    float rating;
+    bool update = true;
 };
 
 struct VoxelWorld {
     std::array<Chunk, CHUNK_NX * CHUNK_NY * CHUNK_NZ * 2 * 2 * 2 * CHUNK_LEVELS> chunks;
+    Vec<GenChunkArgs> chunk_candidates;
     Scene *scene;
 };
 
@@ -97,20 +115,27 @@ NoiseSettings noise_settings{
 //     return *reinterpret_cast<BrickMetadata *>(&chunk.voxel_object->brick_grid[brick_index]->bitmask.metadata);
 // }
 
-struct GenChunkArgs {
-    VoxelWorld *self;
-    int32_t chunk_xi;
-    int32_t chunk_yi;
-    int32_t chunk_zi;
-    int32_t level;
-    bool update = true;
-};
-
 void generate_all_chunks(VoxelWorld *self);
+float chunk_candidate_rating(int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level);
 
 auto create_voxel_world(struct Scene *scene) -> VoxelWorld * {
     auto self = new VoxelWorld();
     self->scene = scene;
+
+    self->chunk_candidates.reserve(CHUNK_NX * CHUNK_NY * CHUNK_NZ * 2 * 2 * 2 * CHUNK_LEVELS);
+    for (int32_t level_i = 0; level_i < CHUNK_LEVELS; ++level_i) {
+        for (int32_t chunk_zi = -CHUNK_NZ; chunk_zi < CHUNK_NZ; ++chunk_zi) {
+            for (int32_t chunk_yi = -CHUNK_NY; chunk_yi < CHUNK_NY; ++chunk_yi) {
+                for (int32_t chunk_xi = -CHUNK_NX; chunk_xi < CHUNK_NX; ++chunk_xi) {
+                    auto candidate = GenChunkArgs(self, chunk_xi, chunk_yi, chunk_zi, level_i, chunk_candidate_rating(chunk_xi, chunk_yi, chunk_zi, level_i));
+                    if (candidate.rating >= 0)
+                        self->chunk_candidates.push_back(candidate);
+                }
+            }
+        }
+    }
+    std::sort(self->chunk_candidates.begin(), self->chunk_candidates.end(), [](const GenChunkArgs &a, const GenChunkArgs &b) { return a.rating > b.rating; });
+
     // generate_all_chunks(self);
     return self;
 }
@@ -118,6 +143,14 @@ void destroy_voxel_world(VoxelWorld *self) {
     for (auto &chunk : self->chunks) {
         if (chunk.voxel_object) {
             // self->scene.delete_voxel_object();
+            for (auto *brick : chunk.voxel_object->brick_grid) {
+                if (brick != nullptr) {
+                    if (brick->render_attribs != nullptr) {
+                        delete brick->render_attribs;
+                        // delete brick->user_ptr;
+                    }
+                }
+            }
             if (chunk.voxel_object->render_voxel_object)
                 destroy_render_voxel_object(self->scene->gpu_context, chunk.voxel_object->render_voxel_object);
             delete chunk.voxel_object;
@@ -149,17 +182,13 @@ void update_voxel_world(struct GpuContext &gpu_context, Renderer &renderer, GpuI
     std::vector<std::pair<thread_pool::Task, void *>> tasks;
     tasks.reserve(MAX_CHUNKS_PER_FRAME);
 
-    for (int32_t level_i = 0; level_i < CHUNK_LEVELS; ++level_i) {
-        PROFILE_SCOPE("find update chunks");
-        for (int32_t chunk_zi = -CHUNK_NZ; chunk_zi < CHUNK_NZ; ++chunk_zi) {
-            for (int32_t chunk_yi = -CHUNK_NY; chunk_yi < CHUNK_NY; ++chunk_yi) {
-                for (int32_t chunk_xi = -CHUNK_NX; chunk_xi < CHUNK_NX; ++chunk_xi) {
-                    auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level_i);
+    for (int32_t candidate_i = self->chunk_candidates.size - 1; candidate_i >= 0; --candidate_i) {
+        const auto &args = self->chunk_candidates[candidate_i];
+        auto chunk_index = get_chunk_index(args.chunk_xi, args.chunk_yi, args.chunk_zi, args.level);
                     auto &chunk = self->chunks[chunk_index];
                     if (chunk.generation_stage != 0)
                         continue;
 
-                    auto args = GenChunkArgs{self, chunk_xi, chunk_yi, chunk_zi, level_i};
                     if (generate_chunk_precheck(args.self, args.chunk_xi, args.chunk_yi, args.chunk_zi, args.level) == 2) {
                         auto *user_ptr = new GenChunkArgs(args);
                         auto task = thread_pool::create_task(
@@ -170,11 +199,9 @@ void update_voxel_world(struct GpuContext &gpu_context, Renderer &renderer, GpuI
                             user_ptr);
                         thread_pool::async_dispatch(task);
                         tasks.emplace_back(task, user_ptr);
+            self->chunk_candidates.erase(candidate_i);
                         if (tasks.size() == MAX_CHUNKS_PER_FRAME)
                             goto exit_1;
-                    }
-                }
-            }
         }
     }
 exit_1:
@@ -388,6 +415,20 @@ void generate_all_chunks(VoxelWorld *self) {
     // ISPCPrintInstrument();
 }
 
+struct GlmAabb {
+    glm::vec3 min, max;
+};
+
+GlmAabb get_chunk_aabb(int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
+    auto p0 = glm::vec3{
+        (float((chunk_xi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
+        (float((chunk_yi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
+        (float((chunk_zi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
+    };
+    auto p1 = p0 + (CHUNK_SIZE_VOXELS << level) * VOXEL_SIZE;
+    return {p0, p1};
+}
+
 int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
     PROFILE_FUNC();
     auto chunk_index = get_chunk_index(chunk_xi, chunk_yi, chunk_zi, level);
@@ -403,12 +444,7 @@ int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi
     }
 
     {
-        auto p0 = glm::vec3{
-            (float((chunk_xi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-            (float((chunk_yi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-            (float((chunk_zi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-        };
-        auto p1 = p0 + (CHUNK_SIZE_VOXELS << level) * VOXEL_SIZE;
+        auto [p0, p1] = get_chunk_aabb(chunk_xi, chunk_yi, chunk_zi, level);
         auto minmax = voxel_minmax_value_cpp(&noise_settings, RANDOM_VALUES.data(), p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
         if (minmax.min >= 0.0f || minmax.max < 0.0f) {
             // uniform
@@ -423,6 +459,31 @@ int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi
 
     chunk.generation_stage = 2;
     return chunk.generation_stage;
+}
+
+float chunk_candidate_rating(int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
+    PROFILE_FUNC();
+
+    glm::ivec3 neighbors[] = {
+        {-1, 0, 0},
+        {0, -1, 0},
+        {0, 0, -1},
+        {0, 0, 0},
+        {+1, 0, 0},
+        {0, +1, 0},
+        {0, 0, +1},
+    };
+    for (auto &np : neighbors) {
+        auto [np0, np1] = get_chunk_aabb(chunk_xi + np.x, chunk_yi + np.y, chunk_zi + np.z, level);
+        auto minmax = voxel_minmax_value_cpp(&noise_settings, RANDOM_VALUES.data(), np0.x, np0.y, np0.z, np1.x, np1.y, np1.z);
+
+        if (minmax.min <= 0.0f && minmax.max >= 0.0f) {
+            auto [p0, p1] = get_chunk_aabb(chunk_xi + np.x, chunk_yi + np.y, chunk_zi + np.z, level);
+            return length((p0 + p1) * 0.5f);
+        }
+    }
+
+    return -1;
 }
 
 void generate_chunk(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
@@ -451,12 +512,7 @@ void generate_chunk(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_
                 // determine if brick is uniform
 
                 {
-                    auto p0 = glm::vec3{
-                        (float((brick_xi * BRICK_SIZE + chunk_xi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-                        (float((brick_yi * BRICK_SIZE + chunk_yi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-                        (float((brick_zi * BRICK_SIZE + chunk_zi * CHUNK_SIZE_VOXELS) << level) + 0.5f) * VOXEL_SIZE,
-                    };
-                    auto p1 = p0 + (BRICK_SIZE << level) * VOXEL_SIZE;
+                    auto [p0, p1] = get_chunk_aabb(chunk_xi, chunk_yi, chunk_zi, level);
                     auto minmax = voxel_minmax_value_cpp(&noise_settings, RANDOM_VALUES.data(), p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
                     if (minmax.min >= 0.0f || minmax.max < 0.0f) {
                         // uniform
@@ -506,6 +562,7 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                 auto &brick_metadata = get_brick_metadata(chunk, brick_index);
                 auto &brick = chunk.voxel_object->brick_grid[brick_index];
                 brick->brick_i = {brick_xi, brick_yi, brick_zi};
+                brick->render_attribs = nullptr;
 
                 brick_metadata.exposed_nx = false;
                 brick_metadata.exposed_px = false;
@@ -660,12 +717,13 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                     if (render_attrib_brick == nullptr) {
                         render_attrib_brick = new VoxelShadingAttribBrick();
                         generate_attributes(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level,
-                                            (uint32_t *)render_attrib_brick->voxels, &noise_settings, RANDOM_VALUES.data());
+                                            (uint32_t *)render_attrib_brick->voxels, (uint32_t *)brick->foliage_bitmask, &noise_settings, RANDOM_VALUES.data());
                         has_render_attribs = true;
+                        auto pos = (glm::vec3(chunk_xi, chunk_yi, chunk_zi) * float(CHUNK_SIZE_BRICKS) + glm::vec3(brick_xi, brick_yi, brick_zi)) * float(BRICK_SIZE) * VOXEL_SIZE;
 
                         if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.1 * (1 << level)) {
                             float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
-                            if (chunk.surface_entity_candidates.size() < 10 && upwards > 0.8)
+                            if (chunk.surface_entity_candidates.size < 10 && upwards > 0.8)
                                 chunk.surface_entity_candidates.push_back(brick->brick_i);
                         }
 
@@ -696,7 +754,7 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
         }
     }
     if (has_render_attribs) {
-        chunk.voxel_object->render_voxel_object = create_render_voxel_object(self->scene->render_scene);
+        chunk.voxel_object->render_voxel_object = create_render_voxel_object(self->scene->render_scene, /* has_foliage = */ true);
         chunk.voxel_object->render_dirty = true;
     }
 }

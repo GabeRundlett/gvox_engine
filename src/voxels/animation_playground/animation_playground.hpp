@@ -20,7 +20,7 @@ struct AnimationPlayground {
     daxa::BufferId brick_attribs_readback_buffer{};
 
     glm::ivec3 grid_dims_bricks{4, 4, 4};
-    int frame_count = 8;
+    int frame_count = 32;
     bool dirty = true;
 
     size_t total_brick_count = 0;
@@ -31,7 +31,7 @@ struct AnimationPlayground {
 
     bool playing = true;
     float current_frame_f = 0.0f;
-    float playback_fps = 8.0f;
+    float playback_fps = 24.0f;
 
     AnimationPlayground(GpuContext &gpu_context, RenderScene *render_scene);
     AnimationPlayground(AnimationPlayground const &) = delete;

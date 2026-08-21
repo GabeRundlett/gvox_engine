@@ -282,14 +282,14 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
 
     PLAYER.cam.view_to_clip = mat4{};
     PLAYER.cam.view_to_clip.x.x = +1.0f / tan_half_fov / aspect;
-    PLAYER.cam.view_to_clip.y.y = +1.0f / tan_half_fov;
+    PLAYER.cam.view_to_clip.y.y = -1.0f / tan_half_fov;
     PLAYER.cam.view_to_clip.z.z = +0.0f;
     PLAYER.cam.view_to_clip.z.w = -1.0f;
     PLAYER.cam.view_to_clip.w.z = near;
 
     PLAYER.cam.clip_to_view = mat4{};
     PLAYER.cam.clip_to_view.x.x = tan_half_fov * aspect;
-    PLAYER.cam.clip_to_view.y.y = tan_half_fov;
+    PLAYER.cam.clip_to_view.y.y = -tan_half_fov;
     PLAYER.cam.clip_to_view.z.z = +0.0f;
     PLAYER.cam.clip_to_view.z.w = +1.0f / near;
     PLAYER.cam.clip_to_view.w.z = -1.0f;

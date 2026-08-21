@@ -1,6 +1,8 @@
 #include "render_voxel_object.hpp"
+#include "base/log.hpp"
 #include "voxels/voxel.inl"
 #include "voxels/voxel_object.hpp"
+#include <cassert>
 #include <daxa/daxa.hpp>
 #include <daxa/types.hpp>
 
@@ -21,14 +23,18 @@ struct RenderVoxelObject {
     daxa::DeviceAddress brick_shading_device_address;
     daxa::DeviceAddress brick_primitives_device_address;
     daxa::DeviceAddress brick_flags_device_address;
+    daxa::DeviceAddress brick_foliage_device_address;
     daxa::DeviceAddress blas_device_address;
+
+    bool has_foliage;
 
     RenderScene *scene;
 };
 
-struct RenderVoxelObject *create_render_voxel_object(struct RenderScene *scene) {
+struct RenderVoxelObject *create_render_voxel_object(struct RenderScene *scene, bool has_foliage) {
     RenderVoxelObject *result = new RenderVoxelObject();
     result->scene = scene;
+    result->has_foliage = has_foliage;
     return result;
 }
 
@@ -54,27 +60,31 @@ namespace {
         size_t mShadingSize;
         size_t mAabbSize;
         size_t mFlagsSize;
+        size_t mFoliageSize;
 
         size_t mPrimitivesOffset;
         size_t mShadingOffset;
         size_t mAabbOffset;
         size_t mFlagsOffset;
+        size_t mFoliageOffset;
 
         size_t mTotalSize;
     };
-    auto get_bricks_buffer_info(int brick_count) -> BricksBufferInfo {
+    auto get_bricks_buffer_info(int brick_count, bool has_foliage) -> BricksBufferInfo {
         BricksBufferInfo result;
 
         result.mPrimitivesSize = sizeof(BrickPrimitive) * brick_count;
         result.mShadingSize = sizeof(VoxelShadingAttribBrick) * brick_count;
         result.mAabbSize = sizeof(Aabb) * brick_count;
         result.mFlagsSize = sizeof(uint32_t) * brick_count;
+        result.mFoliageSize = has_foliage ? sizeof(VoxelFoliageBrick) * brick_count : size_t{0};
 
         result.mPrimitivesOffset = size_t{0};
         result.mShadingOffset = result.mPrimitivesOffset + result.mPrimitivesSize;
         result.mAabbOffset = result.mShadingOffset + result.mShadingSize;
         result.mFlagsOffset = result.mAabbOffset + result.mAabbSize;
-        result.mTotalSize = result.mFlagsOffset + result.mFlagsSize;
+        result.mFoliageOffset = result.mFlagsOffset + result.mFlagsSize;
+        result.mTotalSize = result.mFoliageOffset + result.mFoliageSize;
 
         return result;
     }
@@ -96,6 +106,9 @@ namespace {
             device.destroy_buffer(self->blas_buffer);
         if (device.is_id_valid(self->blas_scratch_buffer))
             device.destroy_buffer(self->blas_scratch_buffer);
+
+        if (aabbCount == 0)
+            return;
 
         auto accelerationStructureScratchOffsetAlignment = device.properties().acceleration_structure_properties.value().min_acceleration_structure_scratch_offset_alignment;
         auto geometry = std::array{
@@ -148,7 +161,7 @@ namespace {
         auto &device = gpu_context.device;
         auto brick_count = self->brick_count;
 
-        auto alloc_info = get_bricks_buffer_info(brick_count);
+        auto alloc_info = get_bricks_buffer_info(brick_count, self->has_foliage);
 
         if (device.is_id_valid(self->bricks_data_buffer)) {
             // If the old buffers exist and they're already the same size,
@@ -172,6 +185,7 @@ namespace {
             self->brick_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
             self->brick_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
             self->brick_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
+            self->brick_foliage_device_address = self->has_foliage ? std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFoliageOffset) : daxa::DeviceAddress{0};
 
             self->scene->buffers.voxel_object_bricks.set_buffer(self->bricks_data_buffer);
         }
@@ -195,9 +209,10 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
         self->brick_count++;
     }
 
-    resize_buffers(gpu_context, self);
     if (self->brick_count == 0)
         return;
+
+    resize_buffers(gpu_context, self);
 
     auto &device = gpu_context.device;
 
@@ -213,7 +228,7 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
             .writes(self->scene->buffers.voxel_object_bricks)
             .executes([&](daxa::TaskInterface ti) {
                 // upload all voxel data for now
-                auto alloc_info = get_bricks_buffer_info(self->brick_count);
+                auto alloc_info = get_bricks_buffer_info(self->brick_count, self->has_foliage);
 
                 auto staging_buffer = device.create_buffer({
                     .size = alloc_info.mTotalSize,
@@ -246,6 +261,11 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                     primitive.size_z = max.z - min.z;
                     memcpy(&render_brick, brick->render_attribs, sizeof(VoxelShadingAttribBrick));
 
+                    if (self->has_foliage) {
+                        VoxelFoliageBrick &foliage_brick = ((VoxelFoliageBrick *)((uint8_t *)host_address + alloc_info.mFoliageOffset))[brick_index];
+                        memcpy(foliage_brick.bitmask, brick->foliage_bitmask, sizeof(foliage_brick.bitmask));
+                    }
+
                     ++brick_index;
                 }
 
@@ -277,6 +297,15 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                     .dst_offset = alloc_info.mAabbOffset,
                     .size = alloc_info.mAabbSize,
                 });
+                if (self->has_foliage) {
+                    ti.recorder.copy_buffer_to_buffer({
+                        .src_buffer = staging_buffer,
+                        .dst_buffer = self->bricks_data_buffer,
+                        .src_offset = alloc_info.mFoliageOffset,
+                        .dst_offset = alloc_info.mFoliageOffset,
+                        .size = alloc_info.mFoliageSize,
+                    });
+                }
             }));
     tempTaskGraph.add_task(
         daxa::InlineTask::Transfer("build brick blas")
@@ -310,7 +339,25 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
 void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const glm::vec3 &angles, float scale, const glm::vec3 &tint) {
     PROFILE_FUNC();
     auto *self = object->render_voxel_object;
-    self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject(self->brick_shading_device_address, self->brick_primitives_device_address, {tint.r, tint.g, tint.b}));
+    if (self->brick_count == 0)
+        return;
+    // Ignores rotation, matching the transform below -- good enough for a
+    // conservative cull bound.
+    auto const world_aabb_min = pos + glm::vec3(object->voxel_min) * scale;
+    auto const world_aabb_max = pos + glm::vec3(object->voxel_max) * scale;
+    assert(self->scene->drawn_voxel_object_manifests.size < MAX_VOXEL_OBJECTS);
+    self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject{
+        self->brick_shading_device_address,
+        self->brick_primitives_device_address,
+        self->brick_foliage_device_address,
+        self->brick_aabb_device_address,
+        {tint.r, tint.g, tint.b},
+        self->brick_count,
+        {world_aabb_min.x, world_aabb_min.y, world_aabb_min.z},
+        {world_aabb_max.x, world_aabb_max.y, world_aabb_max.z},
+        {pos.x, pos.y, pos.z},
+        scale,
+    });
     // auto mat = glm::rotate(glm::mat4(scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, 1), angles.z, glm::vec3(0, 0, 1));
     self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
         .transform = {
