@@ -28,13 +28,32 @@ constexpr auto round_frame_dim(daxa_u32vec2 size) {
     return result;
 }
 
-VoxelApp::VoxelApp() : AppWindow(APPNAME, {1280, 720}), ui{AppUi(AppWindow::glfw_window_ptr)} {
+typedef struct HWND__ *HWND;
+extern "C" GLFWAPI HWND glfwGetWin32Window(GLFWwindow *handle);
+
+VoxelApp::VoxelApp() : window(APPNAME, 1280, 720), ui{AppUi(window.glfw_window_ptr)} {
     PROFILE_FUNC();
 
+    window.user_data = this;
+    window.on_mouse_move = [](void *user_data, daxa_f32 x, daxa_f32 y) { static_cast<VoxelApp *>(user_data)->on_mouse_move(x, y); };
+    window.on_mouse_scroll = [](void *user_data, daxa_f32 dx, daxa_f32 dy) { static_cast<VoxelApp *>(user_data)->on_mouse_scroll(dx, dy); };
+    window.on_mouse_button = [](void *user_data, daxa_i32 button_id, daxa_i32 action) { static_cast<VoxelApp *>(user_data)->on_mouse_button(button_id, action); };
+    window.on_key = [](void *user_data, daxa_i32 key_id, daxa_i32 action) { static_cast<VoxelApp *>(user_data)->on_key(key_id, action); };
+    window.on_resize = [](void *user_data, daxa_u32 sx, daxa_u32 sy) { static_cast<VoxelApp *>(user_data)->on_resize(sx, sy); };
+    window.on_drop = [](void *user_data, char const *const *filepaths, int filepath_count) { static_cast<VoxelApp *>(user_data)->on_drop(filepaths, filepath_count); };
+
+    auto get_native_window_info = [this]() -> daxa::NativeWindowInfo {
+#if defined(_WIN32)
+        return daxa::NativeWindowInfoWin32{glfwGetWin32Window((GLFWwindow *)window.glfw_window_ptr)};
+#elif defined(__linux__)
+
+#endif
+    };
+
     gpu_context.create_swapchain({
-        .native_window_info = AppWindow::get_native_window_info(),
+        .native_window_info = get_native_window_info(),
         .surface_format = gpu_context.device.choose_swapchain_surface_format({
-            .native_window_info = AppWindow::get_native_window_info(),
+            .native_window_info = get_native_window_info(),
             .preferred_formats = std::array{daxa::SurfaceFormat{.format = daxa::Format::B8G8R8A8_UNORM}},
         }),
         .present_mode = daxa::PresentMode::FIFO,
@@ -81,12 +100,12 @@ VoxelApp::~VoxelApp() {
 void VoxelApp::run() {
     while (true) {
         glfwPollEvents();
-        if (glfwWindowShouldClose(AppWindow::glfw_window_ptr) != 0) {
+        if (glfwWindowShouldClose(window.glfw_window_ptr) != 0) {
             break;
         }
 
-        if (!AppWindow::minimized) {
-            on_resize(window_size.x, window_size.y);
+        if (!window.minimized) {
+            on_resize(static_cast<daxa_u32>(window.size_x), static_cast<daxa_u32>(window.size_y));
 
             if (AppSettings::get<settings::Checkbox>("General", "battery_saving_mode").value) {
                 std::this_thread::sleep_for(10ms);
@@ -208,16 +227,16 @@ void VoxelApp::on_update() {
     }
 }
 void VoxelApp::on_mouse_move(daxa_f32 x, daxa_f32 y) {
-    daxa_f32vec2 const center = {static_cast<daxa_f32>(window_size.x / 2), static_cast<daxa_f32>(window_size.y / 2)};
+    daxa_f32vec2 const center = {static_cast<daxa_f32>(window.size_x / 2), static_cast<daxa_f32>(window.size_y / 2)};
     gpu_input.mouse.pos = daxa_f32vec2{x, y};
     auto offset = daxa_f32vec2{gpu_input.mouse.pos.x - center.x, gpu_input.mouse.pos.y - center.y};
     gpu_input.mouse.pos = daxa_f32vec2{
-        gpu_input.mouse.pos.x * static_cast<daxa_f32>(gpu_input.frame_dim.x) / static_cast<daxa_f32>(window_size.x),
-        gpu_input.mouse.pos.y * static_cast<daxa_f32>(gpu_input.frame_dim.y) / static_cast<daxa_f32>(window_size.y),
+        gpu_input.mouse.pos.x * static_cast<daxa_f32>(gpu_input.frame_dim.x) / static_cast<daxa_f32>(window.size_x),
+        gpu_input.mouse.pos.y * static_cast<daxa_f32>(gpu_input.frame_dim.y) / static_cast<daxa_f32>(window.size_y),
     };
     if (!ui.paused) {
         gpu_input.mouse.pos_delta = daxa_f32vec2{gpu_input.mouse.pos_delta.x + offset.x, gpu_input.mouse.pos_delta.y + offset.y};
-        set_mouse_pos(center.x, center.y);
+        window.set_mouse_pos(center.x, center.y);
     }
 }
 void VoxelApp::on_mouse_scroll(daxa_f32 dx, daxa_f32 dy) {
@@ -253,7 +272,7 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     if (key_id == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         std::fill(std::begin(gpu_input.actions), std::end(gpu_input.actions), 0);
         ui.toggle_pause();
-        set_mouse_capture(!ui.paused);
+        window.set_mouse_capture(!ui.paused);
     }
 
     if (key_id == GLFW_KEY_F3 && action == GLFW_PRESS) {
@@ -262,7 +281,7 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
 
     if (key_id == GLFW_KEY_F7 && action == GLFW_PRESS) {
         ui.toggle_profiler_view();
-        set_mouse_capture(!ui.paused);
+        window.set_mouse_capture(!ui.paused);
     }
 
     if (ui.paused) {
@@ -283,20 +302,20 @@ void VoxelApp::on_key(daxa_i32 key_id, daxa_i32 action) {
     }
 }
 void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
-    minimized = (sx == 0 || sy == 0);
+    window.minimized = (sx == 0 || sy == 0);
     auto new_render_res_scl = AppSettings::get<settings::SliderFloat>("Graphics", "Render Res Scale").value;
-    auto resized = sx != window_size.x || sy != window_size.y || render_res_scl != new_render_res_scl;
-    if (!minimized && resized) {
+    auto resized = sx != static_cast<daxa_u32>(window.size_x) || sy != static_cast<daxa_u32>(window.size_y) || render_res_scl != new_render_res_scl;
+    if (!window.minimized && resized) {
         {
             PROFILE_SCOPE("resize");
             gpu_context.swapchain.resize();
-            window_size.x = gpu_context.swapchain.get_surface_extent().x;
-            window_size.y = gpu_context.swapchain.get_surface_extent().y;
+            window.size_x = static_cast<int>(gpu_context.swapchain.get_surface_extent().x);
+            window.size_y = static_cast<int>(gpu_context.swapchain.get_surface_extent().y);
             render_res_scl = new_render_res_scl;
             {
                 // resize render images
-                // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
-                // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
+                // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_x) * render_res_scl);
+                // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_y) * render_res_scl);
                 gpu_context.device.wait_idle();
                 needs_vram_calc = true;
             }
@@ -328,10 +347,10 @@ void VoxelApp::record_tasks() {
     gpu_context.task_states.clear();
     gpu_context.task_states.reserve(500);
 
-    gpu_input.frame_dim.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.x) * render_res_scl);
-    gpu_input.frame_dim.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window_size.y) * render_res_scl);
+    gpu_input.frame_dim.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_x) * render_res_scl);
+    gpu_input.frame_dim.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_y) * render_res_scl);
     gpu_input.rounded_frame_dim = round_frame_dim(gpu_input.frame_dim);
-    gpu_input.output_resolution = window_size;
+    gpu_input.output_resolution = daxa_u32vec2{static_cast<daxa_u32>(window.size_x), static_cast<daxa_u32>(window.size_y)};
 
     gpu_context.frame_task_graph = daxa::TaskGraph({
         .device = gpu_context.device,

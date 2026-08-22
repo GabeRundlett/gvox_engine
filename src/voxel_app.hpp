@@ -14,12 +14,13 @@
 
 #include <chrono>
 
-struct VoxelApp : AppWindow<VoxelApp> {
+struct VoxelApp {
     using Clock = std::chrono::high_resolution_clock;
     Clock::time_point start = Clock::now();
     Clock::time_point prev_time = Clock::now();
     Clock::time_point prev_phys_update_time = Clock::now();
 
+    Window window;
     ProfilerUi profiler_ui;
     GpuContext gpu_context;
 

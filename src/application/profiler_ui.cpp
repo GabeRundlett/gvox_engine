@@ -70,18 +70,19 @@ void ProfilerUi::update(GpuContext &gpu_context) {
 
     if (!paused) {
         auto const slot_index = frame_count % static_cast<uint64_t>(FRAME_HISTORY_COUNT);
-        auto const thread_count = std::min<uint64_t>(profiler_get_thread_count(), static_cast<uint64_t>(MAX_DISPLAYED_THREADS));
+        auto const thread_count = std::min<uint64_t>(profiler_get_thread_count() + 1, static_cast<uint64_t>(MAX_DISPLAYED_THREADS));
         frame_thread_counts[slot_index] = thread_count;
 
         float duration = 0.0f;
         for (uint64_t t = 0; t < thread_count; ++t) {
             auto &slot = frames[slot_index][t];
-            if (t == MAX_DISPLAYED_THREADS - 1)
+            if (t == thread_count - 1)
                 gpu_context.get_timestamps(frames[slot_index][t]);
             else
                 profiler_resolve_frame(slot, t);
             for (int i = 0; i < slot.size; ++i) {
-                duration = std::max(duration, slot[i].end);
+                if (slot[i].end < 1000000)
+                    duration = std::max(duration, slot[i].end);
             }
         }
         // Clear any lanes that were in use in a previous occupant of this ring
@@ -336,7 +337,7 @@ void ProfilerUi::draw_contents() {
         // Thread ID label, pinned to the left edge of the visible area (not
         // the scrolled content) and drawn on top so it stays legible as bars
         // pan underneath it.
-        auto const label = t == MAX_DISPLAYED_THREADS - 1 ? format("GPU") : format("Thread %llu", static_cast<unsigned long long>(t));
+        auto const label = t == thread_count - 1 ? format("GPU") : format("Thread %llu", static_cast<unsigned long long>(t));
         auto const label_size = ImGui::CalcTextSize(label.data);
         auto const label_pos = ImVec2(window_pos.x + 4.0f, thread_origin.y + 2.0f);
         flamegraph_draw_list->AddRectFilled(
