@@ -41,6 +41,7 @@ struct ThreadPool {
     void blocking_dispatch(std::shared_ptr<VirtualTask> task, TaskPriority priority = TaskPriority::LOW);
     void async_dispatch(std::shared_ptr<VirtualTask> task, TaskPriority priority = TaskPriority::LOW);
     void block_on(std::shared_ptr<VirtualTask> task);
+    bool is_done(std::shared_ptr<VirtualTask> const &task);
 
   private:
     struct SharedData {
@@ -102,7 +103,7 @@ void ThreadPool::worker(std::shared_ptr<ThreadPool::SharedData> shared_data, uin
 ThreadPool::ThreadPool(std::optional<uint32_t> thread_count) {
     uint32_t const real_thread_count = thread_count.value_or(std::thread::hardware_concurrency());
     shared_data = std::make_shared<SharedData>();
-    for (uint32_t thread_index = 0; thread_index < real_thread_count - 1; thread_index++) {
+    for (uint32_t thread_index = 0; thread_index < (real_thread_count > 3 ? real_thread_count - 3 : 1); thread_index++) {
         worker_threads.push_back({
             std::thread([=, this]() { ThreadPool::worker(shared_data, thread_index); }),
         });
@@ -168,6 +169,15 @@ void ThreadPool::block_on(std::shared_ptr<VirtualTask> task) {
     shared_data->work_done.wait(lock, [&] { return task->not_finished == 0; });
 }
 
+bool ThreadPool::is_done(std::shared_ptr<VirtualTask> const &task) {
+    // Locking here (rather than an atomic load) is what makes this safe to use
+    // as a synchronization point: the worker decrements not_finished under this
+    // same mutex right after running its callback, so once this returns true,
+    // every write the callback made is visible to the calling thread too.
+    std::lock_guard lock{shared_data->threadpool_mutex};
+    return task->not_finished == 0;
+}
+
 struct SimpleTask : VirtualTask {
     thread_pool::Func *func;
     void *user_ptr;
@@ -197,6 +207,9 @@ void thread_pool::async_dispatch(Task task) {
 }
 void thread_pool::wait(Task task) {
     s_instance.block_on(task->task);
+}
+bool thread_pool::is_done(Task task) {
+    return s_instance.is_done(task->task);
 }
 
 struct IndexedTask : VirtualTask {

@@ -10,6 +10,9 @@ namespace thread_pool {
 
     void async_dispatch(Task task);
     void wait(Task task);
+    // Non-blocking completion check. Safe to call repeatedly from the
+    // dispatching thread to poll a task without stalling on it.
+    bool is_done(Task task);
 
     // Runs func(user_ptr, i) for i in [0, count), spread across the pool, and
     // blocks until all have finished. The calling thread participates.
