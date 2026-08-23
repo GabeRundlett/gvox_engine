@@ -1,4 +1,9 @@
-#include "voxel_particles.inl"
+#include <core.inl>
+#include <utilities/allocator.inl>
+#include <renderer/core.inl>
+#include <voxels/particles/common.inl>
+#include <voxels/particles/grass/grass.inl>
+#include <voxels/particles/flower/flower.inl>
 
 #include <utilities/gpu/defs.glsl>
 #include <renderer/kajiya/inc/camera.glsl>

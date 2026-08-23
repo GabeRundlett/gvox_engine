@@ -1,5 +1,6 @@
 #include "render_foliage.inl"
 #include <culling.glsl>
+#include <utilities/gpu/random.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(FoliageCullPush, push)
 
@@ -133,7 +134,15 @@ void main() {
         brick_aabb.max *= deref(voxel_object_ptr).scale;
         brick_aabb.min += deref(voxel_object_ptr).pos;
         brick_aabb.max += deref(voxel_object_ptr).pos;
-        if (is_aabb_visible(frustum, brick_aabb)) {
+
+        vec3 center_ws = (brick_aabb.min + brick_aabb.max) / 2;
+        vec3 center_vs = (deref(push.uses.gpu_input).player.cam.world_to_view * vec4(center_ws, 1)).xyz;
+        float dist2 = dot(center_vs, center_vs);
+
+        rand_seed(hash3(floatBitsToUint(center_ws)));
+        const float MAX_DIST = 70 + 10 * rand();
+
+        if (dist2 < MAX_DIST * MAX_DIST && is_aabb_visible(frustum, brick_aabb)) {
             // Add to draw list
             daxa_RWBufferPtr(daxa_u32) counter = daxa_RWBufferPtr(daxa_u32)(as_address(push.uses.visible_foliage_bricks));
             uint slot = atomicAdd(deref(counter), 1u);

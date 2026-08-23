@@ -1,4 +1,8 @@
-#include "voxel_particles.inl"
+#include <utilities/allocator.inl>
+#include <renderer/core.inl>
+#include <voxels/particles/common.inl>
+#include <voxels/particles/grass/grass.inl>
+#include <voxels/particles/flower/flower.inl>
 
 #include <utilities/gpu/defs.glsl>
 

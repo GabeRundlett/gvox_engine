@@ -38,7 +38,7 @@ ParticleVertex get_grass_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferP
     vec3 prev_offset = get_grass_offset(prev_rot_offset, i * VOXEL_SIZE);
 
     voxel.albedo = rgb2hsv(voxel.albedo);
-    voxel.albedo.z = mix(voxel.albedo.z, 1.0, float(i) * 0.02);
+    voxel.albedo.z = mix(0.0, voxel.albedo.z, 0.4 + float(i) * 0.2);
     voxel.albedo = hsv2rgb(voxel.albedo);
 
     ParticleVertex result;

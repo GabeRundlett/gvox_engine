@@ -1,6 +1,7 @@
 #pragma once
 
-#include <voxels/particles/voxel_particles.inl>
+#include <voxels/particles/common.inl>
+
 #include <utilities/gpu/math.glsl>
 #include <voxels/voxel.glsl>
 #include <renderer/kajiya/inc/camera.glsl>

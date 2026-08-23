@@ -445,7 +445,7 @@ void GpuContext::finalize_timestamps() {
         assert(timeline_query_index_count[index_to_write] <= MAX_TIMELINE_QUERIES_PER_FRAME);
 
         // TODO(grundlett): Figure out why Win+D minimize will cause this to become out of sync
-        // T_ASSERT(mTimelineQueryIndexCount[indexToWrite] == 2 * mTimestampNamesStorage[indexToWrite].getCount());
+        assert(timeline_query_index_count[index_to_write] == 2 * timestamp_names_storage[index_to_write].size);
 
         timeline_query_frame_offset += 1;
         timeline_query_frame_offset %= FRAMES_IN_FLIGHT;

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <application/input.inl>
-// #include <voxels/voxel.inl>
-// #include <voxels/particles/voxel_particles.inl>
 
 struct RendererImpl;
 

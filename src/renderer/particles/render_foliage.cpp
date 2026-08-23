@@ -1,4 +1,5 @@
 #include "render_foliage.hpp"
+#include "voxels/particles/grass/grass.inl"
 #include <renderer/gpu_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 #define RENDERER_INTERNAL 1
@@ -150,6 +151,7 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
     task_graph.add_task(
         daxa::InlineTask::Transfer("clear visible chunks count")
             .writes(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.view())
+            .writes(grass.grass_allocator.allocator_buffer.task_resource)
             .executes([&gpu_context](daxa::TaskInterface ti) {
                 ti.recorder.clear_buffer({
                     .buffer = gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.id(),
@@ -168,6 +170,14 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
                     .offset = 8,
                     .size = sizeof(uint32_t),
                     .clear_value = 1,
+                });
+
+                auto &grass = *gpu_context.foliage_bricks.grass;
+                ti.recorder.clear_buffer({
+                    .buffer = grass.grass_allocator.allocator_buffer.task_resource.id(),
+                    .offset = offsetof(GrassStrandAllocator, element_count),
+                    .size = sizeof(uint32_t),
+                    .clear_value = 0,
                 });
             }));
 

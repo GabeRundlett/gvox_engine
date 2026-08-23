@@ -3,8 +3,6 @@
 #include <core.inl>
 #include <renderer/core.inl>
 
-// #include <voxels/particles/voxel_particles.inl>
-
 #if USE_RAY_QUERY
 DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(TracePrimaryRt)
 #else

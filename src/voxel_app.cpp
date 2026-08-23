@@ -316,7 +316,6 @@ void VoxelApp::on_resize(daxa_u32 sx, daxa_u32 sy) {
                 // resize render images
                 // gpu_context.render_images.size.x = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_x) * render_res_scl);
                 // gpu_context.render_images.size.y = static_cast<daxa_u32>(static_cast<daxa_f32>(window.size_y) * render_res_scl);
-                gpu_context.device.wait_idle();
                 needs_vram_calc = true;
             }
             record_tasks();
@@ -521,39 +520,6 @@ void VoxelApp::calc_vram_usage() {
     for (auto &slot : gpu_context.temporal_images) {
         image_size(slot.value.task_resource.id());
     }
-
-#if defined(VOXELS_ORIGINAL_IMPL)
-    // buffer_size(voxel_world.buffers.blas_attr_pointers.task_resource.id());
-    // buffer_size(voxel_world.buffers.blas_geom_pointers.task_resource.id());
-    // buffer_size(voxel_world.buffers.blas_transforms.task_resource.id());
-    // buffer_size(voxel_world.buffers.voxel_bricks.task_resource.id());
-    // buffer_size(voxel_world.buffers.voxel_globals.task_resource.id());
-    // buffer_size(voxel_world.buffers.brick_update_heap.task_resource.id());
-    // buffer_size(voxel_world.buffers.brick_updates.task_resource.id());
-    // auto total_tlas_size = buffer_size(voxel_world.buffers.tlas_buffer);
-    // auto total_blas_size = size_t{};
-    // auto total_attr_size = size_t{};
-    // auto total_geom_size = size_t{};
-    // auto total_non_empty_blas_count = size_t{};
-    // auto total_geom_count = size_t{};
-    // for (auto const &blas_brick : voxel_world.blas_bricks) {
-    //     total_blas_size += buffer_size(blas_brick.blas_buffer, false);
-    //     total_attr_size += buffer_size(blas_brick.attr_buffer, false);
-    //     total_geom_size += buffer_size(blas_brick.geom_buffer, false);
-    //     if (!blas_brick.blas_geoms.empty()) {
-    //         ++total_non_empty_blas_count;
-    //         total_geom_count += blas_brick.blas_geoms.size();
-    //     }
-    // }
-    // debug_utils::DebugDisplay::set_debug_string("total_tlas_size", fmt::format("{:.3f} MB", static_cast<float>(total_tlas_size) / 1000000));
-    // debug_utils::DebugDisplay::set_debug_string("total_blas_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_blas_size) / 1000000, static_cast<float>(total_blas_size) / total_non_empty_blas_count / 1000));
-    // debug_utils::DebugDisplay::set_debug_string("total_attr_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_attr_size) / 1000000, static_cast<float>(total_attr_size) / total_non_empty_blas_count / 1000));
-    // debug_utils::DebugDisplay::set_debug_string("total_geom_size", fmt::format("{:.3f} MB ({:.3f} KB/blas)", static_cast<float>(total_geom_size) / 1000000, static_cast<float>(total_geom_size) / total_non_empty_blas_count / 1000));
-    // debug_utils::DebugDisplay::set_debug_string("total_geom_count", fmt::format("{}", total_geom_count));
-    // debug_utils::DebugDisplay::set_debug_string("total_blas_count", fmt::format("{}", total_non_empty_blas_count));
-    // debug_utils::DebugDisplay::set_debug_string("avg #geom per blas", fmt::format("{:.3f}", float(total_geom_count) / float(total_non_empty_blas_count)));
-
-#endif
 
     {
         auto size = gpu_context.frame_task_graph.get_resource_memory_block_size();

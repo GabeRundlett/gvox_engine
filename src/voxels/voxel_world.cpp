@@ -721,11 +721,11 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                         has_render_attribs = true;
                         auto pos = (glm::vec3(chunk_xi, chunk_yi, chunk_zi) * float(CHUNK_SIZE_BRICKS) + glm::vec3(brick_xi, brick_yi, brick_zi)) * float(BRICK_SIZE) * VOXEL_SIZE;
 
-                        if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.1 * (1 << level)) {
-                            float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
-                            if (chunk.surface_entity_candidates.size < 10 && upwards > 0.8)
-                                chunk.surface_entity_candidates.push_back(brick->brick_i);
-                        }
+                        // if (RANDOM_VALUES[(brick_index + chunk_index * 197123) % RANDOM_VALUES.size()] < 255 * 0.1 * (1 << level)) {
+                        //     float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &noise_settings, RANDOM_VALUES.data());
+                        //     if (chunk.surface_entity_candidates.size < 10 && upwards > 0.8)
+                        //         chunk.surface_entity_candidates.push_back(brick->brick_i);
+                        // }
 
                         {
                             brick->voxel_min = {BRICK_SIZE, BRICK_SIZE, BRICK_SIZE};

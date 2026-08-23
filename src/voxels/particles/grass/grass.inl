@@ -71,6 +71,7 @@ struct GrassStrandSplatParticleRasterPush {
 };
 
 #if defined(__cplusplus)
+#include "renderer/kajiya/gbuffer.hpp"
 
 struct GrassStrands {
     TemporalBuffer cube_rendered_particle_verts;

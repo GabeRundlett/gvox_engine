@@ -15,6 +15,8 @@ daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses
 #define UserMaxElementCount MAX_GRASS_BLADES
 #include <utilities/allocator.glsl>
 
+#include <utilities/gpu/random.glsl>
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint particle_index = gl_GlobalInvocationID.x;
@@ -28,7 +30,7 @@ void main() {
     }
     deref(advance(grass_strands, particle_index)) = self;
 
-    rand_seed(particle_index);
+    rand_seed(hash3(floatBitsToUint(self.origin)));
 
     uint height = 2 + uint(rand() * 2.5);
     for (uint i = 1; i <= height; ++i) {

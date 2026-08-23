@@ -32,7 +32,7 @@ void main() {
     daxa_RWBufferPtr(daxa_u32) bitmask_words = daxa_RWBufferPtr(daxa_u32)(as_address(brick_ptr));
     uint word_i = voxel_index / 32;
     uint bit_i = voxel_index % 32;
-    uint prev_word = atomicAnd(deref(advance(bitmask_words, word_i)), ~(1u << bit_i));
+    uint prev_word = deref(advance(bitmask_words, word_i)); // & ~(1u << bit_i);
     bool has_foliage = (prev_word & (1u << bit_i)) != 0u;
     if (!has_foliage) {
         // Either genuinely empty, or another frame already spawned this voxel's blade.

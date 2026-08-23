@@ -29,8 +29,6 @@ struct VoxelApp {
     daxa::ImGuiRenderer imgui_renderer;
     Renderer renderer;
 
-    // VoxelWorld voxel_world;
-    // VoxelParticles particles;
     struct Scene* scene = nullptr;
 
     PlayerInput player_input{};

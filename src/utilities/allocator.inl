@@ -32,7 +32,7 @@
 
 #define SIMPLE_STATIC_ALLOCATOR_BUFFER_USE_N 4
 #define SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(HeapUsage, AllocatorType_)                                                            \
-    DAXA_TH_BUFFER_PTR(READ_WRITE_CONCURRENT, daxa_RWBufferPtr(AllocatorType_), AllocatorType_##_allocator_buffer) \
+    DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(AllocatorType_), AllocatorType_##_allocator_buffer) \
     DAXA_TH_BUFFER(HeapUsage, AllocatorType_##_heap)                                                                              \
     DAXA_TH_BUFFER(READ_WRITE_CONCURRENT, AllocatorType_##_available_elements)                                     \
     DAXA_TH_BUFFER(READ_WRITE_CONCURRENT, AllocatorType_##_released_elements)
@@ -63,8 +63,8 @@ template <typename T>
 struct StaticAllocatorBufferState {
     TemporalBuffer allocator_buffer;
     TemporalBuffer element_buffer;
-    TemporalBuffer available_element_stack_buffer;
-    TemporalBuffer released_element_stack_buffer;
+    TemporalBuffer available_element_stack_buffer; // todo delete
+    TemporalBuffer released_element_stack_buffer; // todo delete
 
     bool initialized = false;
 
