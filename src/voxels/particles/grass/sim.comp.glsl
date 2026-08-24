@@ -17,9 +17,11 @@ daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses
 
 #include <utilities/gpu/random.glsl>
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint particle_index = gl_GlobalInvocationID.x;
+    if (particle_index > deref(grass_allocator).element_count)
+        return;
     GrassStrand self = deref(advance(grass_strands, particle_index));
 
     if (self.flags == 0) {

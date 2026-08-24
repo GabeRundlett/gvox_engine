@@ -115,8 +115,6 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
     if (!first_time) {
         task_graph.register_buffer(grass.grass_allocator.allocator_buffer.task_resource);
         task_graph.register_buffer(grass.grass_allocator.element_buffer.task_resource);
-        task_graph.register_buffer(grass.grass_allocator.available_element_stack_buffer.task_resource);
-        task_graph.register_buffer(grass.grass_allocator.released_element_stack_buffer.task_resource);
     }
     // particles_state/cube_index_buffer were only registered (and uploaded)
     // against the throwaway init task_graph above, not this one -- always
@@ -143,10 +141,6 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
                 });
             }));
 
-    // One workgroup per this-frame render voxel object: frustum + HiZ cull
-    // its world-space AABB and append survivors to visible_foliage_bricks. Feeds
-    // "generate foliage" below, which should only spawn/redraw grass for
-    // chunks that are actually on screen.
     task_graph.register_buffer(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource);
     task_graph.add_task(
         daxa::InlineTask::Transfer("clear visible chunks count")
@@ -207,7 +201,6 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
 
     task_graph.add_task(
         daxa::InlineTask::Compute("generate foliage")
-            .reads(grass.grass_allocator.available_element_stack_buffer.task_resource)
             .indirect_cmd.reads(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.view())
             .writes(grass.grass_allocator.allocator_buffer.task_resource,
                     grass.grass_allocator.element_buffer.task_resource)

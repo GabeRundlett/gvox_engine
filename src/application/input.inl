@@ -113,3 +113,9 @@ struct IndirectDrawIndexedParams {
     daxa_u32 vertex_offset;
     daxa_u32 first_instance;
 };
+
+struct IndirectDispatchParams {
+    daxa_u32 x;
+    daxa_u32 y;
+    daxa_u32 z;
+};
