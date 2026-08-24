@@ -140,7 +140,7 @@ void main() {
         float dist2 = dot(center_vs, center_vs);
 
         rand_seed(hash3(floatBitsToUint(center_ws)));
-        const float MAX_DIST = 70 + 10 * rand();
+        const float MAX_DIST = 60 + 20 * rand();
 
         if (dist2 < MAX_DIST * MAX_DIST && is_aabb_visible(frustum, brick_aabb)) {
             // Add to draw list

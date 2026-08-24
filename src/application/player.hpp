@@ -10,6 +10,7 @@ struct PlayerInput {
     daxa_f32 fov;
     MouseInput mouse;
     uint32_t actions[GAME_ACTION_LAST + 1];
+    struct VoxelWorld *voxel_world;
 };
 
 using mat4 = daxa_f32mat4x4;

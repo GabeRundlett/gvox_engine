@@ -4,6 +4,17 @@ MinMax voxel_minmax_value_cpp(NoiseSettings const *noise_settings, RandomCtx ran
     return voxel_minmax_value(random_ctx, noise_settings, vec3(p0x, p0y, p0z), vec3(p1x, p1y, p1z));
 }
 
+bool voxel_is_solid_cpp(NoiseSettings const *noise_settings, RandomCtx random_ctx, float px, float py, float pz) {
+    return voxel_value(random_ctx, noise_settings, vec3(px, py, pz)).val < 0.0f;
+}
+
+void voxel_normal_cpp(NoiseSettings const *noise_settings, RandomCtx random_ctx, float px, float py, float pz, float out_normal[3]) {
+    auto nrm = voxel_value(random_ctx, noise_settings, vec3(px, py, pz)).nrm;
+    out_normal[0] = nrm.x;
+    out_normal[1] = nrm.y;
+    out_normal[2] = nrm.z;
+}
+
 void generate_bitmask_cpp(
     int brick_xi, int brick_yi, int brick_zi,
     int chunk_xi, int chunk_yi, int chunk_zi,

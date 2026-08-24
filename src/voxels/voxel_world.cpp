@@ -1,5 +1,6 @@
 #include "voxel_world.hpp"
 #include "animation_playground/animation_playground.hpp"
+#include "pack_unpack.inl"
 #include "renderer/render_voxel_object.hpp"
 #include "renderer/particles/render_foliage.hpp"
 #include "scene.hpp"
@@ -757,4 +758,98 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
         chunk.voxel_object->render_voxel_object = create_render_voxel_object(self->scene->render_scene, /* has_foliage = */ true);
         chunk.voxel_object->render_dirty = true;
     }
+}
+
+static bool sample_generator(glm::ivec3 voxel_coord) {
+    auto p = (glm::vec3(voxel_coord) + 0.5f) * VOXEL_SIZE;
+    return voxel_is_solid_cpp(&noise_settings, RANDOM_VALUES.data(), p.x, p.y, p.z);
+}
+
+static VoxelBrick const *find_brick(VoxelWorld *self, glm::ivec3 brick_coord, bool &out_of_world) {
+    auto chunk_i = brick_coord >> CHUNK_SIZE_BRICKS_LOG2;
+    out_of_world =
+        chunk_i.x < -CHUNK_NX || chunk_i.x >= CHUNK_NX ||
+        chunk_i.y < -CHUNK_NY || chunk_i.y >= CHUNK_NY ||
+        chunk_i.z < -CHUNK_NZ || chunk_i.z >= CHUNK_NZ;
+    if (out_of_world) {
+        return nullptr;
+    }
+    auto &chunk = self->chunks[get_chunk_index(chunk_i.x, chunk_i.y, chunk_i.z, 0)];
+    if (chunk.voxel_object == nullptr) {
+        return nullptr;
+    }
+    auto local_brick_coord = brick_coord & (CHUNK_SIZE_BRICKS - 1);
+    return chunk.voxel_object->brick_grid[chunk.voxel_object->get_brick_index(local_brick_coord)];
+}
+
+static bool brick_bit(VoxelBrick const *brick, glm::ivec3 voxel_coord) {
+    auto in_brick = VoxelObject::get_voxel_offset(voxel_coord);
+    auto bit_i = in_brick.x + in_brick.y * BRICK_SIZE + in_brick.z * BRICK_SIZE * BRICK_SIZE;
+    return ((brick->bitmask[bit_i >> 6] >> (bit_i & 63)) & 1) != 0;
+}
+
+static Voxel brick_render_attrib(VoxelBrick const *brick, glm::ivec3 voxel_coord) {
+    auto in_brick = VoxelObject::get_voxel_offset(voxel_coord);
+    auto voxel_i = in_brick.x + in_brick.y * BRICK_SIZE + in_brick.z * BRICK_SIZE * BRICK_SIZE;
+    return unpack_voxel(brick->render_attribs->voxels[voxel_i]);
+}
+
+bool voxel_world_is_solid(VoxelWorld *self, glm::ivec3 voxel_coord) {
+    bool out_of_world = false;
+    auto const *brick = find_brick(self, VoxelObject::get_brick_coord(voxel_coord), out_of_world);
+    // if (out_of_world) {
+    //     return false;
+    // }
+    return brick == nullptr ? sample_generator(voxel_coord) : brick_bit(brick, voxel_coord);
+}
+
+glm::vec3 voxel_world_terrain_normal(VoxelWorld *self, glm::vec3 world_pos) {
+    auto voxel_coord = glm::ivec3(glm::floor(world_pos * VOXEL_SCL));
+
+    bool out_of_world = false;
+    auto const *brick = find_brick(self, VoxelObject::get_brick_coord(voxel_coord), out_of_world);
+    if (brick == nullptr || brick->render_attribs == nullptr || out_of_world) {
+        float nrm[3];
+        voxel_normal_cpp(&noise_settings, RANDOM_VALUES.data(), world_pos.x, world_pos.y, world_pos.z, nrm);
+        return {nrm[0], nrm[1], nrm[2]};
+    } else {
+        auto voxel = brick_render_attrib(brick, voxel_coord);
+        return {voxel.normal.x, voxel.normal.y, voxel.normal.z};
+    }
+}
+
+bool voxel_world_box_is_solid(VoxelWorld *self, glm::vec3 box_min, glm::vec3 box_max, glm::ivec3 *out_hit_voxel) {
+    PROFILE_FUNC();
+
+    constexpr float BOUNDARY_EPS = 1e-4f;
+    auto v0 = glm::ivec3(glm::floor(box_min * VOXEL_SCL + BOUNDARY_EPS));
+    auto v1 = glm::ivec3(glm::floor(box_max * VOXEL_SCL - BOUNDARY_EPS));
+    v1 = glm::max(v0, v1);
+
+    auto cached_brick_coord = glm::ivec3(0);
+    VoxelBrick const *cached_brick = nullptr;
+    bool cached_out_of_world = false;
+    bool have_cache = false;
+
+    for (int32_t zi = v0.z; zi <= v1.z; ++zi) {
+        for (int32_t yi = v0.y; yi <= v1.y; ++yi) {
+            for (int32_t xi = v0.x; xi <= v1.x; ++xi) {
+                auto voxel_coord = glm::ivec3(xi, yi, zi);
+                auto brick_coord = VoxelObject::get_brick_coord(voxel_coord);
+                if (!have_cache || brick_coord != cached_brick_coord) {
+                    cached_brick_coord = brick_coord;
+                    cached_brick = find_brick(self, brick_coord, cached_out_of_world);
+                    have_cache = true;
+                }
+                if (cached_brick == nullptr ? sample_generator(voxel_coord) : brick_bit(cached_brick, voxel_coord)) {
+                    if (out_hit_voxel != nullptr) {
+                        *out_hit_voxel = voxel_coord;
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }

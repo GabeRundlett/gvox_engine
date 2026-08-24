@@ -105,7 +105,7 @@ void main() {
     float depth = fetch_depth(px);
     vec3 normal_vs = safeTexelFetch(vs_normal_image_id, ivec2(px), 0).xyz;
 
-    if (depth == 0.0 || dot(normal_vs, normal_vs) == 0.0) { // TODO: WTF why does it crash if I don't return early here?
+    if (depth == 0.0) {
         safeImageStore(ssao_image_id, ivec2(px), vec4(1, 0, 0, 0));
         return;
     }

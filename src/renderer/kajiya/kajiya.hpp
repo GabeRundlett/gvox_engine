@@ -52,7 +52,7 @@ struct KajiyaRenderer {
         AppSettings::add<settings::Checkbox>({"Graphics", "global_illumination", {.value = do_global_illumination}, {.task_graph_depends = true}});
         AppSettings::add<settings::Checkbox>({"Graphics", "denoise_shadow_mask", {.value = denoise_shadow_mask}, {.task_graph_depends = true}});
 
-        do_global_illumination = false; // AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
+        do_global_illumination = AppSettings::get<settings::Checkbox>("Graphics", "global_illumination").value;
         denoise_shadow_mask = AppSettings::get<settings::Checkbox>("Graphics", "denoise_shadow_mask").value;
 
         auto reprojection_map = calculate_reprojection_map(gpu_context, gbuffer_depth, velocity_image);

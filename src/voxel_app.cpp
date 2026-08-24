@@ -198,6 +198,7 @@ void VoxelApp::on_update() {
         player_input.sensitivity = ui.settings.mouse_sensitivity;
         player_input.fov = AppSettings::get<settings::SliderFloat>("Camera", "FOV").value * (std::numbers::pi_v<daxa_f32> / 180.0f);
         player_input.mouse = gpu_input.mouse;
+        player_input.voxel_world = scene->voxel_world;
         std::copy(std::begin(gpu_input.actions), std::end(gpu_input.actions), std::begin(player_input.actions));
         player_perframe(player_input, gpu_input.player);
 

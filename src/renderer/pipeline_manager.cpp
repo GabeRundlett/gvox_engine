@@ -16,7 +16,7 @@
 
 static const uint64_t SPV_CACHE_MAGIC = std::bit_cast<uint64_t>(std::array{'g', 'v', 'o', 'x', 's', 'p', 'v', 'c'});
 static uint64_t const SPV_CACHE_VERSION = 1;
-static bool const SPV_USE_DEBUG_INFO = false;
+static bool const SPV_USE_DEBUG_INFO = true;
 static bool const SPV_ENABLE_CACHE = true;
 
 // Where shader #includes are resolved from. Mirrors what the old

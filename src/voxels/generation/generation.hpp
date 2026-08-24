@@ -4,6 +4,8 @@
 #include <base/profiler.hpp>
 
 MinMax voxel_minmax_value_cpp(NoiseSettings const *noise_settings, RandomCtx random_ctx, float p0x, float p0y, float p0z, float p1x, float p1y, float p1z);
+bool voxel_is_solid_cpp(NoiseSettings const *noise_settings, RandomCtx random_ctx, float px, float py, float pz);
+void voxel_normal_cpp(NoiseSettings const *noise_settings, RandomCtx random_ctx, float px, float py, float pz, float out_normal[3]);
 
 #if USE_ISPC
 #include <generation_ispc.h>
