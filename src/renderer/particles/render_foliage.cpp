@@ -1,5 +1,6 @@
 #include "render_foliage.hpp"
 #include "voxels/particles/grass/grass.inl"
+#include "voxels/particles/flower/flower.inl"
 #include <renderer/gpu_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 #define RENDERER_INTERNAL 1
@@ -22,16 +23,17 @@ void init_render_foliage_bricks(GpuContext &gpu_context) {
 
 void deinit_render_foliage_bricks(GpuContext &gpu_context) {
     delete gpu_context.foliage_bricks.grass;
+    delete gpu_context.foliage_bricks.flowers;
     delete gpu_context.foliage_bricks.particles_state;
     delete gpu_context.foliage_bricks.cube_index_buffer;
     delete gpu_context.foliage_bricks.visible_foliage_bricks;
 }
 
 namespace {
-    // One-time setup for the grass-blade side of foliage rendering: the
-    // persistent GrassStrandAllocator, the shared particle draw-param state,
-    // and the fixed cube index buffer. Guarded so a task-graph re-record
-    // (settings toggle etc.) doesn't wipe out already-spawned grass.
+    // One-time setup for foliage rendering: the GrassStrandAllocator and
+    // FlowerAllocator heaps, the shared particle draw-param state, and the
+    // fixed cube index buffer. Guarded so a task-graph re-record (settings
+    // toggle etc.) doesn't recreate them.
     void init_foliage_grass(GpuContext &gpu_context) {
         static constexpr auto cube_indices = std::array<uint16_t, 8>{0, 1, 2, 3, 4, 5, 6, 1};
         auto cube_index_buffer = gpu_context.find_or_add_temporal_buffer({
@@ -96,6 +98,9 @@ namespace {
 
         gpu_context.foliage_bricks.grass = new GrassStrands();
         gpu_context.foliage_bricks.grass->init(gpu_context);
+
+        gpu_context.foliage_bricks.flowers = new Flowers();
+        gpu_context.foliage_bricks.flowers->init(gpu_context);
     }
 } // namespace
 
@@ -107,14 +112,17 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
     }
 
     auto &grass = *gpu_context.foliage_bricks.grass;
+    auto &flowers = *gpu_context.foliage_bricks.flowers;
 
-    // grass_allocator.init() (called from init_foliage_grass above) already
-    // registers its 4 buffers directly against this same task_graph on the
+    // StaticAllocatorBufferState::init() (called from init_foliage_grass above)
+    // already registers its buffers directly against this same task_graph on the
     // first call -- only re-register on a later re-record (settings toggle
     // etc.), where task_graph is a freshly-recreated frame_task_graph instance.
     if (!first_time) {
         task_graph.register_buffer(grass.grass_allocator.allocator_buffer.task_resource);
         task_graph.register_buffer(grass.grass_allocator.element_buffer.task_resource);
+        task_graph.register_buffer(flowers.flower_allocator.allocator_buffer.task_resource);
+        task_graph.register_buffer(flowers.flower_allocator.element_buffer.task_resource);
     }
     // particles_state/cube_index_buffer were only registered (and uploaded)
     // against the throwaway init task_graph above, not this one -- always
@@ -123,7 +131,7 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
     task_graph.register_buffer(gpu_context.foliage_bricks.cube_index_buffer->task_resource);
 
     task_graph.add_task(
-        daxa::InlineTask::Transfer("reset grass draw params")
+        daxa::InlineTask::Transfer("reset foliage draw params")
             .writes(gpu_context.foliage_bricks.particles_state->task_resource)
             .executes([&gpu_context](daxa::TaskInterface ti) {
                 ParticleDrawParams params{};
@@ -132,13 +140,17 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
                 params.splat_draw_params.instance_count = 1;
                 auto alloc = ti.allocator->allocate(sizeof(ParticleDrawParams));
                 *static_cast<ParticleDrawParams *>(alloc->host_address) = params;
-                ti.recorder.copy_buffer_to_buffer({
-                    .src_buffer = ti.allocator->buffer(),
-                    .dst_buffer = gpu_context.foliage_bricks.particles_state->task_resource.id(),
-                    .src_offset = alloc->buffer_offset,
-                    .dst_offset = offsetof(VoxelParticlesState, grass),
-                    .size = sizeof(ParticleDrawParams),
-                });
+                // Grass and flowers keep separate draw params but reset to the
+                // same values; one staged copy feeds both.
+                for (auto const dst_offset : {offsetof(VoxelParticlesState, grass), offsetof(VoxelParticlesState, flower)}) {
+                    ti.recorder.copy_buffer_to_buffer({
+                        .src_buffer = ti.allocator->buffer(),
+                        .dst_buffer = gpu_context.foliage_bricks.particles_state->task_resource.id(),
+                        .src_offset = alloc->buffer_offset,
+                        .dst_offset = dst_offset,
+                        .size = sizeof(ParticleDrawParams),
+                    });
+                }
             }));
 
     task_graph.register_buffer(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource);
@@ -146,6 +158,7 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
         daxa::InlineTask::Transfer("clear visible chunks count")
             .writes(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.view())
             .writes(grass.grass_allocator.allocator_buffer.task_resource)
+            .writes(flowers.flower_allocator.allocator_buffer.task_resource)
             .executes([&gpu_context](daxa::TaskInterface ti) {
                 ti.recorder.clear_buffer({
                     .buffer = gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.id(),
@@ -170,6 +183,14 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
                 ti.recorder.clear_buffer({
                     .buffer = grass.grass_allocator.allocator_buffer.task_resource.id(),
                     .offset = offsetof(GrassStrandAllocator, element_count),
+                    .size = sizeof(uint32_t),
+                    .clear_value = 0,
+                });
+
+                auto &flowers = *gpu_context.foliage_bricks.flowers;
+                ti.recorder.clear_buffer({
+                    .buffer = flowers.flower_allocator.allocator_buffer.task_resource.id(),
+                    .offset = offsetof(FlowerAllocator, element_count),
                     .size = sizeof(uint32_t),
                     .clear_value = 0,
                 });
@@ -202,17 +223,22 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
     task_graph.add_task(
         daxa::InlineTask::Compute("generate foliage")
             .indirect_cmd.reads(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.view())
+            .samples(daxa::ImageViewType::REGULAR_2D_ARRAY, gpu_context.task_value_noise_image_view)
             .writes(grass.grass_allocator.allocator_buffer.task_resource,
-                    grass.grass_allocator.element_buffer.task_resource)
+                    grass.grass_allocator.element_buffer.task_resource,
+                    flowers.flower_allocator.allocator_buffer.task_resource,
+                    flowers.flower_allocator.element_buffer.task_resource)
             .executes([&gpu_context](daxa::TaskInterface ti) {
                 auto &pipeline = gpu_context.foliage_bricks.generate_pipeline;
                 if (!pipeline.is_valid()) {
                     return;
                 }
                 auto &grass = *gpu_context.foliage_bricks.grass;
+                auto &flowers = *gpu_context.foliage_bricks.flowers;
                 auto const push = FoliageGeneratePush{
                     .visible_foliage_bricks = ti.device.device_address(gpu_context.foliage_bricks.visible_foliage_bricks->task_resource.id()).value(),
                     .grass_allocator = ti.device.device_address(grass.grass_allocator.allocator_buffer.task_resource.id()).value(),
+                    .flower_allocator = ti.device.device_address(flowers.flower_allocator.allocator_buffer.task_resource.id()).value(),
                 };
                 ti.recorder.set_pipeline(pipeline);
                 ti.recorder.push_constant(push);
@@ -224,6 +250,7 @@ void record_render_foliage_bricks(GpuContext &gpu_context, daxa::TaskGraph &task
             }));
 
     grass.simulate(gpu_context, gpu_context.foliage_bricks.particles_state->task_resource);
+    flowers.simulate(gpu_context, gpu_context.foliage_bricks.particles_state->task_resource);
 }
 
 auto render_foliage_grass(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image) -> daxa::TaskImageView {
@@ -243,6 +270,15 @@ auto render_foliage_grass(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
         gpu_context.foliage_bricks.particles_state->task_resource,
         gpu_context.foliage_bricks.cube_index_buffer->task_resource);
     grass.render_splats(
+        gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image,
+        gpu_context.foliage_bricks.particles_state->task_resource);
+
+    auto &flowers = *gpu_context.foliage_bricks.flowers;
+    flowers.render_cubes(
+        gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image,
+        gpu_context.foliage_bricks.particles_state->task_resource,
+        gpu_context.foliage_bricks.cube_index_buffer->task_resource);
+    flowers.render_splats(
         gpu_context, gbuffer_depth, velocity_image, raster_shadow_depth_image,
         gpu_context.foliage_bricks.particles_state->task_resource);
 

@@ -75,7 +75,7 @@ void main() {
         float shadow_depth = texture(daxa_sampler2D(push.uses.particles_shadow_depth_tex, g_sampler_nnc), cs_to_uv(hit_shadow.xy) + offset).r;
 
         const float bias = 0.001;
-        const bool inside_shadow_map = false; // all(greaterThanEqual(hit_shadow.xyz, vec3(-1, -1, 0))) && all(lessThanEqual(hit_shadow.xyz, vec3(+1, +1, +1)));
+        const bool inside_shadow_map = all(greaterThanEqual(hit_shadow.xyz, vec3(-1, -1, 0))) && all(lessThanEqual(hit_shadow.xyz, vec3(+1, +1, +1)));
 
         if (inside_shadow_map && shadow_depth != 1.0) {
             float shadow_map_mask = sign(hit_shadow.z - shadow_depth + bias);

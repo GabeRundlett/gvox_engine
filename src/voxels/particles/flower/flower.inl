@@ -8,7 +8,7 @@
 #define FLOWER_TYPE_TULIP 3
 #define FLOWER_TYPE_LAVENDER 4
 
-#define MAX_FLOWERS                    (1 << 16)
+#define MAX_FLOWERS (1 << 17)
 
 struct Flower {
     daxa_f32vec3 origin;
@@ -24,7 +24,8 @@ DECL_SIMPLE_STATIC_ALLOCATOR(FlowerAllocator, Flower, MAX_FLOWERS, daxa_u32)
 DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(FlowerSimCompute)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
-SIMPLE_STATIC_ALLOCATOR_USE_BUFFERS(READ_WRITE, FlowerAllocator)
+DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ | READ_WRITE, daxa_RWBufferPtr(FlowerAllocator), FlowerAllocator_allocator_buffer)
+DAXA_TH_BUFFER(READ_WRITE, FlowerAllocator_heap)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), shadow_cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
@@ -40,7 +41,7 @@ DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState),
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
 DAXA_TH_BUFFER(INDEX_INPUT_READ, indices)
-DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(VS::SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -56,7 +57,7 @@ DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState),
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), cube_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
 DAXA_TH_BUFFER(INDEX_INPUT_READ, indices)
-DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(VS::SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE_INDEX(DEPTH_ATTACHMENT, REGULAR_2D, depth_image_id)
 DAXA_DECL_TASK_HEAD_END
 struct FlowerCubeParticleShadowRasterPush {
@@ -68,7 +69,7 @@ DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(INDIRECT_COMMAND_READ, daxa_RWBufferPtr(VoxelParticlesState), particles_state)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(PackedParticleVertex), splat_rendered_particle_verts)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(Flower), flowers)
-DAXA_TH_IMAGE(SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
+DAXA_TH_IMAGE(VS::SAMPLE, REGULAR_2D_ARRAY, value_noise_texture)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, g_buffer_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, velocity_image_id)
 DAXA_TH_IMAGE(COLOR_ATTACHMENT, REGULAR_2D, vs_normal_image_id)
@@ -79,6 +80,7 @@ struct FlowerSplatParticleRasterPush {
 };
 
 #if defined(__cplusplus)
+#include "renderer/kajiya/gbuffer.hpp"
 
 struct Flowers {
     TemporalBuffer cube_rendered_particle_verts;
@@ -114,7 +116,8 @@ struct Flowers {
             .views = FlowerSimCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,
-                SIMPLE_STATIC_ALLOCATOR_BUFFER_USES_ASSIGN(FlowerSimCompute, FlowerAllocator, flower_allocator),
+                .FlowerAllocator_allocator_buffer = flower_allocator.allocator_buffer.task_resource.view(),
+                .FlowerAllocator_heap = flower_allocator.element_buffer.task_resource.view(),
                 .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
                 .shadow_cube_rendered_particle_verts = shadow_cube_rendered_particle_verts.task_resource.view(),
                 .splat_rendered_particle_verts = splat_rendered_particle_verts.task_resource.view(),
@@ -123,7 +126,10 @@ struct Flowers {
             .callback_ = [](daxa::TaskInterface const &ti, daxa::ComputePipeline &pipeline, FlowerSimComputePush &push, NoTaskInfo const &) {
                 ti.recorder.set_pipeline(pipeline);
                 set_push_constant(ti, push);
-                ti.recorder.dispatch({(MAX_FLOWERS + 63) / 64, 1, 1});
+                ti.recorder.dispatch_indirect({
+                    .indirect_buffer = ti.get(FlowerSimCompute::AT.FlowerAllocator_allocator_buffer).id,
+                    .offset = offsetof(FlowerAllocator, element_count_dispatch.x),
+                });
             },
         });
     }
@@ -151,8 +157,8 @@ struct Flowers {
                 .gpu_input = gpu_context.task_input_buffer.view(),
                 .particles_state = particles_state,
                 .cube_rendered_particle_verts = cube_rendered_particle_verts.task_resource.view(),
-                .indices = cube_index_buffer,
                 .flowers = flower_allocator.element_buffer.task_resource.view(),
+                .indices = cube_index_buffer,
                 .value_noise_texture = gpu_context.task_value_noise_image_view,
                 .g_buffer_image_id = gbuffer_depth.gbuffer,
                 .velocity_image_id = velocity_image,

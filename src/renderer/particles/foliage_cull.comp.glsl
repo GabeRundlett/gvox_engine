@@ -130,6 +130,11 @@ void main() {
 
     for (uint brick_index = gl_LocalInvocationIndex; brick_index < brick_n; brick_index += 128) {
         Aabb brick_aabb = deref(advance(deref(voxel_object_ptr).brick_aabbs, brick_index));
+        // NOTE(grundlett): Need to inflate the AABB to ensure we don't cull foliage just because the roots are occluded
+        brick_aabb.max.z += 10;
+        brick_aabb.max.xy += 2;
+        brick_aabb.min.xy -= 2;
+
         brick_aabb.min *= deref(voxel_object_ptr).scale;
         brick_aabb.max *= deref(voxel_object_ptr).scale;
         brick_aabb.min += deref(voxel_object_ptr).pos;

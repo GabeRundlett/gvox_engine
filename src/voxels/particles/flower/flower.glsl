@@ -4,6 +4,7 @@
 #include <renderer/globals.glsl>
 
 #include <voxels/particles/particle.glsl>
+#include <voxels/pack_unpack.inl>
 
 vec2 flower_get_rot_offset(in out Flower self, float time) {
     FractalNoiseConfig noise_conf = FractalNoiseConfig(
@@ -65,7 +66,7 @@ ParticleVertex process_dandelion(daxa_BufferPtr(GpuInput) gpu_input, Flower self
     return result;
 }
 
-vec3 get_dandelion_white_offset(vec2 rot_offset, float time, uint strand_index, uint i) {
+vec3 get_dandelion_white_offset(vec2 rot_offset, float time, vec3 origin, uint i) {
     uint height = 6;
 
     if (i <= height) {
@@ -82,7 +83,7 @@ vec3 get_dandelion_white_offset(vec2 rot_offset, float time, uint strand_index, 
         return vec3(rot_offset * z * 0.3, z) + vec3(xi, yi, zi) * VOXEL_SIZE;
     } else {
         // flakes
-        rand_seed(strand_index * 32 + i);
+        rand_seed(hash_combine2(hash3(floatBitsToUint(origin)), i));
 
         vec3 range_center = vec3(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1) * VOXEL_SIZE * height;
         vec3 range_extent = vec3(5, 5, 5);
@@ -116,11 +117,11 @@ ParticleVertex process_dandelion_white(daxa_BufferPtr(GpuInput) gpu_input, Flowe
     }
 
     vec2 rot_offset = flower_get_rot_offset(self, deref(gpu_input).time);
-    vec3 offset = get_dandelion_white_offset(rot_offset, deref(gpu_input).time, strand_index, i);
+    vec3 offset = get_dandelion_white_offset(rot_offset, deref(gpu_input).time, self.origin, i);
     result.pos = self.origin + offset;
 
     vec2 prev_rot_offset = flower_get_rot_offset(self, deref(gpu_input).time - deref(gpu_input).delta_time);
-    vec3 prev_offset = get_dandelion_white_offset(prev_rot_offset, deref(gpu_input).time - deref(gpu_input).delta_time, strand_index, i);
+    vec3 prev_offset = get_dandelion_white_offset(prev_rot_offset, deref(gpu_input).time - deref(gpu_input).delta_time, self.origin, i);
     result.prev_pos = self.origin + prev_offset;
 
     return result;
@@ -242,8 +243,8 @@ ParticleVertex get_flower_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_Buffer
     case FLOWER_TYPE_LAVENDER: result = process_lavender(gpu_input, self, strand_index, i); break;
     }
 
-    result.pos = get_particle_worldspace_origin(gpu_input, result.pos);
-    result.prev_pos = get_particle_prev_worldspace_origin(gpu_input, result.prev_pos);
+    result.pos = get_particle_pos(result.pos);
+    result.prev_pos = get_particle_pos(result.prev_pos);
 
     return result;
 }

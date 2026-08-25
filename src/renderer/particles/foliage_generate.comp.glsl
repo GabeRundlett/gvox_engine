@@ -1,12 +1,20 @@
 #include "particles/render_foliage.inl"
 #include <voxels/pack_unpack.inl>
 #include <utilities/gpu/math.glsl>
+#include <utilities/gpu/random.glsl>
+#include <utilities/gpu/noise.glsl>
+#include <renderer/globals.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(FoliageGeneratePush, push)
 
 #define UserAllocatorType GrassStrandAllocator
 #define UserIndexType uint
 #define UserMaxElementCount MAX_GRASS_BLADES
+#include <utilities/allocator.glsl>
+
+#define UserAllocatorType FlowerAllocator
+#define UserIndexType uint
+#define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
 layout(local_size_x = BRICK_SIZE, local_size_y = BRICK_SIZE, local_size_z = BRICK_SIZE) in;
@@ -26,20 +34,53 @@ void main() {
     uvec3 local_voxel = gl_LocalInvocationID.xyz;
     uint voxel_index = local_voxel.x + local_voxel.y * BRICK_SIZE + local_voxel.z * BRICK_SIZE * BRICK_SIZE;
 
-    // `bitmask` is laid out as 32-bit words (matching the CPU/ISPC packing in
-    // generation.cpp), so reinterpret it as such here to atomically
-    // test-and-clear a single bit -- daxa doesn't guarantee 64-bit atomics.
     daxa_RWBufferPtr(daxa_u32) bitmask_words = daxa_RWBufferPtr(daxa_u32)(as_address(brick_ptr));
     uint word_i = voxel_index / 32;
     uint bit_i = voxel_index % 32;
-    uint prev_word = deref(advance(bitmask_words, word_i)); // & ~(1u << bit_i);
+    uint prev_word = deref(advance(bitmask_words, word_i));
     bool has_foliage = (prev_word & (1u << bit_i)) != 0u;
     if (!has_foliage) {
-        // Either genuinely empty, or another frame already spawned this voxel's blade.
         return;
     }
 
     vec3 world_pos = brick_pos + vec3(local_voxel) * scale;
+
+    float r2 = good_rand(world_pos.xy);
+    const float FLOWER_SPAWN_CHANCE = 0.01;
+
+    if (r2 < FLOWER_SPAWN_CHANCE) {
+        FractalNoiseConfig noise_conf = FractalNoiseConfig(
+            /* .amplitude   = */ 1.0,
+            /* .persistance = */ 0.5,
+            /* .scale       = */ 0.1,
+            /* .lacunarity  = */ 2,
+            /* .octaves     = */ 3);
+        vec4 flower_noise_val = fractal_noise(g_value_noise_tex, g_sampler_llr, vec3(world_pos.xy, 0), noise_conf);
+        float v = flower_noise_val.x * (1.0 / 0.875);
+
+        uint flower_type = FLOWER_TYPE_DANDELION;
+        if (v < 0.4) {
+            flower_type = FLOWER_TYPE_DANDELION;
+        } else if (v < 0.5) {
+            flower_type = FLOWER_TYPE_DANDELION_WHITE;
+        } else if (v < 0.65) {
+            flower_type = FLOWER_TYPE_TULIP;
+        } else {
+            flower_type = FLOWER_TYPE_LAVENDER;
+        }
+
+        Flower flower;
+        flower.origin = world_pos;
+        flower.packed_voxel = deref(brick_attributes).voxels[voxel_index];
+        flower.type = flower_type;
+        flower.flags = 1;
+
+        uint flower_index = FlowerAllocator_malloc(push.flower_allocator);
+        if (flower_index < MAX_FLOWERS) {
+            deref(advance(deref(push.flower_allocator).heap, flower_index)) = flower;
+        }
+        return;
+    }
 
     GrassStrand strand;
     strand.origin = world_pos;

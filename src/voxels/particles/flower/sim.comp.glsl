@@ -15,7 +15,7 @@ daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts = push.uses
 #define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
-#include <renderer/rt.glsl>
+#include <utilities/gpu/random.glsl>
 
 void render_dandelion(uint particle_index) {
     uint height = 6;
@@ -122,10 +122,11 @@ void render_lavender(uint particle_index) {
     particle_render(cube_rendered_particle_verts, shadow_cube_rendered_particle_verts, splat_rendered_particle_verts, particles_state, gpu_input, flower_vertex, packed_vertex, true);
 }
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 void main() {
-#if defined(VOXELS_ORIGINAL_IMPL)
     uint particle_index = gl_GlobalInvocationID.x;
+    if (particle_index > deref(flower_allocator).element_count)
+        return;
     Flower self = deref(advance(flowers, particle_index));
 
     if (self.type == FLOWER_TYPE_NONE) {
@@ -134,33 +135,9 @@ void main() {
     if (self.flags < 63) {
         ++self.flags;
     }
-
-    rand_seed(particle_index);
-
-    Voxel flower_voxel = unpack_voxel(self.packed_voxel);
-    vec3 origin_ws = get_particle_worldspace_origin(gpu_input, self.origin);
-
-    vec3 ray_pos = origin_ws + vec3(0, 0, VOXEL_SIZE);
-    vec3 ray_dir = normalize(vec3(0.0001, 0.0001, -1));
-
-    VoxelTraceResult trace_result = voxel_trace(VoxelRtTraceInfo(VOXELS_RT_BUFFER_PTRS, ray_dir, 1.0 * VOXEL_SIZE), ray_pos);
-    Voxel ground_voxel = unpack_voxel(trace_result.voxel_data);
-
-    // flower_voxel.normal = normalize(ground_voxel.normal + vec3(rot_offset, 1.0) * 0.05);
-
-    if ((flower_voxel.material_type != ground_voxel.material_type ||
-         flower_voxel.roughness != ground_voxel.roughness ||
-         trace_result.dist > 1.0 * VOXEL_SIZE) &&
-        self.flags > 8) {
-        // free voxel, its spawner died.
-        self.type = FLOWER_TYPE_NONE;
-        deref(advance(flowers, particle_index)) = self;
-        FlowerAllocator_free(flower_allocator, particle_index);
-        return;
-    }
-
-    self.packed_voxel = pack_voxel(flower_voxel);
     deref(advance(flowers, particle_index)) = self;
+
+    rand_seed(hash3(floatBitsToUint(self.origin)));
 
     switch (self.type) {
     case FLOWER_TYPE_DANDELION: render_dandelion(particle_index); break;
@@ -168,5 +145,4 @@ void main() {
     case FLOWER_TYPE_TULIP: render_tulip(particle_index); break;
     case FLOWER_TYPE_LAVENDER: render_lavender(particle_index); break;
     }
-#endif
 }

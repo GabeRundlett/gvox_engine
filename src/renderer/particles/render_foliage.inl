@@ -3,10 +3,12 @@
 #include <daxa/utils/task_graph.inl>
 #include <voxels/voxel.inl>
 #include <voxels/particles/grass/grass.inl>
+#include <voxels/particles/flower/flower.inl>
 
-// Spawns a GrassStrand for every not-yet-consumed foliage voxel: one 8x8x8
-// workgroup per brick, checking+clearing bits in `foliage_bricks` (hence
-// read-write) and malloc'ing persistent strands via `grass_allocator`.
+// Spawns one piece of foliage for every set bit in a visible brick's foliage
+// bitmask: one 8x8x8 workgroup per brick, reading `foliage_bricks` and
+// malloc'ing into either `grass_allocator` or `flower_allocator` depending on a
+// per-voxel noise roll. Both heaps are rebuilt from scratch every frame.
 
 struct FoliageBrickInstance {
     daxa_BufferPtr(GpuVoxelObject) voxel_object;
@@ -18,6 +20,7 @@ DAXA_DECL_BUFFER_PTR(FoliageBrickInstance);
 struct FoliageGeneratePush {
     daxa_RWBufferPtr(FoliageBrickInstance) visible_foliage_bricks;
     daxa_RWBufferPtr(GrassStrandAllocator) grass_allocator;
+    daxa_RWBufferPtr(FlowerAllocator) flower_allocator;
 };
 
 // One workgroup per candidate render voxel object: frustum + HiZ occlusion

@@ -208,7 +208,7 @@ struct GrassStrands {
             .callback_ = [](daxa::TaskInterface const &ti, daxa::RasterPipeline &pipeline, GrassStrandCubeParticleShadowRasterPush &push, NoTaskInfo const &) {
                 auto const image_info = ti.device.image_info(ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).id).value();
                 auto renderpass_recorder = std::move(ti.recorder).begin_renderpass({
-                    .depth_attachment = {{.image_view = ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::LOAD}},
+                    .depth_attachment = {{.image_view = ti.get(GrassStrandCubeParticleShadowRaster::AT.depth_image_id).view_ids[0], .load_op = daxa::AttachmentLoadOp::CLEAR}},
                     .render_area = {.x = 0, .y = 0, .width = image_info.size.x, .height = image_info.size.y},
                 });
                 renderpass_recorder.set_pipeline(pipeline);
