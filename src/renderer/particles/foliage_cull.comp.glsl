@@ -135,6 +135,10 @@ void main() {
         brick_aabb.max.xy += 2;
         brick_aabb.min.xy -= 2;
 
+        // We also will just inflate towards the sun for now, because we use the same cull list for the shadow map
+        brick_aabb.min = min(brick_aabb.min, brick_aabb.min - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
+        brick_aabb.max = max(brick_aabb.max, brick_aabb.max - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
+
         brick_aabb.min *= deref(voxel_object_ptr).scale;
         brick_aabb.max *= deref(voxel_object_ptr).scale;
         brick_aabb.min += deref(voxel_object_ptr).pos;

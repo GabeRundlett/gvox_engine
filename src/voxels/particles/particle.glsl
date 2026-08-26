@@ -62,6 +62,22 @@ void particle_render(
     vec2 px_pos = vec2(0, 0);
     vec4 cs_pos = world_to_sample * vec4(center_ws, 1);
     particle_point_pos_and_size(center_ws, voxel_radius, world_to_sample, half_screen_size, px_pos, ps_size);
+
+#if defined(GRASS)
+#define PARTICLE_RENDER_PARAMS deref(particles_state).grass
+#elif defined(FLOWER)
+#define PARTICLE_RENDER_PARAMS deref(particles_state).flower
+#endif
+    if (should_shadow) {
+        // Cull based on shadow projection
+        vec4 shadow_cs_pos = deref(gpu_input).ws_to_shadow * vec4(center_ws, 1);
+        if (all(greaterThan(shadow_cs_pos.xy, vec2(-1))) ||
+            all(lessThan(shadow_cs_pos.xy, vec2(+1)))) {
+            uint my_shadow_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.shadow_cube_draw_params.instance_count, 1);
+            deref(advance(shadow_cube_rendered_particle_verts, my_shadow_render_index)) = packed_vertex;
+        }
+    }
+
     if (any(lessThan(px_pos.xy + ps_size * 0.5, vec2(0))) ||
         any(greaterThan(px_pos.xy - ps_size * 0.5, vec2(half_screen_size * 2.0))) ||
         cs_pos.z / cs_pos.w < 0.0) {
@@ -80,11 +96,6 @@ void particle_render(
         return;
     }
 
-#if defined(GRASS)
-#define PARTICLE_RENDER_PARAMS deref(particles_state).grass
-#elif defined(FLOWER)
-#define PARTICLE_RENDER_PARAMS deref(particles_state).flower
-#endif
     if (should_splat) {
         // TODO: Stochastic pruning?
         uint my_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.splat_draw_params.vertex_count, 1);
@@ -92,10 +103,5 @@ void particle_render(
     } else {
         uint my_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.cube_draw_params.instance_count, 1);
         deref(advance(cube_rendered_particle_verts, my_render_index)) = packed_vertex;
-    }
-
-    if (should_shadow) {
-        uint my_shadow_render_index = atomicAdd(PARTICLE_RENDER_PARAMS.shadow_cube_draw_params.instance_count, 1);
-        deref(advance(shadow_cube_rendered_particle_verts, my_shadow_render_index)) = packed_vertex;
     }
 }

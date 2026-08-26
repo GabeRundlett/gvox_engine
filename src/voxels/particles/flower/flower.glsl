@@ -85,10 +85,9 @@ vec3 get_dandelion_white_offset(vec2 rot_offset, float time, vec3 origin, uint i
         // flakes
         rand_seed(hash_combine2(hash3(floatBitsToUint(origin)), i));
 
-        vec3 range_center = vec3(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1) * VOXEL_SIZE * height;
-        vec3 range_extent = vec3(5, 5, 5);
-
-        return fract(vec3(vec2(time * 0.1, 0.0) + rot_offset * 0.01, 0.5) + range_center) * range_extent + vec3(0, 0, 9 * VOXEL_SIZE) - range_extent * 0.5;
+        vec3 direction = vec3(2, rand() * 2 - 1, rand() * 1.5 - 0.5) * 0.5;
+        float t = fract(time * 0.1 + rand() * 10);
+        return direction * t * 3 + vec3(0, 0, 9 * VOXEL_SIZE);
     }
 }
 ParticleVertex process_dandelion_white(daxa_BufferPtr(GpuInput) gpu_input, Flower self, uint strand_index, uint i) {
@@ -210,7 +209,7 @@ ParticleVertex process_lavender(daxa_BufferPtr(GpuInput) gpu_input, Flower self,
             int xi = int((i - height - 1) % 3) - 1;
             int yi = int(((i - height - 1) / 3) % 3) - 1;
             int zi = int((i - height - 1) / 9) + 2;
-            voxel.albedo = vec3(0.2, 0.05, 1);
+            voxel.albedo = vec3(0.2, 0.05, 0.9);
             voxel.normal = normalize(vec3(xi, yi, zi));
         }
         result.packed_voxel = pack_voxel(voxel);
