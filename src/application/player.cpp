@@ -550,12 +550,12 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         std::bit_cast<glm::mat4>(PLAYER.cam.view_to_world) *
         std::bit_cast<glm::mat4>(PLAYER.cam.clip_to_view));
 
-    debug_utils::DebugDisplay::set_debug_string("Player Pos", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x), double(PLAYER.pos.y), double(PLAYER.pos.z)).data);
-    debug_utils::DebugDisplay::set_debug_string("Player Pos (camera)", format("%.3f, %.3f, %.3f", double(cam_pos.x), double(cam_pos.y), double(cam_pos.z)).data);
-    debug_utils::DebugDisplay::set_debug_string("Player Pos (voxel)", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x * VOXEL_SCL), double(PLAYER.pos.y * VOXEL_SCL), double(PLAYER.pos.z * VOXEL_SCL)).data);
-    debug_utils::DebugDisplay::set_debug_string("Player Rot (Y/P/R)", format("%.3f, %.3f, %.3f", double(PLAYER.yaw), double(PLAYER.pitch), double(PLAYER.roll)).data);
-    debug_utils::DebugDisplay::set_debug_string("Player Unit Offset", format("%d, %d, %d", PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z).data);
-    debug_utils::DebugDisplay::set_debug_string("Player Vel (m/s)", format("%.3f, %.3f, %.3f", double(vel.x), double(vel.y), double(vel.z)).data);
-    debug_utils::DebugDisplay::set_debug_string("Player On Ground", ((PLAYER.flags & PLAYER_FLAG_ON_GROUND) != 0) ? "true" : "false");
-    debug_utils::DebugDisplay::set_debug_string("Player Collide", format("%s %d/%d%s", collide_state, sub_steps_taken, sub_steps_wanted, was_embedded ? " EMBEDDED" : "").data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Pos", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x), double(PLAYER.pos.y), double(PLAYER.pos.z)).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Pos (camera)", format("%.3f, %.3f, %.3f", double(cam_pos.x), double(cam_pos.y), double(cam_pos.z)).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Pos (voxel)", format("%.3f, %.3f, %.3f", double(PLAYER.pos.x * VOXEL_SCL), double(PLAYER.pos.y * VOXEL_SCL), double(PLAYER.pos.z * VOXEL_SCL)).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Rot (Y/P/R)", format("%.3f, %.3f, %.3f", double(PLAYER.yaw), double(PLAYER.pitch), double(PLAYER.roll)).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Unit Offset", format("%d, %d, %d", PLAYER.player_unit_offset.x, PLAYER.player_unit_offset.y, PLAYER.player_unit_offset.z).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player Vel (m/s)", format("%.3f, %.3f, %.3f", double(vel.x), double(vel.y), double(vel.z)).data);
+    // debug_utils::DebugDisplay::set_debug_string("Player On Ground", ((PLAYER.flags & PLAYER_FLAG_ON_GROUND) != 0) ? "true" : "false");
+    // debug_utils::DebugDisplay::set_debug_string("Player Collide", format("%s %d/%d%s", collide_state, sub_steps_taken, sub_steps_wanted, was_embedded ? " EMBEDDED" : "").data);
 }

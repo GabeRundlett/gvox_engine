@@ -126,6 +126,17 @@ void ProfilerUi::ui_timeline() {
     auto const overview_size = ImVec2(ImGui::GetContentRegionAvail().x, OVERVIEW_HEIGHT);
     if (overview_size.x <= 0 || overview_size.y <= 0)
         return;
+    
+    float avg_duration = 0;
+    for (uint64_t i = 0; i < 10; ++i) {
+        auto const frame_index = frame_count - 10 + i;
+        auto const duration = frame_durations[frame_index % static_cast<uint64_t>(FRAME_HISTORY_COUNT)];
+        avg_duration += duration;
+    }
+    avg_duration /= 10;
+    ImGui::Text("%.3fms (%.0f FPS)", (double)avg_duration, round(1000.0 / avg_duration));
+    return;
+
     ImGui::InvisibleButton("##profiler_overview", overview_size);
     auto const overview_min = ImGui::GetItemRectMin();
     auto const overview_max = ImGui::GetItemRectMax();

@@ -9,6 +9,7 @@ struct Scene {
     struct RenderScene *render_scene;
     struct GpuContext &gpu_context;
     struct VoxelWorld *voxel_world;
+    struct VoxelAllocator *voxel_allocator = nullptr;
 
     VoxelObject *ball_frames[8];
 

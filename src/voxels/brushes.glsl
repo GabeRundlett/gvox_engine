@@ -59,6 +59,12 @@ struct TreeSDFNrm {
     vec3 leaves_nrm;
 };
 
+vec3 sd_capsule_normal(in vec3 p, in vec3 a, in vec3 b) {
+    vec3 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return normalize(pa - ba * h);
+}
+
 void sd_spruce_branch(in out TreeSDFNrm val, in vec3 p, in vec3 origin, in vec3 dir, in float scl) {
     vec3 bp0 = origin;
     vec3 bp1 = bp0 + dir;
@@ -92,7 +98,6 @@ TreeSDFNrm sd_spruce_tree(in vec3 p, in vec3 seed) {
     }
     return val;
 }
-
 
 // Color palettes
 vec3 palette(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
@@ -338,7 +343,11 @@ void sd_maple_branch(in out TreeSDFNrm val, in vec3 p, in vec3 origin, in vec3 d
     for (uint segment_i = 0; segment_i < 4; ++segment_i) {
         vec3 bp1 = bp0 + dir * scl + vec3(0, 0, upwards_curl_factor);
         upwards_curl_factor += 0.2 + sin(time * 0.1 + segment_i * 37) * 0.1;
-        val.wood = sd_union(val.wood, sd_capsule(p, bp0, bp1, 0.10));
+        float branch_dist = sd_capsule(p, bp0, bp1, 0.10);
+        if (branch_dist < val.wood) {
+            val.wood = branch_dist;
+            val.wood_nrm = sd_capsule_normal(p, bp0, bp1);
+        }
         bp0 = bp1;
         if (segment_i < 2)
             continue;
@@ -371,6 +380,7 @@ TreeSDFNrm sd_maple_tree(in vec3 p, in vec3 seed, float time) {
         0.41, 0.2);
 
     val.wood = sd_union(sd_trunk_base, sd_union(sd_trunk_mid, sd_trunk_top));
+    val.wood_nrm = normalize(vec3(p.xy, 0));
 
     for (uint i = 0; i < 7; ++i) {
         float scl = (1 - 0.05 * pow(i, 2)) * 0.02 * pow(i, 2) + 1.6 - i * 0.13;
@@ -402,11 +412,11 @@ void brush_maple_tree(in out Voxel voxel) {
         voxel.material_type = 1;
         voxel.albedo = vec3(.22, .13, .05);
         voxel.roughness = 0.99;
-        voxel.normal = GENERATE_NORMAL;
+        voxel.normal = tree.wood_nrm;
     } else if (tree.leaves * 5.0 + leaf_rand * 15.0 < 0) {
         voxel.material_type = 1;
-        // voxel.albedo = vec3(.28, .8, .15) * 0.5;
-        voxel.albedo = hsv2rgb(vec3(0.0 + good_rand(tree_pos) * 0.05, 0.9, 0.9));
+        voxel.albedo = vec3(.28, .8, .15) * 0.5;
+        // voxel.albedo = hsv2rgb(vec3(0.0 + good_rand(tree_pos) * 0.05, 0.9, 0.9));
         voxel.roughness = 0.95;
         voxel.normal = tree.leaves_nrm;
         if (tree.leaves - leaf_rand > -VOXEL_SIZE) {
@@ -540,11 +550,6 @@ struct FernSample {
 // axis to the query point. Using this (rather than GENERATE_NORMAL, which is
 // just a flat placeholder) gives every stem/rib/leaflet a proper rounded
 // per-voxel normal.
-vec3 sd_capsule_normal(in vec3 p, in vec3 a, in vec3 b) {
-    vec3 pa = p - a, ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return normalize(pa - ba * h);
-}
 
 void fern_add_capsule(in out FernSample val, in vec3 p, in vec3 a, in vec3 b, in float r, in vec3 albedo, in float roughness) {
     float d = sd_capsule(p, a, b, r);
@@ -575,7 +580,7 @@ FernSample sd_fern(in vec3 p, in vec3 seed, in float loop_t) {
     val.albedo = vec3(0.10, 0.35, 0.08);
     val.roughness = 0.9;
 
-    vec3 stem_col = vec3(0.04, 0.2, 0.02);
+    vec3 stem_col = vec3(0.04, 0.2, 0.02) * 3;
 
     const uint STEM_SEGMENTS = 20;
     const float stem_height = 7.0;
@@ -645,7 +650,7 @@ FernSample sd_fern(in vec3 p, in vec3 seed, in float loop_t) {
                     vec3 lp1 = lp0 + leaflet_dir * leaflet_len;
 
                     float leaf_rand = good_rand(seed + float(i * 13u + j * 7u) + sgn * 1.7) * 0.5 + 0.5;
-                    vec3 leaf_col = vec3(0.01, 0.1, 0.01) * leaf_rand; // mix(vec3(0.02, 0.2, 0.02), vec3(0.10, 0.45, 0.10), leaf_rand);
+                    vec3 leaf_col = vec3(0.02, 0.1, 0.02) * leaf_rand * 3; // mix(vec3(0.02, 0.2, 0.02), vec3(0.10, 0.45, 0.10), leaf_rand);
                     fern_add_capsule(val, p, lp0, lp1, mix(0.045, 0.022, jt) * thickness, leaf_col, 0.9);
                 }
 
@@ -666,20 +671,6 @@ void brush_fern(in out Voxel voxel, in vec3 seed, in float loop_t) {
         voxel.material_type = 1;
         voxel.albedo = fern.albedo;
         voxel.roughness = fern.roughness;
-        voxel.normal = normalize(fern.nrm + vec3(0,0,1));
+        voxel.normal = normalize(fern.nrm + vec3(0, 0, 3));
     }
-}
-
-void brushgen_b(in out Voxel voxel) {
-    // brush_grass_ball(voxel);
-    // brush_flowers(voxel);
-
-    // brush_light_ball(voxel);
-    // brush_lantern(voxel);
-    // brush_fire(voxel);
-    // brush_torch(voxel);
-
-    brush_maple_tree(voxel);
-    // brush_spruce_tree(voxel);
-    // brush_spruce_tree_big(voxel);
 }

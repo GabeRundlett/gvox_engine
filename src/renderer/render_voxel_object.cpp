@@ -2,6 +2,7 @@
 #include "base/log.hpp"
 #include "voxels/voxel.inl"
 #include "voxels/voxel_object.hpp"
+#include "voxels/voxel_brick.hpp"
 #include <cassert>
 #include <daxa/daxa.hpp>
 #include <daxa/types.hpp>

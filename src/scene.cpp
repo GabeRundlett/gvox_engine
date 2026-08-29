@@ -3,7 +3,9 @@
 #include "renderer/render_scene.hpp"
 #include "renderer/render_voxel_object.hpp"
 #include "renderer/renderer.hpp"
+#include "voxels/voxel_allocator.hpp"
 #include "voxels/voxel_object.hpp"
+#include "voxels/voxel_brick.hpp"
 #include <glm/geometric.hpp>
 #include "voxels/pack_unpack.inl"
 #include "voxels/voxel_world.hpp"
@@ -72,11 +74,13 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
     PROFILE_FUNC();
 
     render_scene = create_render_scene(gpu_context);
+    voxel_allocator = create_voxel_allocator();
 
     float radii[8] = {0.5f, 0.60f, 0.70f, 0.80f, 0.90f, 0.67f, 0.55f, 0.45f};
 
     for (int frame_i = 0; frame_i < countof(ball_frames); ++frame_i) {
         VoxelObject *voxel_object = new VoxelObject();
+        voxel_object->allocator = voxel_allocator;
 
         voxel_object->brick_min = {0, 0, 0};
         voxel_object->brick_max = {7, 7, 7};
@@ -89,10 +93,10 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
                 for (int cxi = voxel_object->brick_min.x; cxi <= voxel_object->brick_max.x; ++cxi) {
                     glm::ivec3 brick_pos = {cxi, cyi, czi};
 
-                    VoxelBrick *brick = new VoxelBrick();
+                    VoxelBrick *brick = voxel_object->alloc_brick();
                     brick->voxel_min = {BRICK_SIZE, BRICK_SIZE, BRICK_SIZE};
                     brick->voxel_max = {0, 0, 0};
-                    brick->render_attribs = new VoxelShadingAttribBrick();
+                    brick->render_attribs = voxel_object->alloc_render_brick();
                     brick->brick_i = brick_pos;
 
                     for (int vzi = 0; vzi < BRICK_SIZE; ++vzi) {
@@ -128,7 +132,7 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
                     }
 
                     if (brick->voxel_min.x > brick->voxel_max.x) {
-                        delete brick;
+                        voxel_object->free_brick(brick);
                     } else {
                         voxel_object->brick_grid[voxel_object->get_brick_index(brick_pos)] = brick;
                     }
@@ -145,7 +149,7 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
 
     voxel_world = create_voxel_world(this);
 
-    animation_playground = new AnimationPlayground(gpu_context, render_scene);
+    animation_playground = new AnimationPlayground(gpu_context, render_scene, voxel_allocator);
 }
 
 Scene::~Scene() {
@@ -160,6 +164,8 @@ Scene::~Scene() {
 
     destroy_voxel_world(voxel_world);
     destroy_render_scene(gpu_context, render_scene);
+    // Last: everything above returns bricks to it on the way out.
+    destroy_voxel_allocator(voxel_allocator);
 }
 
 void Scene::update(Renderer &renderer, GpuInput &gpu_input) {

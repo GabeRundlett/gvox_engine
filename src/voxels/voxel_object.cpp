@@ -2,12 +2,14 @@
 #include <glm/common.hpp>
 #include <glm/vector_relational.hpp>
 #include <base/profiler.hpp>
+#include "voxel_brick.hpp"
+#include "voxel_allocator.hpp"
 
 VoxelObject::~VoxelObject() {
+    PROFILE_FUNC();
     for (auto *brick : brick_grid) {
-        if (brick != nullptr) {
-            delete brick;
-        }
+        if (brick != nullptr)
+            free_brick(brick);
     }
 }
 
@@ -48,4 +50,32 @@ void VoxelObject::resize(const glm::ivec3 &new_voxel_min, const glm::ivec3 &new_
 
     voxel_min = new_voxel_min;
     voxel_max = new_voxel_max;
+}
+
+VoxelBrick *VoxelObject::alloc_brick() {
+    if (allocator != nullptr)
+        return ::alloc_brick(allocator);
+    else
+        return new VoxelBrick();
+}
+
+void VoxelObject::free_brick(VoxelBrick *brick) {
+    if (allocator != nullptr)
+        ::free_brick(allocator, brick);
+    else
+        delete brick;
+}
+
+VoxelShadingAttribBrick *VoxelObject::alloc_render_brick() {
+    if (allocator != nullptr)
+        return ::alloc_render_brick(allocator);
+    else
+        return new VoxelShadingAttribBrick();
+}
+
+void VoxelObject::free_render_brick(VoxelShadingAttribBrick *brick) {
+    if (allocator != nullptr)
+        ::free_render_brick(allocator, brick);
+    else
+        delete brick;
 }

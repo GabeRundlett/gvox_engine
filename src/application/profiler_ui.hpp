@@ -4,7 +4,7 @@
 #include <cstdint>
 
 struct ProfilerUi {
-    static constexpr int FRAME_HISTORY_COUNT = 1000;
+    static constexpr int FRAME_HISTORY_COUNT = 500;
     static constexpr int MAX_DISPLAYED_THREADS = 17;
 
     ProfilerUi();

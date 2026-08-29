@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "imgui.h"
 #include "profiler_ui.hpp"
 #include "voxels/animation_playground/animation_playground.hpp"
 
@@ -96,8 +97,8 @@ AppUi::AppUi(GLFWwindow *glfw_window_ptr)
     ImGui::CreateContext();
     auto &style = ImGui::GetStyle();
     auto &io = ImGui::GetIO();
-    mono_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 14.0f * 2.0f);
-    menu_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_Tight/InterTight-Regular.ttf", 14.0f * 2.0f);
+    mono_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto_Mono/RobotoMono-Regular.ttf", 14.0f);
+    menu_font = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_Tight/InterTight-Regular.ttf", 14.0f);
     if (menu_font == nullptr) {
         menu_font = io.Fonts->AddFontDefault();
     }
@@ -200,8 +201,8 @@ AppUi::~AppUi() {
 }
 
 void AppUi::rescale_ui() {
-    mono_font->Scale = ui_scale * 0.5f;
-    menu_font->Scale = ui_scale * 0.5f;
+    mono_font->Scale = ui_scale;
+    menu_font->Scale = ui_scale;
     auto &style = ImGui::GetStyle();
     style.FramePadding = {ui_scale * 4.0f, ui_scale * 3.0f};
 }

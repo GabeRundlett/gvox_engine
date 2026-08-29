@@ -31,6 +31,7 @@ add_executable(${PROJECT_NAME}
     "src/voxels/voxel_object.cpp"
     "src/voxels/voxel_world.cpp"
     "src/voxels/animation_playground/animation_playground.cpp"
+    "src/voxels/voxel_allocator.cpp"
 
     "src/application/ui.cpp"
     "src/application/profiler_ui.cpp"
