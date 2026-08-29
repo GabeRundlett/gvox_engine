@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_GEN_HIZ_INL
+#define RENDERER_GEN_HIZ_INL
 
 #include <renderer/core.inl>
 
@@ -66,3 +67,5 @@ auto task_gen_hiz_single_pass(GpuContext &gpu_context, daxa::TaskGraph &task_gra
 }
 
 #endif
+
+#endif // RENDERER_GEN_HIZ_INL

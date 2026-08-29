@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_VOXEL_INL
+#define VOXELS_VOXEL_INL
 
 #include <daxa/utils/task_graph.inl>
 #include <voxels/defs.inl>
@@ -96,3 +97,5 @@ struct VoxelWorldBuffers {
 };
 
 #endif
+
+#endif // VOXELS_VOXEL_INL

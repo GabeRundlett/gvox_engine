@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_ATMOSPHERE_SKY_GLSL
+#define RENDERER_ATMOSPHERE_SKY_GLSL
 
 #include <application/input.inl>
 
@@ -151,3 +152,5 @@ vec3 sun_radiance_in_direction(
 
     return direct_sun_illuminance;
 }
+
+#endif // RENDERER_ATMOSPHERE_SKY_GLSL

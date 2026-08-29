@@ -20,7 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 
-#pragma once
+#ifndef RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_TILECLASSIFICATION_GLSL
+#define RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_TILECLASSIFICATION_GLSL
 
 #include "ffx_denoiser_shadows_util.glsl"
 
@@ -435,3 +436,5 @@ void FFX_DNSR_Shadows_TileClassification(uint group_index, uvec2 gid) {
     FFX_DNSR_Shadows_WriteReprojectionResults(did.xy, vec2(shadow_clamped, variance));
     FFX_DNSR_Shadows_WriteMoments(did.xy, moments_current);
 }
+
+#endif // RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_TILECLASSIFICATION_GLSL

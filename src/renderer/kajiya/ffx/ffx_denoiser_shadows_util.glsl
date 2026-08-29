@@ -19,7 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
+#ifndef RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_UTIL_GLSL
+#define RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_UTIL_GLSL
 
 uint FFX_DNSR_Shadows_RoundedDivide(uint value, uint divisor) {
     return (value + divisor - 1) / divisor;
@@ -67,3 +68,5 @@ uvec2 FFX_DNSR_Shadows_RemapLane8x8(uint lane) {
 }
 
 #include <utilities/gpu/common.glsl>
+
+#endif // RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_UTIL_GLSL

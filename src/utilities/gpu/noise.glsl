@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_NOISE_GLSL
+#define UTILITIES_GPU_NOISE_GLSL
 
 #include <utilities/gpu/math.glsl>
 
@@ -183,3 +184,5 @@ float fbm2(vec2 uv) {
     uv = m * uv;
     return f * .5 + .5;
 }
+
+#endif // UTILITIES_GPU_NOISE_GLSL

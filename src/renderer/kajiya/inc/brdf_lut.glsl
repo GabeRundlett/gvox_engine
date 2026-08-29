@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_BRDF_LUT_GLSL
+#define RENDERER_KAJIYA_INC_BRDF_LUT_GLSL
 
 #include <renderer/kajiya/inc/brdf.glsl>
 
@@ -43,3 +44,5 @@ SpecularBrdfEnergyPreservation SpecularBrdfEnergyPreservation_from_brdf_ndotv(Sp
 
     return res;
 }
+
+#endif // RENDERER_KAJIYA_INC_BRDF_LUT_GLSL

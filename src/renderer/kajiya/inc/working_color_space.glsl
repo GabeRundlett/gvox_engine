@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_WORKING_COLOR_SPACE_GLSL
+#define RENDERER_KAJIYA_INC_WORKING_COLOR_SPACE_GLSL
 
 #include <renderer/kajiya/inc/color.glsl>
 
@@ -52,3 +53,5 @@ vec4 working_to_linear(vec4 v) {
     v = exp(v) - 1.0;
     return v * v;
 }*/
+
+#endif // RENDERER_KAJIYA_INC_WORKING_COLOR_SPACE_GLSL

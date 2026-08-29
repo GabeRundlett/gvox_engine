@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTDGI_RTDGI_COMMON_GLSL
+#define RENDERER_KAJIYA_RTDGI_RTDGI_COMMON_GLSL
 
 #include <utilities/gpu/normal.glsl>
 
@@ -38,3 +39,5 @@ uvec4 as_raw(TemporalReservoirOutput self) {
     raw.w = floatBitsToUint(pack_normal_11_10_11(self.hit_normal_ws));
     return raw;
 }
+
+#endif // RENDERER_KAJIYA_RTDGI_RTDGI_COMMON_GLSL

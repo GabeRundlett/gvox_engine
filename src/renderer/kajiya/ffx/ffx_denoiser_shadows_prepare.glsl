@@ -19,7 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
+#ifndef RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_PREPARE_GLSL
+#define RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_PREPARE_GLSL
 
 #include "ffx_denoiser_shadows_util.glsl"
 
@@ -43,3 +44,5 @@ void FFX_DNSR_Shadows_PrepareShadowMask(uvec2 gtid, uvec2 gid) {
         }
     }
 }
+
+#endif // RENDERER_KAJIYA_FFX_FFX_DENOISER_SHADOWS_PREPARE_GLSL

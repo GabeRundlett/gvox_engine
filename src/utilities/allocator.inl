@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_ALLOCATOR_INL
+#define UTILITIES_ALLOCATOR_INL
 
 #include <core.inl>
 
@@ -104,3 +105,5 @@ struct StaticAllocatorBufferState {
     }
 };
 #endif
+
+#endif // UTILITIES_ALLOCATOR_INL

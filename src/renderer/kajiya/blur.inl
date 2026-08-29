@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_BLUR_INL
+#define RENDERER_KAJIYA_BLUR_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -134,3 +135,5 @@ inline auto rev_blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_BLUR_INL

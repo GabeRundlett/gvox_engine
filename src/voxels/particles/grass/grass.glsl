@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_GRASS_GRASS_GLSL
+#define VOXELS_PARTICLES_GRASS_GRASS_GLSL
 
 #include <utilities/gpu/noise.glsl>
 #include <renderer/globals.glsl>
@@ -50,3 +51,5 @@ ParticleVertex get_grass_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferP
 
     return result;
 }
+
+#endif // VOXELS_PARTICLES_GRASS_GRASS_GLSL

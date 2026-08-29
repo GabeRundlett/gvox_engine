@@ -149,95 +149,10 @@ static auto resolve_file_path(Str &path) -> bool {
 
 // --- shader source loading -------------------------------------------------
 
-// glslang does not implement `#pragma once`, but the project's .inl/.glsl
-// headers rely on it (and would otherwise hit "redefinition" errors when a
-// header is reached twice). Rewrite it into a classic include guard keyed on
-// the mangled absolute path, exactly as Daxa's own manager does
-// (impl_pipeline_manager.cpp: shader_preprocess).
-static void apply_pragma_once(Str &code, char const *path) {
-    auto abs = path_absolute(path);
-    // Mangle to a valid macro identifier: keep [A-Za-z0-9_] only.
-    auto guard = Str{};
-    {
-        auto const *p = abs.c_str();
-        auto *buf = new char[static_cast<unsigned>(abs.length) + 1];
-        auto n = 0;
-        for (int i = 0; i < abs.length; ++i) {
-            auto c = p[i];
-            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
-                buf[n++] = c;
-            }
-        }
-        buf[n] = '\0';
-        guard = buf;
-        delete[] buf;
-    }
-
-    // Replace the first `#pragma ... once` line with `#if !defined(GUARD)`.
-    auto const *src = code.c_str();
-    auto out = Str{};
-    auto has_pragma_once = false;
-    auto line_start = 0;
-    for (int i = 0; i <= code.length; ++i) {
-        if (i != code.length && src[i] != '\n') {
-            continue;
-        }
-        auto line_len = i - line_start;
-        auto *line = new char[static_cast<unsigned>(line_len) + 1];
-        for (int c = 0; c < line_len; ++c) {
-            line[c] = src[line_start + c];
-        }
-        line[line_len] = '\0';
-
-        auto is_pragma_once = false;
-        if (!has_pragma_once) {
-            // Same loose check Daxa uses: a "#pragma" with "once" after it.
-            char const *pragma_pos = nullptr;
-            char const *once_pos = nullptr;
-            for (int c = 0; c + 7 <= line_len; ++c) {
-                if (pragma_pos == nullptr && line[c] == '#' &&
-                    line[c + 1] == 'p' && line[c + 2] == 'r' && line[c + 3] == 'a' &&
-                    line[c + 4] == 'g' && line[c + 5] == 'm' && line[c + 6] == 'a') {
-                    pragma_pos = line + c;
-                }
-            }
-            for (int c = 0; c + 4 <= line_len; ++c) {
-                if (line[c] == 'o' && line[c + 1] == 'n' && line[c + 2] == 'c' && line[c + 3] == 'e') {
-                    once_pos = line + c;
-                    break;
-                }
-            }
-            is_pragma_once = pragma_pos != nullptr && once_pos != nullptr && once_pos > pragma_pos;
-        }
-
-        if (is_pragma_once) {
-            out += "#if !defined(";
-            out += guard.c_str();
-            out += ")\n";
-            has_pragma_once = true;
-        } else {
-            out += line;
-            out += "\n";
-        }
-        delete[] line;
-        line_start = i + 1;
-    }
-
-    if (has_pragma_once) {
-        out += "\n#define ";
-        out += guard.c_str();
-        out += "\n#endif\n";
-    }
-    code = static_cast<Str &&>(out);
-}
-
 // NOTE: MUST BE THREAD SAFE
 static auto load_shader_source(char const *path, Str &out) -> bool {
-    if (!read_file_to_string(path, out)) {
-        return false;
-    }
-    apply_pragma_once(out, path);
-    return true;
+    PROFILE_FUNC();
+    return read_file_to_string(path, out);
 }
 
 // --- SPIR-V cache ----------------------------------------------------------

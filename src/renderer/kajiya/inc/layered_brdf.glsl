@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_LAYERED_BRDF_GLSL
+#define RENDERER_KAJIYA_INC_LAYERED_BRDF_GLSL
 
 #include "gbuffer.glsl"
 #include "color.glsl"
@@ -169,3 +170,5 @@ BrdfSample sample_brdf(inout LayeredBrdf self, vec3 wo, vec3 urand) {
 
     return brdf_sample;
 }
+
+#endif // RENDERER_KAJIYA_INC_LAYERED_BRDF_GLSL

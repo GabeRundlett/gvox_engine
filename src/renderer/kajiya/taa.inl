@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_TAA_INL
+#define RENDERER_KAJIYA_TAA_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -421,3 +422,5 @@ struct TaaRenderer {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_TAA_INL

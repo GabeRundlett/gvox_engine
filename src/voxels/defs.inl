@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_DEFS_INL
+#define VOXELS_DEFS_INL
 
 #define BRICK_SIZE_LOG2 3
 #define BRICK_SIZE (1 << BRICK_SIZE_LOG2)
@@ -9,3 +10,5 @@
 #define VOXEL_SIZE (1.0f / VOXEL_SCL)
 
 #define MAX_VOXEL_OBJECTS (1 << 18)
+
+#endif // VOXELS_DEFS_INL

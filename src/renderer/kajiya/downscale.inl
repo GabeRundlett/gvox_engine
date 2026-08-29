@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_DOWNSCALE_INL
+#define RENDERER_KAJIYA_DOWNSCALE_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -99,3 +100,5 @@ inline auto extract_downscaled_ssao(GpuContext &gpu_context, daxa::TaskImageView
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_DOWNSCALE_INL

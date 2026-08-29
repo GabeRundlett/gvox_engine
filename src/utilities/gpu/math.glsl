@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_MATH_GLSL
+#define UTILITIES_GPU_MATH_GLSL
 
 #include <utilities/gpu/defs.glsl>
 #include <renderer/kajiya/inc/math_const.glsl>
@@ -243,3 +244,5 @@ ivec3 imod3(ivec3 p, int m) {
 ivec3 imod3(ivec3 p, ivec3 m) {
     return ivec3(imod(p.x, m.x), imod(p.y, m.y), imod(p.z, m.z));
 }
+
+#endif // UTILITIES_GPU_MATH_GLSL

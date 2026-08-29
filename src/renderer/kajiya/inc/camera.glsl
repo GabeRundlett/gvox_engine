@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_CAMERA_GLSL
+#define RENDERER_KAJIYA_INC_CAMERA_GLSL
 
 // NOTE(grundlett): Merged together frame_constants.hlsl and uv.hlsl
 
@@ -122,3 +123,5 @@ vec3 position_world_to_clip(daxa_BufferPtr(GpuInput) gpu_input, vec3 v) {
     p = (deref(gpu_input).player.cam.view_to_clip * p);
     return p.xyz / p.w;
 }
+
+#endif // RENDERER_KAJIYA_INC_CAMERA_GLSL

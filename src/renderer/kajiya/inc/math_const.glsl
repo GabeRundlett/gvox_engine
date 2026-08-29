@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_MATH_CONST_GLSL
+#define RENDERER_KAJIYA_INC_MATH_CONST_GLSL
 
 #define M_PI 3.14159265358979323846264338327950288
 #define M_TAU 6.28318530717958647692528676655900577
@@ -35,3 +36,5 @@
 #define select(cond, a, b) mix(b, a, cond)
 #define rcp(x) (1.0 / x)
 #endif
+
+#endif // RENDERER_KAJIYA_INC_MATH_CONST_GLSL

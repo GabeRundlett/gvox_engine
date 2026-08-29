@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_SIGNED_DISTANCE_GLSL
+#define UTILITIES_GPU_SIGNED_DISTANCE_GLSL
 
 float sd_shapes_dot2(in vec2 v) { return dot(v, v); }
 float sd_shapes_dot2(in vec3 v) { return dot(v, v); }
@@ -253,3 +254,5 @@ float sd_pyramid(in vec3 p, in float r, in float h) {
     float d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
     return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.z)) * r;
 }
+
+#endif // UTILITIES_GPU_SIGNED_DISTANCE_GLSL

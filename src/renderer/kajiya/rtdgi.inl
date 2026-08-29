@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTDGI_INL
+#define RENDERER_KAJIYA_RTDGI_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -806,3 +807,5 @@ struct RtdgiRenderer {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_RTDGI_INL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_RESERVOIR_GLSL
+#define RENDERER_KAJIYA_INC_RESERVOIR_GLSL
 
 #include <utilities/gpu/math.glsl>
 
@@ -95,3 +96,5 @@ void finish_stream(inout Reservoir1spp self, Reservoir1sppStreamState state) {
     self.M = state.M_sum;
     self.W = self.w_sum / (max(1e-8, self.M * state.p_q_sel));
 }
+
+#endif // RENDERER_KAJIYA_INC_RESERVOIR_GLSL

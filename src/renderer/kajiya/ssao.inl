@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_SSAO_INL
+#define RENDERER_KAJIYA_SSAO_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -166,3 +167,5 @@ struct SsaoRenderer {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_SSAO_INL

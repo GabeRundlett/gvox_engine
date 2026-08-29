@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_LIGHT_GBUFFER_INL
+#define RENDERER_KAJIYA_LIGHT_GBUFFER_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -99,3 +100,5 @@ inline auto light_gbuffer(
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_LIGHT_GBUFFER_INL

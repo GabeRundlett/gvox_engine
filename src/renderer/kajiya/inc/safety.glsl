@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_SAFETY_GLSL
+#define RENDERER_KAJIYA_INC_SAFETY_GLSL
 
 // TODO: Safe fetches are super slow...
 #define SAFE_FETCHES 0
@@ -94,3 +95,5 @@ void safeImageStoreI(daxa_ImageViewIndex img, ivec2 p, ivec4 val) {
 #endif
     imageStore(daxa_iimage2D(img), p, val);
 }
+
+#endif // RENDERER_KAJIYA_INC_SAFETY_GLSL

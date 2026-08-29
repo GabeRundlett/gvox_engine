@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_TAA_TAA_COMMON_GLSL
+#define RENDERER_KAJIYA_TAA_TAA_COMMON_GLSL
 
 #define TAA_NONLINEARITY_TYPE 0
 #define TAA_COLOR_MAPPING_MODE 1
@@ -59,3 +60,5 @@ vec3 encode_rgb(vec3 v) {
     return v * perceptual_to_linear(max_comp) / max(1e-20, max_comp);
 #endif
 }
+
+#endif // RENDERER_KAJIYA_TAA_TAA_COMMON_GLSL

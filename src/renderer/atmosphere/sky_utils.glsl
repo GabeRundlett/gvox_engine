@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_ATMOSPHERE_SKY_UTILS_GLSL
+#define RENDERER_ATMOSPHERE_SKY_UTILS_GLSL
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <renderer/kajiya/inc/math_const.glsl>
@@ -265,3 +266,5 @@ vec3 cs_to_fs(daxa_BufferPtr(GpuInput) gpu_input, vec4 cs_h) {
     const vec3 vs = -vs_h.xyz / vs_h.w;
     return clamp(vec3(cs_to_uv(cs.xy), pow((vs.z - FRUSTUM_BEGIN_Z_WS) / FRUSTUM_SIZE_Z_WS, 1.0 / 2.0)), vec3(0), vec3(1));
 }
+
+#endif // RENDERER_ATMOSPHERE_SKY_UTILS_GLSL

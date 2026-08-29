@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_GENERATION_DEFS_INL
+#define VOXELS_GENERATION_DEFS_INL
 
 #include "../defs.inl"
 
@@ -30,3 +31,5 @@ struct NoiseSettings {
     float amplitude;
     int octaves;
 };
+
+#endif // VOXELS_GENERATION_DEFS_INL

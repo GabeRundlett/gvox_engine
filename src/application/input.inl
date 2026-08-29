@@ -1,4 +1,5 @@
-#pragma once
+#ifndef APPLICATION_INPUT_INL
+#define APPLICATION_INPUT_INL
 
 #include <voxels/voxel.inl>
 #include <application/settings.inl>
@@ -119,3 +120,5 @@ struct IndirectDispatchParams {
     daxa_u32 y;
     daxa_u32 z;
 };
+
+#endif // APPLICATION_INPUT_INL

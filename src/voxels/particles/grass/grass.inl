@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_GRASS_GRASS_INL
+#define VOXELS_PARTICLES_GRASS_GRASS_INL
 
 #include <voxels/particles/common.inl>
 
@@ -282,3 +283,5 @@ struct GrassStrands {
 };
 
 #endif
+
+#endif // VOXELS_PARTICLES_GRASS_GRASS_INL

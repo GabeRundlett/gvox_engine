@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_POSTPROCESSING_INL
+#define RENDERER_POSTPROCESSING_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -100,3 +101,5 @@ inline void debug_pass(GpuContext &gpu_context, debug_utils::Pass const &pass, d
 }
 
 #endif
+
+#endif // RENDERER_POSTPROCESSING_INL

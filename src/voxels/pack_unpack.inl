@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PACK_UNPACK_INL
+#define VOXELS_PACK_UNPACK_INL
 
 #include <voxels/voxel.inl>
 
@@ -107,3 +108,5 @@ INLINE Voxel unpack_voxel(PackedVoxel v) {
 #undef UNORM_SCALE
 #undef PACK_UNORM
 #undef UNPACK_UNORM
+
+#endif // VOXELS_PACK_UNPACK_INL

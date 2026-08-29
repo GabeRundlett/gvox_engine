@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_PARTICLE_GLSL
+#define VOXELS_PARTICLES_PARTICLE_GLSL
 
 #include <voxels/particles/common.inl>
 
@@ -105,3 +106,5 @@ void particle_render(
         deref(advance(cube_rendered_particle_verts, my_render_index)) = packed_vertex;
     }
 }
+
+#endif // VOXELS_PARTICLES_PARTICLE_GLSL

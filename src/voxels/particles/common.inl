@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_COMMON_INL
+#define VOXELS_PARTICLES_COMMON_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -32,3 +33,5 @@ struct VoxelParticlesState {
     ParticleDrawParams flower;
 };
 DAXA_DECL_BUFFER_PTR(VoxelParticlesState)
+
+#endif // VOXELS_PARTICLES_COMMON_INL

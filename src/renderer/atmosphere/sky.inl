@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_ATMOSPHERE_SKY_INL
+#define RENDERER_ATMOSPHERE_SKY_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -336,3 +337,5 @@ struct SkyRenderer {
 };
 
 #endif
+
+#endif // RENDERER_ATMOSPHERE_SKY_INL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_COLOR_SRGB_GLSL
+#define RENDERER_KAJIYA_INC_COLOR_SRGB_GLSL
 
 #include <utilities/gpu/common.glsl>
 
@@ -42,3 +43,5 @@ float sRGB_EOTF(float a) {
 vec3 sRGB_EOTF(vec3 a) {
     return vec3(sRGB_EOTF(a.r), sRGB_EOTF(a.g), sRGB_EOTF(a.b));
 }
+
+#endif // RENDERER_KAJIYA_INC_COLOR_SRGB_GLSL

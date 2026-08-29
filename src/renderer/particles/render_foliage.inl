@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_PARTICLES_RENDER_FOLIAGE_INL
+#define RENDERER_PARTICLES_RENDER_FOLIAGE_INL
 
 #include <daxa/utils/task_graph.inl>
 #include <voxels/voxel.inl>
@@ -45,3 +46,5 @@ struct FoliageCullInfo {
     RenderScene *scene;
 };
 #endif
+
+#endif // RENDERER_PARTICLES_RENDER_FOLIAGE_INL

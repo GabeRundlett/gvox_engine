@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_TRACE_PRIMARY_INL
+#define RENDERER_TRACE_PRIMARY_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -124,3 +125,5 @@ struct GbufferRenderer {
 };
 
 #endif
+
+#endif // RENDERER_TRACE_PRIMARY_INL

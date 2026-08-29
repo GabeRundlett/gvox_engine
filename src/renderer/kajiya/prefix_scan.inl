@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_PREFIX_SCAN_INL
+#define RENDERER_KAJIYA_PREFIX_SCAN_INL
 
 #include <core.inl>
 
@@ -78,3 +79,5 @@ inline void inclusive_prefix_scan_u32_1m(GpuContext &gpu_context, daxa::TaskBuff
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_PREFIX_SCAN_INL

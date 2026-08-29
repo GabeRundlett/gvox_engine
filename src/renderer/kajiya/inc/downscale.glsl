@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_DOWNSCALE_GLSL
+#define RENDERER_KAJIYA_INC_DOWNSCALE_GLSL
 
 // uvec2 get_downscale_offset(daxa_BufferPtr(GpuInput) gpu_input) {
 // #if SHADING_SCL == 1
@@ -31,3 +32,5 @@ const uvec2 hi_px_subpixels[4] = uvec2[4](
 #endif
 
 #define HALFRES_SUBSAMPLE_OFFSET (hi_px_subpixels[HALFRES_SUBSAMPLE_INDEX])
+
+#endif // RENDERER_KAJIYA_INC_DOWNSCALE_GLSL

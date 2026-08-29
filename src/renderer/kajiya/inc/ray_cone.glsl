@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_RAY_CONE_GLSL
+#define RENDERER_KAJIYA_INC_RAY_CONE_GLSL
 
 // https://media.contentapi.ea.com/content/dam/ea/seed/presentations/2019-ray-tracing-gems-chapter-20-akenine-moller-et-al.pdf
 struct RayCone {
@@ -43,3 +44,5 @@ RayCone pixel_ray_cone_from_image_height(daxa_BufferPtr(GpuInput) gpu_input, flo
     res.spread_angle = pixel_cone_spread_angle_from_image_height(gpu_input, image_height);
     return res;
 }
+
+#endif // RENDERER_KAJIYA_INC_RAY_CONE_GLSL

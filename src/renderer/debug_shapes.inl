@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_DEBUG_SHAPES_INL
+#define RENDERER_DEBUG_SHAPES_INL
 
 #include <renderer/core.inl>
 
@@ -253,3 +254,5 @@ inline void draw_debug_shapes(GpuContext &gpu_context, daxa::TaskGraph &task_gra
 }
 
 #endif
+
+#endif // RENDERER_DEBUG_SHAPES_INL

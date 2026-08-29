@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_RANDOM_GLSL
+#define UTILITIES_GPU_RANDOM_GLSL
 
 #include <renderer/kajiya/inc/math_const.glsl>
 
@@ -109,3 +110,5 @@ vec3 hash33(vec3 p3) {
     p3 += dot(p3, p3.yxz + 33.33);
     return fract((p3.xxy + p3.yxx) * p3.zyx);
 }
+
+#endif // UTILITIES_GPU_RANDOM_GLSL

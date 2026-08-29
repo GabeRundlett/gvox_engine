@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_FSR_INL
+#define RENDERER_FSR_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -51,3 +52,5 @@ struct Fsr2Renderer {
 };
 
 #endif
+
+#endif // RENDERER_FSR_INL

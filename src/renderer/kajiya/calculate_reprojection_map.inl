@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_CALCULATE_REPROJECTION_MAP_INL
+#define RENDERER_KAJIYA_CALCULATE_REPROJECTION_MAP_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -46,3 +47,5 @@ inline auto calculate_reprojection_map(GpuContext &gpu_context, GbufferDepth con
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_CALCULATE_REPROJECTION_MAP_INL

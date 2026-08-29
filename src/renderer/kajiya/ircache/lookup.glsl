@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_IRCACHE_LOOKUP_GLSL
+#define RENDERER_KAJIYA_IRCACHE_LOOKUP_GLSL
 
 #include <renderer/kajiya/inc/quasi_random.glsl>
 #include <renderer/kajiya/inc/sh.glsl>
@@ -305,3 +306,5 @@ vec3 lookup(IrcacheLookupParams self, inout uint rng) {
 
     return irradiance_sum;
 }
+
+#endif // RENDERER_KAJIYA_IRCACHE_LOOKUP_GLSL

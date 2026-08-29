@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_OCCLUSION_RAYMARCH_GLSL
+#define RENDERER_KAJIYA_INC_OCCLUSION_RAYMARCH_GLSL
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <renderer/kajiya/inc/downscale.glsl>
@@ -142,3 +143,5 @@ void march(
         t += t_step;
     }
 }
+
+#endif // RENDERER_KAJIYA_INC_OCCLUSION_RAYMARCH_GLSL

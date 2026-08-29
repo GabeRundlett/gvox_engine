@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_IRCACHE_IRCACHE_CONSTANTS_GLSL
+#define RENDERER_KAJIYA_IRCACHE_IRCACHE_CONSTANTS_GLSL
 
 #define IRCACHE_USE_TRILINEAR 0
 #define IRCACHE_USE_POSITION_VOTING 1
@@ -49,3 +50,5 @@ VertexPacked pack_vertex(Vertex v) {
     p.data0.w = pack_normal_11_10_11(v.normal);
     return p;
 }
+
+#endif // RENDERER_KAJIYA_IRCACHE_IRCACHE_CONSTANTS_GLSL

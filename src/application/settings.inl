@@ -1,4 +1,5 @@
-#pragma once
+#ifndef APPLICATION_SETTINGS_INL
+#define APPLICATION_SETTINGS_INL
 
 // #define DAXA_BUFFER_PTR_COMPAT
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
@@ -94,3 +95,5 @@ struct BrushSettings {
 #define FRAMES_IN_FLIGHT 1
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
+
+#endif // APPLICATION_SETTINGS_INL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_IRCACHE_INL
+#define RENDERER_KAJIYA_IRCACHE_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -280,3 +281,5 @@ struct IrcacheRenderer {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_IRCACHE_INL

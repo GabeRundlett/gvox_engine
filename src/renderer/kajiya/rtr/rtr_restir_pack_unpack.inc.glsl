@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTR_RTR_RESTIR_PACK_UNPACK_INC_GLSL
+#define RENDERER_KAJIYA_RTR_RTR_RESTIR_PACK_UNPACK_INC_GLSL
 
 struct RtrRestirRayOrigin {
     vec3 ray_origin_eye_offset_ws;
@@ -21,3 +22,5 @@ vec4 to_raw(RtrRestirRayOrigin self) {
         self.ray_origin_eye_offset_ws,
         uintBitsToFloat(packHalf2x16(vec2(self.roughness, self.frame_index_mod4))));
 }
+
+#endif // RENDERER_KAJIYA_RTR_RTR_RESTIR_PACK_UNPACK_INC_GLSL

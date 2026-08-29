@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_CALCULATE_HISTOGRAM_INL
+#define RENDERER_KAJIYA_CALCULATE_HISTOGRAM_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -81,3 +82,5 @@ inline auto calculate_luminance_histogram(GpuContext &gpu_context, daxa::TaskIma
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_CALCULATE_HISTOGRAM_INL

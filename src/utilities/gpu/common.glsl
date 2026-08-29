@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_COMMON_GLSL
+#define UTILITIES_GPU_COMMON_GLSL
 
 #include <renderer/kajiya/inc/math_const.glsl>
 
@@ -35,3 +36,5 @@ float deg2rad(float d) {
 float rad2deg(float r) {
     return r * 180.0 / M_PI;
 }
+
+#endif // UTILITIES_GPU_COMMON_GLSL

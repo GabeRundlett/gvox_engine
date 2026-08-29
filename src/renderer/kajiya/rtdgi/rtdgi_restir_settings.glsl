@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTDGI_RTDGI_RESTIR_SETTINGS_GLSL
+#define RENDERER_KAJIYA_RTDGI_RTDGI_RESTIR_SETTINGS_GLSL
 
 // NOTE(grundlett): For `PER_VOXEL_NORMALS`
 #include <utilities/gpu/defs.glsl>
@@ -62,3 +63,5 @@ bool is_rtdgi_tracing_frame(uint frame_index) {
         return true;
     #endif
 }
+
+#endif // RENDERER_KAJIYA_RTDGI_RTDGI_RESTIR_SETTINGS_GLSL

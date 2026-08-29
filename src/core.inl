@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CORE_INL
+#define CORE_INL
 
 #include <application/settings.inl>
 
@@ -12,3 +13,5 @@
 #define CPU_ONLY(x)
 #define GPU_ONLY(x) x
 #endif
+
+#endif // CORE_INL

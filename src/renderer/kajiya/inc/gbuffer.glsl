@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_GBUFFER_GLSL
+#define RENDERER_KAJIYA_INC_GBUFFER_GLSL
 
 #include <utilities/gpu/normal.glsl>
 #include <voxels/pack_unpack.inl>
@@ -29,3 +30,5 @@ GbufferData unpack(GbufferDataPacked self) {
     res.albedo = voxel.albedo * float(voxel.material_type == 0 || voxel.material_type == 1);
     return res;
 }
+
+#endif // RENDERER_KAJIYA_INC_GBUFFER_GLSL

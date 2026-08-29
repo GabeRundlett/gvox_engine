@@ -1,4 +1,7 @@
-#pragma once
+#ifndef UTILITIES_GPU_DEFS_GLSL
+#define UTILITIES_GPU_DEFS_GLSL
 
 #define PER_VOXEL_NORMALS 1
 #define GENERATE_NORMAL vec3(0, 0, -1)
+
+#endif // UTILITIES_GPU_DEFS_GLSL

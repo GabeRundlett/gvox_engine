@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_SH_GLSL
+#define RENDERER_KAJIYA_INC_SH_GLSL
 
 // Based on https://github.com/sebh/HLSL-Spherical-Harmonics/
 
@@ -30,3 +31,5 @@ vec4 sh_diffuse_convolution(vec4 sh) {
 	result.yzw *= 2.0943951023931954923f;
 	return result;
 }
+
+#endif // RENDERER_KAJIYA_INC_SH_GLSL

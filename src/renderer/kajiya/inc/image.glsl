@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_IMAGE_GLSL
+#define RENDERER_KAJIYA_INC_IMAGE_GLSL
 
 vec4 cubic_hermite(vec4 A, vec4 B, vec4 C, vec4 D, float t) {
     float t2 = t * t;
@@ -112,3 +113,5 @@ vec4 IdentityImageRemap_remap(vec4 v) {
 #define image_sample_catmull_rom_5tap(REMAP_FUNC) image_sample_catmull_rom_5tap_##REMAP_FUNC
 
 image_sample_catmull_rom_TEMPLATE(IdentityImageRemap_remap)
+
+#endif // RENDERER_KAJIYA_INC_IMAGE_GLSL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_CORE_INL
+#define RENDERER_CORE_INL
 
 #include <application/input.inl>
 
@@ -89,3 +90,5 @@ namespace {
 } // namespace
 
 #endif
+
+#endif // RENDERER_CORE_INL

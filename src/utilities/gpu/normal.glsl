@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILITIES_GPU_NORMAL_GLSL
+#define UTILITIES_GPU_NORMAL_GLSL
 
 // ----------------------------------------
 // The MIT License
@@ -175,3 +176,5 @@ vec3 uniform_sample_hemisphere(vec2 urand) {
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
     return vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
+
+#endif // UTILITIES_GPU_NORMAL_GLSL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_BRDF_GLSL
+#define RENDERER_KAJIYA_INC_BRDF_GLSL
 
 #include <utilities/gpu/math.glsl>
 
@@ -310,3 +311,5 @@ vec3 specular_dominant_direction(vec3 n, vec3 v, float roughness) {
     float f = (1.0 - roughness) * (sqrt(1.0 - roughness) + roughness);
     return normalize(mix(n, r, f));
 }
+
+#endif // RENDERER_KAJIYA_INC_BRDF_GLSL

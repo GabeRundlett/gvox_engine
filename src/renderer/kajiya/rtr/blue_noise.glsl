@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTR_BLUE_NOISE_GLSL
+#define RENDERER_KAJIYA_RTR_BLUE_NOISE_GLSL
 
 // #include <renderer/kajiya/inc/quasi_random.glsl>
 // #include <utilities/gpu/bindless_textures.glsl>
@@ -43,3 +44,5 @@ float blue_noise_sampler(
 }
 
 // ----
+
+#endif // RENDERER_KAJIYA_RTR_BLUE_NOISE_GLSL

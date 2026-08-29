@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_FLOWER_FLOWER_INL
+#define VOXELS_PARTICLES_FLOWER_FLOWER_INL
 
 #include <voxels/particles/common.inl>
 
@@ -290,3 +291,5 @@ struct Flowers {
 };
 
 #endif
+
+#endif // VOXELS_PARTICLES_FLOWER_FLOWER_INL

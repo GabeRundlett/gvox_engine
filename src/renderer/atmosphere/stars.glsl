@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_ATMOSPHERE_STARS_GLSL
+#define RENDERER_ATMOSPHERE_STARS_GLSL
 
 #include <renderer/kajiya/inc/math_const.glsl>
 
@@ -89,3 +90,5 @@ vec3 get_star_radiance(daxa_BufferPtr(GpuInput) gpu_input, vec3 view_direction) 
 
     return stars(ro, view_direction, sp, sf) * 0.00001;
 }
+
+#endif // RENDERER_ATMOSPHERE_STARS_GLSL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTR_INL
+#define RENDERER_KAJIYA_RTR_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -701,3 +702,5 @@ struct RtrRenderer {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_RTR_INL

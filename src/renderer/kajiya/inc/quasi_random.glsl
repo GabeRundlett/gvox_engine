@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_QUASI_RANDOM_GLSL
+#define RENDERER_KAJIYA_INC_QUASI_RANDOM_GLSL
 
 #include <utilities/gpu/random.glsl>
 
@@ -21,3 +22,5 @@ vec2 r2_sequence(uint i) {
 
     return fract(vec2(a1, a2) * i + 0.5);
 }
+
+#endif // RENDERER_KAJIYA_INC_QUASI_RANDOM_GLSL

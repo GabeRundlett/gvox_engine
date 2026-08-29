@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_IRCACHE_IRCACHE_TRACE_COMMON_INC_GLSL
+#define RENDERER_KAJIYA_IRCACHE_IRCACHE_TRACE_COMMON_INC_GLSL
 // HACK: reduces feedback loops due to the spherical traces.
 // As a side effect, dims down the result a bit, and increases variance.
 // Maybe not needed when using IRCACHE_LOOKUP_PRECISE.
@@ -210,3 +211,5 @@ IrcacheTraceResult ircache_trace(Vertex entry, DiffuseBrdf brdf, SampleParams sa
     result.incident_radiance = irradiance_sum;
     return result;
 }
+
+#endif // RENDERER_KAJIYA_IRCACHE_IRCACHE_TRACE_COMMON_INC_GLSL

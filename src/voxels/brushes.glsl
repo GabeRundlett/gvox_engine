@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_BRUSHES_GLSL
+#define VOXELS_BRUSHES_GLSL
 
 #include <utilities/gpu/random.glsl>
 #include <utilities/gpu/noise.glsl>
@@ -674,3 +675,5 @@ void brush_fern(in out Voxel voxel, in vec3 seed, in float loop_t) {
         voxel.normal = normalize(fern.nrm + vec3(0, 0, 3));
     }
 }
+
+#endif // VOXELS_BRUSHES_GLSL

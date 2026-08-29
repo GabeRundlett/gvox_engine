@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_PREFETCH_GLSL
+#define RENDERER_KAJIYA_INC_PREFETCH_GLSL
 
 // NOTE(grundlett): Some operations, especially convolutions, will benefit heavily from
 // prefetching a range of values. I add this header to make such operations faster.
@@ -49,3 +50,5 @@ FetchResult prefetch_tap(ivec2 px) {
     return do_fetch(px);
 #endif
 }
+
+#endif // RENDERER_KAJIYA_INC_PREFETCH_GLSL

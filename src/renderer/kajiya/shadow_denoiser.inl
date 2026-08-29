@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_SHADOW_DENOISER_INL
+#define RENDERER_KAJIYA_SHADOW_DENOISER_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -246,3 +247,5 @@ struct ShadowDenoiser {
 };
 
 #endif
+
+#endif // RENDERER_KAJIYA_SHADOW_DENOISER_INL

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VOXELS_PARTICLES_FLOWER_FLOWER_GLSL
+#define VOXELS_PARTICLES_FLOWER_FLOWER_GLSL
 
 #include <utilities/gpu/noise.glsl>
 #include <renderer/globals.glsl>
@@ -247,3 +248,5 @@ ParticleVertex get_flower_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_Buffer
 
     return result;
 }
+
+#endif // VOXELS_PARTICLES_FLOWER_FLOWER_GLSL

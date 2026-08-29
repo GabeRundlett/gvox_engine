@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_RT_GLSL
+#define RENDERER_RT_GLSL
 
 #include <voxels/voxel.glsl>
 #include <application/input.inl>
@@ -253,3 +254,5 @@ VoxelTraceResult voxel_trace(in VoxelRtTraceInfo info, in out vec3 ray_pos) {
     return result;
 }
 #endif
+
+#endif // RENDERER_RT_GLSL

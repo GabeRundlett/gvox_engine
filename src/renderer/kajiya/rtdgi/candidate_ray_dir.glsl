@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_RTDGI_CANDIDATE_RAY_DIR_GLSL
+#define RENDERER_KAJIYA_RTDGI_CANDIDATE_RAY_DIR_GLSL
 
 vec4 blue_noise_for_pixel(daxa_ImageViewIndex blue_noise_tex, uvec2 px, uint n) {
     // const uvec2 tex_dims = uvec2(128, 128);
@@ -12,3 +13,5 @@ vec3 rtdgi_candidate_ray_dir(daxa_ImageViewIndex blue_noise_tex, uint frame_inde
     vec3 wi = uniform_sample_hemisphere(urand);
     return tangent_to_world * wi;
 }
+
+#endif // RENDERER_KAJIYA_RTDGI_CANDIDATE_RAY_DIR_GLSL

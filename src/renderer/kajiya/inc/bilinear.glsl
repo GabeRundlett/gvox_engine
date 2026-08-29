@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_BILINEAR_GLSL
+#define RENDERER_KAJIYA_INC_BILINEAR_GLSL
 
 struct Bilinear {
     vec2 origin;
@@ -30,3 +31,5 @@ vec4 apply_bilinear_custom_weights(vec4 s00, vec4 s10, vec4 s01, vec4 s11, vec4 
     vec4 r = s00 * w.x + s10 * w.y + s01 * w.z + s11 * w.w;
     return r * (should_normalize ? (1.0 / dot(w, vec4(1.0))) : 1.0);
 }
+
+#endif // RENDERER_KAJIYA_INC_BILINEAR_GLSL

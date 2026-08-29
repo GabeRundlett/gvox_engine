@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_TRACE_SECONDARY_INL
+#define RENDERER_TRACE_SECONDARY_INL
 
 #include <core.inl>
 #include <renderer/core.inl>
@@ -87,3 +88,5 @@ inline auto trace_shadows(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, 
 }
 
 #endif
+
+#endif // RENDERER_TRACE_SECONDARY_INL

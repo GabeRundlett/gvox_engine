@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_ATMOSPHERE_ATMOSPHERE_GLSL
+#define RENDERER_ATMOSPHERE_ATMOSPHERE_GLSL
 
 #include <application/input.inl>
 
@@ -60,3 +61,5 @@ ScatteringSample sample_medium_scattering_detailed(daxa_BufferPtr(GpuInput) gpu_
 
     return ScatteringSample(mie_scattering, ray_scattering);
 }
+
+#endif // RENDERER_ATMOSPHERE_ATMOSPHERE_GLSL

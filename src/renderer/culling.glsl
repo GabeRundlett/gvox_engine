@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_CULLING_GLSL
+#define RENDERER_CULLING_GLSL
 
 bool is_texel_aabb_hiz_depth_occluded(
     vec2 min_texel_i, vec2 max_texel_i,
@@ -69,3 +70,5 @@ bool is_between_raster_grid_lines(vec2 pixel_min, vec2 pixel_max) {
 bool is_between_raster_grid_lines(vec2 ndc_min, vec2 ndc_max, vec2 resolution) {
     return is_between_raster_grid_lines((ndc_min * 0.5f + 0.5f) * resolution, (ndc_max * 0.5f + 0.5f) * resolution);
 }
+
+#endif // RENDERER_CULLING_GLSL

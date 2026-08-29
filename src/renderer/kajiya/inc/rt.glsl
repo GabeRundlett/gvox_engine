@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_RT_GLSL
+#define RENDERER_KAJIYA_INC_RT_GLSL
 
 #include <renderer/kajiya/inc/math_const.glsl>
 #include <renderer/kajiya/inc/gbuffer.glsl>
@@ -275,3 +276,5 @@ bool rt_is_shadowed(RayDesc ray) {
 }
 
 #endif
+
+#endif // RENDERER_KAJIYA_INC_RT_GLSL

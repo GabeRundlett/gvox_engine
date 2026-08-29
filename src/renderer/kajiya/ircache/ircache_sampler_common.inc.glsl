@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_IRCACHE_IRCACHE_SAMPLER_COMMON_INC_GLSL
+#define RENDERER_KAJIYA_IRCACHE_IRCACHE_SAMPLER_COMMON_INC_GLSL
 #include <utilities/gpu/random.glsl>
 #include <utilities/gpu/normal.glsl>
 
@@ -56,3 +57,5 @@ vec2 octa_uv(SampleParams self) {
 vec3 direction(SampleParams self) {
     return octa_decode(octa_uv(self));
 }
+
+#endif // RENDERER_KAJIYA_IRCACHE_IRCACHE_SAMPLER_COMMON_INC_GLSL

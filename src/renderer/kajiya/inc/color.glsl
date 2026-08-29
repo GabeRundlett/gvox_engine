@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_KAJIYA_INC_COLOR_GLSL
+#define RENDERER_KAJIYA_INC_COLOR_GLSL
 
 #include <renderer/kajiya/inc/color/srgb.glsl>
 #include <renderer/kajiya/inc/color/ycbcr.glsl>
@@ -53,3 +54,5 @@ vec3 soft_color_clamp(vec3 center, vec3 history, vec3 ex, vec3 dev) {
     vec3 closest_pt = clamp(history, center - dev, center + dev);
     return mix(history, closest_pt, smoothstep(vec3(1.0), vec3(3.0), history_dist));
 }
+
+#endif // RENDERER_KAJIYA_INC_COLOR_GLSL
