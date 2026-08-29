@@ -647,6 +647,6 @@ static inline vec3 dither_nrm(RandomCtx random_ctx, vec3 nrm, ivec3 pos) {
 const uniform vec3 UP = {0, 0, 1};
 
 const uniform vec3 GRASS_COL = {0.1174, 0.3131, 0.0157};
-const uniform vec3 DIRT_COL = {0.2559, 0.1992, 0.0434};
+const uniform vec3 DIRT_COL = {0.2391, 0.1345, 0.0415};
 const uniform vec3 STONE_COL = {0.3602, 0.2977, 0.1459};
-const uniform vec3 GRAVEL_COL = {0.2391, 0.1345, 0.0415};
+const uniform vec3 GRAVEL_COL = {0.2559, 0.1992, 0.0434};

@@ -65,9 +65,9 @@ void generate_attributes_cpp(
     NoiseSettings const *noise_settings, RandomCtx random_ctx) {
 
     const uniform vec3 GRASS_COL = {0.03, 0.08, 0.004};
-    const uniform vec3 DIRT_COL = {0.34 * 0.34, 0.30 * 0.30, 0.14 * 0.14};
+    const uniform vec3 GRAVEL_COL = {0.34 * 0.34, 0.30 * 0.30, 0.14 * 0.14};
     const uniform vec3 STONE_COL = {0.33 * 0.33, 0.30 * 0.30, 0.21 * 0.21};
-    const uniform vec3 GRAVEL_COL = {0.24 * 0.24, 0.18 * 0.18, 0.10 * 0.10};
+    const uniform vec3 DIRT_COL = {0.24 * 0.24, 0.18 * 0.18, 0.10 * 0.10};
 
     for (int zi = 0; zi < BRICK_SIZE; ++zi) {
         for (int yi = 0; yi < BRICK_SIZE; ++yi) {
@@ -87,7 +87,7 @@ void generate_attributes_cpp(
                     voxel.albedo = GRASS_COL;
                     voxel.roughness = 0.9;
                 } else if (dn.val > -0.15 && upwards > 0.40) {
-                    voxel.albedo = GRAVEL_COL;
+                    voxel.albedo = DIRT_COL;
                     if (r < 0.5) {
                         voxel.albedo.r *= 0.5;
                         voxel.albedo.g *= 0.5;
@@ -100,7 +100,7 @@ void generate_attributes_cpp(
                         voxel.roughness = 1;
                     }
                 } else if (dn.val < -0.01 && dn.val > -0.07 && upwards > 0.2) {
-                    voxel.albedo = DIRT_COL;
+                    voxel.albedo = GRAVEL_COL;
                     if (r < 0.5) {
                         voxel.albedo.r *= 0.75;
                         voxel.albedo.g *= 0.75;

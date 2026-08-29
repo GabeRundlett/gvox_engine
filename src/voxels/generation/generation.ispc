@@ -110,8 +110,8 @@ export void generate_attributes(
                 voxel.roughness = 0.9;
                 uint value = above_is_solid == 0 && self_is_solid != 0 && dot(dn.nrm, UP) > 0.65f && r > 0.25f;
                 foliage_word_result |= value << in_word_i;
-            } else if (dn.val > -0.15 && upwards > 0.40) {
-                voxel.albedo = GRAVEL_COL;
+            } else if (dn.val > -0.5 && upwards > 0.40) {
+                voxel.albedo = DIRT_COL;
                 if (r < 0.5) {
                     voxel.albedo.r *= 0.5;
                     voxel.albedo.g *= 0.5;
@@ -123,8 +123,8 @@ export void generate_attributes(
                     voxel.albedo.b *= 1.5;
                     voxel.roughness = 1;
                 }
-            } else if (dn.val < -0.01 && dn.val > -0.07 && upwards > 0.2) {
-                voxel.albedo = DIRT_COL;
+            } else if (dn.val < -0.01 && dn.val > -0.5 && upwards > 0.2) {
+                voxel.albedo = GRAVEL_COL;
                 if (r < 0.5) {
                     voxel.albedo.r *= 0.75;
                     voxel.albedo.g *= 0.75;
