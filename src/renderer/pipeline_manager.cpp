@@ -575,11 +575,6 @@ static auto all_shader_infos(PipelineManager *self, Vec<ShaderCompileInfo> const
     return result;
 }
 
-struct CreateAllState {
-    PipelineManager *self;
-    daxa::Device *device;
-};
-
 static void create_compute_pipeline(PipelineManager *self, daxa::Device &device, ComputePipelineCompileInfo &info) {
     PROFILE_FUNC();
     auto ok = true;
@@ -659,24 +654,48 @@ static void create_ray_tracing_pipeline(PipelineManager *self, daxa::Device &dev
 
 void create_all_pipelines(PipelineManager *self, daxa::Device &device) {
     PROFILE_FUNC();
-    // NOTE: pipeline creation is not parallelised (unlike the shader compiles
-    // above, which dominate). daxa::Device::create_*_pipeline is internally
-    // synchronized, but keeping this serial keeps error reporting readable.
-    for (auto &info : self->ray_tracing_pipelines) {
-        if (info.out_pipeline != nullptr) {
-            create_ray_tracing_pipeline(self, device, info);
-        }
-    }
-    for (auto &info : self->raster_pipelines) {
-        if (info.out_pipeline != nullptr) {
-            create_raster_pipeline(self, device, info);
-        }
-    }
-    for (auto &info : self->compute_pipelines) {
-        if (info.out_pipeline != nullptr) {
-            create_compute_pipeline(self, device, info);
-        }
-    }
+
+    struct CreateAllState {
+        PipelineManager *self;
+        daxa::Device *device;
+    };
+    enum PipelineWorkItem {
+        RAY_TRACING,
+        RASTER,
+        COMPUTE,
+    };
+
+    auto state = CreateAllState{self, &device};
+    thread_pool::parallel_for(
+        self->ray_tracing_pipelines.size + self->raster_pipelines.size + self->compute_pipelines.size,
+        [](void *user_ptr, int item_index) {
+            int item_kind = PipelineWorkItem::RAY_TRACING;
+            auto &[self, device] = *reinterpret_cast<CreateAllState *>(user_ptr);
+
+            if (item_index >= self->ray_tracing_pipelines.size) {
+                item_index -= self->ray_tracing_pipelines.size;
+                item_kind = PipelineWorkItem::RASTER;
+            }
+            if (item_index >= self->raster_pipelines.size) {
+                item_index -= self->raster_pipelines.size;
+                item_kind = PipelineWorkItem::COMPUTE;
+            }
+
+            switch (item_kind) {
+            case PipelineWorkItem::RAY_TRACING:
+                create_ray_tracing_pipeline(self, *device, self->ray_tracing_pipelines[item_index]);
+                break;
+            case PipelineWorkItem::RASTER:
+                create_raster_pipeline(self, *device, self->raster_pipelines[item_index]);
+                break;
+            case PipelineWorkItem::COMPUTE:
+                create_compute_pipeline(self, *device, self->compute_pipelines[item_index]);
+                break;
+            default:
+                break;
+            }
+        },
+        &state);
 }
 
 // --- hot reload ------------------------------------------------------------

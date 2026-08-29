@@ -30,7 +30,7 @@ using glm::clamp;
 #define PLAYER_MAX_SUB_STEPS 8
 #define PLAYER_COYOTE_FRAMES 6
 #define PLAYER_MAX_UNSTICK_VOXELS 12
-#define PLAYER_SPAWN_SEARCH_METERS 64.0f
+#define PLAYER_SPAWN_SEARCH_METERS 16.0f
 
 // Components below this are treated as no movement at all. Attempting a zero-length move
 // "succeeds" without going anywhere, which would silently eat the input.
@@ -215,10 +215,10 @@ void player_perframe(PlayerInput &INPUT, Player &PLAYER) {
         PLAYER.flags &= ~PLAYER_FLAG_NEEDS_SPAWN;
         // The startup position isn't guaranteed to be in open air, so walk upwards from
         // it until we find somewhere with headroom to stand and solid ground underfoot.
-        const int32_t max_steps = int32_t(PLAYER_SPAWN_SEARCH_METERS * VOXEL_SCL);
+        const int32_t max_steps = int32_t(PLAYER_SPAWN_SEARCH_METERS / player_height);
         for (int32_t step = 0; step < max_steps; ++step) {
             auto spawn_pos = PLAYER.pos;
-            spawn_pos.z += float(step) * VOXEL_SIZE;
+            spawn_pos.z += player_height * step;
             auto box = player_box(spawn_pos, collide_half_width, player_height);
             if (box_blocked(voxel_world, box))
                 continue;

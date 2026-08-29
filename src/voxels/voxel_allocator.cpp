@@ -237,23 +237,19 @@ void destroy_voxel_allocator(VoxelAllocator *self) {
 // plain `new VoxelBrick()` path gives callers.
 
 VoxelBrick *alloc_brick(VoxelAllocator *self) {
-    PROFILE_FUNC();
     return new (pool_alloc(self->brick_pool)) VoxelBrick();
 }
 
 void free_brick(VoxelAllocator *self, VoxelBrick *brick) {
-    PROFILE_FUNC();
     if (brick != nullptr)
         pool_free(self->brick_pool, brick);
 }
 
 VoxelShadingAttribBrick *alloc_render_brick(VoxelAllocator *self) {
-    PROFILE_FUNC();
     return new (pool_alloc(self->attrib_pool)) VoxelShadingAttribBrick();
 }
 
 void free_render_brick(VoxelAllocator *self, VoxelShadingAttribBrick *render_brick) {
-    PROFILE_FUNC();
     if (render_brick != nullptr)
         pool_free(self->attrib_pool, render_brick);
 }
