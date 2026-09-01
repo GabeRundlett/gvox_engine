@@ -230,3 +230,9 @@ void thread_pool::parallel_for(int count, IndexedFunc *func, void *user_ptr) {
     }
     s_instance.blocking_dispatch(std::make_shared<IndexedTask>(func, user_ptr, static_cast<uint32_t>(count)));
 }
+
+void thread_pool::serial_for(int count, IndexedFunc *func, void *user_ptr) {
+    for (int i = 0; i < count; ++i) {
+        func(user_ptr, i);
+    }
+}

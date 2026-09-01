@@ -21,8 +21,8 @@ struct AnimationPlayground {
     daxa::BufferId bricks_readback_buffer{};
     daxa::BufferId brick_attribs_readback_buffer{};
 
-    glm::ivec3 grid_dims_bricks{24, 24, 27};
-    int frame_count = 1;
+    glm::ivec3 grid_dims_bricks{26, 26, 32};
+    int frame_count = 32;
     bool dirty = true;
 
     size_t total_brick_count = 0;

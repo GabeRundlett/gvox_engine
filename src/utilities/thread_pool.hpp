@@ -18,4 +18,5 @@ namespace thread_pool {
     // blocks until all have finished. The calling thread participates.
     using IndexedFunc = void(void *, int);
     void parallel_for(int count, IndexedFunc *func, void *user_ptr);
+    void serial_for(int count, IndexedFunc *func, void *user_ptr);
 } // namespace thread_pool

@@ -143,6 +143,15 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
     vec3 trunk_space = pos_tree_space;
     float trunk_dist = sd_oak_branch(trunk_pos, 10.0, 1, 0.0, trunk_material, trunk_space);
 
+    FractalNoiseConfig wind_noise_conf = FractalNoiseConfig(
+        /* .amplitude   = */ 1.0,
+        /* .persistance = */ 0.3,
+        /* .scale       = */ 1.,
+        /* .lacunarity  = */ 2.5,
+        /* .octaves     = */ 1);
+    vec4 wind_noise_val = fractal_noise(g_value_noise_tex, g_sampler_llr, pos_tree_space + vec3(sin(loop_t * M_PI) * 0.5, cos(loop_t * M_TAU), 0), wind_noise_conf);
+    float wind_noise = (wind_noise_val.x - 0.2) * 0.015 * max(trunk_dist-1.5,0) * max(trunk_dist-1.5,0);
+
     if (trunk_dist < min_dist) {
         min_dist = trunk_dist;
         material = trunk_material;
@@ -161,16 +170,17 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
     vec3 leaf_normal_local;
     float leaf_dist;
 
-    const float spin_sway = 0.01;
+    const float wind_branch_tilt = 0.007;
     const float smooth_blend = 0.5;
 
     branch_pos = trunk_pos;
+    branch_pos += vec3(wind_noise, 0, 0);
     pre_xz = branch_pos.xz;
     id = mod_polar(branch_pos.xz, 6.0);
     post_xz = branch_pos.xz;
     rand = good_rand(id * 736.884);
     branch_pos.y -= 4.0 + 1.0 * rand;
-    branch_tilt_angle = -M_PI * (0.32 + rand * 0.1) + sin(loop_t * M_TAU + rand * 2) * 0.01;
+    branch_tilt_angle = -M_PI * (0.32 + rand * 0.1) + sin(loop_t * M_TAU + rand * 179) * wind_branch_tilt;
     rotate2d(branch_pos.xy, branch_tilt_angle);
 
     vec3 branch_space = pos_tree_space;
@@ -224,13 +234,14 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
     min_branch_dist = sd_smooth_union(branch_dist, min_branch_dist, smooth_blend);
 
     branch_pos = trunk_pos;
+    branch_pos += vec3(wind_noise, 0, 0);
     pre_xz = branch_pos.xz;
     rotate2d(branch_pos.xz, -M_PI * 0.35);
     id = mod_polar(branch_pos.xz, 5.0);
     post_xz = branch_pos.xz;
     rand = good_rand(id * 736.884);
     branch_pos.y -= 7.5 + 1.0 * rand;
-    branch_tilt_angle = -M_PI * (0.35 - rand * 0.05) + sin(loop_t * M_TAU + rand * 2) * 0.015;
+    branch_tilt_angle = -M_PI * (0.35 - rand * 0.05) + sin(loop_t * M_TAU + rand * 179) * wind_branch_tilt * 1.5;
     rotate2d(branch_pos.xy, branch_tilt_angle);
 
     branch_dist = sd_oak_branch(branch_pos, 5.0, 0.0, branch_material, branch_space);
@@ -251,13 +262,14 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
     }
 
     branch_pos = trunk_pos;
+    branch_pos += vec3(wind_noise, 0, 0);
     pre_xz = branch_pos.xz;
     rotate2d(branch_pos.xz, -M_PI * 0.65);
     id = mod_polar(branch_pos.xz, 3.0);
     post_xz = branch_pos.xz;
     rand = good_rand(id * 736.884);
     branch_pos.y -= 9.5 + 0.5 * rand;
-    branch_tilt_angle = -M_PI * (0.22 - 0.1 * rand) + sin(loop_t * M_TAU + rand * 2) * 0.020;
+    branch_tilt_angle = -M_PI * (0.22 - 0.1 * rand) + sin(loop_t * M_TAU + rand * 179) * wind_branch_tilt * 2;
     rotate2d(branch_pos.xy, branch_tilt_angle);
 
     branch_dist = sd_oak_branch(branch_pos, 4.0, 0.0, branch_material, branch_space);
@@ -335,7 +347,7 @@ void main() {
     // voxel_pos = p * 0.4;
     // brush_fern(voxel, shape_seed, loop_t);
 
-    voxel_pos = p * 0.08;
+    voxel_pos = p * VOXEL_SIZE;
     bool solid = voxel.material_type != 0u;
     voxel.material_type = 0;
 

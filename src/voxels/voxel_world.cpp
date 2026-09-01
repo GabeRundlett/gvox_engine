@@ -289,7 +289,7 @@ exit_2:
                             auto voxel_object = frames[current_frame_int];
 
                             auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
-                            auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size.x, grid_size.y, 6) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
+                            auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size.x, grid_size.y, 9) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
                             // auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size;
                             auto tint = hsv2rgb(glm::vec3(0.1, float(rand() % 100) / 100.f * 0.25f + 0.75f, 1));
                             // auto tint = glm::vec3(1);
@@ -540,9 +540,17 @@ void generate_chunk(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32_
 static auto hash_combine(uint64_t h1, uint64_t h2) -> uint64_t {
     return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
 }
+static uint good_rand_hash(uint x) {
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
 
-uvec2 rand3(uvec2 pos) {
-    uint index = hash_combine(pos.x, pos.y);
+uvec2 rand2(uvec2 pos) {
+    uint index = hash_combine(good_rand_hash(pos.x), good_rand_hash(pos.y));
     return uvec2(
         hash_combine(index, index + 0),
         hash_combine(index, index + 1));
@@ -732,12 +740,14 @@ void generate_chunk2(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi, int32
                                             (uint32_t *)render_attrib_brick->voxels, (uint32_t *)brick->foliage_bitmask, &noise_settings, RANDOM_VALUES.data());
                         has_render_attribs = true;
                         auto pos = (glm::vec3(chunk_xi, chunk_yi, chunk_zi) * float(CHUNK_SIZE_BRICKS) + glm::vec3(brick_xi, brick_yi, brick_zi)) * float(BRICK_SIZE) * VOXEL_SIZE;
+                        auto brick_ws_xi = brick_xi + chunk_xi * CHUNK_SIZE_BRICKS;
+                        auto brick_ws_yi = brick_yi + chunk_yi * CHUNK_SIZE_BRICKS;
 
-                        if ((uvec2(brick_xi, brick_yi) & 0x15u) == (rand3(uvec2(chunk_xi, chunk_yi)) & 0x15u)) {
+                        if (glm::all(glm::equal(uvec2(brick_ws_xi, brick_ws_yi) % 16u, rand2(uvec2(brick_ws_xi/16, brick_ws_yi/16)) % 16u))) {
                             auto low_pass_noise = noise_settings;
                             low_pass_noise.octaves -= 3;
                             float upwards = generate_upwards(brick_xi, brick_yi, brick_zi, chunk_xi, chunk_yi, chunk_zi, level, &low_pass_noise, RANDOM_VALUES.data());
-                            if (chunk.surface_entity_candidates.size == 0 && upwards > 0.99f)
+                            if (chunk.surface_entity_candidates.size == 0 && upwards > 0.95f)
                                 chunk.surface_entity_candidates.push_back(brick->brick_i);
                         }
 

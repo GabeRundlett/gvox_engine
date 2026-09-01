@@ -179,94 +179,105 @@ void AnimationPlayground::regenerate(float time) {
     frames.resize(frame_count, nullptr);
     total_brick_count = 0;
 
-    for (int frame_i = 0; frame_i < frame_count; ++frame_i) {
-        PROFILE_SCOPE("Build CPU frame from readback");
+    struct FrameJobState {
+        AnimationPlayground *self;
+        std::atomic_int atomic_brick_count;
+    };
+    FrameJobState state = {this, 0};
 
-        auto *voxel_object = new VoxelObject();
-        voxel_object->allocator = voxel_allocator;
-        voxel_object->brick_min = {0, 0, 0};
-        voxel_object->brick_max = grid_dims_bricks - glm::ivec3(1, 1, 1);
+    thread_pool::parallel_for(
+        frame_count,
+        +[](void *user_ptr, int frame_i) {
+            PROFILE_SCOPE("Build CPU frame from readback");
+            auto &[self, total_brick_count] = *(FrameJobState *)user_ptr;
 
-        auto const grid_size = voxel_object->brick_max - voxel_object->brick_min + glm::ivec3(1, 1, 1);
-        voxel_object->brick_grid.resize(grid_size.x * grid_size.y * grid_size.z);
+            auto *voxel_object = new VoxelObject();
+            voxel_object->allocator = self->voxel_allocator;
+            voxel_object->brick_min = {0, 0, 0};
+            voxel_object->brick_max = self->grid_dims_bricks - glm::ivec3(1, 1, 1);
 
-        struct JobState {
-            AnimationPlayground *self;
-            std::atomic_int local_total_brick_count;
-            int frame_i;
-            VoxelObject *voxel_object;
-        };
-        JobState state = {this, 0, frame_i, voxel_object};
+            auto const grid_size = voxel_object->brick_max - voxel_object->brick_min + glm::ivec3(1, 1, 1);
+            voxel_object->brick_grid.resize(grid_size.x * grid_size.y * grid_size.z);
 
-        thread_pool::parallel_for(
-            grid_dims_bricks.x * grid_dims_bricks.y * grid_dims_bricks.z,
-            +[](void *user_ptr, int i) {
-                auto &[self, local_total_brick_count, frame_i, voxel_object] = *(JobState *)user_ptr;
-                int bx = i % self->grid_dims_bricks.x;
-                int by = i / self->grid_dims_bricks.x % self->grid_dims_bricks.y;
-                int bz = i / self->grid_dims_bricks.x / self->grid_dims_bricks.y;
+            struct BrickJobState {
+                AnimationPlayground *self;
+                std::atomic_int atomic_brick_count;
+                int frame_i;
+                VoxelObject *voxel_object;
+            };
+            BrickJobState state = {self, 0, frame_i, voxel_object};
 
-                glm::ivec3 const brick_pos = {bx, by, bz};
-                auto const bricks_per_frame = static_cast<uint32_t>(self->grid_dims_bricks.x * self->grid_dims_bricks.y * self->grid_dims_bricks.z);
-                auto const brick_index_in_frame = static_cast<size_t>(bx) + static_cast<size_t>(by) * static_cast<size_t>(self->grid_dims_bricks.x) + static_cast<size_t>(bz) * static_cast<size_t>(self->grid_dims_bricks.x) * static_cast<size_t>(self->grid_dims_bricks.y);
+            thread_pool::serial_for(
+                self->grid_dims_bricks.x * self->grid_dims_bricks.y * self->grid_dims_bricks.z,
+                +[](void *user_ptr, int i) {
+                    auto &[self, atomic_brick_count, frame_i, voxel_object] = *(BrickJobState *)user_ptr;
+                    int bx = i % self->grid_dims_bricks.x;
+                    int by = i / self->grid_dims_bricks.x % self->grid_dims_bricks.y;
+                    int bz = i / self->grid_dims_bricks.x / self->grid_dims_bricks.y;
 
-                auto const brick_index = static_cast<size_t>(frame_i) * static_cast<size_t>(bricks_per_frame) + brick_index_in_frame;
-                auto &device = self->gpu_context.device;
+                    glm::ivec3 const brick_pos = {bx, by, bz};
+                    auto const bricks_per_frame = static_cast<uint32_t>(self->grid_dims_bricks.x * self->grid_dims_bricks.y * self->grid_dims_bricks.z);
+                    auto const brick_index_in_frame = static_cast<size_t>(bx) + static_cast<size_t>(by) * static_cast<size_t>(self->grid_dims_bricks.x) + static_cast<size_t>(bz) * static_cast<size_t>(self->grid_dims_bricks.x) * static_cast<size_t>(self->grid_dims_bricks.y);
 
-                auto const *bricks_host = device.buffer_host_address_as<BrickPrimitive>(self->bricks_readback_buffer).value();
-                auto const *attribs_host = device.buffer_host_address_as<VoxelShadingAttribBrick>(self->brick_attribs_readback_buffer).value();
+                    auto const brick_index = static_cast<size_t>(frame_i) * static_cast<size_t>(bricks_per_frame) + brick_index_in_frame;
+                    auto &device = self->gpu_context.device;
 
-                auto const &src_primitive = bricks_host[brick_index];
+                    auto const *bricks_host = device.buffer_host_address_as<BrickPrimitive>(self->bricks_readback_buffer).value();
+                    auto const *attribs_host = device.buffer_host_address_as<VoxelShadingAttribBrick>(self->brick_attribs_readback_buffer).value();
 
-                bool any_solid = false;
-                for (auto byte : src_primitive.bitmap) {
-                    any_solid = any_solid || (byte != uint8_t(0));
-                }
-                if (!any_solid) {
-                    return;
-                }
+                    auto const &src_primitive = bricks_host[brick_index];
 
-                local_total_brick_count++;
+                    bool any_solid = false;
+                    for (auto byte : src_primitive.bitmap) {
+                        any_solid = any_solid || (byte != uint8_t(0));
+                    }
+                    if (!any_solid) {
+                        return;
+                    }
 
-                auto *brick = voxel_object->alloc_brick();
-                brick->brick_i = brick_pos;
-                brick->metadata = 0;
-                static_assert(sizeof(brick->bitmask) == sizeof(src_primitive.bitmap));
-                std::memcpy(brick->bitmask, src_primitive.bitmap, sizeof(brick->bitmask));
+                    atomic_brick_count++;
 
-                brick->voxel_min = glm::u8vec3(BRICK_SIZE, BRICK_SIZE, BRICK_SIZE);
-                brick->voxel_max = glm::u8vec3(0, 0, 0);
-                for (int z = 0; z < BRICK_SIZE; ++z) {
-                    for (int y = 0; y < BRICK_SIZE; ++y) {
-                        auto const byte = src_primitive.bitmap[z * BRICK_SIZE + y];
-                        if (byte == uint8_t(0)) {
-                            continue;
-                        }
-                        for (int x = 0; x < BRICK_SIZE; ++x) {
-                            if (((uint32_t(byte) >> x) & 1u) == 0u) {
+                    auto *brick = voxel_object->alloc_brick();
+                    brick->brick_i = brick_pos;
+                    brick->metadata = 0;
+                    static_assert(sizeof(brick->bitmask) == sizeof(src_primitive.bitmap));
+                    std::memcpy(brick->bitmask, src_primitive.bitmap, sizeof(brick->bitmask));
+
+                    brick->voxel_min = glm::u8vec3(BRICK_SIZE, BRICK_SIZE, BRICK_SIZE);
+                    brick->voxel_max = glm::u8vec3(0, 0, 0);
+                    for (int z = 0; z < BRICK_SIZE; ++z) {
+                        for (int y = 0; y < BRICK_SIZE; ++y) {
+                            auto const byte = src_primitive.bitmap[z * BRICK_SIZE + y];
+                            if (byte == uint8_t(0)) {
                                 continue;
                             }
-                            brick->voxel_min = glm::min(brick->voxel_min, glm::u8vec3(x, y, z));
-                            brick->voxel_max = glm::max(brick->voxel_max, glm::u8vec3(x, y, z));
+                            for (int x = 0; x < BRICK_SIZE; ++x) {
+                                if (((uint32_t(byte) >> x) & 1u) == 0u) {
+                                    continue;
+                                }
+                                brick->voxel_min = glm::min(brick->voxel_min, glm::u8vec3(x, y, z));
+                                brick->voxel_max = glm::max(brick->voxel_max, glm::u8vec3(x, y, z));
+                            }
                         }
                     }
-                }
 
-                brick->render_attribs = voxel_object->alloc_render_brick();
-                std::memcpy(brick->render_attribs, &attribs_host[brick_index], sizeof(VoxelShadingAttribBrick));
+                    brick->render_attribs = voxel_object->alloc_render_brick();
+                    std::memcpy(brick->render_attribs, &attribs_host[brick_index], sizeof(VoxelShadingAttribBrick));
 
-                voxel_object->brick_grid[voxel_object->get_brick_index(brick_pos)] = brick;
-            },
-            &state);
+                    voxel_object->brick_grid[voxel_object->get_brick_index(brick_pos)] = brick;
+                },
+                &state);
 
-        total_brick_count += state.local_total_brick_count;
+            total_brick_count += state.atomic_brick_count;
 
-        voxel_object->render_voxel_object = create_render_voxel_object(render_scene);
-        voxel_object->render_dirty = true;
-        update_render_voxel_object(gpu_context, voxel_object);
+            voxel_object->render_voxel_object = create_render_voxel_object(self->render_scene);
+            voxel_object->render_dirty = true;
+            update_render_voxel_object(self->gpu_context, voxel_object);
+            self->frames[frame_i] = voxel_object;
+        },
+        &state);
 
-        frames[frame_i] = voxel_object;
-    }
+    total_brick_count += state.atomic_brick_count;
 }
 
 void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) {

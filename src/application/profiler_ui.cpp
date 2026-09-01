@@ -11,6 +11,22 @@ namespace {
     constexpr float ROW_PADDING = 2.0f;
     constexpr float OVERVIEW_HEIGHT = 60.0f;
 
+    constexpr float STARTUP_BAR_WIDTH = 22.0f;
+    constexpr float STARTUP_BAR_GAP = 6.0f;
+
+    // ImDrawList has no rotated text, so "START" is drawn as stacked
+    // single characters running down the bar.
+    void draw_vertical_label(ImDrawList *draw_list, ImVec2 top_center, char const *text, ImU32 color) {
+        auto const line_height = ImGui::GetTextLineHeight();
+        float y = top_center.y;
+        for (char const *c = text; *c != '\0'; ++c) {
+            char const glyph[2] = {*c, '\0'};
+            auto const glyph_size = ImGui::CalcTextSize(glyph);
+            draw_list->AddText(ImVec2(top_center.x - glyph_size.x * 0.5f, y), color, glyph);
+            y += line_height;
+        }
+    }
+
     // Deterministic name -> color mapping, so a given zone name always gets
     // the same color across frames (makes the timeline easier to scan).
     auto color_for_name(char const *name) -> ImU32 {
@@ -71,13 +87,14 @@ void ProfilerUi::update(GpuContext &gpu_context) {
     if (!paused) {
         auto const slot_index = frame_count % static_cast<uint64_t>(FRAME_HISTORY_COUNT);
         auto const thread_count = std::min<uint64_t>(profiler_get_thread_count() + 1, static_cast<uint64_t>(MAX_DISPLAYED_THREADS));
-        frame_thread_counts[slot_index] = thread_count;
+
+        auto *lanes = startup_captured ? frames[slot_index] : startup_frames;
 
         float duration = 0.0f;
         for (uint64_t t = 0; t < thread_count; ++t) {
-            auto &slot = frames[slot_index][t];
+            auto &slot = lanes[t];
             if (t == thread_count - 1)
-                gpu_context.get_timestamps(frames[slot_index][t]);
+                gpu_context.get_timestamps(slot);
             else
                 profiler_resolve_frame(slot, t);
             for (int i = 0; i < slot.size; ++i) {
@@ -88,11 +105,18 @@ void ProfilerUi::update(GpuContext &gpu_context) {
         // Clear any lanes that were in use in a previous occupant of this ring
         // buffer slot but aren't active anymore, so stale data doesn't linger.
         for (uint64_t t = thread_count; t < static_cast<uint64_t>(MAX_DISPLAYED_THREADS); ++t) {
-            frames[slot_index][t].clear();
+            lanes[t].clear();
         }
-        frame_durations[slot_index] = duration;
 
-        ++frame_count;
+        if (!startup_captured) {
+            startup_thread_count = thread_count;
+            startup_duration = duration;
+            startup_captured = true;
+        } else {
+            frame_thread_counts[slot_index] = thread_count;
+            frame_durations[slot_index] = duration;
+            ++frame_count;
+        }
     } else {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(10ms);
@@ -126,7 +150,7 @@ void ProfilerUi::ui_timeline() {
     auto const overview_size = ImVec2(ImGui::GetContentRegionAvail().x, OVERVIEW_HEIGHT);
     if (overview_size.x <= 0 || overview_size.y <= 0)
         return;
-    
+
     float avg_duration = 0;
     for (uint64_t i = 0; i < 10; ++i) {
         auto const frame_index = frame_count - 10 + i;
@@ -172,6 +196,7 @@ void ProfilerUi::draw_contents() {
     auto const history_size = std::min<uint64_t>(frame_count, static_cast<uint64_t>(FRAME_HISTORY_COUNT));
     auto const oldest_frame = frame_count - history_size;
     auto const latest_frame = frame_count - 1;
+    bool show_startup = selected_frame == STARTUP_FRAME;
     auto display_frame = selected_frame < 0 ? latest_frame : static_cast<uint64_t>(selected_frame);
     display_frame = std::clamp(display_frame, oldest_frame, latest_frame);
 
@@ -181,10 +206,12 @@ void ProfilerUi::draw_contents() {
         if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) && display_frame > oldest_frame) {
             selected_frame = static_cast<int64_t>(display_frame - 1);
             display_frame -= 1;
+            show_startup = false;
         }
         if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
-            selected_frame = (display_frame + 1 >= latest_frame) ? -1 : static_cast<int64_t>(display_frame + 1);
+            selected_frame = (display_frame + 1 >= latest_frame) ? LATEST_FRAME : static_cast<int64_t>(display_frame + 1);
             display_frame = selected_frame < 0 ? latest_frame : static_cast<uint64_t>(selected_frame);
+            show_startup = false;
         }
     }
 
@@ -199,22 +226,37 @@ void ProfilerUi::draw_contents() {
     auto *overview_draw_list = ImGui::GetWindowDrawList();
     overview_draw_list->AddRectFilled(overview_min, overview_max, IM_COL32(20, 20, 20, 255));
 
+    auto const startup_span = startup_captured ? (STARTUP_BAR_WIDTH + STARTUP_BAR_GAP) : 0.0f;
+    auto const frames_x0 = overview_min.x + startup_span;
+    auto const frames_width = std::max(overview_size.x - startup_span, 1.0f);
+
+    if (startup_captured) {
+        auto const color = show_startup ? IM_COL32(255, 210, 60, 255) : IM_COL32(220, 140, 40, 255);
+        overview_draw_list->AddRectFilled(
+            ImVec2(overview_min.x, overview_min.y),
+            ImVec2(overview_min.x + STARTUP_BAR_WIDTH, overview_max.y), color);
+        draw_vertical_label(
+            overview_draw_list,
+            ImVec2(overview_min.x + STARTUP_BAR_WIDTH * 0.5f, overview_min.y + 3.0f),
+            "START", IM_COL32(0, 0, 0, 255));
+    }
+
     float max_duration = 1.0f;
     for (uint64_t i = 0; i < history_size; ++i) {
         max_duration = std::max(max_duration, frame_durations[(oldest_frame + i) % static_cast<uint64_t>(FRAME_HISTORY_COUNT)]);
     }
 
-    auto const bar_width = overview_size.x / static_cast<float>(history_size);
+    auto const bar_width = frames_width / static_cast<float>(history_size);
     for (uint64_t i = 0; i < history_size; ++i) {
         auto const frame_index = oldest_frame + i;
         auto const duration = frame_durations[frame_index % static_cast<uint64_t>(FRAME_HISTORY_COUNT)];
         auto const height_frac = std::clamp(duration / max_duration, 0.0f, 1.0f);
-        auto const x0 = overview_min.x + static_cast<float>(i) * bar_width;
+        auto const x0 = frames_x0 + static_cast<float>(i) * bar_width;
         auto const x1 = x0 + std::max(bar_width - 1.0f, 1.0f);
         auto const y1 = overview_max.y;
         auto const y0 = y1 - height_frac * overview_size.y;
 
-        bool const is_shown = frame_index == display_frame;
+        bool const is_shown = !show_startup && frame_index == display_frame;
         auto color = duration > (1000.0f / 60.0f) ? IM_COL32(230, 80, 80, 255) : IM_COL32(100, 200, 100, 255);
         if (is_shown) {
             color = IM_COL32(255, 210, 60, 255);
@@ -224,12 +266,21 @@ void ProfilerUi::draw_contents() {
 
     if (ImGui::IsItemHovered()) {
         auto const mouse_x = ImGui::GetIO().MousePos.x - overview_min.x;
-        auto const hovered_i = static_cast<uint64_t>(std::clamp(mouse_x / bar_width, 0.0f, static_cast<float>(history_size - 1)));
-        auto const hovered_frame = oldest_frame + hovered_i;
-        ImGui::SetTooltip("frame %llu: %.3f ms", static_cast<unsigned long long>(hovered_frame), static_cast<double>(frame_durations[hovered_frame % static_cast<uint64_t>(FRAME_HISTORY_COUNT)]));
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            selected_frame = static_cast<int64_t>(hovered_frame);
-            display_frame = hovered_frame;
+        if (startup_captured && mouse_x < STARTUP_BAR_WIDTH) {
+            ImGui::SetTooltip("startup: %.3f ms", static_cast<double>(startup_duration));
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                selected_frame = STARTUP_FRAME;
+                show_startup = true;
+            }
+        } else {
+            auto const hovered_i = static_cast<uint64_t>(std::clamp((mouse_x - startup_span) / bar_width, 0.0f, static_cast<float>(history_size - 1)));
+            auto const hovered_frame = oldest_frame + hovered_i;
+            ImGui::SetTooltip("frame %llu: %.3f ms", static_cast<unsigned long long>(hovered_frame), static_cast<double>(frame_durations[hovered_frame % static_cast<uint64_t>(FRAME_HISTORY_COUNT)]));
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                selected_frame = static_cast<int64_t>(hovered_frame);
+                display_frame = hovered_frame;
+                show_startup = false;
+            }
         }
     }
 
@@ -237,14 +288,17 @@ void ProfilerUi::draw_contents() {
     // width, so a SameLine() right after it pushes them off-screen.
     if (ImGui::Button("< Prev") && display_frame > oldest_frame) {
         selected_frame = static_cast<int64_t>(display_frame - 1);
+        show_startup = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Next >")) {
-        selected_frame = (display_frame + 1 >= latest_frame) ? -1 : static_cast<int64_t>(display_frame + 1);
+        selected_frame = (display_frame + 1 >= latest_frame) ? LATEST_FRAME : static_cast<int64_t>(display_frame + 1);
+        show_startup = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Follow Latest")) {
-        selected_frame = -1;
+        selected_frame = LATEST_FRAME;
+        show_startup = false;
     }
     ImGui::SameLine();
     ImGui::TextDisabled("(left/right arrows step frames, mouse wheel zooms, click+drag pans)");
@@ -255,10 +309,15 @@ void ProfilerUi::draw_contents() {
     display_frame = std::clamp(display_frame, oldest_frame, latest_frame);
 
     auto const slot_index = display_frame % static_cast<uint64_t>(FRAME_HISTORY_COUNT);
-    auto const thread_count = frame_thread_counts[slot_index];
-    auto const frame_duration = std::max(frame_durations[slot_index], 0.001f);
+    auto const *lanes = show_startup ? startup_frames : frames[slot_index];
+    auto const thread_count = show_startup ? startup_thread_count : frame_thread_counts[slot_index];
+    auto const frame_duration = std::max(show_startup ? startup_duration : frame_durations[slot_index], 0.001f);
 
-    ImGui::Text("Frame %llu - %.3f ms - %llu thread%s", static_cast<unsigned long long>(display_frame), static_cast<double>(frame_duration), static_cast<unsigned long long>(thread_count), thread_count == 1 ? "" : "s");
+    if (show_startup) {
+        ImGui::Text("Startup - %.3f ms - %llu thread%s", static_cast<double>(frame_duration), static_cast<unsigned long long>(thread_count), thread_count == 1 ? "" : "s");
+    } else {
+        ImGui::Text("Frame %llu - %.3f ms - %llu thread%s", static_cast<unsigned long long>(display_frame), static_cast<double>(frame_duration), static_cast<unsigned long long>(thread_count), thread_count == 1 ? "" : "s");
+    }
 
     // Height of each thread's lane (just its call-stack depth: the thread ID
     // is drawn in a gutter to the left instead of a row above), stacked
@@ -267,7 +326,7 @@ void ProfilerUi::draw_contents() {
     int thread_depths[MAX_DISPLAYED_THREADS] = {};
     float total_height = 0.0f;
     for (uint64_t t = 0; t < thread_count; ++t) {
-        auto const &zones = frames[slot_index][t];
+        auto const &zones = lanes[t];
         int depth = 0;
         for (int i = 0; i < zones.size; ++i) {
             depth = std::max(depth, max_depth_of(zones[i]));
@@ -339,7 +398,7 @@ void ProfilerUi::draw_contents() {
 
     float y_offset = 0.0f;
     for (uint64_t t = 0; t < thread_count; ++t) {
-        auto const &zones = frames[slot_index][t];
+        auto const &zones = lanes[t];
         auto const thread_origin = ImVec2(origin.x, origin.y + y_offset);
         for (int i = 0; i < zones.size; ++i) {
             draw_zone(flamegraph_draw_list, thread_origin, px_per_ms, zones[i], 0);
