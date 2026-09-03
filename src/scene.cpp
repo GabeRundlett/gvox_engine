@@ -184,7 +184,7 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
                 auto pos = glm::vec3(xi, yi, zi) * float(BRICK_SIZE) * VOXEL_SIZE * glm::vec3(grid_size);
                 auto tint = hsv2rgb(glm::vec3(float(rand() % 100) / 100, 0.9f + float(rand() % 100) / 1000, 0.9));
                 // auto tint = glm::vec3(1);
-                draw_voxel_object(voxel_object, pos - 1000.0f, {}, VOXEL_SIZE, tint);
+                draw_voxel_object(voxel_object, pos - 1000.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, tint);
 
                 // Box box;
                 // box.p0_x = pos.x;

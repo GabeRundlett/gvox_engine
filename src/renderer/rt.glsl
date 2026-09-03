@@ -44,6 +44,7 @@ Voxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxe
 
     Voxel voxel = unpack_voxel(packed_voxel);
     voxel.albedo *= deref(voxel_object).tint;
+    voxel.normal = deref(voxel_object).rotation * voxel.normal;
 
     // switch (nrm)
     // {
@@ -162,7 +163,7 @@ hitAttributeEXT VoxelHit hit;
 void main() {
     daxa_BufferPtr(GpuVoxelObject) voxelObject = advance(push.uses.voxel_object_manifests, gl_InstanceID);
     daxa_BufferPtr(BrickPrimitive) brickPrimitivePtr = advance(deref(voxelObject).brick_primitives, gl_PrimitiveID);
-    const float scale = 1; // deref(brickPrimitivePtr).scale;
+    const float scale = 1;
     const vec3 voxelOffset = vec3(deref(brickPrimitivePtr).offset & BRICK_MASK) * scale;
     const vec3 brickOffset = vec3(deref(brickPrimitivePtr).offset & ~BRICK_MASK) * scale;
     vec3 size = vec3(float(deref(brickPrimitivePtr).size_x), float(deref(brickPrimitivePtr).size_y), float(deref(brickPrimitivePtr).size_z)) * scale;

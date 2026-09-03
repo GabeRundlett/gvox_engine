@@ -28,6 +28,7 @@ struct AnimationPlayground {
     size_t total_brick_count = 0;
 
     glm::vec3 playground_pos = glm::vec3{0.0f, 0.0f, 0.0f};
+    glm::vec3 playground_rot = glm::vec3{0.0f, 0.0f, 0.0f};
 
     Vec<VoxelObject *> frames;
 

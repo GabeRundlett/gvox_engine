@@ -52,6 +52,7 @@ struct GpuVoxelObject {
     daxa_f32vec3 aabb_max;
     daxa_f32vec3 pos;
     float scale;
+    daxa_f32mat3x3 rotation;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuVoxelObject, 8)
 

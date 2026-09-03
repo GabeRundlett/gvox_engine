@@ -102,13 +102,29 @@ float sd_oak_leaves(vec3 branch_pos, float branch_len, vec2 pre_xz, vec2 post_xz
 
     vec3 leaves_pos = branch_pos - vec3(0, branch_len, 0);
     float leaves_dist = sd_sphere(leaves_pos, bundle_radius);
-
-    leaves_dist = min(leaves_dist, sd_sphere(leaves_pos - vec3(0, 0, 1.2), bundle_radius * 0.9));
-    leaves_dist = min(leaves_dist, sd_sphere(leaves_pos - vec3(0, 0, -1.2), bundle_radius * 0.8));
-    leaves_dist = min(leaves_dist, sd_sphere(leaves_pos - vec3(0, 1, 0), bundle_radius * 0.7));
-    leaves_dist = min(leaves_dist, sd_sphere(leaves_pos - vec3(1, 0, 0), bundle_radius * 0.7));
-
     vec3 n = normalize(leaves_pos);
+
+    float new_leaves_dist = 0;
+    new_leaves_dist = sd_sphere(leaves_pos - vec3(0, 0, 1.2), bundle_radius * 0.9);
+    if (new_leaves_dist < leaves_dist)
+        n = normalize(leaves_pos - vec3(0, 0, 1.2));
+    leaves_dist = min(leaves_dist, new_leaves_dist);
+    
+    new_leaves_dist = sd_sphere(leaves_pos - vec3(0, 0, -1.2), bundle_radius * 0.9);
+    if (new_leaves_dist < leaves_dist)
+        n = normalize(leaves_pos - vec3(0, 0, -1.2));
+    leaves_dist = min(leaves_dist, new_leaves_dist);
+    
+    new_leaves_dist = sd_sphere(leaves_pos - vec3(0, 1, 0), bundle_radius * 0.9);
+    if (new_leaves_dist < leaves_dist)
+        n = normalize(leaves_pos - vec3(0, 1, 0));
+    leaves_dist = min(leaves_dist, new_leaves_dist);
+    
+    new_leaves_dist = sd_sphere(leaves_pos - vec3(1, 0, 0), bundle_radius * 0.9);
+    if (new_leaves_dist < leaves_dist)
+        n = normalize(leaves_pos - vec3(1, 0, 0));
+    leaves_dist = min(leaves_dist, new_leaves_dist);
+
     vec2 nxy = n.xy;
     rotate2d(nxy, -branch_tilt_angle);
     n.xy = nxy;
@@ -150,7 +166,7 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
         /* .lacunarity  = */ 2.5,
         /* .octaves     = */ 1);
     vec4 wind_noise_val = fractal_noise(g_value_noise_tex, g_sampler_llr, pos_tree_space + vec3(sin(loop_t * M_PI) * 0.5, cos(loop_t * M_TAU), 0), wind_noise_conf);
-    float wind_noise = (wind_noise_val.x - 0.2) * 0.015 * max(trunk_dist-1.5,0) * max(trunk_dist-1.5,0);
+    float wind_noise = (wind_noise_val.x - 0.2) * 0.015 * max(trunk_dist - 1.5, 0) * max(trunk_dist - 1.5, 0);
 
     if (trunk_dist < min_dist) {
         min_dist = trunk_dist;
@@ -365,7 +381,7 @@ void main() {
             voxel.normal = sd_oak_tree_normal(voxel_pos.xzy, loop_t, 0.001).xzy;
             voxel.albedo = vec3(0.102, 0.070, 0.045) * 2;
 
-            float angle = tree_material.z * 8 + good_rand(tree_space);
+            float angle = tree_material.z * 8 + sd_analytical_fractal_noise(vec3(tree_space * 50 * vec3(1, 1, 4))).x * 5;
             vec3 wavy_nrm = abs(vec3(sin(angle), cos(angle), 0));
             vec4 dnrm = sd_analytical_fractal_noise(vec3(tree_space * 20 * vec3(1, 1, 4)));
             voxel.normal = normalize(voxel.normal + dnrm.yzw * 15 + wavy_nrm * 0.3);

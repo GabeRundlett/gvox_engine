@@ -111,6 +111,8 @@ NoiseSettings noise_settings{
     .scale = 0.02f / 4.5f,
     .amplitude = 40.0f / 0.15f,
     .octaves = 6,
+    .z_slope = 1.0f,
+    .z_offset = 30.0f,
 };
 
 // auto get_brick_metadata(std::unique_ptr<Chunk> &chunk, auto brick_index) -> BrickMetadata & {
@@ -278,7 +280,7 @@ exit_2:
                     if (chunk.voxel_object != nullptr && chunk.voxel_object->render_voxel_object != nullptr) {
                         glm::vec3 tint{1, 1, 1};
                         update_render_voxel_object(gpu_context, chunk.voxel_object);
-                        draw_voxel_object(chunk.voxel_object, pos, {}, voxel_size, tint);
+                        draw_voxel_object(chunk.voxel_object, pos, glm::quat(1, 0, 0, 0), voxel_size, tint);
 
                         for (auto surface_ent : chunk.surface_entity_candidates) {
                             auto &frames = self->scene->animation_playground->frames;
@@ -289,11 +291,13 @@ exit_2:
                             auto voxel_object = frames[current_frame_int];
 
                             auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
-                            auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size - glm::vec3(grid_size.x, grid_size.y, 9) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
-                            // auto ball_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size;
+                            auto trunk_center = glm::vec3(grid_size.x, grid_size.y, 9) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
+                            auto surface_pos = pos + (glm::vec3(surface_ent) + 0.5f) * float(BRICK_SIZE) * voxel_size;
                             auto tint = hsv2rgb(glm::vec3(0.1, float(rand() % 100) / 100.f * 0.25f + 0.75f, 1));
                             // auto tint = glm::vec3(1);
-                            draw_voxel_object(voxel_object, ball_pos, {0, 0, float(rand() % 100) / 100}, VOXEL_SIZE, tint);
+                            auto const rotation = glm::angleAxis(glm::radians(90.0f * float(rand() % 4)), glm::vec3(0, 0, 1));
+                            auto const ball_pos = surface_pos - glm::mat3_cast(rotation) * trunk_center;
+                            draw_voxel_object(voxel_object, ball_pos, rotation, VOXEL_SIZE, tint);
                         }
 
                         // box.r = 0.2f;

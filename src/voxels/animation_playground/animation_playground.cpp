@@ -294,9 +294,15 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
     if (!frames.empty()) {
         auto const current_frame_int = static_cast<int>(current_frame_f) % frames.size;
         auto voxel_object = frames[current_frame_int];
-
-        draw_voxel_object(voxel_object, playground_pos, {}, VOXEL_SIZE, glm::vec3(1.0f));
         auto const grid_size = grid_dims_bricks;
+        auto trunk_center = glm::vec3(grid_size.x, grid_size.y, 9) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
+
+        auto const rotation_x = glm::angleAxis(glm::radians(playground_rot.x), glm::vec3(1, 0, 0));
+        auto const rotation_y = glm::angleAxis(glm::radians(playground_rot.y), glm::vec3(0, 1, 0));
+        auto const rotation_z = glm::angleAxis(glm::radians(playground_rot.z), glm::vec3(0, 0, 1));
+        auto const rotation = rotation_z * rotation_y * rotation_x;
+        auto const pos = playground_pos - glm::mat3_cast(rotation) * trunk_center;
+        draw_voxel_object(voxel_object, pos, rotation, VOXEL_SIZE, glm::vec3(1.0f));
 
         Box box;
         box.p0_x = playground_pos.x;
@@ -319,6 +325,7 @@ void AnimationPlayground::ui() {
         ImGui::SliderInt3("Grid Size (bricks)", &grid_dims_bricks.x, 1, 32);
         dirty |= ImGui::IsItemDeactivated();
         ImGui::DragFloat3("Position", &playground_pos.x);
+        ImGui::DragFloat3("Rotation", &playground_rot.x);
 
         ImGui::Checkbox("Playing", &playing);
         ImGui::SliderFloat("Speed (fps)", &playback_fps, 0.0f, 60.0f);

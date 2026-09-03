@@ -30,6 +30,9 @@ struct NoiseSettings {
     float scale;
     float amplitude;
     int octaves;
+
+    float z_slope;
+    float z_offset;
 };
 
 #endif // VOXELS_GENERATION_DEFS_INL

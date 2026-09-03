@@ -1,4 +1,5 @@
 #include "render_voxel_object.hpp"
+#include <glm/gtc/quaternion.hpp>
 #include "base/log.hpp"
 #include "voxels/voxel.inl"
 #include "voxels/voxel_object.hpp"
@@ -337,15 +338,30 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
     tempTaskGraph.execute({});
 }
 
-void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const glm::vec3 &angles, float scale, const glm::vec3 &tint) {
+void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const glm::quat &rotation, float scale, const glm::vec3 &tint) {
     PROFILE_FUNC();
     auto *self = object->render_voxel_object;
     if (self->brick_count == 0)
         return;
-    // Ignores rotation, matching the transform below -- good enough for a
-    // conservative cull bound.
-    auto const world_aabb_min = pos + glm::vec3(object->voxel_min) * scale;
-    auto const world_aabb_max = pos + glm::vec3(object->voxel_max) * scale;
+
+    auto const rotation_mat = glm::mat3_cast(rotation);
+
+    // World-space AABB of the rotated+scaled object, from the 8 corners of
+    // its local-space AABB.
+    auto const local_min = glm::vec3(object->voxel_min) * scale;
+    auto const local_max = glm::vec3(object->voxel_max) * scale;
+    auto world_aabb_min = pos + rotation_mat * local_min;
+    auto world_aabb_max = world_aabb_min;
+    for (int corner_i = 1; corner_i < 8; ++corner_i) {
+        auto const corner = glm::vec3(
+            (corner_i & 1) ? local_max.x : local_min.x,
+            (corner_i & 2) ? local_max.y : local_min.y,
+            (corner_i & 4) ? local_max.z : local_min.z);
+        auto const world_corner = pos + rotation_mat * corner;
+        world_aabb_min = glm::min(world_aabb_min, world_corner);
+        world_aabb_max = glm::max(world_aabb_max, world_corner);
+    }
+
     assert(self->scene->drawn_voxel_object_manifests.size < MAX_VOXEL_OBJECTS);
     self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject{
         self->brick_shading_device_address,
@@ -358,13 +374,18 @@ void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const g
         {world_aabb_max.x, world_aabb_max.y, world_aabb_max.z},
         {pos.x, pos.y, pos.z},
         scale,
+        {
+            {rotation_mat[0].x, rotation_mat[0].y, rotation_mat[0].z},
+            {rotation_mat[1].x, rotation_mat[1].y, rotation_mat[1].z},
+            {rotation_mat[2].x, rotation_mat[2].y, rotation_mat[2].z},
+        },
     });
-    // auto mat = glm::rotate(glm::mat4(scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, 1), angles.z, glm::vec3(0, 0, 1));
+    auto const scaled_rotation = rotation_mat * scale;
     self->scene->drawn_voxel_objects_blas_instances.push_back(daxa_BlasInstanceData{
         .transform = {
-            {scale, 0, 0, pos.x},
-            {0, scale, 0, pos.y},
-            {0, 0, scale, pos.z},
+            {scaled_rotation[0][0], scaled_rotation[1][0], scaled_rotation[2][0], pos.x},
+            {scaled_rotation[0][1], scaled_rotation[1][1], scaled_rotation[2][1], pos.y},
+            {scaled_rotation[0][2], scaled_rotation[1][2], scaled_rotation[2][2], pos.z},
         },
         .instance_custom_index = (uint32_t)self->scene->drawn_voxel_objects_blas_instances.size,
         .mask = 0xff,
