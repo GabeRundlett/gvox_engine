@@ -1,5 +1,6 @@
 #include "gpu_context.hpp"
 #include "daxa/device.hpp"
+#include "daxa/profiling.hpp"
 
 #include <application/input.inl>
 #include <application/settings.inl>
@@ -18,6 +19,8 @@ static const uint32_t MAX_TIMELINE_QUERIES_PER_FRAME = 1000;
 
 GpuContext::GpuContext() {
     PROFILE_FUNC();
+
+    daxa::set_profiling_callbacks(profiler_enter_cpu, profiler_leave_cpu);
 
     {
         PROFILE_SCOPE("daxa::create_instance");
