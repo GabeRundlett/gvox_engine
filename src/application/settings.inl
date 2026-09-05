@@ -56,7 +56,6 @@ struct SkySettings {
 #define SKY_CUBE_RES 64
 #define IBL_CUBE_RES 16
 
-#define PREPASS_SCL 2
 #define SHADING_SCL 2
 
 #define DEBUG_IMAGE_TYPE_DEFAULT 0

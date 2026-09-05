@@ -1,9 +1,8 @@
 #include <renderer/kajiya/rtdgi.inl>
 
-// #include <renderer/kajiya/inc/frame_constants.glsl>
-// #include <utilities/gpu/hash.glsl>
-// #include <renderer/kajiya/inc/quasi_random.glsl>
+#include <utilities/gpu/common.glsl>
 #include <utilities/gpu/math.glsl>
+#include <utilities/gpu/random.glsl>
 #include "rtdgi_restir_settings.glsl"
 #include <renderer/kajiya/inc/safety.glsl>
 

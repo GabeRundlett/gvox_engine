@@ -3,11 +3,8 @@
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/color.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
-// #include <renderer/kajiya/inc/frame_constants.glsl>
-// #include <renderer/kajiya/inc/quasi_random.glsl>
-// #include <utilities/gpu/uv.glsl>
-// #include <utilities/gpu/hash.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
+#include <utilities/gpu/random.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(RtdgiSpatialFilterComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;

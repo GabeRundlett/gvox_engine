@@ -2,6 +2,7 @@
 #define UTILITIES_GPU_NOISE_GLSL
 
 #include <utilities/gpu/math.glsl>
+#include <utilities/gpu/random.glsl>
 
 vec4 noise(daxa_ImageViewIndex noise_texture, daxa_SamplerId noise_sampler, vec3 x) {
     const float offset = 1.0 / 512.0;

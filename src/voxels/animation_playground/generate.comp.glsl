@@ -3,7 +3,10 @@
 
 DAXA_DECL_PUSH_CONSTANT(AnimationPlaygroundGenPush, push)
 
-#include "../brushes.glsl"
+#include <utilities/gpu/random.glsl>
+#include <utilities/gpu/noise.glsl>
+#include <utilities/gpu/signed_distance.glsl>
+#include <renderer/globals.glsl>
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
@@ -356,6 +359,8 @@ void main() {
     // back to 0 at frame_count). sd_fern builds its sway purely from this
     // fraction (whole cycles per loop), so frame_count-1 -> 0 is a seamless cut.
     float loop_t = float(frame_index) / float(push.frame_count);
+
+    vec3 voxel_pos;
 
     // // Fixed shape seed: only the animation phase (loop_t) should change the
     // // result frame-to-frame, not the branch layout.

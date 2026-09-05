@@ -25,6 +25,9 @@ float luminance(vec3 color) {
     return dot(color, luminanceCoefficients);
 }
 
+#include <kajiya/inc/color/srgb.glsl>
+#include <kajiya/inc/color/ictcp.glsl>
+
 vec3 agxDefaultContrastApproximation(vec3 x) {
     vec3 x2 = x * x;
     vec3 x4 = x2 * x2;
@@ -33,11 +36,10 @@ vec3 agxDefaultContrastApproximation(vec3 x) {
 }
 
 void agxLook(inout vec3 color) {
-    // Punchy
-    const vec3 slope = vec3(1.0);
-    const vec3 power = vec3(1.0);
-    const float saturation = 1.0;
-    float luma = max(luminance(color), 0);
+    const vec3 slope = vec3(1.1);
+    const vec3 power = vec3(1.2);
+    const float saturation = 1.3;
+    float luma = sRGB_to_luminance(color);
     color = pow(color * slope, power);
     color = max(luma + saturation * (color - luma), vec3(0.0));
 }
@@ -53,20 +55,12 @@ void agx(inout vec3 color) {
         vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
         vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
         vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405));
-    const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
-        vec3(1.6605, -0.1246, -0.0182),
-        vec3(-0.5876, 1.1329, -0.1006),
-        vec3(-0.0728, -0.0083, 1.1187));
-    const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
-        vec3(0.6274, 0.0691, 0.0164),
-        vec3(0.3293, 0.9195, 0.0880),
-        vec3(0.0433, 0.0113, 0.8956));
     // LOG2_MIN      = -10.0
     // LOG2_MAX      =  +6.5
     // MIDDLE_GRAY   =  0.18
     const float AgxMinEv = -12.47393; // log2( pow( 2, LOG2_MIN ) * MIDDLE_GRAY )
     const float AgxMaxEv = 4.026069;  // log2( pow( 2, LOG2_MAX ) * MIDDLE_GRAY )
-    color = LINEAR_SRGB_TO_LINEAR_REC2020 * color;
+    color = BT709_to_BT2020(color);
     color = AgXInsetMatrix * color;
     // Log2 encoding
     color = max(color, 1e-10); // avoid 0 or negative numbers for log2
@@ -78,9 +72,7 @@ void agx(inout vec3 color) {
     // Apply AgX look
     agxLook(color);
     color = AgXOutsetMatrix * color;
-    // Linearize
-    color = pow(max(vec3(0.0), color), vec3(2.2));
-    color = LINEAR_REC2020_TO_LINEAR_SRGB * color;
+    color = BT2020_to_BT709(color);
     // Gamut mapping. Simple clamp for now.
     color = clamp(color, 0.0, 1.0);
 }
@@ -157,7 +149,9 @@ void main() {
         }
     }
 
-    color = vec4(color_correct(final_color), 1.0);
+    final_color = color_correct(final_color);
+    final_color = sRGB_OETF(final_color);
+    color = vec4(final_color, 1);
 
     // Dithering:
     uvec2 ij = uvec2(uv * g_buffer_scl) & 7;

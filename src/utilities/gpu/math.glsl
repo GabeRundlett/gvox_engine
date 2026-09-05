@@ -1,7 +1,6 @@
 #ifndef UTILITIES_GPU_MATH_GLSL
 #define UTILITIES_GPU_MATH_GLSL
 
-#include <utilities/gpu/defs.glsl>
 #include <renderer/kajiya/inc/math_const.glsl>
 
 // Definitions
@@ -23,7 +22,6 @@ struct CapsulePoints {
     float r;
 };
 
-#include <utilities/gpu/common.glsl>
 
 vec3 rotate_x(vec3 v, float angle) {
     float sin_rot_x = sin(angle), cos_rot_x = cos(angle);
@@ -146,8 +144,6 @@ uint vec3_to_uint_urgb9e5(vec3 f) {
     return result;
 }
 
-#include <utilities/gpu/normal.glsl>
-
 uint ceil_log2(uint x) {
     return findMSB(x) + uint(bitCount(x) > 1);
 }
@@ -208,9 +204,6 @@ void intersect(in out vec3 ray_pos, vec3 ray_dir, vec3 inv_dir, BoundingBox b) {
 
     ray_pos = ray_pos + ray_dir * dist;
 }
-
-#include <utilities/gpu/signed_distance.glsl>
-#include <utilities/gpu/random.glsl>
 
 vec2 rsi(vec3 r0, vec3 rd, float sr) {
     // ray-sphere intersection that assumes

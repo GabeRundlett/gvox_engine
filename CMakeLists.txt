@@ -35,7 +35,6 @@ add_executable(${PROJECT_NAME}
 
     "src/application/ui.cpp"
     "src/application/profiler_ui.cpp"
-    "src/application/audio.cpp"
     "src/application/settings.cpp"
     "src/application/player.cpp"
     "src/application/window.cpp"
@@ -57,10 +56,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_precompile_headers(${PROJECT_NAME} PRIVATE
     <filesystem>
     <chrono>
-    <vector>
-    <string>
     <memory>
-    <unordered_map>
     <daxa/daxa.hpp>
     <voxels/voxel.inl>
 )
@@ -90,7 +86,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 target_link_libraries(${PROJECT_NAME} PRIVATE
     GPUOpen::VulkanMemoryAllocator
     daxa::daxa
-    gvox::gvox
     glfw
     nlohmann_json::nlohmann_json
     unofficial::minizip::minizip

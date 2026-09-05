@@ -50,12 +50,16 @@ VoxelApp::VoxelApp() : window(APPNAME, 1280, 720), ui{AppUi(window.glfw_window_p
 #endif
     };
 
+    auto surface_format = gpu_context.device.choose_swapchain_surface_format({
+        .native_window_info = get_native_window_info(),
+        .preferred_formats = std::array{daxa::SurfaceFormat{.format = daxa::Format::B8G8R8A8_UNORM}},
+    });
+
+    // printf("%d, %d\n", surface_format.format, surface_format.color_space);
+
     gpu_context.create_swapchain({
         .native_window_info = get_native_window_info(),
-        .surface_format = gpu_context.device.choose_swapchain_surface_format({
-            .native_window_info = get_native_window_info(),
-            .preferred_formats = std::array{daxa::SurfaceFormat{.format = daxa::Format::B8G8R8A8_UNORM}},
-        }),
+        .surface_format = surface_format,
         .present_mode = daxa::PresentMode::FIFO,
         .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
         .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
@@ -133,8 +137,6 @@ void VoxelApp::on_update() {
     gpu_input.delta_time = std::chrono::duration<daxa_f32>(now - prev_time).count();
     prev_time = now;
     gpu_input.render_res_scl = render_res_scl;
-
-    audio.set_frequency(gpu_input.delta_time * 1000.0f * 200.0f);
 
     // Hot-reload: the manager's watcher thread flags when any shader source (or
     // any file it #includes) changed on disk; recompiling assigns new pipelines

@@ -3,6 +3,8 @@
 #include <utilities/gpu/math.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
 
+#include <utilities/gpu/normal.glsl>
+
 DAXA_DECL_PUSH_CONSTANT(DownscaleComputePush, push)
 daxa_BufferPtr(GpuInput) gpu_input = push.uses.gpu_input;
 daxa_ImageViewIndex src_image_id = push.uses.src_image_id;

@@ -2,6 +2,7 @@
 #define RENDERER_KAJIYA_INC_RESERVOIR_GLSL
 
 #include <utilities/gpu/math.glsl>
+#include <utilities/gpu/random.glsl>
 
 struct Reservoir1sppStreamState {
     float p_q_sel;

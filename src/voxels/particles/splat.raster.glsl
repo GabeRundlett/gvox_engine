@@ -6,6 +6,7 @@
 #include <voxels/particles/flower/flower.inl>
 
 #include <utilities/gpu/defs.glsl>
+#include <utilities/gpu/normal.glsl>
 #include <renderer/kajiya/inc/camera.glsl>
 
 #if defined(GRASS)

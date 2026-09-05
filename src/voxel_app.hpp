@@ -2,7 +2,6 @@
 
 #include <application/window.hpp>
 #include <application/ui.hpp>
-#include <application/audio.hpp>
 #include <application/player.hpp>
 #include <application/profiler_ui.hpp>
 
@@ -25,7 +24,6 @@ struct VoxelApp {
     GpuContext gpu_context;
 
     AppUi ui;
-    AppAudio audio;
     daxa::ImGuiRenderer imgui_renderer;
     Renderer renderer;
 

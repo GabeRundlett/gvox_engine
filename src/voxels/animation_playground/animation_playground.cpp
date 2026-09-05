@@ -291,7 +291,7 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
         regenerate(gpu_input.time);
     }
 
-    if (!frames.empty()) {
+    if (!frames.empty() && false) {
         auto const current_frame_int = static_cast<int>(current_frame_f) % frames.size;
         auto voxel_object = frames[current_frame_int];
         auto const grid_size = grid_dims_bricks;

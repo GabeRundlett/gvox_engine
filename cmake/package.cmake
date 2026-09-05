@@ -1,7 +1,7 @@
 
 if(PACKAGE_VOXEL_GAME)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw gvox::gvox)
+        list(APPEND RUNTIME_ARTIFACT_TARGETS fmt::fmt glfw)
     endif()
 
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
@@ -13,9 +13,6 @@ if(PACKAGE_VOXEL_GAME)
     install(FILES "${CMAKE_SOURCE_DIR}/appicon.png" DESTINATION bin)
     install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
     install(FILES $<TARGET_RUNTIME_DLLS:gvox_engine> DESTINATION bin)
-    foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-        install(FILES $<TARGET_FILE:gvox::gvox_format_${FORMAT_NAME}> DESTINATION bin)
-    endforeach()
 
     set(CPACK_PACKAGE_NAME "GabeVoxelGame")
     set(CPACK_PACKAGE_VENDOR "Gabe-Rundlett")
