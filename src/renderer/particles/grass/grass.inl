@@ -1,7 +1,7 @@
-#ifndef VOXELS_PARTICLES_GRASS_GRASS_INL
-#define VOXELS_PARTICLES_GRASS_GRASS_INL
+#ifndef RENDERER_PARTICLES_GRASS_GRASS_INL
+#define RENDERER_PARTICLES_GRASS_GRASS_INL
 
-#include <voxels/particles/common.inl>
+#include "../common.inl"
 
 #define MAX_GRASS_BLADES (1 << 22)
 
@@ -104,7 +104,7 @@ struct GrassStrands {
         gpu_context.frame_task_graph.register_buffer(splat_rendered_particle_verts.task_resource);
 
         gpu_context.add(ComputeTask<GrassStrandSimCompute::Info, GrassStrandSimComputePush, NoTaskInfo>{
-            .source = "voxels/particles/grass/sim.comp.glsl",
+            .source = "particles/grass/sim.comp.glsl",
             .extra_defines = {ShaderDefine{.name = "GRASS", .value = "1"}},
             .views = GrassStrandSimCompute::Views{
                 .gpu_input = gpu_context.task_input_buffer.view(),
@@ -129,8 +129,8 @@ struct GrassStrands {
 
     void render_cubes(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state, daxa::TaskBufferView cube_index_buffer) {
         gpu_context.add(RasterTask<GrassStrandCubeParticleRaster::Info, GrassStrandCubeParticleRasterPush, NoTaskInfo>{
-            .vert_source = "voxels/particles/cube.raster.glsl",
-            .frag_source = "voxels/particles/cube.raster.glsl",
+            .vert_source = "particles/cube.raster.glsl",
+            .frag_source = "particles/cube.raster.glsl",
             .color_attachments = {
                 {.format = daxa::Format::R32G32B32A32_UINT},
                 {.format = daxa::Format::R16G16B16A16_SFLOAT},
@@ -185,8 +185,8 @@ struct GrassStrands {
         });
 
         gpu_context.add(RasterTask<GrassStrandCubeParticleShadowRaster::Info, GrassStrandCubeParticleShadowRasterPush, NoTaskInfo>{
-            .vert_source = "voxels/particles/cube.raster.glsl",
-            .frag_source = "voxels/particles/cube.raster.glsl",
+            .vert_source = "particles/cube.raster.glsl",
+            .frag_source = "particles/cube.raster.glsl",
             .depth_test = daxa::DepthTestInfo{
                 .depth_attachment_format = daxa::Format::D32_SFLOAT,
                 .enable_depth_write = true,
@@ -230,8 +230,8 @@ struct GrassStrands {
 
     void render_splats(GpuContext &gpu_context, GbufferDepth &gbuffer_depth, daxa::TaskImageView velocity_image, daxa::TaskImageView shadow_depth, daxa::TaskBufferView particles_state) {
         gpu_context.add(RasterTask<GrassStrandSplatParticleRaster::Info, GrassStrandSplatParticleRasterPush, NoTaskInfo>{
-            .vert_source = "voxels/particles/splat.raster.glsl",
-            .frag_source = "voxels/particles/splat.raster.glsl",
+            .vert_source = "particles/splat.raster.glsl",
+            .frag_source = "particles/splat.raster.glsl",
             .color_attachments = {
                 {.format = daxa::Format::R32G32B32A32_UINT},
                 {.format = daxa::Format::R16G16B16A16_SFLOAT},
@@ -284,4 +284,4 @@ struct GrassStrands {
 
 #endif
 
-#endif // VOXELS_PARTICLES_GRASS_GRASS_INL
+#endif // RENDERER_PARTICLES_GRASS_GRASS_INL

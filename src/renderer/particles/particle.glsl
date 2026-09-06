@@ -1,7 +1,7 @@
-#ifndef VOXELS_PARTICLES_PARTICLE_GLSL
-#define VOXELS_PARTICLES_PARTICLE_GLSL
+#ifndef RENDERER_PARTICLES_PARTICLE_GLSL
+#define RENDERER_PARTICLES_PARTICLE_GLSL
 
-#include <voxels/particles/common.inl>
+#include "common.inl"
 
 #include <utilities/gpu/math.glsl>
 #include <voxels/voxel.glsl>
@@ -107,4 +107,4 @@ void particle_render(
     }
 }
 
-#endif // VOXELS_PARTICLES_PARTICLE_GLSL
+#endif // RENDERER_PARTICLES_PARTICLE_GLSL

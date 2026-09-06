@@ -1,10 +1,10 @@
-#ifndef VOXELS_PARTICLES_FLOWER_FLOWER_GLSL
-#define VOXELS_PARTICLES_FLOWER_FLOWER_GLSL
+#ifndef RENDERER_PARTICLES_FLOWER_FLOWER_GLSL
+#define RENDERER_PARTICLES_FLOWER_FLOWER_GLSL
 
 #include <utilities/gpu/noise.glsl>
 #include <renderer/globals.glsl>
 
-#include <voxels/particles/particle.glsl>
+#include "../particle.glsl"
 #include <voxels/pack_unpack.inl>
 
 vec2 flower_get_rot_offset(in out Flower self, float time) {
@@ -249,4 +249,4 @@ ParticleVertex get_flower_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_Buffer
     return result;
 }
 
-#endif // VOXELS_PARTICLES_FLOWER_FLOWER_GLSL
+#endif // RENDERER_PARTICLES_FLOWER_FLOWER_GLSL

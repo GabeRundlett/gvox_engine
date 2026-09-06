@@ -1,5 +1,5 @@
-#ifndef VOXELS_PARTICLES_COMMON_INL
-#define VOXELS_PARTICLES_COMMON_INL
+#ifndef RENDERER_PARTICLES_COMMON_INL
+#define RENDERER_PARTICLES_COMMON_INL
 
 #include <core.inl>
 #include <application/input.inl>
@@ -34,4 +34,4 @@ struct VoxelParticlesState {
 };
 DAXA_DECL_BUFFER_PTR(VoxelParticlesState)
 
-#endif // VOXELS_PARTICLES_COMMON_INL
+#endif // RENDERER_PARTICLES_COMMON_INL

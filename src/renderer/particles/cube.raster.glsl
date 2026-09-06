@@ -1,8 +1,8 @@
 #include <utilities/allocator.inl>
 #include <renderer/core.inl>
-#include <voxels/particles/common.inl>
-#include <voxels/particles/grass/grass.inl>
-#include <voxels/particles/flower/flower.inl>
+#include "common.inl"
+#include "grass/grass.inl"
+#include "flower/flower.inl"
 
 #include <utilities/gpu/defs.glsl>
 #include <utilities/gpu/normal.glsl>

@@ -1,4 +1,4 @@
-#include "particles/render_foliage.inl"
+#include "render_foliage.inl"
 #include <voxels/pack_unpack.inl>
 #include <utilities/gpu/math.glsl>
 #include <utilities/gpu/random.glsl>

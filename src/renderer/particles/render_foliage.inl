@@ -3,8 +3,8 @@
 
 #include <daxa/utils/task_graph.inl>
 #include <voxels/voxel.inl>
-#include <voxels/particles/grass/grass.inl>
-#include <voxels/particles/flower/flower.inl>
+#include "grass/grass.inl"
+#include "flower/flower.inl"
 
 // Spawns one piece of foliage for every set bit in a visible brick's foliage
 // bitmask: one 8x8x8 workgroup per brick, reading `foliage_bricks` and

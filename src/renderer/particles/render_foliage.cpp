@@ -1,6 +1,6 @@
 #include "render_foliage.hpp"
-#include "voxels/particles/grass/grass.inl"
-#include "voxels/particles/flower/flower.inl"
+#include "grass/grass.inl"
+#include "flower/flower.inl"
 #include <renderer/gpu_context.hpp>
 #include <renderer/kajiya/gbuffer.hpp>
 #define RENDERER_INTERNAL 1

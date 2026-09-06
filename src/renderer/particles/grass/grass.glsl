@@ -1,10 +1,10 @@
-#ifndef VOXELS_PARTICLES_GRASS_GRASS_GLSL
-#define VOXELS_PARTICLES_GRASS_GRASS_GLSL
+#ifndef RENDERER_PARTICLES_GRASS_GRASS_GLSL
+#define RENDERER_PARTICLES_GRASS_GRASS_GLSL
 
 #include <utilities/gpu/noise.glsl>
 #include <renderer/globals.glsl>
 
-#include <voxels/particles/particle.glsl>
+#include "../particle.glsl"
 #include <voxels/pack_unpack.inl>
 
 vec2 grass_get_rot_offset(in out GrassStrand self, Voxel voxel, float time) {
@@ -52,4 +52,4 @@ ParticleVertex get_grass_vertex(daxa_BufferPtr(GpuInput) gpu_input, daxa_BufferP
     return result;
 }
 
-#endif // VOXELS_PARTICLES_GRASS_GRASS_GLSL
+#endif // RENDERER_PARTICLES_GRASS_GRASS_GLSL
