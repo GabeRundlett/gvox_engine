@@ -4,6 +4,7 @@
 
 #include <application/input.inl>
 #include <application/settings.inl>
+#include <renderer/kajiya/brdf_fg_lut.inl>
 
 #include <minizip/unzip.h>
 
@@ -89,6 +90,13 @@ GpuContext::GpuContext() {
         .slice = {.layer_count = 256},
         .name = "value_noise_image_view",
     });
+    brdf_fg_lut_image = device.create_image({
+        .dimensions = 2,
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .size = {BRDF_FG_LUT_DIM, BRDF_FG_LUT_DIM, 1},
+        .usage = daxa::ImageUsageFlagBits::SHADER_STORAGE | daxa::ImageUsageFlagBits::SHADER_SAMPLED,
+        .name = "brdf_fg_lut_image",
+    });
 
     // Must match the literals in src/renderer/globals.glsl.
     static constexpr uint64_t GLOBALS_GLSL_SAMPLER_NNC = 2097152;
@@ -96,12 +104,14 @@ GpuContext::GpuContext() {
     static constexpr uint64_t GLOBALS_GLSL_SAMPLER_LLC = 2097154;
     static constexpr uint64_t GLOBALS_GLSL_SAMPLER_LLR = 2097155;
     static constexpr uint64_t GLOBALS_GLSL_VALUE_NOISE_TEX = 1;
+    static constexpr uint64_t GLOBALS_GLSL_BRDF_FG_LUT_TEX = 2;
     assert(std::bit_cast<uint64_t>(sampler_nnc) == GLOBALS_GLSL_SAMPLER_NNC && "globals.glsl g_sampler_nnc out of sync; something allocated a sampler before GpuContext");
     assert(std::bit_cast<uint64_t>(sampler_lnc) == GLOBALS_GLSL_SAMPLER_LNC && "globals.glsl g_sampler_lnc out of sync");
     assert(std::bit_cast<uint64_t>(sampler_llc) == GLOBALS_GLSL_SAMPLER_LLC && "globals.glsl g_sampler_llc out of sync");
     assert(std::bit_cast<uint64_t>(sampler_llr) == GLOBALS_GLSL_SAMPLER_LLR && "globals.glsl g_sampler_llr out of sync");
     // NOTE: .index is a u64 bitfield, so compare the value directly (it can't be bit_cast).
     assert(static_cast<uint64_t>(value_noise_image_view.index) == GLOBALS_GLSL_VALUE_NOISE_TEX && "globals.glsl g_value_noise_tex out of sync; something allocated an image before GpuContext");
+    assert(static_cast<uint64_t>(brdf_fg_lut_image.index) == GLOBALS_GLSL_BRDF_FG_LUT_TEX && "globals.glsl g_brdf_fg_lut_tex out of sync; it must be created right after value_noise_image_view");
 
     // Shader #include roots live in the pipeline manager itself (SHADER_ROOTS
     // in pipeline_manager.cpp).
@@ -129,6 +139,16 @@ GpuContext::GpuContext() {
 
     task_value_noise_image.set_image(value_noise_image);
     task_value_noise_image_view = task_value_noise_image.view().layers(0, 256);
+
+    register_pipeline(
+        pipeline_manager,
+        ComputePipelineCompileInfo{
+            .out_pipeline = &brdf_fg_lut_pipeline,
+            .source_path = "kajiya/brdf_fg_lut.comp.glsl",
+            .push_constant_size = 0,
+            .name = "BrdfFgLut",
+        });
+    task_brdf_fg_lut_image.set_image(brdf_fg_lut_image);
 
     task_blue_noise_vec2_image.set_image(blue_noise_vec2_image);
 
@@ -362,6 +382,7 @@ GpuContext::GpuContext() {
 GpuContext::~GpuContext() {
     device.destroy_image(value_noise_image);
     device.destroy_image_view(value_noise_image_view);
+    device.destroy_image(brdf_fg_lut_image);
     device.destroy_image(blue_noise_vec2_image);
     if (!debug_texture.is_empty()) {
         device.destroy_image(debug_texture);
@@ -416,6 +437,7 @@ void GpuContext::use_resources() {
 
     auto use_shared_resources = [this](daxa::TaskGraph &task_graph) {
         task_graph.register_image(task_value_noise_image);
+        task_graph.register_image(task_brdf_fg_lut_image);
         task_graph.register_image(task_blue_noise_vec2_image);
         task_graph.register_image(task_debug_texture);
         task_graph.register_image(task_test_texture);
@@ -520,6 +542,35 @@ void GpuContext::get_timestamps(Vec<struct ProfileTimestamp> &out_timestamps) {
             .children = {},
         });
     }
+}
+
+void GpuContext::generate_brdf_fg_lut() {
+    PROFILE_FUNC();
+
+    if (brdf_fg_lut_generated || !brdf_fg_lut_pipeline.is_valid()) {
+        return;
+    }
+
+    daxa::TaskGraph temp_task_graph = daxa::TaskGraph({
+        .device = device,
+        .name = "brdf_fg_lut_task_graph",
+    });
+    temp_task_graph.register_image(task_brdf_fg_lut_image);
+    temp_task_graph.add_task(
+        daxa::InlineTask::Compute("generate_brdf_fg_lut")
+            .compute_shader.writes(daxa::ImageViewType::REGULAR_2D, task_brdf_fg_lut_image)
+            .executes([this](daxa::TaskInterface ti) {
+                // The shader writes through g_brdf_fg_lut_tex, so there is no
+                // push constant -- the attachment above exists purely so the
+                // graph transitions the image and syncs the write.
+                ti.recorder.set_pipeline(brdf_fg_lut_pipeline);
+                ti.recorder.dispatch({(BRDF_FG_LUT_DIM + 7) / 8, (BRDF_FG_LUT_DIM + 7) / 8, 1});
+            }));
+    temp_task_graph.submit({});
+    temp_task_graph.complete({});
+    temp_task_graph.execute({});
+
+    brdf_fg_lut_generated = true;
 }
 
 void GpuContext::update_seeded_value_noise(uint64_t seed) {

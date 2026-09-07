@@ -87,7 +87,7 @@ struct UnjitterSettings {
     int kernel_half_width_pixels;
 };
 
-#define REMAP_FUNC HistoryRemap_remap
+#define REMAP_FUNC InputRemap_remap
 UnjitteredSampleInfo sample_image_unjitter_taa(
     daxa_ImageViewIndex img,
     ivec2 output_px,

@@ -70,7 +70,7 @@ void main() {
 
     const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx / IRCACHE_VALIDATION_SAMPLES_PER_FRAME));
     const uint sample_idx = dispatch_idx % IRCACHE_VALIDATION_SAMPLES_PER_FRAME;
-    const uint life = deref(advance(ircache_life_buf, entry_idx * 4));
+    const uint life = deref(advance(ircache_life_buf, entry_idx));
 
     DiffuseBrdf brdf;
     brdf.albedo = 1.0.xxx;

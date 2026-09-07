@@ -43,7 +43,7 @@ void main() {
     const vec3 center_normal_vs = safeTexelFetch(geometric_normal_tex, ivec2(px), 0).xyz * 2.0 - 1.0;
 
     // TODO: project the BRDF lobe footprint; this only works for certain roughness ranges
-    const float filter_radius_ss = 0.5 * deref(gpu_input).player.cam.view_to_clip[1][1] / -depth_to_view_z(center_depth);
+    const float filter_radius_ss = 0.5 * deref(gpu_input).player.cam.view_to_clip[1][1] / depth_to_view_z(center_depth);
     const uint filter_idx = uint(clamp(filter_radius_ss * 7.0, 0.0, 7.0));
 
     vec3 vsum = 0.0.xxx;

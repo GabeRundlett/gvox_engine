@@ -70,7 +70,7 @@ void main() {
 
     const uint entry_idx = deref(advance(ircache_entry_indirection_buf, dispatch_idx / IRCACHE_SAMPLES_PER_FRAME));
     const uint sample_idx = dispatch_idx % IRCACHE_SAMPLES_PER_FRAME;
-    const uint life = deref(advance(ircache_life_buf, entry_idx * 4));
+    const uint life = deref(advance(ircache_life_buf, entry_idx));
     const uint rank = ircache_entry_life_to_rank(life);
 
     VertexPacked packed_entry = deref(advance(ircache_spatial_buf, entry_idx));

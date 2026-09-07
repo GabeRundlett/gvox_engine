@@ -110,7 +110,7 @@ vec4 encode_hit_normal_and_dot(vec4 val) {
 void find_best_reprojection_in_neighborhood(vec2 base_px, inout ivec2 best_px, vec3 refl_ray_origin_ws, bool wide) {
     float best_dist = 1e10;
 
-    const vec2 clip_scale = vec2(deref(gpu_input).player.cam.clip_to_view[0][0], deref(gpu_input).player.cam.clip_to_view[1][1]);
+    const vec2 clip_scale = vec2(deref(gpu_input).player.cam.clip_to_view[0][0], -deref(gpu_input).player.cam.clip_to_view[1][1]);
     const vec2 offset_scale = vec2(1, -1) * -2 * clip_scale * push.gbuffer_tex_size.zw;
 
     const vec3 look_direction = direction_view_to_world(gpu_input, vec3(0, 0, -1));
@@ -470,7 +470,7 @@ void main() {
                 // as darkening in corners. Since it's mostly useful for smoother surfaces,
                 // fade it out when they're rough.
                 const float dist_to_hit_vs_scaled =
-                    dist_to_sample_hit / -refl_ray_origin_vs.z * deref(gpu_input).player.cam.view_to_clip[1][1];
+                    dist_to_sample_hit / -refl_ray_origin_vs.z * -deref(gpu_input).player.cam.view_to_clip[1][1];
                 {
                     float dist2 = dot(ray_hit_sel_ws - refl_ray_origin_ws, ray_hit_sel_ws - refl_ray_origin_ws);
                     dist2 = min(dist2, 2 * dist_to_hit_vs_scaled * dist_to_hit_vs_scaled);

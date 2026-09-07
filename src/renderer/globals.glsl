@@ -8,5 +8,6 @@ daxa_SamplerId g_sampler_llc = daxa_SamplerId(2097154);
 daxa_SamplerId g_sampler_llr = daxa_SamplerId(2097155);
 
 daxa_ImageViewIndex g_value_noise_tex = daxa_ImageViewIndex(1);
+daxa_ImageViewIndex g_brdf_fg_lut_tex = daxa_ImageViewIndex(2);
 
 #endif // RENDERER_GLOBALS_GLSL

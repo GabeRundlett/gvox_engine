@@ -2,8 +2,9 @@
 #define RENDERER_KAJIYA_INC_BRDF_GLSL
 
 #include <utilities/gpu/math.glsl>
+#include <renderer/kajiya/brdf_fg_lut.inl>
 
-const uvec2 BRDF_FG_LUT_DIMS = uvec2(64, 64);
+const uvec2 BRDF_FG_LUT_DIMS = uvec2(BRDF_FG_LUT_DIM, BRDF_FG_LUT_DIM);
 const vec2 BRDF_FG_LUT_UV_SCALE = (BRDF_FG_LUT_DIMS - 1.0) / BRDF_FG_LUT_DIMS;
 const vec2 BRDF_FG_LUT_UV_BIAS = vec2(0.5) / BRDF_FG_LUT_DIMS;
 
@@ -94,7 +95,7 @@ vec2 wi_to_primary_sample_space(DiffuseBrdf self, vec3 wi) {
     // cos_theta = sqrt(max(0.0, 1.0 - urand.y));
     // cos_theta * cos_theta = 1.0 - urand.y
     // urand.y = 1.0 - cos_theta * cos_theta
-    const float y = saturate(1.0 - cos_theta * cos_theta);
+    const float y = clamp(1.0 - cos_theta * cos_theta, 0, 1);
     const float x = fract(atan(wi.y, wi.x) / M_TAU);
     return vec2(x, y);
 }

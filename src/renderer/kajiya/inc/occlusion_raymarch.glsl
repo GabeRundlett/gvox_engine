@@ -27,7 +27,7 @@ void with_color_bounce(inout OcclusionScreenRayMarch self, daxa_ImageViewIndex _
     self.fullres_color_bounce_tex = _fullres_color_bounce_tex;
 }
 
-void with_max_sample_count(OcclusionScreenRayMarch self, uint _max_sample_count) {
+void with_max_sample_count(inout OcclusionScreenRayMarch self, uint _max_sample_count) {
     self.max_sample_count = _max_sample_count;
 }
 

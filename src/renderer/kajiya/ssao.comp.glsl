@@ -2,6 +2,7 @@
 
 #include <renderer/kajiya/inc/camera.glsl>
 #include <renderer/kajiya/inc/safety.glsl>
+#include <utilities/gpu/math.glsl>
 
 #if SsaoComputeShader
 
@@ -110,12 +111,11 @@ void main() {
         return;
     }
 
-#if !PER_VOXEL_NORMALS
     const ViewRayContext view_ray_context = vrc_from_uv_and_depth(gpu_input, uv, depth);
     vec3 v_vs = -normalize(ray_dir_vs(view_ray_context));
 
     vec4 ray_hit_cs = view_ray_context.ray_hit_cs;
-    vec3 ray_hit_vs = ray_hit_vs(view_ray_context);
+    vec3 ray_hit_vs = ray_hit_vs(view_ray_context) + fetch_normal_vs(uv) * 1.5 * VOXEL_SIZE;
 
     float spatial_direction_noise = 1.0 / 16.0 * ((((px.x + px.y) & 3) << 2) + (px.x & 3));
     float temporal_direction_noise = temporal_rotations[deref(gpu_input).frame_index % 6] / 360.0;
@@ -130,7 +130,7 @@ void main() {
     float kernel_radius_ws;
     float kernel_radius_shrinkage = 1;
     {
-        const float ws_to_cs = 0.5 / -ray_hit_vs.z * deref(gpu_input).player.cam.view_to_clip[1][1];
+        const float ws_to_cs = 0.5 / -ray_hit_vs.z * -deref(gpu_input).player.cam.view_to_clip[1][1];
 
 #if WORLDSPACE_SSAO
         kernel_radius_ws = SSGI_KERNEL_RADIUS;
@@ -214,9 +214,6 @@ void main() {
     col.rgb = col.aaa;
 
     col *= slice_contrib_weight;
-#else
-    vec4 col = vec4(1);
-#endif
 
     safeImageStore(ssao_image_id, ivec2(px), vec4(col));
 }

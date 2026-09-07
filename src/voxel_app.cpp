@@ -420,14 +420,14 @@ void VoxelApp::record_tasks() {
     // gpu_context.startup_task_graph.submit({});
     // gpu_context.startup_task_graph.complete({});
 
-    // Recording the graph above only *registered* every pipeline; compile them
-    // all now, in parallel and in one batch, then create the pipeline objects.
-    // Everything is ready by the time the first frame executes, so tasks never
-    // have to skip themselves waiting on an in-flight compile.
     Clock::time_point shader_start = Clock::now();
     compile_all_shaders(gpu_context.pipeline_manager);
     create_all_pipelines(gpu_context.pipeline_manager, gpu_context.device);
     debug_utils::Console::add_log(format("compiling shaders: %f s\n", double(std::chrono::duration<float>(Clock::now() - shader_start).count())).data);
+
+    // Needs a created pipeline, so it can only run once the above is done.
+    // No-ops after the first call.
+    gpu_context.generate_brdf_fg_lut();
 
     needs_vram_calc = true;
 }

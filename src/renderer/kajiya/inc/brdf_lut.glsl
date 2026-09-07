@@ -2,6 +2,7 @@
 #define RENDERER_KAJIYA_INC_BRDF_LUT_GLSL
 
 #include <renderer/kajiya/inc/brdf.glsl>
+#include <renderer/globals.glsl>
 
 struct SpecularBrdfEnergyPreservation {
     vec3 preintegrated_reflection;
@@ -12,9 +13,7 @@ struct SpecularBrdfEnergyPreservation {
 
 vec3 SpecularBrdfEnergyPreservation_sample_fg_lut(float ndotv, float roughness) {
     vec2 uv = vec2(ndotv, roughness) * BRDF_FG_LUT_UV_SCALE + BRDF_FG_LUT_UV_BIAS;
-    // TODO
-    // return bindless_textures[BINDLESS_LUT_BRDF_FG].SampleLevel(sampler_lnc, uv, 0).xyz;
-    return vec3(0.5);
+    return textureLod(daxa_sampler2D(g_brdf_fg_lut_tex, g_sampler_lnc), uv, 0).xyz;
 }
 
 SpecularBrdfEnergyPreservation SpecularBrdfEnergyPreservation_from_brdf_ndotv(SpecularBrdf brdf, float ndotv) {

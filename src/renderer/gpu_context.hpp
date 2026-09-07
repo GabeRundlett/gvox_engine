@@ -39,6 +39,7 @@ struct GpuContext {
 
     daxa::ImageId value_noise_image;
     daxa::ImageViewId value_noise_image_view;
+    daxa::ImageId brdf_fg_lut_image;
     daxa::ImageId blue_noise_vec2_image;
     daxa::ImageId debug_texture;
     daxa::ImageId test_texture;
@@ -51,6 +52,7 @@ struct GpuContext {
 
     daxa::ExternalTaskImage task_value_noise_image{{.name = "task_value_noise_image"}};
     daxa::TaskImageView task_value_noise_image_view{};
+    daxa::ExternalTaskImage task_brdf_fg_lut_image{{.name = "task_brdf_fg_lut_image"}};
     daxa::ExternalTaskImage task_blue_noise_vec2_image{{.name = "task_blue_noise_vec2_image"}};
     daxa::ExternalTaskImage task_debug_texture{{.name = "task_debug_texture"}};
     daxa::ExternalTaskImage task_test_texture{{.name = "task_test_texture"}};
@@ -94,6 +96,7 @@ struct GpuContext {
 
     void use_resources();
     void update_seeded_value_noise(uint64_t seed);
+    void generate_brdf_fg_lut();
 
     auto find_or_add_temporal_buffer(daxa::BufferInfo const &info) -> TemporalBuffer;
     auto find_or_add_temporal_image(daxa::ImageInfo const &info) -> TemporalImage;
@@ -109,6 +112,9 @@ struct GpuContext {
     HashMap<Str, daxa::ComputePipeline *> compute_pipelines;
     HashMap<Str, RayTracingPipelineAndSbt *> ray_tracing_pipelines;
     HashMap<Str, daxa::RasterPipeline *> raster_pipelines;
+
+    daxa::ComputePipeline brdf_fg_lut_pipeline;
+    bool brdf_fg_lut_generated = false;
 
     Vec<std::any> task_states;
 

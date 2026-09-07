@@ -51,7 +51,7 @@ void main() {
     vec3 ray_origin = biased_secondary_ray_origin_ws_with_normal(vrc, nrm);
     vec3 ray_pos = ray_origin;
 
-    vec2 blue_noise = texelFetch(daxa_texture3D(push.uses.blue_noise_vec2), ivec3(index, deref(push.uses.gpu_input).frame_index) & ivec3(127, 127, 63), 0).yz * 255.0 / 256.0 + 0.5 / 256.0;
+    vec2 blue_noise = texelFetch(daxa_texture3D(push.uses.blue_noise_vec2), ivec3(index, deref(push.uses.gpu_input).frame_index) & ivec3(127, 127, 63), 0).xy * 255.0 / 256.0 + 0.5 / 256.0;
 
     vec3 ray_dir = sample_sun_direction(push.uses.gpu_input, blue_noise, true);
 
@@ -71,7 +71,7 @@ void main() {
     {
         vec4 hit_shadow_h = deref(push.uses.gpu_input).ws_to_shadow * vec4(ray_origin, 1);
         vec3 hit_shadow = hit_shadow_h.xyz / hit_shadow_h.w;
-        vec2 offset = vec2(0);  // blue_noise.xy * (0.25 / 2048.0);
+        vec2 offset = vec2(0); // blue_noise.xy * (0.25 / 2048.0);
         float shadow_depth = texture(daxa_sampler2D(push.uses.particles_shadow_depth_tex, g_sampler_nnc), cs_to_uv(hit_shadow.xy) + offset).r;
 
         const float bias = 0.001;

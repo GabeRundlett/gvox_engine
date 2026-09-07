@@ -196,7 +196,7 @@ void main() {
         // that would result in small circles appearing as reflections.
         float clamped_ray_len_avg = max(
             ray_len_avg,
-            eye_to_surf_dist / eye_ray_z_scale * deref(gpu_input).player.cam.clip_to_view[1][1] * 0.2
+            eye_to_surf_dist / eye_ray_z_scale * -deref(gpu_input).player.cam.clip_to_view[1][1] * 0.2
                 // Keep contacts sharp
                 * smoothstep(0, 0.05 * eye_to_surf_dist, ray_len_avg));
 
@@ -206,7 +206,7 @@ void main() {
     }
 
     {
-        const float scale_factor = eye_to_surf_dist * eye_ray_z_scale * deref(gpu_input).player.cam.clip_to_view[1][1];
+        const float scale_factor = eye_to_surf_dist * eye_ray_z_scale * -deref(gpu_input).player.cam.clip_to_view[1][1];
 
         // Clamp the kernel size so we don't sample the same point, but also don't thrash all the caches.
         kernel_size_ws = min(kernel_size_ws, 0.1 * scale_factor);

@@ -61,7 +61,7 @@ RtrTraceResult do_the_thing(uvec2 px, vec3 normal_ws, float roughness, inout uin
     const float reflected_cone_spread_angle = sqrt(roughness) * 0.05;
 
     const RayCone ray_cone = propagate(
-        pixel_ray_cone_from_image_height(push.uses.gpu_input, push.gbuffer_tex_size.y * 0.5),
+        pixel_ray_cone_from_image_height(push.uses.gpu_input, push.gbuffer_tex_size.y),
         reflected_cone_spread_angle, length(outgoing_ray.Origin - get_eye_position(push.uses.gpu_input)));
 
     if (LAYERED_BRDF_FORCE_DIFFUSE_ONLY == 0) {

@@ -179,9 +179,9 @@ void main() {
             }
         }}
 
-        vec3 nmid = max(nmin2.rgb, nmax2.rgb, 0.5);
-        nmin2.rgb = max(nmid, nmin2.rgb, 1.0);
-        nmax2.rgb = max(nmid, nmax2.rgb, 1.0);
+        vec3 nmid = mix(nmin2.rgb, nmax2.rgb, 0.5);
+        nmin2.rgb = mix(nmid, nmin2.rgb, 1.0);
+        nmax2.rgb = mix(nmid, nmax2.rgb, 1.0);
 
         nmin = max(nmin, nmin2);
         nmax = min(nmax, nmax2);
