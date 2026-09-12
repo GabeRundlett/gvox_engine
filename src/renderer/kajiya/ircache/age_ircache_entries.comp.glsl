@@ -34,7 +34,8 @@ void age_ircache_entry(uint entry_idx) {
         }
 
         uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
-        deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
+        if (entry_alloc_count > 0 && entry_alloc_count <= MAX_ENTRIES)
+            deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
 
         // TODO: just `Store` it (AMD doesn't like it unless it's a byte address buffer)
         const uint cell_idx = deref(advance(ircache_entry_cell_buf, entry_idx));

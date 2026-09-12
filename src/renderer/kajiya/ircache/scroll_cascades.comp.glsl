@@ -20,7 +20,7 @@ void deallocate_cell(uint cell_idx) {
     if ((cell.flags & IRCACHE_ENTRY_META_OCCUPIED) != 0) {
         // Clear the just-nuked entry
         const uint entry_idx = cell.entry_index;
-
+        if (entry_idx >= MAX_ENTRIES) return;
         deref(advance(ircache_life_buf, entry_idx)) = IRCACHE_ENTRY_LIFE_RECYCLED;
 
         for (uint i = 0; i < IRCACHE_IRRADIANCE_STRIDE; ++i) {
@@ -28,7 +28,8 @@ void deallocate_cell(uint cell_idx) {
         }
 
         uint entry_alloc_count = atomicAdd(deref(ircache_meta_buf).alloc_count, -1);
-        deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
+        if (entry_alloc_count > 0 && entry_alloc_count <= MAX_ENTRIES)
+            deref(advance(ircache_pool_buf, entry_alloc_count - 1)) = entry_idx;
     }
 }
 

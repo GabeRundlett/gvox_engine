@@ -142,9 +142,11 @@ IrcacheLookupMaybeAllocate lookup_maybe_allocate(
 
                         // Clear dead state, mark used.
 
-                        deref(advance(ircache_life_buf, entry_idx)) = ircache_entry_life_for_rank(self.query_rank);
-                        deref(advance(ircache_entry_cell_buf, entry_idx)) = cell_idx;
-                        deref(advance(ircache_grid_meta_buf, cell_idx)).entry_index = entry_idx;
+                        if (entry_idx < MAX_ENTRIES) {
+                            deref(advance(ircache_life_buf, entry_idx)) = ircache_entry_life_for_rank(self.query_rank);
+                            deref(advance(ircache_entry_cell_buf, entry_idx)) = cell_idx;
+                            deref(advance(ircache_grid_meta_buf, cell_idx)).entry_index = entry_idx;
+                        }
                     }
                 }
             }

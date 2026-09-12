@@ -7,8 +7,8 @@ daxa_RWBufferPtr(uvec4) dispatch_args = push.uses.dispatch_args;
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    const uint entry_count = deref(ircache_meta_buf).entry_count;
-    const uint alloc_count = deref(ircache_meta_buf).alloc_count;
+    const uint entry_count = min(deref(ircache_meta_buf).entry_count, MAX_ENTRIES);
+    const uint alloc_count = min(deref(ircache_meta_buf).alloc_count, MAX_ENTRIES);
 
     deref(ircache_meta_buf).tracing_alloc_count = alloc_count;
 
