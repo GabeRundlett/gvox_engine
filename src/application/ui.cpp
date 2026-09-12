@@ -621,14 +621,13 @@ static auto compare_gpu_resource_infos(const void *lhs, const void *rhs) -> int 
 }
 
 void AppUi::begin_frame() {
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::PushFont(menu_font);
 }
 
 void AppUi::update() {
     PROFILE_FUNC();
-
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    ImGui::PushFont(menu_font);
 
     if (paused && show_profiler_view) {
         if (profiler_ui != nullptr) {

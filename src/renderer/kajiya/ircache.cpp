@@ -280,6 +280,17 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
         temp_task_graph.register_buffer(state.ircache_pool_buf);
         temp_task_graph.register_buffer(state.ircache_life_buf);
 
+        temp_task_graph.register_buffer(state.ircache_meta_buf);
+        temp_task_graph.register_buffer(state.ircache_grid_meta_buf);
+        temp_task_graph.register_buffer(state.ircache_grid_meta_buf2);
+        temp_task_graph.register_buffer(state.ircache_entry_cell_buf);
+        temp_task_graph.register_buffer(state.ircache_entry_indirection_buf);
+        temp_task_graph.register_buffer(state.ircache_spatial_buf);
+        temp_task_graph.register_buffer(state.ircache_irradiance_buf);
+        temp_task_graph.register_buffer(state.ircache_aux_buf);
+        temp_task_graph.register_buffer(state.ircache_reposition_proposal_buf);
+        temp_task_graph.register_buffer(state.ircache_reposition_proposal_count_buf);
+
         gpu_context.add(ComputeTask<ClearIrcachePoolCompute::Info, ClearIrcachePoolComputePush, NoTaskInfo>{
             .source = "kajiya/ircache/clear_ircache_pool.comp.glsl",
             .views = ClearIrcachePoolCompute::Views{
@@ -293,6 +304,22 @@ auto IrcacheRenderer::prepare(GpuContext &gpu_context) -> IrcacheRenderState {
             },
             .task_graph_ptr = &temp_task_graph,
         });
+        temp_task_graph.add_task(
+            daxa::InlineTask::Transfer("ClearIrcacheBuffers")
+                .writes(state.ircache_meta_buf, state.ircache_grid_meta_buf, state.ircache_grid_meta_buf2,
+                        state.ircache_entry_cell_buf, state.ircache_entry_indirection_buf,
+                        state.ircache_spatial_buf, state.ircache_irradiance_buf, state.ircache_aux_buf,
+                        state.ircache_reposition_proposal_buf, state.ircache_reposition_proposal_count_buf)
+                .executes([](daxa::TaskInterface ti) {
+                    for (uint32_t i = 0; i < ti.attachment_infos.size(); ++i) {
+                        auto id = ti.get(daxa::TaskBufferAttachmentIndex{i}).id;
+                        ti.recorder.clear_buffer({
+                            .buffer = id,
+                            .size = ti.device.buffer_info(id).value().size,
+                            .clear_value = 0,
+                        });
+                    }
+                }));
 
         temp_task_graph.submit({});
         temp_task_graph.complete({});

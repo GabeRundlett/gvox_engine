@@ -73,6 +73,7 @@ VoxelApp::VoxelApp() : window(APPNAME, 1280, 720), ui{AppUi(window.glfw_window_p
     AppSettings::add<settings::Checkbox>({"UI", "show_console", {.value = false}});
     AppSettings::add<settings::Checkbox>({"UI", "autosave", {.value = true}});
     AppSettings::add<settings::Checkbox>({"General", "battery_saving_mode", {.value = false}});
+    AppSettings::add<settings::Checkbox>({"UI", "show_tg_debug", {.value = false}});
 
     AppSettings::add<settings::SliderFloat>({"Graphics", "Render Res Scale", {.value = 1.0f, .min = 0.2f, .max = 4.0f}, {.task_graph_depends = true}});
 
@@ -84,6 +85,12 @@ VoxelApp::VoxelApp() : window(APPNAME, 1280, 720), ui{AppUi(window.glfw_window_p
         .format = gpu_context.swapchain.get_format(),
         .imgui_context = ImGui::GetCurrentContext(),
         .use_custom_config = false,
+    });
+
+    gpu_context.frame_task_graph_debug_ui = daxa::TaskGraphDebugUi({
+        .device = gpu_context.device,
+        .imgui_renderer = imgui_renderer,
+        .buffer_layout_cache_folder = "./tg_dbg_cache",
     });
 
     scene = new Scene(gpu_context);
@@ -210,7 +217,9 @@ void VoxelApp::on_update() {
     {
         PROFILE_SCOPE("frame_task_graph.execute()");
         gpu_input.fif_index = gpu_input.frame_index % (FRAMES_IN_FLIGHT + 1);
-        gpu_context.frame_task_graph.execute({});
+        gpu_context.frame_task_graph.execute({
+            .debug_ui = &gpu_context.frame_task_graph_debug_ui,
+        });
     }
 
     gpu_input.resize_factor = 1.0f;
@@ -220,6 +229,14 @@ void VoxelApp::on_update() {
 
     renderer.end_frame(gpu_context.device, gpu_input.delta_time);
     gpu_context.finalize_timestamps();
+
+    ui.begin_frame();
+
+    auto show_tg_debug = AppSettings::get<settings::Checkbox>("UI", "show_tg_debug").value;
+    if (show_tg_debug) {
+        show_tg_debug = gpu_context.frame_task_graph_debug_ui.update(gpu_context.frame_task_graph);
+        AppSettings::set("UI", "show_tg_debug", settings::Checkbox{.value = show_tg_debug});
+    }
 
     ui.update();
 

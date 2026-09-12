@@ -507,6 +507,8 @@ void GpuContext::end_task_timestamp(const daxa::TaskInterface &ti) {
 }
 
 void GpuContext::get_timestamps(Vec<struct ProfileTimestamp> &out_timestamps) {
+    out_timestamps.clear();
+
     const auto &query_results = timeline_query_results;
     auto result_count = std::min(int(query_results.size()) / 2, timestamp_names.size * 2);
     if (result_count <= 0)

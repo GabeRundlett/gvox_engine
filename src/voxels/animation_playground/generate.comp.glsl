@@ -145,6 +145,7 @@ float sd_oak_leaves(vec3 branch_pos, float branch_len, vec2 pre_xz, vec2 post_xz
 
 float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3 leaf_normal, out vec3 min_tree_space) {
     pos_tree_space.y -= 1.5;
+    pos_tree_space /= 0.9;
     float min_dist = MAX_DIST;
     float tree_bounding_sphere_dist = sd_sphere(pos_tree_space - vec3(0.0, 7.0, 0.0), 9.5);
 
@@ -214,13 +215,13 @@ float sd_oak_tree(vec3 pos_tree_space, float loop_t, out vec4 material, out vec3
     FractalNoiseConfig leaf_noise_conf = FractalNoiseConfig(
         /* .amplitude   = */ 1.0,
         /* .persistance = */ 0.2,
-        /* .scale       = */ 7.5,
+        /* .scale       = */ 6.5,
         /* .lacunarity  = */ 4.5,
         /* .octaves     = */ 1);
 
     float leaf_rand = 0;
     const float leaf_density = 1;
-    const float leaf_randomness = 3;
+    const float leaf_randomness = 5;
 
     const float leaf_canopy_normal_strenth = 0.4;
     const float leaf_ball_normal_strength = 1;
@@ -381,6 +382,7 @@ void main() {
         if (tree_material.x == MAT_OAK_LEAF) {
             voxel.albedo = vec3(0.045, 0.156, 0.032);
             voxel.normal = tree_leaf_normal.xzy;
+            voxel.roughness = 0.6;
         }
         if (tree_material.x == MAT_OAK_BARK) {
             voxel.normal = sd_oak_tree_normal(voxel_pos.xzy, loop_t, 0.001).xzy;

@@ -110,14 +110,14 @@ Scene::Scene(GpuContext &gpu_context) : gpu_context(gpu_context) {
                                 glm::vec3 nrm = glm::normalize(p);
 
                                 rand_seed(good_rand_hash(floatBitsToUint(nrm)));
-                                const mat3 basis = build_orthonormal_basis(normalize(nrm));
-                                nrm = basis * uniform_sample_cone(vec2(rand_(), rand_()), cos(0.19f * 0.5f));
-                                nrm = glm::normalize(nrm);
+                                vec2 nrm_oct = map_octahedral(nrm);
+                                nrm_oct += vec2(rand_() - 0.5, rand_() - 0.5) / 8.0f;
+                                nrm = unmap_octahedral(nrm_oct);
 
                                 auto voxel = Voxel{
                                     daxa_f32vec3(col.r, col.g, col.b),
                                     daxa_f32vec3(nrm.r, nrm.g, nrm.b),
-                                    0.5f,
+                                    0.2f,
                                     0u,
                                 };
 
@@ -175,10 +175,17 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
 
     update_voxel_world(gpu_context, renderer, gpu_input, voxel_world);
 
+    auto voxel_object = ball_frames[0];
+    draw_voxel_object(voxel_object, glm::vec3(1, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 0.0, 0.0));
+    draw_voxel_object(voxel_object, glm::vec3(1, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 1.0, 0.0));
+    draw_voxel_object(voxel_object, glm::vec3(0, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 1.0, 0.0));
+    draw_voxel_object(voxel_object, glm::vec3(0, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 0.0, 1.0));
+
+#if 0
     srand(0);
-    for (int zi = 0; zi < 0; zi += 1)
-        for (int yi = 0; yi < 0; yi += 1)
-            for (int xi = 0; xi < 0; xi += 1) {
+    for (int zi = 0; zi < 10; zi += 1)
+        for (int yi = 0; yi < 10; yi += 1)
+            for (int xi = 0; xi < 10; xi += 1) {
                 auto voxel_object = ball_frames[int(gpu_input.time * 12 + rand()) % countof(ball_frames)];
                 auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
                 auto pos = glm::vec3(xi, yi, zi) * float(BRICK_SIZE) * VOXEL_SIZE * glm::vec3(grid_size);
@@ -198,6 +205,7 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
                 // box.b = 0.7f;
                 // renderer.submit_debug_box_lines(&box, 1);
             }
+#endif
 
     animation_playground->update(renderer, gpu_input);
 

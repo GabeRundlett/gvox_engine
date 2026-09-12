@@ -34,7 +34,7 @@ const bool RTDGI_RESTIR_USE_RESOLVE_SPATIAL_FILTER = true;
 // If `1`, every RTDGI_INTERLEAVED_VALIDATION_PERIOD-th frame is a validation one,
 // where new candidates are not suggested, but the reservoir picks are validated instead.
 // This hides the cost of validation, but reduces responsiveness.
-#define RTDGI_INTERLEAVE_TRACING_AND_VALIDATION 1
+#define RTDGI_INTERLEAVE_TRACING_AND_VALIDATION 0
 
 // How often should validation happen in interleaved mode. Lower values result
 // in more frequent validation, but less frequent candidate generation.

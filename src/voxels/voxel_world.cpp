@@ -275,6 +275,7 @@ exit_2:
 
                             auto const current_frame_int = static_cast<int>(gpu_input.time * self->scene->animation_playground->playback_fps + rand()) % frames.size;
                             auto voxel_object = frames[current_frame_int];
+                            srand(&surface_ent - chunk.surface_entity_candidates.begin());
 
                             auto grid_size = voxel_object->brick_max - voxel_object->brick_min + 1;
                             auto trunk_center = glm::vec3(grid_size.x, grid_size.y, 9) * 0.5f * float(BRICK_SIZE) * VOXEL_SIZE;
@@ -395,23 +396,14 @@ int generate_chunk_precheck(VoxelWorld *self, int32_t chunk_xi, int32_t chunk_yi
 float chunk_candidate_rating(int32_t chunk_xi, int32_t chunk_yi, int32_t chunk_zi, int32_t level) {
     PROFILE_FUNC();
 
-    glm::ivec3 neighbors[] = {
-        {-1, 0, 0},
-        {0, -1, 0},
-        {0, 0, -1},
-        {0, 0, 0},
-        {+1, 0, 0},
-        {0, +1, 0},
-        {0, 0, +1},
-    };
-    for (auto &np : neighbors) {
-        auto [np0, np1] = get_chunk_aabb(chunk_xi + np.x, chunk_yi + np.y, chunk_zi + np.z, level);
-        auto minmax = voxel_minmax_value_cpp(&noise_settings, RANDOM_VALUES.data(), np0.x, np0.y, np0.z, np1.x, np1.y, np1.z);
+    auto [p0, p1] = get_chunk_aabb(chunk_xi, chunk_yi, chunk_zi, level);
+    p0 -= VOXEL_SIZE;
+    p1 += VOXEL_SIZE;
+    auto minmax = voxel_minmax_value_cpp(&noise_settings, RANDOM_VALUES.data(), p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
 
-        if (minmax.min <= 0.0f && minmax.max >= 0.0f) {
-            auto [p0, p1] = get_chunk_aabb(chunk_xi + np.x, chunk_yi + np.y, chunk_zi + np.z, level);
-            return length((p0 + p1) * 0.5f);
-        }
+    if (minmax.min <= 0.0f && minmax.max >= 0.0f) {
+        auto [p0, p1] = get_chunk_aabb(chunk_xi, chunk_yi, chunk_zi, level);
+        return length((p0 + p1) * 0.5f);
     }
 
     return -1;

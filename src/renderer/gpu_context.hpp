@@ -66,6 +66,9 @@ struct GpuContext {
 
     daxa::TaskGraph startup_task_graph;
     daxa::TaskGraph frame_task_graph;
+
+    daxa::TaskGraphDebugUi frame_task_graph_debug_ui = {};
+
     daxa_u32vec2 render_resolution;
     daxa_u32vec2 output_resolution;
     daxa_u32vec2 next_lower_po2_render_size;
