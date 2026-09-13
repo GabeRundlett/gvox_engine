@@ -59,7 +59,6 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         },
     });
 
-    #if 0
     // debug_utils::DebugDisplay::add_pass({.name = "blur_pyramid mip 0", .task_image_id = output, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     for (uint32_t mip_i = 0; mip_i < mip_count - 1; ++mip_i) {
         auto src = output.mips(mip_i + 0, 1);
@@ -77,7 +76,6 @@ inline auto blur_pyramid(GpuContext &gpu_context, daxa::TaskImageView input_imag
         });
         // debug_utils::DebugDisplay::add_pass({.name = "blur_pyramid mip " + std::to_string(mip_i + 1), .task_image_id = dst, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     }
-    #endif
 
     return output;
 }

@@ -138,7 +138,7 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
     debug_utils::DebugDisplay::add_pass({.name = "ae_lut", .task_image_id = ae_lut, .type = DEBUG_IMAGE_TYPE_3D});
 
     auto [gbuffer_depth, velocity_image] = self.gbuffer_renderer.render(gpu_context, voxel_buffers);
-    
+
     auto hiz = task_gen_hiz_single_pass(gpu_context, gpu_context.frame_task_graph, gbuffer_depth.depth.current().view());
     record_render_foliage_bricks(gpu_context, gpu_context.frame_task_graph, hiz, scene);
 

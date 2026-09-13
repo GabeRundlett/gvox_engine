@@ -7,3 +7,5 @@ imgui.ini
 *.dot
 data/user_settings.json
 .glsld
+
+tg_dbg_cache
