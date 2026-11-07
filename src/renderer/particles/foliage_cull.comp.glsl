@@ -1,6 +1,7 @@
 #include "render_foliage.inl"
 #include <culling.glsl>
 #include <utilities/gpu/random.glsl>
+#include <voxels/voxel.glsl>
 
 DAXA_DECL_PUSH_CONSTANT(FoliageCullPush, push)
 
@@ -139,10 +140,9 @@ void main() {
         brick_aabb.min = min(brick_aabb.min, brick_aabb.min - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
         brick_aabb.max = max(brick_aabb.max, brick_aabb.max - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
 
-        brick_aabb.min *= deref(voxel_object_ptr).world_to_local.scale;
-        brick_aabb.max *= deref(voxel_object_ptr).world_to_local.scale;
-        brick_aabb.min += deref(voxel_object_ptr).world_to_local.pos;
-        brick_aabb.max += deref(voxel_object_ptr).world_to_local.pos;
+        // NOTE(grundlett): these no longer represent the min/max, but just 2 corners of the AABB
+        brick_aabb.min = apply(deref(voxel_object_ptr).local_to_world, brick_aabb.min);
+        brick_aabb.max = apply(deref(voxel_object_ptr).local_to_world, brick_aabb.max);
 
         vec3 center_ws = (brick_aabb.min + brick_aabb.max) / 2;
         vec3 center_vs = (deref(push.uses.gpu_input).player.cam.world_to_view * vec4(center_ws, 1)).xyz;

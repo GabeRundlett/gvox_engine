@@ -62,7 +62,7 @@ struct GpuVoxelObject {
     // the foliage-chunk cull pass) without needing to touch per-brick data.
     daxa_f32vec3 aabb_min;
     daxa_f32vec3 aabb_max;
-    Transform world_to_local;
+    Transform local_to_world;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuVoxelObject, 8)
 

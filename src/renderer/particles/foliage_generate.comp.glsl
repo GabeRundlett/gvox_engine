@@ -17,9 +17,11 @@ DAXA_DECL_PUSH_CONSTANT(FoliageGeneratePush, push)
 #define UserMaxElementCount MAX_FLOWERS
 #include <utilities/allocator.glsl>
 
+#include "voxels/voxel.glsl"
+
 layout(local_size_x = BRICK_SIZE, local_size_y = BRICK_SIZE, local_size_z = BRICK_SIZE) in;
 
-void spawn_foliage(FoliageBrickInstance visible_brick, uint voxel_index, vec3 world_pos);
+void spawn_foliage(FoliageBrickInstance visible_brick, uint voxel_index, vec3 world_pos, vec3 voxel_pos);
 
 void main() {
     uint visible_brick_index = gl_WorkGroupID.x + 1u;
@@ -29,8 +31,7 @@ void main() {
 
     daxa_BufferPtr(VoxelFoliageBrick) brick_ptr = advance(deref(visible_brick.voxel_object).brick_foliage, visible_brick.brick_index);
     daxa_BufferPtr(BrickPrimitive) brick_primitive_ptr = advance(deref(visible_brick.voxel_object).brick_primitives, visible_brick.brick_index);
-    const float scale = deref(visible_brick.voxel_object).world_to_local.scale;
-    vec3 brick_pos = deref(visible_brick.voxel_object).world_to_local.pos + vec3(deref(brick_primitive_ptr).offset & ~BRICK_MASK) * scale;
+    vec3 brick_pos = vec3(deref(brick_primitive_ptr).offset & ~BRICK_MASK);
 
     uvec3 local_voxel = gl_LocalInvocationID.xyz;
     uint voxel_index = local_voxel.x + local_voxel.y * BRICK_SIZE + local_voxel.z * BRICK_SIZE * BRICK_SIZE;
@@ -44,14 +45,15 @@ void main() {
         return;
     }
 
-    vec3 world_pos = brick_pos + vec3(local_voxel) * scale;
-    spawn_foliage(visible_brick, voxel_index, world_pos);
+    vec3 voxel_pos = brick_pos + vec3(local_voxel);
+    vec3 world_pos = apply(deref(visible_brick.voxel_object).local_to_world, voxel_pos);
+    spawn_foliage(visible_brick, voxel_index, world_pos, voxel_pos);
 }
 
-void spawn_foliage(FoliageBrickInstance visible_brick, uint voxel_index, vec3 world_pos) {
+void spawn_foliage(FoliageBrickInstance visible_brick, uint voxel_index, vec3 world_pos, vec3 voxel_pos) {
     daxa_BufferPtr(VoxelShadingAttribBrick) brick_attributes = advance(deref(visible_brick.voxel_object).brick_shading_attribs, visible_brick.brick_index);
 
-    float r2 = good_rand(world_pos.xy);
+    float r2 = good_rand(voxel_pos.xy);
     const float FLOWER_SPAWN_CHANCE = 0.01;
 
     if (r2 < FLOWER_SPAWN_CHANCE) {

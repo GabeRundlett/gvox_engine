@@ -131,7 +131,7 @@ auto Fsr2Renderer::upscale(GpuContext &gpu_context, GbufferDepth const &gbuffer_
 
             // TODO: Investigate why x is inverted
             dispatch_description.jitterOffset.x = -state.jitter.x;
-            dispatch_description.jitterOffset.y = state.jitter.y;
+            dispatch_description.jitterOffset.y = -state.jitter.y;
             dispatch_description.motionVectorScale.x = static_cast<daxa_f32>(velocity_extent.x);
             dispatch_description.motionVectorScale.y = static_cast<daxa_f32>(velocity_extent.y);
             dispatch_description.reset = state.should_reset;

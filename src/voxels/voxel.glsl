@@ -52,4 +52,14 @@ float traceVoxelDataBitmap(daxa_BufferPtr(BrickPrimitive) brickPrimitivePtr, vec
     return traceVoxelDataBitmap(brickPrimitivePtr, origin, dir, coord, nrm, iterCount);
 }
 
+vec3 apply(vec4 rot, vec3 v) { return v + 2.0 * cross(rot.xyz, cross(rot.xyz, v) + v * rot.w); }
+vec3 apply_inv(vec4 rot, vec3 v) { return v + 2.0 * cross(rot.xyz, cross(rot.xyz, v) - v * rot.w); }
+
+vec3 apply(vec3 pos, vec4 rot, vec3 p) { return pos + apply(rot, p); }
+vec3 apply_inv(vec3 pos, vec4 rot, vec3 p) { return apply_inv(rot, p - pos); }
+
+vec3 apply(Transform t, vec3 p) { return t.pos + apply(t.rot, p * t.scale); }
+vec3 apply_inv(Transform t, vec3 p) { return apply_inv(t.rot, p - t.pos) / t.scale; }
+
+
 #endif
