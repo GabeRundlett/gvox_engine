@@ -238,6 +238,8 @@ void VoxelApp::on_update() {
         AppSettings::set("UI", "show_tg_debug", settings::Checkbox{.value = show_tg_debug});
     }
 
+    renderer.ui(gpu_input);
+
     ui.update();
 
     ++gpu_input.frame_index;
@@ -448,43 +450,6 @@ void VoxelApp::record_tasks() {
 
     needs_vram_calc = true;
 }
-
-// void VoxelApp::gpu_app_draw_ui() {
-//     for (auto const &str : ui_strings) {
-//         ImGui::Text("%s", str.c_str());
-//     }
-//     if (ImGui::TreeNode("Player")) {
-//         ImGui::Text("pos: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_pos.x), static_cast<double>(gpu_output.player_pos.y), static_cast<double>(gpu_output.player_pos.z));
-//         ImGui::Text("y/p/r: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_rot.x), static_cast<double>(gpu_output.player_rot.y), static_cast<double>(gpu_output.player_rot.z));
-//         ImGui::Text("unit offs: %.2f, %.2f, %.2f", static_cast<double>(gpu_output.player_unit_offset.x), static_cast<double>(gpu_output.player_unit_offset.y), static_cast<double>(gpu_output.player_unit_offset.z));
-//         ImGui::TreePop();
-//     }
-//     if (ImGui::TreeNode("Auto-Exposure")) {
-//         ImGui::Text("Exposure multiple: %.2f", static_cast<double>(gpu_input.pre_exposure));
-//         auto hist_float = std::array<float, LUMINANCE_HISTOGRAM_BIN_COUNT>{};
-//         auto hist_min = static_cast<float>(kajiya_renderer.post_processor.histogram[0]);
-//         auto hist_max = static_cast<float>(kajiya_renderer.post_processor.histogram[0]);
-//         auto first_bin_with_value = -1;
-//         auto last_bin_with_value = -1;
-//         for (uint32_t i = 0; i < LUMINANCE_HISTOGRAM_BIN_COUNT; ++i) {
-//             if (first_bin_with_value == -1 && kajiya_renderer.post_processor.histogram[i] != 0) {
-//                 first_bin_with_value = i;
-//             }
-//             if (kajiya_renderer.post_processor.histogram[i] != 0) {
-//                 last_bin_with_value = i;
-//             }
-//             hist_float[i] = static_cast<float>(kajiya_renderer.post_processor.histogram[i]);
-//             hist_min = std::min(hist_min, hist_float[i]);
-//             hist_max = std::max(hist_max, hist_float[i]);
-//         }
-//         ImGui::PlotHistogram("Histogram", hist_float.data(), static_cast<int>(hist_float.size()), 0, "hist", hist_min, hist_max, ImVec2(0, 120.0f));
-//         ImGui::Text("min %.2f | max %.2f", static_cast<double>(hist_min), static_cast<double>(hist_max));
-//         auto a = double(first_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
-//         auto b = double(last_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
-//         ImGui::Text("first bin %d (%.2f) | last bin %d (%.2f)", first_bin_with_value, exp2(a), last_bin_with_value, exp2(b));
-//         ImGui::TreePop();
-//     }
-// }
 
 void VoxelApp::calc_vram_usage() {
     Vec<debug_utils::DebugDisplay::GpuResourceInfo> &debug_gpu_resource_infos = debug_utils::DebugDisplay::s_instance->gpu_resource_infos;

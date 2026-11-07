@@ -27,6 +27,15 @@ RayPayload pack_ray_payload(uint blas_id, uint brick_id, float ray_t, VoxelHit h
     return result;
 }
 
+vec3 apply(vec4 rot, vec3 v) { return v + 2.0 * cross(rot.xyz, cross(rot.xyz, v) + v * rot.w); }
+vec3 apply_inv(vec4 rot, vec3 v) { return v + 2.0 * cross(rot.xyz, cross(rot.xyz, v) - v * rot.w); }
+
+vec3 apply(vec3 pos, vec4 rot, vec3 p) { return pos + apply(rot, p); }
+vec3 apply_inv(vec3 pos, vec4 rot, vec3 p) { return apply_inv(rot, p - pos); }
+
+vec3 apply(Transform t, vec3 p) { return t.pos + apply(t.rot, p); }
+vec3 apply_inv(Transform t, vec3 p) { return apply_inv(t.rot, p - t.pos); }
+
 Voxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxel_object_manifests) {
     uint blas_id = payload.data0;
     uint brick_id = payload.data1 >> 11;
@@ -44,7 +53,7 @@ Voxel unpack_ray_payload(RayPayload payload, daxa_BufferPtr(GpuVoxelObject) voxe
 
     Voxel voxel = unpack_voxel(packed_voxel);
     voxel.albedo *= deref(voxel_object).tint;
-    voxel.normal = deref(voxel_object).rotation * voxel.normal;
+    voxel.normal = apply(deref(voxel_object).world_to_local.rot, voxel.normal);
 
     // switch (nrm)
     // {

@@ -154,7 +154,8 @@ void main() {
         init_with_stream(reservoir, p_q, inv_pdf_q, stream_state, reservoir_payload);
 
         float rl = mix(safeTexelFetch(candidate_history_tex, ivec2(px), 0).y, sqrt(hit_t), 0.05);
-        safeImageStore(candidate_out_tex, ivec2(px), vec4(sqrt(hit_t), rl, 0, 0));
+        // NOTE(grundlett): unused
+        // safeImageStore(candidate_out_tex, ivec2(px), vec4(sqrt(hit_t), rl, 0, 0));
     }
 
     const float rt_invalidity = sqrt(saturate(safeTexelFetch(rt_invalidity_tex, ivec2(px), 0).y));

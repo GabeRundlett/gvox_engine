@@ -5,7 +5,7 @@
 #include <renderer/kajiya/inc/math_const.glsl>
 
 #define SUN_DIRECTION deref(gpu_input).sky_settings.sun_direction
-#define SUN_INTENSITY 1.0
+#define SUN_INTENSITY 10.0
 const vec3 sun_color = vec3(255, 240, 233) / 255.0; // 5000 kelvin blackbody
 #define SUN_COL(sky_lut_tex) (get_far_sky_color(sky_lut_tex, SUN_DIRECTION) * SUN_INTENSITY)
 

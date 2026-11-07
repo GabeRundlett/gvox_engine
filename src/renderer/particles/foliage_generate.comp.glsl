@@ -29,8 +29,8 @@ void main() {
 
     daxa_BufferPtr(VoxelFoliageBrick) brick_ptr = advance(deref(visible_brick.voxel_object).brick_foliage, visible_brick.brick_index);
     daxa_BufferPtr(BrickPrimitive) brick_primitive_ptr = advance(deref(visible_brick.voxel_object).brick_primitives, visible_brick.brick_index);
-    const float scale = deref(visible_brick.voxel_object).scale;
-    vec3 brick_pos = deref(visible_brick.voxel_object).pos + vec3(deref(brick_primitive_ptr).offset & ~BRICK_MASK) * scale;
+    const float scale = deref(visible_brick.voxel_object).world_to_local.scale;
+    vec3 brick_pos = deref(visible_brick.voxel_object).world_to_local.pos + vec3(deref(brick_primitive_ptr).offset & ~BRICK_MASK) * scale;
 
     uvec3 local_voxel = gl_LocalInvocationID.xyz;
     uint voxel_index = local_voxel.x + local_voxel.y * BRICK_SIZE + local_voxel.z * BRICK_SIZE * BRICK_SIZE;

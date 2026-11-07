@@ -304,17 +304,17 @@ void AnimationPlayground::update(Renderer &renderer, GpuInput const &gpu_input) 
         auto const pos = playground_pos - glm::mat3_cast(rotation) * trunk_center;
         draw_voxel_object(voxel_object, pos, rotation, VOXEL_SIZE, glm::vec3(1.0f));
 
-        Box box;
-        box.p0_x = playground_pos.x;
-        box.p0_y = playground_pos.y;
-        box.p0_z = playground_pos.z;
-        box.p1_x = playground_pos.x + VOXEL_SIZE * BRICK_SIZE * grid_size.x;
-        box.p1_y = playground_pos.y + VOXEL_SIZE * BRICK_SIZE * grid_size.y;
-        box.p1_z = playground_pos.z + VOXEL_SIZE * BRICK_SIZE * grid_size.z;
-        box.r = 1.0f;
-        box.g = 1.0f;
-        box.b = 1.0f;
-        renderer.submit_debug_box_lines(&box, 1);
+        // Box box;
+        // box.p0_x = playground_pos.x;
+        // box.p0_y = playground_pos.y;
+        // box.p0_z = playground_pos.z;
+        // box.p1_x = playground_pos.x + VOXEL_SIZE * BRICK_SIZE * grid_size.x;
+        // box.p1_y = playground_pos.y + VOXEL_SIZE * BRICK_SIZE * grid_size.y;
+        // box.p1_z = playground_pos.z + VOXEL_SIZE * BRICK_SIZE * grid_size.z;
+        // box.r = 1.0f;
+        // box.g = 1.0f;
+        // box.b = 1.0f;
+        // renderer.submit_debug_box_lines(&box, 1);
     }
 }
 

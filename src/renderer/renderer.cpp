@@ -1,4 +1,6 @@
+#include "application/input.inl"
 #include "gen_hiz.inl"
+#include "renderer/particles/render_foliage.hpp"
 #include <renderer/renderer.hpp>
 
 #include <renderer/trace_primary.inl>
@@ -36,6 +38,8 @@ Renderer::Renderer() : impl{new RendererImpl()} {
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip Low", {.value = 0.4f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Hist Clip High", {.value = 0.1f, .min = 0.0f, .max = 1.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Reaction Speed", {.value = 3.0f, .min = 0.0f, .max = 10.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Curve Base EV", {.value = -1.0f, .min = -10.0f, .max = 10.0f}});
+    AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Curve Influence", {.value = 0.5f, .min = 0.01f, .max = 10.0f}});
     AppSettings::add<settings::SliderFloat>({"Camera", "Exposure Shift", {.value = 0.0f, .min = -15.0f, .max = 15.0f}});
 
     AppSettings::add<settings::ComboBox>({"Graphics", "TAA Method", {.value = 1}, {.task_graph_depends = true, .options = {"None", "Kajiya TAA", "FSR 2.2"}}});
@@ -111,6 +115,8 @@ void Renderer::end_frame(daxa::Device &device, float dt) {
         .histogram_clip_low = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Hist Clip Low").value,
         .histogram_clip_high = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Hist Clip High").value,
         .speed = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Reaction Speed").value,
+        .curve_base = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Curve Base EV").value,
+        .curve_infl = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Curve Influence").value,
         .ev_shift = AppSettings::get<settings::SliderFloat>("Camera", "Exposure Shift").value,
     };
     self.kajiya_renderer.next_frame(device, auto_exposure_settings, dt);
@@ -131,6 +137,8 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
     gpu_context.frame_task_graph.register_image(self.sky.sky_lut.task_resource);
     gpu_context.frame_task_graph.register_image(self.sky.ibl_cube.task_resource);
     gpu_context.frame_task_graph.register_image(self.sky.aerial_perspective_lut.task_resource);
+
+    auto &task_graph = gpu_context.frame_task_graph;
 
     debug_utils::DebugDisplay::add_pass({.name = "transmittance_lut", .task_image_id = transmittance_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
     debug_utils::DebugDisplay::add_pass({.name = "sky_lut", .task_image_id = sky_lut, .type = DEBUG_IMAGE_TYPE_DEFAULT});
@@ -213,6 +221,38 @@ auto Renderer::render(GpuContext &gpu_context, RenderScene *scene, daxa::TaskIma
     }
 
     return antialiased_image;
+}
+
+void Renderer::ui(GpuInput &gpu_input) {
+    auto &self = *impl;
+    if (ImGui::Begin("Renderer")) {
+        if (ImGui::TreeNode("Auto-Exposure")) {
+            ImGui::Text("Exposure multiple: %.2f", static_cast<double>(gpu_input.pre_exposure));
+            auto hist_float = std::array<float, LUMINANCE_HISTOGRAM_BIN_COUNT>{};
+            auto hist_min = static_cast<float>(self.kajiya_renderer.post_processor.histogram[0]);
+            auto hist_max = static_cast<float>(self.kajiya_renderer.post_processor.histogram[0]);
+            auto first_bin_with_value = -1;
+            auto last_bin_with_value = -1;
+            for (uint32_t i = 0; i < LUMINANCE_HISTOGRAM_BIN_COUNT; ++i) {
+                if (first_bin_with_value == -1 && self.kajiya_renderer.post_processor.histogram[i] != 0) {
+                    first_bin_with_value = i;
+                }
+                if (self.kajiya_renderer.post_processor.histogram[i] != 0) {
+                    last_bin_with_value = i;
+                }
+                hist_float[i] = static_cast<float>(self.kajiya_renderer.post_processor.histogram[i]);
+                hist_min = std::min(hist_min, hist_float[i]);
+                hist_max = std::max(hist_max, hist_float[i]);
+            }
+            ImGui::PlotHistogram("Histogram", hist_float.data(), static_cast<int>(hist_float.size()), 0, "hist", hist_min, hist_max, ImVec2(0, 120.0f));
+            ImGui::Text("min %.2f | max %.2f", static_cast<double>(hist_min), static_cast<double>(hist_max));
+            auto a = double(first_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
+            auto b = double(last_bin_with_value) / 256.0 * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2) + LUMINANCE_HISTOGRAM_MIN_LOG2;
+            ImGui::Text("first bin %d (%.2f) | last bin %d (%.2f)", first_bin_with_value, exp2(a), last_bin_with_value, exp2(b));
+            ImGui::TreePop();
+        }
+    }
+    ImGui::End();
 }
 
 void Renderer::submit_debug_lines(Line const *lines, int line_n) {

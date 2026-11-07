@@ -16,6 +16,12 @@ struct Aabb {
 };
 DAXA_DECL_BUFFER_PTR(Aabb)
 
+struct Transform {
+    daxa_f32vec3 pos;
+    float scale;
+    daxa_f32vec4 rot;
+};
+
 struct Voxel {
     daxa_f32vec3 albedo;
     daxa_f32vec3 normal;
@@ -32,6 +38,11 @@ struct VoxelShadingAttribBrick {
 };
 DAXA_DECL_BUFFER_PTR(VoxelShadingAttribBrick)
 
+struct BrickExtras {
+    daxa_u32 flags;
+};
+DAXA_DECL_BUFFER_PTR(BrickExtras)
+
 struct VoxelFoliageBrick {
     uint64_t bitmask[BRICK_SIZE * BRICK_SIZE * BRICK_SIZE / 64];
 };
@@ -42,6 +53,7 @@ DAXA_FWD_DECL_BUFFER_PTR(BrickPrimitive)
 struct GpuVoxelObject {
     daxa_BufferPtr(VoxelShadingAttribBrick) brick_shading_attribs;
     daxa_BufferPtr(BrickPrimitive) brick_primitives;
+    daxa_BufferPtr(BrickExtras) brick_extras;
     daxa_BufferPtr(VoxelFoliageBrick) brick_foliage;
     daxa_BufferPtr(Aabb) brick_aabbs;
     daxa_f32vec3 tint;
@@ -50,9 +62,7 @@ struct GpuVoxelObject {
     // the foliage-chunk cull pass) without needing to touch per-brick data.
     daxa_f32vec3 aabb_min;
     daxa_f32vec3 aabb_max;
-    daxa_f32vec3 pos;
-    float scale;
-    daxa_f32mat3x3 rotation;
+    Transform world_to_local;
 };
 DAXA_DECL_BUFFER_PTR_ALIGN(GpuVoxelObject, 8)
 

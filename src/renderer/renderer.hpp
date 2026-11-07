@@ -33,6 +33,7 @@ struct Renderer {
     void begin_frame(GpuInput &gpu_input);
     void end_frame(daxa::Device &device, float dt);
     auto render(GpuContext &gpu_context, struct RenderScene *scene, daxa::TaskImageView output_image, daxa::Format output_format) -> daxa::TaskImageView;
+    void ui(GpuInput &gpu_input);
 
     void submit_debug_lines(Line const *lines, int line_n);
     void submit_debug_points(Point const *points, int point_n);

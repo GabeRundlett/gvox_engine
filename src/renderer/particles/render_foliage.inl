@@ -31,7 +31,7 @@ struct FoliageGeneratePush {
 DAXA_DECL_COMPUTE_TASK_HEAD_BEGIN(FoliageCull)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuInput), gpu_input)
 DAXA_TH_BUFFER_PTR(READ, daxa_BufferPtr(GpuVoxelObject), voxel_object_manifests)
-DAXA_TH_BUFFER_PTR(WRITE, daxa_RWBufferPtr(FoliageBrickInstance), visible_foliage_bricks)
+DAXA_TH_BUFFER_PTR(READ_WRITE, daxa_RWBufferPtr(FoliageBrickInstance), visible_foliage_bricks)
 DAXA_TH_IMAGE_INDEX(SAMPLE, REGULAR_2D, hiz)
 DAXA_DECL_TASK_HEAD_END
 

@@ -24,7 +24,7 @@ struct RenderVoxelObject {
     daxa::DeviceAddress brick_aabb_device_address;
     daxa::DeviceAddress brick_shading_device_address;
     daxa::DeviceAddress brick_primitives_device_address;
-    daxa::DeviceAddress brick_flags_device_address;
+    daxa::DeviceAddress brick_extras_device_address;
     daxa::DeviceAddress brick_foliage_device_address;
     daxa::DeviceAddress blas_device_address;
 
@@ -61,13 +61,13 @@ namespace {
         size_t mPrimitivesSize;
         size_t mShadingSize;
         size_t mAabbSize;
-        size_t mFlagsSize;
+        size_t mExtrasSize;
         size_t mFoliageSize;
 
         size_t mPrimitivesOffset;
         size_t mShadingOffset;
         size_t mAabbOffset;
-        size_t mFlagsOffset;
+        size_t mExtrasOffset;
         size_t mFoliageOffset;
 
         size_t mTotalSize;
@@ -78,14 +78,14 @@ namespace {
         result.mPrimitivesSize = sizeof(BrickPrimitive) * brick_count;
         result.mShadingSize = sizeof(VoxelShadingAttribBrick) * brick_count;
         result.mAabbSize = sizeof(Aabb) * brick_count;
-        result.mFlagsSize = sizeof(uint32_t) * brick_count;
+        result.mExtrasSize = sizeof(BrickExtras) * brick_count;
         result.mFoliageSize = has_foliage ? sizeof(VoxelFoliageBrick) * brick_count : size_t{0};
 
         result.mPrimitivesOffset = size_t{0};
         result.mShadingOffset = result.mPrimitivesOffset + result.mPrimitivesSize;
         result.mAabbOffset = result.mShadingOffset + result.mShadingSize;
-        result.mFlagsOffset = result.mAabbOffset + result.mAabbSize;
-        result.mFoliageOffset = result.mFlagsOffset + result.mFlagsSize;
+        result.mExtrasOffset = result.mAabbOffset + result.mAabbSize;
+        result.mFoliageOffset = result.mExtrasOffset + result.mExtrasSize;
         result.mTotalSize = result.mFoliageOffset + result.mFoliageSize;
 
         return result;
@@ -186,7 +186,7 @@ namespace {
             self->brick_primitives_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mPrimitivesOffset);
             self->brick_shading_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mShadingOffset);
             self->brick_aabb_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mAabbOffset);
-            self->brick_flags_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFlagsOffset);
+            self->brick_extras_device_address = std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mExtrasOffset);
             self->brick_foliage_device_address = self->has_foliage ? std::bit_cast<daxa::DeviceAddress>(deviceAddress + alloc_info.mFoliageOffset) : daxa::DeviceAddress{0};
 
             self->scene->buffers.voxel_object_bricks.set_buffer(self->bricks_data_buffer);
@@ -288,9 +288,9 @@ void update_render_voxel_object(GpuContext &gpu_context, struct VoxelObject *src
                 ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_buffer,
                     .dst_buffer = self->bricks_data_buffer,
-                    .src_offset = alloc_info.mFlagsOffset,
-                    .dst_offset = alloc_info.mFlagsOffset,
-                    .size = alloc_info.mFlagsSize,
+                    .src_offset = alloc_info.mExtrasOffset,
+                    .dst_offset = alloc_info.mExtrasOffset,
+                    .size = alloc_info.mExtrasSize,
                 });
                 ti.recorder.copy_buffer_to_buffer({
                     .src_buffer = staging_buffer,
@@ -366,18 +366,17 @@ void draw_voxel_object(struct VoxelObject *object, const glm::vec3 &pos, const g
     self->scene->drawn_voxel_object_manifests.push_back(GpuVoxelObject{
         self->brick_shading_device_address,
         self->brick_primitives_device_address,
+        self->brick_extras_device_address,
         self->brick_foliage_device_address,
         self->brick_aabb_device_address,
         {tint.r, tint.g, tint.b},
         self->brick_count,
         {world_aabb_min.x, world_aabb_min.y, world_aabb_min.z},
         {world_aabb_max.x, world_aabb_max.y, world_aabb_max.z},
-        {pos.x, pos.y, pos.z},
-        scale,
-        {
-            {rotation_mat[0].x, rotation_mat[0].y, rotation_mat[0].z},
-            {rotation_mat[1].x, rotation_mat[1].y, rotation_mat[1].z},
-            {rotation_mat[2].x, rotation_mat[2].y, rotation_mat[2].z},
+        Transform{
+            {pos.x, pos.y, pos.z},
+            scale,
+            {rotation.x, rotation.y, rotation.z, rotation.w},
         },
     });
     auto const scaled_rotation = rotation_mat * scale;

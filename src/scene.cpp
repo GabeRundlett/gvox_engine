@@ -175,11 +175,11 @@ void Scene::update(Renderer &renderer, GpuInput &gpu_input) {
 
     update_voxel_world(gpu_context, renderer, gpu_input, voxel_world);
 
-    auto voxel_object = ball_frames[0];
-    draw_voxel_object(voxel_object, glm::vec3(1, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 0.0, 0.0));
-    draw_voxel_object(voxel_object, glm::vec3(1, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 1.0, 0.0));
-    draw_voxel_object(voxel_object, glm::vec3(0, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 1.0, 0.0));
-    draw_voxel_object(voxel_object, glm::vec3(0, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 0.0, 1.0));
+    // auto voxel_object = ball_frames[0];
+    // draw_voxel_object(voxel_object, glm::vec3(1, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 0.0, 0.0));
+    // draw_voxel_object(voxel_object, glm::vec3(1, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(1.0, 1.0, 0.0));
+    // draw_voxel_object(voxel_object, glm::vec3(0, 1, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 1.0, 0.0));
+    // draw_voxel_object(voxel_object, glm::vec3(0, 0, 0) * 4.0f, glm::quat(1, 0, 0, 0), VOXEL_SIZE, glm::vec3(0.0, 0.0, 1.0));
 
 #if 0
     srand(0);

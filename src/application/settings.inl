@@ -12,6 +12,8 @@ struct AutoExposureSettings {
     daxa_f32 histogram_clip_low;
     daxa_f32 histogram_clip_high;
     daxa_f32 speed;
+    daxa_f32 curve_base;
+    daxa_f32 curve_infl;
     daxa_f32 ev_shift;
 };
 

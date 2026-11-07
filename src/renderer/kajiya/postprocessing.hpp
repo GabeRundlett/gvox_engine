@@ -32,10 +32,13 @@ struct DynamicExposureState {
         return (self.ev_slow + self.ev_fast) * 0.5f + DYNAMIC_EXPOSURE_BIAS;
     }
 
-    void update(float ev, float dt, float speed) {
+    void update(float ev, float dt, float speed, float base_ev, float curve_infl) {
         // dyn exposure update
         auto &self = *this;
         ev = pp_clamp<float>(ev, LUMINANCE_HISTOGRAM_MIN_LOG2, LUMINANCE_HISTOGRAM_MAX_LOG2);
+        const float AE_BASE_EV = -4.0;
+        const float AE_BASE_EV_INFLUENCE = 0.4f;
+        ev = atan(curve_infl * (ev + base_ev)) / curve_infl - base_ev;
         dt = dt * speed; // std::exp2f(self.speed_log2);
         auto t_fast = 1.0f - std::exp(-1.0f * dt);
         self.ev_fast = (ev - self.ev_fast) * t_fast + self.ev_fast;
@@ -100,7 +103,7 @@ struct PostProcessor {
             auto mean = sum / pp_max(used_count, 1u);
             auto image_log2_lum = float(LUMINANCE_HISTOGRAM_MIN_LOG2 + mean * (LUMINANCE_HISTOGRAM_MAX_LOG2 - LUMINANCE_HISTOGRAM_MIN_LOG2));
 
-            dynamic_exposure.update(-image_log2_lum, dt, auto_exposure_settings.speed);
+            dynamic_exposure.update(-image_log2_lum, dt, auto_exposure_settings.speed, auto_exposure_settings.curve_base, auto_exposure_settings.curve_infl);
 
             auto ev_mult = std::exp2f(auto_exposure_settings.ev_shift + dynamic_exposure.ev_smoothed());
             exposure_state.pre_mult_prev = exposure_state.pre_mult;

@@ -139,10 +139,10 @@ void main() {
         brick_aabb.min = min(brick_aabb.min, brick_aabb.min - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
         brick_aabb.max = max(brick_aabb.max, brick_aabb.max - deref(push.uses.gpu_input).sky_settings.sun_direction * 5);
 
-        brick_aabb.min *= deref(voxel_object_ptr).scale;
-        brick_aabb.max *= deref(voxel_object_ptr).scale;
-        brick_aabb.min += deref(voxel_object_ptr).pos;
-        brick_aabb.max += deref(voxel_object_ptr).pos;
+        brick_aabb.min *= deref(voxel_object_ptr).world_to_local.scale;
+        brick_aabb.max *= deref(voxel_object_ptr).world_to_local.scale;
+        brick_aabb.min += deref(voxel_object_ptr).world_to_local.pos;
+        brick_aabb.max += deref(voxel_object_ptr).world_to_local.pos;
 
         vec3 center_ws = (brick_aabb.min + brick_aabb.max) / 2;
         vec3 center_vs = (deref(push.uses.gpu_input).player.cam.world_to_view * vec4(center_ws, 1)).xyz;
