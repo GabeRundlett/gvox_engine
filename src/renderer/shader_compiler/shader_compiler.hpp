@@ -41,6 +41,7 @@ struct GlslangWrapperCompileInfo
 	const char* entry_point;
 	const char* source_entry;
 	bool use_debug_info;
+	bool use_extra_debug_info;
 
 	IncludeCallback* include_local_cb;
 	IncludeCallback* include_system_cb;

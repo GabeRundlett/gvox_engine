@@ -1,5 +1,11 @@
 #include <glslang/Public/ShaderLang.h>
+// Installed glslang (e.g. Vulkan SDK) puts SPIRV headers under glslang/SPIRV/,
+// but the source tree (FetchContent) keeps them at SPIRV/ in the repo root.
+#if __has_include(<glslang/SPIRV/GlslangToSpv.h>)
 #include <glslang/SPIRV/GlslangToSpv.h>
+#else
+#include <SPIRV/GlslangToSpv.h>
+#endif
 #include <glslang/Include/ResourceLimits.h>
 
 #define GLSLANG_WRAPPER_INTERNAL 1
@@ -199,9 +205,9 @@ GLSLANG_WRAPPER_DLL_EXPORT void glslang_wrapper_compile(const GlslangWrapperComp
 
 	glslang::SpvOptions spv_options{};
 	spv_options.generateDebugInfo = info.use_debug_info;              // -g
-	spv_options.emitNonSemanticShaderDebugInfo = info.use_debug_info; // -gV
+	spv_options.emitNonSemanticShaderDebugInfo = info.use_debug_info && info.use_extra_debug_info; // -gV
 	if (spv_options.emitNonSemanticShaderDebugInfo)
-		spv_options.emitNonSemanticShaderDebugSource = info.use_debug_info; // -gVS
+		spv_options.emitNonSemanticShaderDebugSource = info.use_debug_info && info.use_extra_debug_info; // -gVS
 	spv_options.stripDebugInfo = !info.use_debug_info;
 
 	if (spv_options.emitNonSemanticShaderDebugInfo)
@@ -212,6 +218,10 @@ GLSLANG_WRAPPER_DLL_EXPORT void glslang_wrapper_compile(const GlslangWrapperComp
 	GlslangFileIncluder includer;
 	includer.info = &info;
 	auto messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules);
+	// glslangValidator sets this for any -g*. Without it glslang never records the
+	// main file's name/text, so its DebugSource (-gV/-gVS) and OpSource (-g) are empty.
+	if (info.use_debug_info)
+		messages = static_cast<EShMessages>(messages | EShMsgDebugInfo);
 	const TBuiltInResource resource = DAXA_DEFAULT_BUILTIN_RESOURCE;
 
 	static constexpr int SHADER_VERSION = 460;

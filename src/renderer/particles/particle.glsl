@@ -49,12 +49,7 @@ void particle_point_pos_and_size(in vec3 osPosition, in float voxelSize, in mat4
     pointSize = max(AABB.x, AABB.y);
 }
 
-void particle_render(
-    daxa_RWBufferPtr(PackedParticleVertex) cube_rendered_particle_verts,
-    daxa_RWBufferPtr(PackedParticleVertex) shadow_cube_rendered_particle_verts,
-    daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts,
-    daxa_RWBufferPtr(VoxelParticlesState) particles_state,
-    daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex vert, PackedParticleVertex packed_vertex, bool should_shadow) {
+void particle_render(daxa_RWBufferPtr(PackedParticleVertex) cube_rendered_particle_verts, daxa_RWBufferPtr(PackedParticleVertex) shadow_cube_rendered_particle_verts, daxa_RWBufferPtr(PackedParticleVertex) splat_rendered_particle_verts, daxa_RWBufferPtr(VoxelParticlesState) particles_state, daxa_BufferPtr(GpuInput) gpu_input, ParticleVertex vert, PackedParticleVertex packed_vertex, bool should_shadow) {
     const float voxel_radius = VOXEL_SIZE * 0.5;
     vec3 center_ws = vert.pos;
     mat4 world_to_sample = deref(gpu_input).player.cam.view_to_sample * deref(gpu_input).player.cam.world_to_view;

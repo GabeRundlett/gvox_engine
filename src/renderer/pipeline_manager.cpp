@@ -434,7 +434,8 @@ static void compile_shader(ShaderCompileInfoAndResult &info_and_result, uint64_t
         .shader_name = resolved_path.c_str(),
         .entry_point = info.entry_point == nullptr ? "main" : info.entry_point,
         .source_entry = "main",
-        .use_debug_info = SPV_USE_DEBUG_INFO,
+        .use_debug_info = SPV_USE_DEBUG_INFO, // -g
+        .use_extra_debug_info = true, // -gVS
 
         .include_local_cb = include_local_cb,
         .include_system_cb = include_system_cb,

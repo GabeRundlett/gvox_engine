@@ -101,6 +101,10 @@ VoxelApp::VoxelApp() : window(APPNAME, 1280, 720), ui{AppUi(window.glfw_window_p
 }
 VoxelApp::~VoxelApp() {
     gpu_context.device.wait_idle();
+    // The TG debug UI holds a ref to imgui_renderer, whose destructor needs the ImGui
+    // context. Release both here, before ~AppUi destroys the context.
+    gpu_context.frame_task_graph_debug_ui = {};
+    imgui_renderer = {};
     gpu_context.device.collect_garbage();
     delete scene;
 

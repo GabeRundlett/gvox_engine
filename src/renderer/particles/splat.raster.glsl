@@ -88,8 +88,7 @@ struct Ray {
 };
 
 float max(vec3 v) { return max(max(v.x, v.y), v.z); }
-bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal,
-                     const bool canStartInBox, in vec3 _invRayDir) {
+bool ourIntersectBox(Box box, Ray ray, out float distance, out vec3 normal, const bool canStartInBox, in vec3 _invRayDir) {
     ray.origin = ray.origin - box.center;
     float winding = canStartInBox && (max(abs(ray.origin) * box.invRadius) < 1.0) ? -1 : 1;
     vec3 sgn = -sign(ray.direction);

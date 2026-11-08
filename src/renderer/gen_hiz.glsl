@@ -8,12 +8,7 @@ vec2 make_gather_uv(vec2 inv_size, uvec2 top_left_index) {
 
 DAXA_DECL_IMAGE_ACCESSOR(image2D, coherent, image2DCoherent)
 shared float s_mins[2][GEN_HIZ_Y][GEN_HIZ_X];
-void downsample_64x64(
-    uvec2 local_index,
-    uvec2 grid_index,
-    uvec2 min_mip_size,
-    int src_mip,
-    int mip_count) {
+void downsample_64x64(uvec2 local_index, uvec2 grid_index, uvec2 min_mip_size, int src_mip, int mip_count) {
     const vec2 invSize = 1.0f / vec2(min_mip_size);
     vec4 quad_values = vec4(0, 0, 0, 0);
     [[unroll]] for (uint quad_i = 0; quad_i < 4; ++quad_i) {

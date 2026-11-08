@@ -1,11 +1,7 @@
 #ifndef RENDERER_CULLING_GLSL
 #define RENDERER_CULLING_GLSL
 
-bool is_texel_aabb_hiz_depth_occluded(
-    vec2 min_texel_i, vec2 max_texel_i,
-    float nearest_depth,
-    uvec2 hiz_res,
-    daxa_ImageViewIndex hiz) {
+bool is_texel_aabb_hiz_depth_occluded(vec2 min_texel_i, vec2 max_texel_i, float nearest_depth, uvec2 hiz_res, daxa_ImageViewIndex hiz) {
     const vec2 f_hiz_resolution = hiz_res;
     const float pixel_range = max(max_texel_i.x - min_texel_i.x + 1.0f, max_texel_i.y - min_texel_i.y + 1.0f);
     const float mip = ceil(log2(max(2.0f, pixel_range))) - 1 /* we want one mip lower, as we sample a quad */;
@@ -33,11 +29,7 @@ bool is_texel_aabb_hiz_depth_occluded(
     return depth_cull;
 }
 
-bool is_ndc_aabb_hiz_depth_occluded(
-    vec3 ndc_min, vec3 ndc_max,
-    uvec2 viewport_size,
-    uvec2 hiz_res,
-    daxa_ImageViewIndex hiz) {
+bool is_ndc_aabb_hiz_depth_occluded(vec3 ndc_min, vec3 ndc_max, uvec2 viewport_size, uvec2 hiz_res, daxa_ImageViewIndex hiz) {
     const vec2 scale = vec2(viewport_size) * 0.5;
     const vec2 bias = vec2(viewport_size) * 0.5 + 0.5;
     ndc_min.xy = floor(ndc_min.xy * scale + bias);

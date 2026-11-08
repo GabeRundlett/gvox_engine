@@ -8,14 +8,7 @@
 
 #include <renderer/globals.glsl>
 
-vec3 sun_radiance_impl(
-    daxa_BufferPtr(GpuInput) gpu_input,
-    daxa_ImageViewIndex _transmittance,
-    vec3 view_direction,
-    vec3 sun_direction,
-    float height,
-    float zenith_cos_angle,
-    float sun_angular_radius_cos) {
+vec3 sun_radiance_impl(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _transmittance, vec3 view_direction, vec3 sun_direction, float height, float zenith_cos_angle, float sun_angular_radius_cos) {
     float cos_theta = dot(view_direction, sun_direction);
 
     if (cos_theta >= sun_angular_radius_cos) {
@@ -34,13 +27,7 @@ vec3 sun_radiance_impl(
     }
 }
 
-vec3 get_atmosphere_radiance_along_ray(
-    daxa_BufferPtr(GpuInput) gpu_input,
-    daxa_ImageViewIndex _skyview,
-    vec3 ray,
-    float camera_height,
-    vec3 sun_direction,
-    out bool intersects_ground) {
+vec3 get_atmosphere_radiance_along_ray(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex _skyview, vec3 ray, float camera_height, vec3 sun_direction, out bool intersects_ground) {
     const vec3 world_camera_position = vec3(0, 0, camera_height);
     const vec3 world_up = vec3(0, 0, 1);
 
@@ -129,10 +116,7 @@ vec3 sky_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageVie
 }
 
 // Returns just the radiance from the sun in that direction
-vec3 sun_radiance_in_direction(
-    daxa_BufferPtr(GpuInput) gpu_input, 
-    daxa_ImageViewIndex transmittance_lut, 
-    vec3 nrm) {
+vec3 sun_radiance_in_direction(daxa_BufferPtr(GpuInput) gpu_input, daxa_ImageViewIndex transmittance_lut, vec3 nrm) {
     const vec3 world_camera_position = sky_space_camera_position(gpu_input);
     const vec3 sun_direction = deref(gpu_input).sky_settings.sun_direction;
 

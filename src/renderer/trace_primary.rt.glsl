@@ -26,13 +26,13 @@ layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
 void main() {
 #if GL_RAY_GENERATION_SHADER_EXT
-	uvec2 index = gl_LaunchIDEXT.xy;
+    uvec2 index = gl_LaunchIDEXT.xy;
     vec4 output_tex_size = vec4(deref(push.uses.gpu_input).frame_dim, 0, 0);
 #else
-	uvec2 index = gl_GlobalInvocationID.xy;
+    uvec2 index = gl_GlobalInvocationID.xy;
     vec4 output_tex_size = vec4(deref(push.uses.gpu_input).frame_dim, 0, 0);
-	if (index.x >= output_tex_size.x || index.y >= output_tex_size.y)
-		return;
+    if (index.x >= output_tex_size.x || index.y >= output_tex_size.y)
+        return;
 #endif
 
     output_tex_size.zw = vec2(1.0, 1.0) / output_tex_size.xy;

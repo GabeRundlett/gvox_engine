@@ -48,9 +48,7 @@ struct LayeredBrdf {
     SpecularBrdfEnergyPreservation energy_preservation;
 };
 
-LayeredBrdf LayeredBrdf_from_gbuffer_ndotv(
-    GbufferData gbuffer,
-    float ndotv) {
+LayeredBrdf LayeredBrdf_from_gbuffer_ndotv(GbufferData gbuffer, float ndotv) {
     SpecularBrdf specular_brdf;
     specular_brdf.albedo = vec3(0.04);
     specular_brdf.roughness = gbuffer.roughness;

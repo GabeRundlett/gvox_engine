@@ -128,8 +128,7 @@ TransmittanceParams uv_to_transmittance_lut_params(vec2 uv, float atmosphere_bot
 /// @param skyview dimensions
 /// @param view_height - view_height in world coordinates -> distance from planet center
 /// @return - SkyviewParams structure
-SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float atmosphere_bottom,
-                                       float atmosphere_top, vec2 skyview_dimensions, float view_height) {
+SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float atmosphere_bottom, float atmosphere_top, vec2 skyview_dimensions, float view_height) {
     /* Constrain uvs to valid sub texel range
     (avoid zenith derivative issue making LUT usage visible) */
     uv = vec2(from_subuv_to_unit(uv.x, skyview_dimensions.x),
@@ -166,8 +165,7 @@ SkyviewParams uv_to_skyview_lut_params(bool inside_atmosphere, vec2 uv, float at
 /// @param skyview_dimensions - skyViewLUT dimensions
 /// @param view_height - view_height in world coordinates -> distance from planet center
 /// @return - uv for the skyview LUT sampling
-vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, SkyviewParams params,
-                              float atmosphere_bottom, float atmosphere_top, vec2 skyview_dimensions, float view_height) {
+vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, SkyviewParams params, float atmosphere_bottom, float atmosphere_top, vec2 skyview_dimensions, float view_height) {
     vec2 uv;
 
     if (inside_atmosphere) {
@@ -202,8 +200,7 @@ vec2 skyview_lut_params_to_uv(bool inside_atmosphere, bool intersects_ground, Sk
 /// @param world_direction - the direction in which the shift will be done
 /// @param atmosphere_bottom - bottom of the atmosphere in km
 /// @param atmosphere_top - top of the atmosphere in km
-bool move_to_top_atmosphere(inout vec3 world_position, vec3 world_direction,
-                            float atmosphere_bottom, float atmosphere_top) {
+bool move_to_top_atmosphere(inout vec3 world_position, vec3 world_direction, float atmosphere_bottom, float atmosphere_top) {
     vec3 planet_origin = vec3(0.0, 0.0, 0.0);
     /* Check if the world_position is outside of the atmosphere */
     if (length(world_position) > atmosphere_top) {
@@ -227,9 +224,7 @@ bool move_to_top_atmosphere(inout vec3 world_position, vec3 world_direction,
 
 #include <utilities/gpu/normal.glsl>
 
-vec3 sample_sun_direction(
-    daxa_BufferPtr(GpuInput) gpu_input,
-    vec2 urand, bool soft) {
+vec3 sample_sun_direction(daxa_BufferPtr(GpuInput) gpu_input, vec2 urand, bool soft) {
     if (soft && false) {
         float sun_angular_radius_cos = deref(gpu_input).sky_settings.sun_angular_radius_cos;
         if (sun_angular_radius_cos < 1.0) {

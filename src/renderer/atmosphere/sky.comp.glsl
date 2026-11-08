@@ -306,8 +306,7 @@ vec3 get_multiple_scattering(vec3 world_position, float view_zenith_cos_angle) {
     return texture(daxa_sampler2D(multiscattering_lut, g_sampler_llc), uv).rgb;
 }
 
-vec3 integrate_scattered_luminance(vec3 world_position,
-                                   vec3 world_direction, vec3 sun_direction, int sample_count) {
+vec3 integrate_scattered_luminance(vec3 world_position, vec3 world_direction, vec3 sun_direction, int sample_count) {
     vec3 planet_zero = vec3(0.0, 0.0, 0.0);
     float planet_intersection_distance = ray_sphere_intersect_nearest(
         world_position, world_direction, planet_zero, deref(gpu_input).sky_settings.atmosphere_bottom);
@@ -496,9 +495,7 @@ struct RaymarchResult {
     vec3 transmittance;
 };
 
-RaymarchResult integrate_scattered_luminance(
-    vec3 world_position, vec3 world_direction,
-    vec3 sun_direction, int sample_count, float max_dist) {
+RaymarchResult integrate_scattered_luminance(vec3 world_position, vec3 world_direction, vec3 sun_direction, int sample_count, float max_dist) {
     RaymarchResult result = RaymarchResult(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0));
 
     vec3 planet_zero = vec3(0.0, 0.0, 0.0);
